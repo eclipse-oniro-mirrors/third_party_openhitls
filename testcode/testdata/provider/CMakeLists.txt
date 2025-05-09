@@ -58,16 +58,17 @@ set(SOURCE_FILES_PATH2_LIBSO
     provider_load_test1.c
 )
 
+
 # Create shared library targets for files with %s.so format in path1 directory
 foreach(SOURCE_FILE ${SOURCE_FILES_PATH1_SO})
     get_filename_component(FILE_NAME ${SOURCE_FILE} NAME_WE)
     if(NOT TARGET ${FILE_NAME}_path1)
         add_library(${FILE_NAME}_path1 SHARED ${SOURCE_FILE})
         set_target_properties(${FILE_NAME}_path1 PROPERTIES
-            PREFIX ""
-            OUTPUT_NAME "${FILE_NAME}"
-            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/path1"
-        )
+        PREFIX ""
+        OUTPUT_NAME "${FILE_NAME}"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/path1"
+    )
     endif()
 endforeach()
 
@@ -79,12 +80,31 @@ foreach(SOURCE_FILE ${SOURCE_FILES_PATH1_LIBSO})
         target_include_directories(lib${FILE_NAME}_path1 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
         target_compile_options(lib${FILE_NAME}_path1 PRIVATE -g -O0)
         set_target_properties(lib${FILE_NAME}_path1 PROPERTIES
-            PREFIX ""
-            OUTPUT_NAME "lib${FILE_NAME}"
-            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/path1"
-        )
+        PREFIX ""
+        OUTPUT_NAME "lib${FILE_NAME}"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/path1"
+    )
     endif()
 endforeach()
+
+
+set(OPENHITLS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+add_library(provider_new_alg_test SHARED provider_new_alg_test.c provider_test_utils.c)
+target_link_directories(provider_new_alg_test PUBLIC ${OPENHITLS_ROOT}/build
+                                            ${OPENHITLS_ROOT}/platform/Secure_C/lib)
+target_include_directories(provider_new_alg_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+                                               ${OPENHITLS_ROOT}/include/crypto
+                                               ${OPENHITLS_ROOT}/include/bsl
+                                               ${OPENHITLS_ROOT}/config/macro_config
+                                               ${OPENHITLS_ROOT}/bsl/obj/include
+                                               ${OPENHITLS_ROOT}/bsl/asn1/include
+                                               ${OPENHITLS_ROOT}/crypto/codecskey/include
+                                               ${OPENHITLS_ROOT}/platform/Secure_C/include)
+target_link_libraries(provider_new_alg_test hitls_crypto hitls_bsl boundscheck)
+target_compile_options(provider_new_alg_test PUBLIC -g -O0 -DHITLS_BSL_OBJ -DHITLS_CRYPTO_CODECSKEY -DHITLS_CRYPTO_KEY_DECODE)
+set_target_properties(provider_new_alg_test PROPERTIES
+LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/path1"
+)
 
 # Create shared library targets for files with %s.so format in path2 directory
 foreach(SOURCE_FILE ${SOURCE_FILES_PATH2_SO})

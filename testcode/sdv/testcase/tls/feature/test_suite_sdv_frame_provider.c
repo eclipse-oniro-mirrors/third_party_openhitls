@@ -140,3 +140,63 @@ EXIT:
 #endif
 }
 /* END_CASE */
+
+/* BEGIN_CASE */
+void UT_TLS13_LOADPROVIDER_NEWKEYTYPE_TC001(char *path, char *provider_new_alg_test, int cmd)
+{
+#ifndef HITLS_TLS_FEATURE_PROVIDER
+    (void)path;
+    (void)provider_new_alg_test;
+    (void)cmd;
+    SKIP_TEST();
+#else
+    FRAME_Init();
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    CRYPT_EAL_LibCtx *libCtx = NULL;
+    CRYPT_EAL_ProvMgrCtx *providerMgr = NULL;
+    HITLS_Config *config = NULL;
+    int32_t ret = CRYPT_SUCCESS;
+    libCtx = CRYPT_EAL_LibCtxNew();
+    ASSERT_TRUE(libCtx != NULL);
+    
+    ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(libCtx, path), CRYPT_SUCCESS);
+    ret = CRYPT_EAL_ProviderLoad(libCtx, cmd, provider_new_alg_test, NULL, &providerMgr);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ret = CRYPT_EAL_ProviderLoad(libCtx, BSL_SAL_LIB_FMT_OFF, "default", NULL, NULL);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_TRUE(providerMgr != NULL);
+    // Random Unloading Test Case
+    ASSERT_EQ(CRYPT_EAL_ProviderRandInitCtx(libCtx, GetAvailableRandAlgId(),
+        "provider=default", NULL, 0, NULL), CRYPT_SUCCESS);
+    config = HITLS_CFG_ProviderNewTLS13Config(libCtx, NULL);
+    ASSERT_TRUE(config != NULL);
+    uint16_t signScheme = 24444;
+    HITLS_CFG_SetSignature(config, &signScheme, 1);
+
+    FRAME_CertInfo certInfo = {
+        "new_keyAlg/ca.der",
+        "new_keyAlg/inter.der",
+        "new_keyAlg/client.der",
+        0,
+        "new_keyAlg/client.key.der",
+        0,
+    };
+
+    client = FRAME_CreateLinkWithCert(config, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+    server = FRAME_CreateLinkWithCert(config, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+    if (libCtx != NULL) {
+        CRYPT_EAL_LibCtxFree(libCtx);
+    }
+#endif
+}
+/* END_CASE */

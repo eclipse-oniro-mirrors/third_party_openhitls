@@ -348,6 +348,7 @@ static const CRYPT_EAL_Func g_jsonPemDecoderFuncs[] = {
 /* Provider registration */
 static const CRYPT_EAL_AlgInfo g_testDecode[] = {
     {BSL_CID_DECODE_UNKNOWN, g_jsonPemDecoderFuncs, "provider=test_decoder, inFormat=JSON, outFormat=PEM"},
+
     CRYPT_EAL_ALGINFO_END
 };
 
@@ -536,6 +537,7 @@ static const CRYPT_EAL_AlgInfo g_testKeyMgmt[] = {
     {CRYPT_PKEY_RSA, g_testKeyMgmtRsa, "provider=test_decoder"},
     {CRYPT_PKEY_SM2, g_testKeyMgmtSm2, "provider=test_decoder"},
     {CRYPT_PKEY_ED25519, g_testKeyMgmtEd25519, "provider=test_decoder"},
+    
     CRYPT_EAL_ALGINFO_END
 };
 

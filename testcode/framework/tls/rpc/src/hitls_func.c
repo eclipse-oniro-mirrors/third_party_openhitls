@@ -191,6 +191,7 @@ static const HitlsConfig g_groupList[] = {
     {"SecP384r1MLKEM1024", 4589}, // for new kem group
     {"test_new_group", 477}, // for new group
     {"test_new_group_kem",  478}, // NEW_KEM_ALGID
+    {"test_new_group_with_new_key_type", 479}, // NEW_PKEY_ALGID
 };
 
 static const HitlsConfig g_signatureList[] = {
@@ -221,6 +222,7 @@ static const HitlsConfig g_signatureList[] = {
     {"HITLS_INVALID_SIG_TC01", 0xFFFF},
     {"HITLS_INVALID_SIG_TC02", 0xFFFE},
     {"test_new_sign_alg_name", 23333},
+    {"test_new_sign_alg_name_with_new_key_type", 24444},
 };
 
 static const HitlsConfig g_eccFormatList[] = {
