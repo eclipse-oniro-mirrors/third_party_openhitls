@@ -189,7 +189,8 @@
             "-DHITLS_CRYPTO_BN_CB",
             "-DHITLS_CRYPTO_RSA_BSSA",
             "-DHITLS_AARCH64_PACIASP",
-            "-DHITLS_CRYPTO_SM2_PRECOMPUTE_512K_TBL"
+            "-DHITLS_CRYPTO_SM2_PRECOMPUTE_512K_TBL",
+            "-DHITLS_CRYPTO_ACVP_TESTS"
         ],
         "CC_DEBUG_FLAGS": [
             "-g",

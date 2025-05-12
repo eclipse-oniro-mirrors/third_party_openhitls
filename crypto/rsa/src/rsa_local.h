@@ -57,11 +57,31 @@ typedef struct {
     BN_Mont *mont;
 } CRYPT_RSA_PubKey;
 
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+typedef struct {
+    BN_BigNum *xp;  // main seed for prime p
+    BN_BigNum *xp1; // auxiliary seed1 for prime p
+    BN_BigNum *xp2; // auxiliary seed2 for prime p
+    BN_BigNum *xq;  // main seed for prime q
+    BN_BigNum *xq1; // auxiliary seed1 for prime q
+    BN_BigNum *xq2; // auxiliary seed2 for prime q
+} RSA_FIPS_AUX_PRIME_SEEDS;
+
+typedef struct {
+    union {
+        RSA_FIPS_AUX_PRIME_SEEDS fipsPrimeSeeds;
+    } primeSeed;
+} RSA_ACVP_TESTS;
+#endif
+
 struct RSA_Para {
     BN_BigNum *e;  // Exponent Value -converted.Not in char
     uint32_t bits;   // length in bits of modulus
     BN_BigNum *p;     // prime factor p
     BN_BigNum *q;     // prime factor q
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+    RSA_ACVP_TESTS acvpTests;
+#endif
 };
 
 #ifdef HITLS_CRYPTO_RSA_BSSA
