@@ -341,7 +341,6 @@ int32_t TestEccExport(void *ctx, BSL_Param *params)
 
 void *TestPkeyMgmtKemNewCtx(void *provCtx, int32_t algId)
 {
-    printf("TestPkeyMgmtKemNewCtx [%d] \n", algId);
     TestKemKeyCtx *ctx = NULL;
     if (algId != NEW_KEM_ALGID) {
         return NULL;
@@ -356,7 +355,6 @@ void *TestPkeyMgmtKemNewCtx(void *provCtx, int32_t algId)
 
 static int32_t TestKemGenKey(TestKemKeyCtx *ctx)
 {
-    printf("TestKemGenKey call\n");
     if (ctx == NULL) {
         return CRYPT_NULL_INPUT;
     }
@@ -371,9 +369,6 @@ static int32_t TestKemGenKey(TestKemKeyCtx *ctx)
 
 static int32_t TestKemSetPubKey(TestKemKeyCtx *ctx, const BSL_Param *para)
 {
-    (void)ctx;
-    (void)para;
-    printf("TestKemSetPubKey call\n");
     if (ctx == NULL || para == NULL) {
         return CRYPT_NULL_INPUT;
     }
@@ -388,7 +383,6 @@ static int32_t TestKemSetPubKey(TestKemKeyCtx *ctx, const BSL_Param *para)
 
 static int32_t TestKemGetPubKey(const TestKemKeyCtx *ctx, BSL_Param *para)
 {
-    printf("TestKemGetPubKey call\n");
     if (ctx == NULL || para == NULL) {
         return CRYPT_NULL_INPUT;
     }
@@ -403,17 +397,11 @@ static int32_t TestKemGetPubKey(const TestKemKeyCtx *ctx, BSL_Param *para)
 
 static int32_t TestKemCtrl(TestKemKeyCtx *ctx, int32_t cmd, void *val, uint32_t valLen)
 {
-    printf("TestKemCtrl call ");
-    (void)ctx;
-    (void)cmd;
-    (void)val;
-    (void)valLen;
     if (ctx == NULL || val == NULL || valLen == 0) {
         return CRYPT_NULL_INPUT;
     }
     switch (cmd) {
         case CRYPT_CTRL_SET_PARA_BY_ID:
-            printf("CRYPT_CTRL_SET_PARA_BY_ID \n");
             if (*((int32_t *)val) != NEW_KEM_PARAM_ID) {
                 return CRYPT_INVALID_ARG;
             }
@@ -427,7 +415,6 @@ static int32_t TestKemCtrl(TestKemKeyCtx *ctx, int32_t cmd, void *val, uint32_t 
 
 static void TestKemFreeCtx(TestKemKeyCtx *ctx)
 {
-    printf("TestKemFreeCtx call\n");
     if (ctx != NULL) {
         free(ctx);
     }
@@ -489,7 +476,6 @@ const CRYPT_EAL_Func g_testExchDh[] = {
 
 static int32_t TestKemEncapsulate(const void *pkey, uint8_t *cipher, uint32_t *cipherLen, uint8_t *out, uint32_t *outLen)
 {
-    printf("TestKemEncapsulate call \n");
     TestKemKeyCtx *ctx = (TestKemKeyCtx *)(uintptr_t)pkey;
     if (ctx == NULL || cipherLen == NULL || cipher == NULL) {
         return CRYPT_NULL_INPUT;
