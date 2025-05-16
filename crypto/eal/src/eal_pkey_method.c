@@ -259,7 +259,7 @@ static const EAL_PkeyMethod METHODS[] = {
         CRYPT_DH_ComputeShareKey,
         NULL, // encrypt
         NULL, // decrypt
-        NULL,
+        CRYPT_DH_Check,
         CRYPT_DH_Cmp,
         NULL,
         NULL, // pkeyEncaps

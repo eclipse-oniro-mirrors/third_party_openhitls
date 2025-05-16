@@ -977,6 +977,44 @@ static uint32_t CRYPT_DH_GetSharedKeyLen(const CRYPT_DH_Ctx *ctx)
     return 0;
 }
 
+int32_t CRYPT_DH_Check(const CRYPT_DH_Ctx *prv, const CRYPT_DH_Ctx *pub)
+{
+    int32_t ret;
+    if (prv == NULL || pub == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (prv->x == NULL || pub->y == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DH_KEYINFO_ERROR);
+        return CRYPT_DH_KEYINFO_ERROR;
+    }
+    if (prv->para == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DH_PARA_ERROR);
+        return CRYPT_DH_PARA_ERROR;
+    }
+    BN_Mont *mont = BN_MontCreate(prv->para->p);
+    BN_BigNum *y = BN_Create(BN_Bits(prv->para->p));
+    if (y == NULL || mont == NULL) {
+        ret = CRYPT_MEM_ALLOC_FAIL;
+        BSL_ERR_PUSH_ERROR(ret);
+        goto ERR;
+    }
+    ret = BN_MontExpConsttime(y, prv->para->g, prv->x, mont, NULL);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        goto ERR;
+    }
+    if (BN_Cmp(y, pub->y) != 0) {
+        ret = CRYPT_DH_PAIRWISE_CHECK_FAIL;
+        BSL_ERR_PUSH_ERROR(ret);
+    }
+
+ERR:
+    BN_Destroy(y);
+    BN_MontDestroy(mont);
+    return ret;
+}
+
 int32_t CRYPT_DH_Cmp(const CRYPT_DH_Ctx *a, const CRYPT_DH_Ctx *b)
 {
     RETURN_RET_IF(a == NULL || b == NULL, CRYPT_NULL_INPUT);

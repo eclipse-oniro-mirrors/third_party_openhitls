@@ -142,6 +142,19 @@ int32_t CRYPT_EAL_PkeyPairCheck(CRYPT_EAL_PkeyCtx *pubKey, CRYPT_EAL_PkeyCtx *pr
     uint32_t signedLen;
     CRYPT_MD_AlgId hashId;
     uint8_t toBeSig[] = {1};
+    if (pubKey->id != prvKey->id) {
+        EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_PKEY, pubKey->id, CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+
+    if (pubKey->method->check != NULL && prvKey->method->check == pubKey->method->check) {
+        ret = pubKey->method->check(pubKey->key, prvKey->key);
+        if (ret != CRYPT_SUCCESS) {
+            EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_PKEY, pubKey->id, ret);
+        }
+        return ret;
+    }
+
     CRYPT_EAL_PkeyCtx *tempPubKey = CRYPT_EAL_PkeyDupCtx(pubKey);
     CRYPT_EAL_PkeyCtx *tempPrivKey = CRYPT_EAL_PkeyDupCtx(prvKey);
     if (tempPubKey == NULL || tempPrivKey == NULL) {

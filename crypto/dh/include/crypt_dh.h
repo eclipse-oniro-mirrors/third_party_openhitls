@@ -294,6 +294,19 @@ int32_t CRYPT_DH_Ctrl(CRYPT_DH_Ctx *ctx, int32_t opt, void *val, uint32_t len);
  * @retval security bits
  */
 int32_t CRYPT_DH_GetSecBits(const CRYPT_DH_Ctx *ctx);
+
+/**
+ * @ingroup dh
+ * @brief check the key pair consistency
+ *
+ * @param prv [IN] dh private key context structure
+ * @param pub [IN] dh public key context structure
+ *
+ * @retval CRYPT_SUCCESS            succeeded
+ * For other error codes, see crypt_errno.h
+ */
+int32_t CRYPT_DH_Check(const CRYPT_DH_Ctx *prv, const CRYPT_DH_Ctx *pub);
+
 #ifdef __cplusplus
 }
 #endif
