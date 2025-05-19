@@ -703,12 +703,15 @@ static uint32_t GetProbPrimeMillerCheckTimes(uint32_t proBits)
     return 4;
 }
 
-static int32_t GenAuxPrime(BN_BigNum *Xp, uint32_t auxBits, BN_Optimizer *opt)
+static int32_t GenAuxPrime(BN_BigNum *Xp, uint32_t auxBits, BN_Optimizer *opt, bool isSeed)
 {
-    int32_t ret = BN_RandEx(BN_OptimizerGetLibCtx(opt), Xp, auxBits, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_ONEBIT);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
+    int32_t ret = CRYPT_SUCCESS;
+    if (!isSeed) {
+        ret = BN_Rand(Xp, auxBits, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_ONEBIT);
+        if (ret != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(ret);
+            return ret;
+        }
     }
     uint32_t auxPrimeCheck = GetAuxPrimeMillerCheckTimes(auxBits);
     do {
@@ -767,17 +770,13 @@ static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN
     }
 
     // Choose auxiliary prime r1, either from seed or generate randomly
-    if (Xp1 == NULL) {
-        ret = GenAuxPrime(r1, auxBits, opt);
-        if (ret != CRYPT_SUCCESS) {
-            BSL_ERR_PUSH_ERROR(ret);
-            OptimizerEnd(opt);
-            return ret;
-        }
+    ret = GenAuxPrime(r1, auxBits, opt, (Xp1 != NULL));
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        OptimizerEnd(opt);
+        return ret;
     }
-    if (Xp2 == NULL) {
-        GOTO_ERR_IF(GenAuxPrime(r2, auxBits, opt), ret);
-    }
+    GOTO_ERR_IF(GenAuxPrime(r2, auxBits, opt, (Xp2 != NULL)), ret);
     GOTO_ERR_IF(BN_Lshift(r1Double, r1, 1), ret);
     // Step 1: check 2r1, r2 are coprime.
     GOTO_ERR_IF(BN_Gcd(primeCheck, r1Double, r2, opt), ret);

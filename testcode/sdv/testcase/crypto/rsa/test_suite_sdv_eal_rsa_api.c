@@ -18,7 +18,8 @@
 #include "bsl_params.h"
 #include "bsl_err.h"
 #include "crypt_params_key.h"
-#include "crypt_local_types.h"
+#include "bn_bincal.h"
+#include "bn_basic.h"
 
 /* END_HEADER */
 #define CRYPT_EAL_PKEY_KEYMGMT_OPERATE 0
@@ -1456,6 +1457,53 @@ void SDV_CRYPTO_RSA_GET_KEY_BITS_FUNC_TC001(int id, int keyBits, int isProvider)
     ASSERT_TRUE(CRYPT_EAL_PkeyGetKeyBits(pkey) == (uint32_t)keyBits);
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
+}
+/* END_CASE */
+
+static int32_t STUB_Gcd(BN_BigNum *r, const BN_BigNum *a, const BN_BigNum *b, BN_Optimizer *opt)
+{
+    (void)a;
+    (void)b;
+    (void)opt;
+    BN_BigNum *val = BN_Create(1);
+    val->data[0] = 2;
+    val->sign = false;
+    BN_Copy(r, val);
+    BN_Destroy(val);
+    return CRYPT_SUCCESS;
+}
+
+/**
+ * @test   SDV_CRYPTO_RSA_NOR_KEYGEN_FAIL_TC001
+ * @title  RSA: Normal Key Generation Failure Test
+ * @brief
+ *    1. Create a context of the RSA algorithm, expected result 1
+ *    2. Generate a key pair, expected result 2
+ * @expect
+ *    1. CRYPT_SUCCESS
+ *    2. CRYPT_RSA_NOR_KEYGEN_FAIL
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_RSA_NOR_KEYGEN_FAIL_TC001(int isProvider)
+{
+    uint8_t e[] = {1, 0, 1};
+    CRYPT_EAL_PkeyPara para = {0};
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
+    TestMemInit();
+    STUB_Init();
+    FuncStubInfo tmpRpInfo = {0};
+    SetRsaPara(&para, e, 3, 1024);
+    pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA, CRYPT_EAL_PKEY_KEYMGMT_OPERATE, "provider=default", isProvider);
+    ASSERT_TRUE(pkey != NULL);
+    ASSERT_EQ(CRYPT_EAL_PkeySetPara(pkey, &para), CRYPT_SUCCESS);
+    STUB_Replace(&tmpRpInfo, BN_Gcd, STUB_Gcd);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_RSA_NOR_KEYGEN_FAIL);
+    STUB_Reset(&tmpRpInfo);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(pkey);
+    STUB_Reset(&tmpRpInfo);
 }
 /* END_CASE */
 
