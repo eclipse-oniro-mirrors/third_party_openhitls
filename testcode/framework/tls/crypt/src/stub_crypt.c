@@ -898,7 +898,7 @@ void FRAME_RegCryptMethod(void)
     STUB_Replace(&g_tmpRpInfo[5], HITLS_CRYPT_Encrypt, STUB_CRYPT_EncryptCallbackLibCtx);
     STUB_Replace(&g_tmpRpInfo[6], HITLS_CRYPT_Decrypt, STUB_CRYPT_DecryptCallbackLibCtx);
     STUB_Replace(&g_tmpRpInfo[7], HITLS_CRYPT_GenerateEcdhKey, STUB_CRYPT_GenerateEcdhKeyPairCallbackLibCtx);
-    STUB_Replace(&g_tmpRpInfo[8], HITLS_CRYPT_CalcSharedSecret, STUB_CRYPT_CalcEcdhSharedSecretCallbackLibCtx);
+    STUB_Replace(&g_tmpRpInfo[8], HITLS_CRYPT_EcdhCalcSharedSecret, STUB_CRYPT_CalcEcdhSharedSecretCallbackLibCtx);
     STUB_Replace(&g_tmpRpInfo[9], HITLS_CRYPT_GenerateDhKeyByParameters, STUB_CRYPT_GenerateDhKeyByParamsCallbackLibCtx);
     STUB_Replace(&g_tmpRpInfo[10], HITLS_CRYPT_GenerateDhKeyBySecbits, STUB_CRYPT_GenerateDhKeyBySecbitsCallbackLibCtx);
 #endif

@@ -294,7 +294,7 @@ void CRYPT_DEFAULT_FreeKey(HITLS_CRYPT_Key *key);
 int32_t CRYPT_DEFAULT_GetPubKey(HITLS_CRYPT_Key *key, uint8_t *pubKeyBuf, uint32_t bufLen, uint32_t *pubKeyLen);
 
 /**
- * @brief Calculate the shared key.
+ * @brief Calculate the shared key. Ref RFC 5246 section 8.1.2, this interface will remove the pre-zeros.
  *
  * @param key [IN] Local key handle
  * @param peerPubkey [IN] Peer public key data
@@ -305,7 +305,23 @@ int32_t CRYPT_DEFAULT_GetPubKey(HITLS_CRYPT_Key *key, uint8_t *pubKeyBuf, uint32
  * @retval HITLS_SUCCESS succeeded.
  * @retval Other         failure
  */
-int32_t CRYPT_DEFAULT_CalcSharedSecret(HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen,
+int32_t CRYPT_DEFAULT_DhCalcSharedSecret(HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen,
+    uint8_t *sharedSecret, uint32_t *sharedSecretLen);
+
+/**
+ * @brief Calculate the shared key. Ref RFC 8446 section 7.4.1, this interface will retain the leading zeros.
+ * after calculation.
+ *
+ * @param key [IN] Local key handle
+ * @param peerPubkey [IN] Peer public key data
+ * @param pubKeyLen [IN] Public key data length
+ * @param sharedSecret [OUT] Shared key
+ * @param sharedSecretLen [IN/OUT] IN: Maximum length of data padding OUT: length of the shared key
+ *
+ * @retval HITLS_SUCCESS succeeded.
+ * @retval Other         failure
+ */
+int32_t CRYPT_DEFAULT_EcdhCalcSharedSecret(HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen,
     uint8_t *sharedSecret, uint32_t *sharedSecretLen);
 
 /**

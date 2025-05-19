@@ -437,11 +437,11 @@ static int32_t GetEccName(ECC_Pkey *ctx, void *val, uint32_t len)
 
 static int32_t SetEccPointFormat(ECC_Pkey *ctx, void *val, uint32_t len)
 {
-    uint32_t pointFormat = *(uint32_t *)val;
     if (len != sizeof(uint32_t)) {
         BSL_ERR_PUSH_ERROR(CRYPT_ECC_PKEY_ERR_CTRL_LEN);
         return CRYPT_ECC_PKEY_ERR_CTRL_LEN;
     }
+    uint32_t pointFormat = *(uint32_t *)val;
     if (pointFormat >= CRYPT_POINT_MAX) {
         BSL_ERR_PUSH_ERROR(CRYPT_ECC_PKEY_ERR_INVALID_POINT_FORMAT);
         return CRYPT_ECC_PKEY_ERR_INVALID_POINT_FORMAT;

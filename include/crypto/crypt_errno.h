@@ -251,6 +251,9 @@ enum CRYPT_ERROR {
                                                       of the DH algorithm. */
     CRYPT_DH_PUBKEY_NOT_EQUAL,                   /**< Public keys are not equal. */
     CRYPT_DH_PARA_NOT_EQUAL,                     /**< DH key parameters are not equal. */
+    CRYPT_DH_SET_FLAG_LEN_ERROR,                 /**< The length of the input data is incorrect and return failure when
+                                                      setting the flag. */
+    CRYPT_DH_FLAG_NOT_SUPPORT_ERROR,             /**< Unsupported flag. */
 
     CRYPT_CHACHA20_KEYLEN_ERROR = 0x010E0001,        /**< The key length input is incorrect during key setting. */
     CRYPT_CHACHA20_NONCELEN_ERROR,                   /**< The length of the input nounce is incorrect when you

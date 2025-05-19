@@ -605,7 +605,7 @@ int32_t SAL_CRYPT_CalcEcdhSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrNa
     uint8_t *sharedSecret, uint32_t *sharedSecretLen)
 {
 #ifdef HITLS_TLS_FEATURE_PROVIDER
-    int32_t ret = HITLS_CRYPT_CalcSharedSecret(libCtx, attrName,
+    int32_t ret = HITLS_CRYPT_EcdhCalcSharedSecret(libCtx, attrName,
         key, peerPubkey, pubKeyLen, sharedSecret, sharedSecretLen);
 #else
     (void)libCtx;
@@ -706,7 +706,7 @@ int32_t SAL_CRYPT_CalcDhSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName
     HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen, uint8_t *sharedSecret, uint32_t *sharedSecretLen)
 {
 #ifdef HITLS_TLS_FEATURE_PROVIDER
-    int32_t ret = HITLS_CRYPT_CalcSharedSecret(libCtx, attrName,
+    int32_t ret = HITLS_CRYPT_DhCalcSharedSecret(libCtx, attrName,
         key, peerPubkey, pubKeyLen, sharedSecret, sharedSecretLen);
 #else
     (void)libCtx;
