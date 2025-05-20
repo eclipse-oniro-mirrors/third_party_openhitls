@@ -43,6 +43,11 @@ void BN_OptimizerSetLibCtx(void *libCtx, BN_Optimizer *opt)
     opt->libCtx = libCtx;
 }
 
+void *BN_OptimizerGetLibCtx(BN_Optimizer *opt)
+{
+    return opt->libCtx;
+}
+
 void BN_OptimizerDestroy(BN_Optimizer *opt)
 {
     if (opt == NULL) {

@@ -1048,6 +1048,16 @@ void BN_OptimizerSetLibCtx(void *libCtx, BN_Optimizer *opt);
 
 /**
  * @ingroup bn
+ * @brief get library context
+ *
+ * @param opt [In] BigNum optimizer
+ *
+ * @retval library context
+ */
+void *BN_OptimizerGetLibCtx(BN_Optimizer *opt);
+
+/**
+ * @ingroup bn
  * @brief BigNum Montgomery context creation and setting
  *
  * @param m [IN] Modulus m, which must be positive and odd
