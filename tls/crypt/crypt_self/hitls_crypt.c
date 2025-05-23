@@ -791,7 +791,31 @@ EXIT:
 
 #endif /* HITLS_TLS_PROTO_TLCP11 */
 
-int32_t HITLS_CRYPT_CalcSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName,
+int32_t HITLS_CRYPT_DhCalcSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName,
+    HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen,
+    uint8_t *sharedSecret, uint32_t *sharedSecretLen)
+{
+#ifdef HITLS_CRYPTO_PKEY
+    uint32_t flag = CRYPT_DH_NO_PADZERO;
+    int32_t ret = CRYPT_EAL_PkeyCtrl(key, CRYPT_CTRL_SET_DH_FLAG, (void *)&flag, sizeof(uint32_t));
+    if (ret != CRYPT_SUCCESS) {
+        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17354, "SET_DH_NOLEANDING_FLAG fail");
+    }
+    return HITLS_CRYPT_EcdhCalcSharedSecret(libCtx, attrName, key, peerPubkey, pubKeyLen, sharedSecret,
+        sharedSecretLen);
+#else // HITLS_CRYPTO_PKEY
+    (void)key;
+    (void)pubKeyLen;
+    (void)peerPubkey;
+    (void)sharedSecret;
+    (void)sharedSecretLen;
+    (void)libCtx;
+    (void)attrName;
+    return CRYPT_EAL_ALG_NOT_SUPPORT;
+#endif
+}
+
+int32_t HITLS_CRYPT_EcdhCalcSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName,
     HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen,
     uint8_t *sharedSecret, uint32_t *sharedSecretLen)
 {

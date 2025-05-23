@@ -46,7 +46,7 @@ void HITLS_CryptMethodInit(void)
     ecdhMethod.generateEcdhKeyPair = CRYPT_DEFAULT_GenerateEcdhKey;
     ecdhMethod.freeEcdhKey = CRYPT_DEFAULT_FreeKey;
     ecdhMethod.getEcdhPubKey = CRYPT_DEFAULT_GetPubKey;
-    ecdhMethod.calcEcdhSharedSecret = CRYPT_DEFAULT_CalcSharedSecret;
+    ecdhMethod.calcEcdhSharedSecret = CRYPT_DEFAULT_EcdhCalcSharedSecret;
 #ifdef HITLS_TLS_PROTO_TLCP11
     ecdhMethod.sm2CalEcdhSharedSecret = CRYPT_DEFAULT_CalcSM2SharedSecret;
 #endif /* HITLS_TLS_PROTO_TLCP11 */
@@ -66,7 +66,7 @@ void HITLS_CryptMethodInit(void)
     dhMethod.freeDhKey = CRYPT_DEFAULT_FreeKey;
     dhMethod.getDhParameters = CRYPT_DEFAULT_GetDhParameters;
     dhMethod.getDhPubKey = CRYPT_DEFAULT_GetPubKey;
-    dhMethod.calcDhSharedSecret = CRYPT_DEFAULT_CalcSharedSecret;
+    dhMethod.calcDhSharedSecret = CRYPT_DEFAULT_DhCalcSharedSecret;
     HITLS_CRYPT_RegisterDhMethod(&dhMethod);
 #endif /* HITLS_TLS_SUITE_KX_DHE */
 

@@ -146,7 +146,8 @@ HITLS_CRYPT_Key *HITLS_CRYPT_GenerateEcdhKey(HITLS_Lib_Ctx *libCtx, const char *
 /**
  * @brief Calculate the shared secret.
  *
- * This function calculates the shared secret using the given library context, attribute name, local key handle, peer public key data, and its length.
+ * This function calculates the shared secret using the given library context, attribute name, local key handle,
+ * peer public key data, and its length. Ref RFC 5246 section 8.1.2, this interface will remove the pre-zeros.
  *
  * @param libCtx     [IN] Library context, used to manage cryptographic operations.
  * @param attrName   [IN] Attribute name, which may be used for specific configuration.
@@ -159,7 +160,27 @@ HITLS_CRYPT_Key *HITLS_CRYPT_GenerateEcdhKey(HITLS_Lib_Ctx *libCtx, const char *
  * @retval HITLS_SUCCESS  Succeeded.
  * @retval Other          Failed.
  */
-int32_t HITLS_CRYPT_CalcSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName, HITLS_CRYPT_Key *key,
+int32_t HITLS_CRYPT_DhCalcSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName, HITLS_CRYPT_Key *key,
+    uint8_t *peerPubkey, uint32_t pubKeyLen, uint8_t *sharedSecret, uint32_t *sharedSecretLen);
+
+/**
+ * @brief Calculate the shared secret.
+ *
+ * This function calculates the shared secret using the given library context, attribute name, local key handle,
+ * peer public key data, and its length. Ref RFC 8446 section 7.4.1, this interface will retain the leading zeros.
+ *
+ * @param libCtx     [IN] Library context, used to manage cryptographic operations.
+ * @param attrName   [IN] Attribute name, which may be used for specific configuration.
+ * @param key        [IN] Local key handle.
+ * @param peerPubkey [IN] Peer public key data.
+ * @param pubKeyLen  [IN] Length of the peer public key data.
+ * @param sharedSecret [OUT] Buffer to store the shared secret.
+ * @param sharedSecretLen [IN/OUT] IN: Maximum length of the buffer. OUT: Actual length of the shared secret.
+ *
+ * @retval HITLS_SUCCESS  Succeeded.
+ * @retval Other          Failed.
+ */
+int32_t HITLS_CRYPT_EcdhCalcSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName, HITLS_CRYPT_Key *key,
     uint8_t *peerPubkey, uint32_t pubKeyLen, uint8_t *sharedSecret, uint32_t *sharedSecretLen);
 
 /**

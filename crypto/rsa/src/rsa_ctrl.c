@@ -297,11 +297,11 @@ static int32_t SetFlag(CRYPT_RSA_Ctx *ctx, const void *val, uint32_t len)
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    uint32_t flag = *(const uint32_t *)val;
     if (len != sizeof(uint32_t)) {
         BSL_ERR_PUSH_ERROR(CRYPT_RSA_SET_FLAG_LEN_ERROR);
         return CRYPT_RSA_SET_FLAG_LEN_ERROR;
     }
+    uint32_t flag = *(const uint32_t *)val;
     if (flag == 0 || flag >= CRYPT_RSA_MAXFLAG) {
         BSL_ERR_PUSH_ERROR(CRYPT_RSA_FLAG_NOT_SUPPORT_ERROR);
         return CRYPT_RSA_FLAG_NOT_SUPPORT_ERROR;

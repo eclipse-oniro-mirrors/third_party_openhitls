@@ -817,7 +817,10 @@ static int32_t SetExtKeyUsage(HITLS_X509_Ext *ext, HITLS_X509_ExtEntry *entry, c
     uint16_t keyUsage = (uint16_t)ku->keyUsage;
     BSL_ASN1_BitString bs = {0};
     bs.len = (keyUsage & HITLS_X509_EXT_KU_DECIPHER_ONLY) == 0 ? 1 : 2; // 2: decipher only is not 0
-    bs.buff = (uint8_t *)&keyUsage;
+    uint8_t buff[2] = {0}; // The max length of content(BitString, except unused bits) is 2 bytes.
+    buff[0] = (uint8_t)keyUsage;
+    buff[1] = (uint8_t)(keyUsage >> 8); // 8: 8 bits per byte
+    bs.buff = buff;
     uint8_t tmp = bs.len == 1 ? (uint8_t)keyUsage : (uint8_t)(keyUsage >> BITS_OF_BYTE);
     for (int32_t i = 1; i < BITS_OF_BYTE; i++) {
         if ((uint8_t)(tmp << i) == 0) {

@@ -736,6 +736,7 @@ int32_t ECC_SetPara(ECC_Pkey *ctx, ECC_Para *para)
 
     ECC_FreePara(ctx->para);
     ctx->para = para;
+    ECC_SetLibCtx(ctx->libCtx, ctx->para);
 
     return CRYPT_SUCCESS;
 }

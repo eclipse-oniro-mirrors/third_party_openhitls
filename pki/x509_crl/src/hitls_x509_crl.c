@@ -1334,7 +1334,8 @@ static int32_t SetExtReason(void *param, HITLS_X509_ExtEntry *extEntry, void *va
         return HITLS_X509_ERR_INVALID_PARAM;
     }
     extEntry->critical = reason->critical;
-    BSL_ASN1_Buffer asns = {BSL_ASN1_TAG_ENUMERATED, sizeof(int8_t), (uint8_t *)&reason->reason};
+    uint8_t tmp = (uint8_t)reason->reason; // int32_t -> uint8_t: avoid value errors in bit-endian scenario
+    BSL_ASN1_Buffer asns = {BSL_ASN1_TAG_ENUMERATED, sizeof(uint8_t), (uint8_t *)&tmp};
     BSL_ASN1_TemplateItem items = {BSL_ASN1_TAG_ENUMERATED, 0, 0};
     BSL_ASN1_Template reasonTempl = {&items, 1};
 

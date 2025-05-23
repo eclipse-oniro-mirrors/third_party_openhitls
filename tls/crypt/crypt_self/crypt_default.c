@@ -177,10 +177,16 @@ int32_t CRYPT_DEFAULT_CalcSM2SharedSecret(HITLS_Sm2GenShareKeyParameters *sm2Par
 }
 #endif /* HITLS_TLS_PROTO_TLCP11 */
 
-int32_t CRYPT_DEFAULT_CalcSharedSecret(HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen,
+int32_t CRYPT_DEFAULT_DhCalcSharedSecret(HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen,
     uint8_t *sharedSecret, uint32_t *sharedSecretLen)
 {
-    return HITLS_CRYPT_CalcSharedSecret(NULL, NULL, key, peerPubkey, pubKeyLen, sharedSecret, sharedSecretLen);
+    return HITLS_CRYPT_DhCalcSharedSecret(NULL, NULL, key, peerPubkey, pubKeyLen, sharedSecret, sharedSecretLen);
+}
+
+int32_t CRYPT_DEFAULT_EcdhCalcSharedSecret(HITLS_CRYPT_Key *key, uint8_t *peerPubkey, uint32_t pubKeyLen,
+    uint8_t *sharedSecret, uint32_t *sharedSecretLen)
+{
+    return HITLS_CRYPT_EcdhCalcSharedSecret(NULL, NULL, key, peerPubkey, pubKeyLen, sharedSecret, sharedSecretLen);
 }
 
 #ifdef HITLS_TLS_SUITE_KX_DHE

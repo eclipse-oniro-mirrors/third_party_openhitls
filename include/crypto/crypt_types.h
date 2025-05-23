@@ -92,6 +92,12 @@ typedef enum {
     CRYPT_RSA_MAXFLAG
 } CRYPT_RSA_Flag;
 
+typedef enum {
+    CRYPT_DH_NO_PADZERO = 0x00000001, /**< Follow the standard RFC 5246, remove the prefix-0 when cal the
+                                           shared key. It takes effect only after local settings are made. */
+    CRYPT_DH_MAXFLAG
+} CRYPT_DH_Flag;
+
 /**
  * @ingroup crypt_types
  *
@@ -596,6 +602,9 @@ typedef enum {
     CRYPT_CTRL_SET_DETERMINISTIC_FLAG,   /**< Whether to use deterministic signatures */
     CRYPT_CTRL_SET_CTX_INFO,             /**< Set the context string. */
     CRYPT_CTRL_SET_PREHASH_FLAG,         /**< Change the SLH-DSA or ML-DSA mode to prehash version or pure version. */
+
+    // dh
+    CRYPT_CTRL_SET_DH_FLAG = 150,          /**< Set the dh flag.*/
 
     // rsa
     CRYPT_CTRL_SET_RSA_EMSA_PKCSV15 = 200, /**< RSA set the signature padding mode to EMSA_PKCSV15. */

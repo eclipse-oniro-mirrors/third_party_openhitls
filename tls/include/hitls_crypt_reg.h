@@ -88,7 +88,8 @@ typedef int32_t (*CRYPT_GetEcdhEncodedPubKeyCallback)(HITLS_CRYPT_Key *key, uint
 
 /**
  * @ingroup hitls_crypt_reg
- * @brief   ECDH: Calculate the shared key based on the local key and peer public key.
+ * @brief   ECDH: Calculate the shared key based on the local key and peer public key. Ref RFC 8446 section 7.4.1,
+ * this callback should strip the leading zeros.
  *
  * @param   key [IN] Key handle
  * @param   peerPubkey [IN] Public key data
@@ -211,7 +212,8 @@ typedef int32_t (*CRYPT_GetDhEncodedPubKeyCallback)(HITLS_CRYPT_Key *key, uint8_
 
 /**
  * @ingroup hitls_crypt_reg
- * @brief   DH: Calculate the shared key based on the local key and peer public key.
+ * @brief   DH: Calculate the shared key based on the local key and peer public key. Ref RFC 5246 section 8.1.2,
+ * this callback should retain the leading zeros.
  *
  * @param   key [IN] Key handle
  * @param   peerPubkey [IN] Public key data

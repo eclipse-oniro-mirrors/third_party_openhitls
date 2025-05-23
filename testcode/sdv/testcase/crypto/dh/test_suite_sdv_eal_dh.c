@@ -1557,3 +1557,43 @@ EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
 }
 /* END_CASE */
+
+/**
+ * @test   SDV_CRYPTO_DH_TEST_FLAG_SET_TC002
+ * @title  for test dh flag setting no leading flag.
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_DH_TEST_FLAG_SET_TC001(Hex *p, Hex *g, Hex *q, Hex *prv1, Hex *pub2, Hex *share, int isProvider)
+{
+    CRYPT_RandRegist(RandFunc);
+    CRYPT_RandRegistEx(RandFuncEx);
+    uint8_t shareLocal[1030];
+    uint32_t shareLen = sizeof(shareLocal);
+    uint32_t flag = CRYPT_DH_NO_PADZERO;
+
+    CRYPT_EAL_PkeyPara para = {0};
+    CRYPT_EAL_PkeyPrv prv = {0};
+    CRYPT_EAL_PkeyPub pub = {0};
+    Set_DH_Para(&para, p->x, q->x, g->x, p->len, q->len, g->len);
+    Set_DH_Prv(&prv, prv1->x, prv1->len);
+    Set_DH_Pub(&pub, pub2->x, pub2->len);
+
+    TestMemInit();
+    CRYPT_EAL_PkeyCtx *pkey1 = TestPkeyNewCtx(NULL, CRYPT_PKEY_DH,
+        CRYPT_EAL_PKEY_KEYMGMT_OPERATE + CRYPT_EAL_PKEY_EXCH_OPERATE, "provider=default", isProvider);
+    CRYPT_EAL_PkeyCtx *pkey2 = TestPkeyNewCtx(NULL, CRYPT_PKEY_DH,
+        CRYPT_EAL_PKEY_KEYMGMT_OPERATE + CRYPT_EAL_PKEY_EXCH_OPERATE, "provider=default", isProvider);
+    ASSERT_TRUE(pkey1 != NULL && pkey2 != NULL);
+
+    ASSERT_TRUE(CRYPT_EAL_PkeySetPara(pkey1, &para) == CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_EAL_PkeySetPrv(pkey1, &prv) == CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_EAL_PkeySetPub(pkey2, &pub) == CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_EAL_PkeyCtrl(pkey1, CRYPT_CTRL_SET_DH_FLAG, (void *)&flag, sizeof(uint32_t)) == CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_EAL_PkeyComputeShareKey(pkey1, pkey2, shareLocal, &shareLen) == CRYPT_SUCCESS);
+    ASSERT_TRUE(shareLen == share->len - 1); // The highest bit of this vector is 0
+    ASSERT_TRUE(memcmp(shareLocal, share->x + 1, shareLen) == 0);
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(pkey1);
+    CRYPT_EAL_PkeyFreeCtx(pkey2);
+}
+/* END_CASE */

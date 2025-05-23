@@ -46,6 +46,7 @@ struct DH_Ctx {
     CRYPT_DH_Para *para; // key parameter
     BSL_SAL_RefCount references;
     void *libCtx;
+    uint32_t flags;
 };
 
 #ifdef __cplusplus

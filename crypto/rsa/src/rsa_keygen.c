@@ -24,7 +24,6 @@
 #include "bsl_sal.h"
 #include "bsl_err_internal.h"
 
-
 CRYPT_RSA_Ctx *CRYPT_RSA_NewCtx(void)
 {
     CRYPT_RSA_Ctx *keyCtx = NULL;
@@ -484,7 +483,7 @@ uint32_t CRYPT_RSA_GetSignLen(const CRYPT_RSA_Ctx *ctx)
 #endif
 
 #ifdef HITLS_CRYPTO_RSA_GEN
-static int32_t GetRandomX(BN_BigNum *X, uint32_t nlen, bool isP)
+static int32_t GetRandomX(void *libCtx, BN_BigNum *X, uint32_t nlen, bool isP)
 {
     /*
      *  The FIPS 185-5 Appendix B.9 required √2(2 ^(nlen/2 - 1)) <= x <= ((2 ^(nlen/2) - 1))
@@ -502,7 +501,7 @@ static int32_t GetRandomX(BN_BigNum *X, uint32_t nlen, bool isP)
      *  We can obtain the x, satisfied [ 1.5 * 2 ^(nlen/2 - 1), ((2 ^(nlen/2) - 1) ].
      */
     if ((nlen % 2) == 0) {
-        return BN_Rand(X, nlen >> 1, BN_RAND_TOP_TWOBIT, BN_RAND_BOTTOM_NOBIT);
+        return BN_RandEx(libCtx, X, nlen >> 1, BN_RAND_TOP_TWOBIT, BN_RAND_BOTTOM_NOBIT);
     }
     /*
      * Meanwhile, if nlen is odd, We need to consider p, q separately.
@@ -518,9 +517,9 @@ static int32_t GetRandomX(BN_BigNum *X, uint32_t nlen, bool isP)
          *    -->  nlen >= 3, obviously correct.
          *  hence, We can obtain the x, set the (nlen)/2 + 1 bits.
          */
-        return BN_Rand(X, (nlen + 1) >> 1, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_NOBIT);
+        return BN_RandEx(libCtx, X, (nlen + 1) >> 1, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_NOBIT);
     }
-    return BN_Rand(X, nlen >> 1, BN_RAND_TOP_TWOBIT, BN_RAND_BOTTOM_NOBIT);
+    return BN_RandEx(libCtx, X, nlen >> 1, BN_RAND_TOP_TWOBIT, BN_RAND_BOTTOM_NOBIT);
 }
 
 /*
@@ -582,7 +581,7 @@ static uint32_t GetProbPrimeMillerCheckTimes(uint32_t proBits)
 
 static int32_t GenAuxPrime(BN_BigNum *Xp, uint32_t auxBits, BN_Optimizer *opt)
 {
-    int32_t ret = BN_Rand(Xp, auxBits, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_ONEBIT);
+    int32_t ret = BN_RandEx(BN_OptimizerGetLibCtx(opt), Xp, auxBits, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_ONEBIT);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -664,7 +663,7 @@ static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN
     GOTO_ERR_IF(BN_Sub(R, r2Inv, r1DoubleInv), ret);
     do {
         // Step 3: get x, √2(2 ^(nlen/2 - 1)) <= x <= ((2 ^(nlen/2) - 1))
-        GOTO_ERR_IF(GetRandomX(Xp, para->bits, isP), ret);
+        GOTO_ERR_IF(GetRandomX(BN_OptimizerGetLibCtx(opt), Xp, para->bits, isP), ret);
         // Step 4: Y = X + ((R – X) mod 2r1r2
         GOTO_ERR_IF(BN_Mul(r1, r1Double, r2, opt), ret); // 2r1r2
         GOTO_ERR_IF(BN_ModSub(R, R, Xp, r1, opt), ret);
@@ -938,6 +937,7 @@ int32_t CRYPT_RSA_Gen(CRYPT_RSA_Ctx *ctx)
      * due to its low security, our interface does not lift this restriction.
      * Meanwhile, the check of e is not added to ensure compatibility.
      */
+    BN_OptimizerSetLibCtx(ctx->libCtx, optimizer);
     ret = GenPQBasedOnProbPrimes(ctx->para, newCtx->prvKey, optimizer);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
