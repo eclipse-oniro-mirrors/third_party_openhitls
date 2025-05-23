@@ -279,7 +279,7 @@ int32_t CRYPT_ELGAMAL_Encrypt(CRYPT_ELGAMAL_Ctx *ctx, const uint8_t *data, uint3
     uint8_t *out3 = BSL_SAL_Calloc(1u, out3Len);
     BN_BigNum *result = BN_Create(*outLen);
     BN_BigNum *c = BN_Create(*outLen);
-    if (out1 == NULL || out2 == NULL) {
+    if (out1 == NULL || out2 == NULL || out3 == NULL || result == NULL || c == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         ret = CRYPT_MEM_ALLOC_FAIL;
         goto EXIT;

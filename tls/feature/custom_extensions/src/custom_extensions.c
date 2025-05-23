@@ -271,8 +271,8 @@ void FreeCustomExtensions(CustomExt_Methods *exts)
     if (exts == NULL) {
         return;
     }
-    CustomExt_Method *meth = exts->meths;
-    if (meth == NULL) {
+    if (exts->meths == NULL) {
+        BSL_SAL_Free(exts);
         return;
     }
     BSL_SAL_Free(exts->meths);

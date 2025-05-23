@@ -56,7 +56,7 @@ typedef struct {
     uint16_t tokenType;
     uint8_t truncatedTokenKeyId;
     BSL_Buffer blindedMsg;
-}   PrivPass_TokenRequest;
+} PrivPass_TokenRequest;
 
 typedef struct {
     uint8_t *blindSig;

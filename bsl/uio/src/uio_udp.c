@@ -191,7 +191,7 @@ static int32_t UdpWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *w
     int32_t ret = 0, err = 0;
     BSL_UIO_Addr peerAddr = {0};
     int32_t fd = BSL_UIO_GetFd(uio);
-    if (fd < 0) {
+    if (fd < 0 || parameters == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
         return BSL_UIO_IO_EXCEPTION;
     }

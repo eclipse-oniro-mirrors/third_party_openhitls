@@ -147,12 +147,11 @@ static int32_t BufferSetBufferSize(BSL_UIO *uio, int32_t larg, void *parg)
         BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
         return BSL_INVALID_ARG;
     }
-    bool invalid = (uio == NULL) || (uio->ctx == NULL);
-    if (invalid) {
+    BufferCtx *ctx = BSL_UIO_GetCtx(uio);
+    if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
-    BufferCtx *ctx = BSL_UIO_GetCtx(uio);
     uint32_t len = *(uint32_t *)parg;
     BSL_SAL_FREE(ctx->outBuf);
     ctx->outBuf = (uint8_t *)BSL_SAL_Malloc(len);
