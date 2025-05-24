@@ -228,11 +228,9 @@ T4  .req x29
     eor A03, A03, T2
     eor A04, A04, T1
 
-#ifdef __ILP32__
-    ldr w25, =g_roundConstant
-#else
-    ldr x25, =g_roundConstant       // x25 === T0
-#endif
+    adrp x25, g_roundConstant
+    add x25, x25, :lo12:g_roundConstant       // x25 === T0
+
     ldr T3, [x25, \offset*8]
     eor A00, A00, T3                // iota: A[0, 0] = A[0, 0] xor iotas[i]
 
