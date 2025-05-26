@@ -32,18 +32,12 @@
 .set YTEMP6, %ymm13
 .set YTEMP7, %ymm14
 
-    .struct 0
-SHA512_wk:
-    .struct SHA512_wk + 1280
-SHA512_in:
-    .struct SHA512_in + 8
-SHA512_hash:
-    .struct SHA512_hash + 8
-SHA512_num:
-    .struct SHA512_num + 8
-SHA512_rsp:
-    .struct SHA512_rsp + 8
-SHA512_size:
+.equ SHA512_wk, 0
+.equ SHA512_in, SHA512_wk + 1280
+.equ SHA512_hash, SHA512_in + 8
+.equ SHA512_num, SHA512_hash + 8
+.equ SHA512_rsp, SHA512_num + 8
+.equ SHA512_size, SHA512_rsp + 8
 
 .section .rodata
 .balign    64
