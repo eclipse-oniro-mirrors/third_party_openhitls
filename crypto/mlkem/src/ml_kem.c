@@ -70,6 +70,7 @@ void CRYPT_ML_KEM_FreeCtx(CRYPT_ML_KEM_Ctx *ctx)
     BSL_SAL_CleanseData(ctx->dk, ctx->dkLen);
     BSL_SAL_FREE(ctx->dk);
     BSL_SAL_FREE(ctx->ek);
+    BSL_SAL_ReferencesFree(&(ctx->references));
     BSL_SAL_FREE(ctx);
 }
 
