@@ -1,0 +1,57 @@
+{
+    "name":"@ohos/openhitls",
+    "description":"openhitls",
+    "version":"3.1",
+    "license":"openhitls LICENSE",
+    "publishAs":"code-segment",
+    "segment": {
+        "destPath":"third_party/openhitls"
+    },
+    "dirs":{},
+    "scripts":{},
+    "readmePath":{
+        "en":"README"
+    },
+    "component":{
+        "name":"openhitls",
+        "subsystem":"thirdparty",
+        "syscap":[],
+        "features":[],
+        "adapted_system_type":["standard"],
+        "rom":"",
+        "ram":"",
+        "deps":{
+            "components":[
+                "bounds_checking_function"
+            ],
+            "third_party":[]
+        },
+        "build":{
+            "sub_component":[
+                "//third_party/openhitls:openhitls_bsl",
+                "//third_party/openhitls:openhitls_crypto",
+                "//third_party/openhitls:openhitls_pki",
+                "//third_party/openhitls:openhitls_tls",
+                "//third_party/openhitls:openhitls_auth"
+            ],
+            "inner_kits":[
+                {
+                    "name":"//third_party/openhitls:openhitls_bsl"
+                },
+                {
+                    "name":"//third_party/openhitls:openhitls_crypto"
+                },
+                {
+                    "name":"//third_party/openhitls:openhitls_pki"
+                },
+                {
+                    "name":"//third_party/openhitls:openhitls_tls"
+                },
+                {
+                    "name":"//third_party/openhitls:openhitls_auth"
+                }
+            ],
+            "test":[]
+        }
+    }
+}

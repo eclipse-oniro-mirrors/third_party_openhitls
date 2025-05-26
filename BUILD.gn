@@ -1,0 +1,1102 @@
+# This file is part of the openHiTLS project.
+#
+# openHiTLS is licensed under the Mulan PSL v2.
+# You can use this software according to the terms and conditions of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#
+#     http://license.coscl.org.cn/MulanPSL2
+#
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+
+import("//build/config/config.gni")
+import("//build/ohos.gni")
+import("//build/ohos/ndk/ndk.gni")
+
+print("current_cpu = ${current_cpu}")
+print("current_os = ${current_os}")
+print("host_os = ${host_os}")
+
+openhitls_selected_platform = ""
+
+if (current_cpu == "arm64" && current_os == "ohos" && host_os == "linux") {
+    print("openhitls selected linux-armv8")
+    openhitls_selected_platform = "linux-armv8"
+} else if (current_cpu == "x86_64" && current_os == "ohos" && host_os == "linux") {
+    print("openhitls selected linux-x86_64")
+    openhitls_selected_platform = "linux-x86_64"
+}
+
+print("openhitls detecting os done, openhitls_selected_platform = ${openhitls_selected_platform}")
+
+all_defines = []
+
+public_armv8_defines = [
+    "HITLS_CRYPTO_AES_ARMV8",
+    "HITLS_CRYPTO_BN_ARMV8",
+    "HITLS_CRYPTO_CHACHA20_ARMV8",
+    "HITLS_CRYPTO_ECC_ARMV8",
+    "HITLS_CRYPTO_MODES_ARMV8",
+    "HITLS_CRYPTO_SHA1_ARMV8",
+    "HITLS_CRYPTO_SHA2_ARMV8",
+    "HITLS_CRYPTO_SHA3",
+    "HITLS_CRYPTO_SHA3_ARMV8",
+    "HITLS_CRYPTO_SM3_ARMV8",
+    "HITLS_CRYPTO_SM4_ARMV8",
+    "HITLS_CRYPTO_X25519_ARMV8",
+]
+
+public_x8664_defines = [
+    "HITLS_CRYPTO_AES_X8664",
+    "HITLS_CRYPTO_BN_X8664",
+    "HITLS_CRYPTO_CHACHA20_X8664",
+    "HITLS_CRYPTO_ECC_X8664",
+    "HITLS_CRYPTO_MD5_X8664",
+    "HITLS_CRYPTO_MODES_X8664",
+    "HITLS_CRYPTO_SHA1_X8664",
+    "HITLS_CRYPTO_SHA2_X8664",
+    "HITLS_CRYPTO_SM3_X8664",
+    "HITLS_CRYPTO_SM4_X8664",
+    "HITLS_CRYPTO_X25519_X8664"
+]
+
+public_asm_defines = [
+    "HITLS_CRYPTO_AES",
+    "HITLS_CRYPTO_CHACHA20",
+    "HITLS_CRYPTO_ECC",
+    "HITLS_CRYPTO_SHA1",
+    "HITLS_CRYPTO_SHA2",
+    "HITLS_CRYPTO_SM3",
+    "HITLS_CRYPTO_SM4",
+    "HITLS_CRYPTO_X25519"
+]
+
+public_all_defines = [
+    "HITLS_BSL_UIO_ADDR",
+    "HITLS_BSL_UIO_BUFFER",
+    "HITLS_BSL_UIO_MEM",
+    "HITLS_BSL_UIO_PLT",
+    "HITLS_BSL_UIO_TCP",
+    "HITLS_BSL_UIO_UDP",
+    "HITLS_AARCH64_PACIASP",
+    "HITLS_AUTH",
+    "HITLS_AUTH_PRIVPASS_TOKEN",
+    "HITLS_BSL",
+    "HITLS_BSL_ASN1",
+    "HITLS_BSL_BASE64",
+    "HITLS_BSL_BUFFER",
+    "HITLS_BSL_ERR",
+    "HITLS_BSL_HASH",
+    "HITLS_BSL_INIT",
+    "HITLS_BSL_LIST",
+    "HITLS_BSL_LOG",
+    "HITLS_BSL_OBJ",
+    "HITLS_BSL_PARAMS",
+    "HITLS_BSL_PEM",
+    "HITLS_BSL_SAL",
+    "HITLS_BSL_SAL_DL",
+    "HITLS_BSL_SAL_FILE",
+    "HITLS_BSL_SAL_LINUX",
+    "HITLS_BSL_SAL_LOCK",
+    "HITLS_BSL_SAL_MEM",
+    "HITLS_BSL_SAL_NET",
+    "HITLS_BSL_SAL_STR",
+    "HITLS_BSL_SAL_THREAD",
+    "HITLS_BSL_SAL_TIME",
+    "HITLS_BSL_TLV",
+    "HITLS_BSL_USRDATA",
+    "HITLS_CRYPTO",
+    "HITLS_CRYPTO_AES_PRECALC_TABLES",
+    "HITLS_CRYPTO_BN",
+    "HITLS_CRYPTO_BN_COMBA",
+
+    "HITLS_CRYPTO_CIPHER",
+    "HITLS_CRYPTO_CODECS",
+    "HITLS_CRYPTO_CODECSKEY",
+    "HITLS_CRYPTO_DRBG",
+    "HITLS_CRYPTO_EAL",
+    "HITLS_CRYPTO_EALINIT",
+    "HITLS_CRYPTO_ENTROPY",
+    "HITLS_CRYPTO_HPKE",
+    "HITLS_CRYPTO_KDF",
+    "HITLS_CRYPTO_MAC",
+    "HITLS_CRYPTO_MD",
+    "HITLS_CRYPTO_MD5",
+    "HITLS_CRYPTO_MODES",
+    "HITLS_CRYPTO_NIST_ECC_ACCELERATE",
+    "HITLS_CRYPTO_PKEY",
+    "HITLS_CRYPTO_PROVIDER",
+    "HITLS_CRYPTO_SM2_PRECOMPUTE_512K_TBL",
+    "HITLS_PKI",
+    "HITLS_PKI_INFO",
+    "HITLS_PKI_PKCS12",
+    "HITLS_PKI_X509",
+
+    "HITLS_TLS",
+    "HITLS_TLS_CALLBACK",
+    "HITLS_TLS_CONFIG",
+    "HITLS_TLS_CONNECTION",
+    "HITLS_TLS_FEATURE",
+    "HITLS_TLS_HOST",
+    "HITLS_TLS_MAINTAIN",
+    "HITLS_TLS_PROTO",
+    "HITLS_TLS_PROTO_VERSION",
+    "HITLS_TLS_SUITE",
+    "HITLS_TLS_SUITE_AUTH",
+    "HITLS_TLS_SUITE_CIPHER",
+    "HITLS_TLS_SUITE_KX",
+
+    "HITLS_SIXTY_FOUR_BITS",
+    "__FILENAME__"
+]
+
+if (openhitls_selected_platform == "linux-armv8") {
+    all_defines += public_armv8_defines
+    all_defines += public_all_defines
+    all_defines += public_asm_defines
+} else if (openhitls_selected_platform == "linux-x86_64") {
+    all_defines += public_x8664_defines
+    all_defines += public_all_defines
+    all_defines += public_asm_defines
+} else {
+    all_defines = public_all_defines
+} 
+
+unused_variables = []
+unused_variables += unused_variables
+unused_variables += public_armv8_defines
+unused_variables += public_x8664_defines
+unused_variables += public_asm_defines 
+unused_variables += public_all_defines
+
+config("bsl_config") {
+    include_dirs = [
+        # public
+        "bsl/asn1/include",
+        "bsl/base64/include",
+        "bsl/buffer/include",
+        "bsl/err/include",
+        "bsl/hash/include",
+        "bsl/list/include",
+        "bsl/log/include",
+        "bsl/obj/include",
+        "bsl/pem/include",
+        "bsl/sal/include",
+        "bsl/tlv/include",
+        "bsl/uio/include",
+        "bsl/include",
+        "include/bsl",
+        "config/macro_config",
+    ]
+}
+
+ohos_source_set("bsl_source") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    # libbsl 源码列表
+    sources = [
+        "bsl/asn1/src/bsl_asn1.c",
+        "bsl/asn1/src/bsl_asn1_print.c",
+        "bsl/base64/src/bsl_base64.c",
+        "bsl/buffer/src/bsl_buffer.c",
+        "bsl/err/src/avl.c",
+        "bsl/err/src/err.c",
+        "bsl/hash/src/bsl_hash.c",
+        "bsl/hash/src/bsl_hash_list.c",
+        "bsl/hash/src/hash_local.c",
+        "bsl/hash/src/list_base.c",
+        "bsl/init/bsl_init.c",
+        "bsl/list/src/bsl_list.c",
+        "bsl/list/src/bsl_list_ex.c",
+        "bsl/list/src/bsl_list_internal.c",
+        "bsl/log/src/log.c",
+        "bsl/obj/src/bsl_cid_op.c",
+        "bsl/obj/src/bsl_obj.c",
+        "bsl/params/src/bsl_params.c",
+        "bsl/pem/src/bsl_pem.c",
+        "bsl/sal/src/linux/linux_sal_dl.c",
+        "bsl/sal/src/linux/linux_sal_file.c",
+        "bsl/sal/src/linux/linux_sal_lockimpl.c",
+        "bsl/sal/src/linux/linux_sal_mem.c",
+        "bsl/sal/src/linux/linux_sal_net.c",
+        "bsl/sal/src/linux/linux_time_impl.c",
+        "bsl/sal/src/sal_atomic.c",
+        "bsl/sal/src/sal_ctrl.c",
+        "bsl/sal/src/sal_dl.c",
+        "bsl/sal/src/sal_file.c",
+        "bsl/sal/src/sal_mem.c",
+        "bsl/sal/src/sal_net.c",
+        "bsl/sal/src/sal_string.c",
+        "bsl/sal/src/sal_threadlock.c",
+        "bsl/sal/src/sal_time.c",
+        "bsl/tlv/src/tlv.c",
+        "bsl/uio/src/uio_abstraction.c",
+        "bsl/uio/src/uio_addr.c",
+        "bsl/uio/src/uio_buffer.c",
+        "bsl/uio/src/uio_mem.c",
+        "bsl/uio/src/uio_tcp.c",
+        "bsl/uio/src/uio_udp.c",
+        "bsl/usrdata/src/usr_data.c"
+    ]
+    configs = [":bsl_config"]
+    external_deps = [
+        "bounds_checking_function:libsec_shared"
+    ]
+    defines = all_defines
+    cflags = [
+        "-Wno-int-conversion",
+        "-fPIC"
+    ]
+    ldflags = [
+        "-fPIC",
+        "-Wl,-Bsymbolic"
+    ]
+}
+
+ohos_shared_library("openhitls_bsl") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    sources = []
+    deps = [":bsl_source"]
+}
+
+config("crypto_config") {
+    include_dirs = [
+        # public
+        "bsl/asn1/include",
+        "bsl/err/include",
+        "bsl/hash/include",
+        "bsl/list/include",
+        "bsl/log/include",
+        "bsl/obj/include",
+        "bsl/pem/include",
+        "bsl/sal/include",
+        "codecs/include",
+        "include/bsl",
+        "config/macro_config",
+        "crypto/aes/include",
+        "crypto/bn/include",
+        "crypto/chacha20/include",
+        "crypto/cmac/include",
+        "crypto/cmac/src",
+        "crypto/codecskey/include",
+        "crypto/curve25519/include",
+        "crypto/dh/include",
+        "crypto/drbg/include",
+        "crypto/dsa/include",
+        "crypto/eal/include",
+        "crypto/eal/src",
+        "crypto/ealinit/include",
+        "crypto/ecc/include",
+        "crypto/ecdh/include",
+        "crypto/ecdsa/include",
+        "crypto/elgamal/include",
+        "crypto/encode/include",
+        "crypto/entropy/include",
+        "crypto/gmac/include",
+        "crypto/hkdf/include",
+        "crypto/hmac/include",
+        "crypto/hybridkem/include",
+        "crypto/include",
+        "crypto/kdf/include",
+        "crypto/md5/include",
+        "crypto/mldsa/include",
+        "crypto/mlkem/include",
+        "crypto/modes/include",
+        "crypto/modes/src",
+        "crypto/paillier/include",
+        "crypto/pbkdf2/include",
+        "crypto/pbkdf2/src",
+        "crypto/provider/include",
+        "crypto/rsa/include",
+        "crypto/scrypt/include",
+        "crypto/sha1/include",
+        "crypto/sha2/include",
+        "crypto/sha3/include",
+        "crypto/siphash/include",
+        "crypto/slh_dsa/include",
+        "crypto/sm2/include",
+        "crypto/sm3/include",
+        "crypto/sm4/include",
+        "include/crypto",
+        "include/tls",
+    ]
+}
+
+openhitls_libcrypto_build_all_generated_linux_armv8_sources = [
+    "crypto/bn/src/armv8_bn_bincal.c",
+    "crypto/bn/src/asm/bn_mont_armv8.S",
+
+    "crypto/aes/src/asm/crypt_aes_armv8.S",
+    "crypto/aes/src/asm/crypt_aes_cbc_armv8.S",
+    "crypto/aes/src/asm/crypt_aes_cfb_armv8.S",
+    "crypto/aes/src/asm/crypt_aes_ctr_armv8.S",
+    "crypto/aes/src/asm/crypt_aes_ecb_armv8.S",
+    "crypto/aes/src/asm/crypt_aes_xts_armv8.S",
+
+    "crypto/sm4/src/asm/crypt_sm4_armv8.S",
+    "crypto/sm4/src/asm/crypt_sm4_ex_armv8.S",
+    "crypto/sm4/src/crypt_sm4_armv8.c",
+
+    "crypto/chacha20/src/asm/chacha20_aarch64.S",
+
+    "crypto/md5/src/noasm_md5.c",
+
+    "crypto/sm3/src/asm/sm3_armv8.S",
+
+    "crypto/sha1/src/asm/sha1_armv8.S",
+
+    "crypto/sha2/src/asm/sha2_256_armv8.S",
+    "crypto/sha2/src/asm/sha2_512_armv8.S",
+    "crypto/sha3/src/asm/sha3_armv8.S",
+
+    "crypto/modes/src/asm/aes_gcm_16block_aarch64.S",
+    "crypto/modes/src/asm/aes_gcm_64block_aarch64.S",
+    "crypto/modes/src/asm/ghash_armv8.S",
+    "crypto/modes/src/asm/poly1305_armv8.S",
+    "crypto/modes/src/asm_sm4_ofb_armv8.c",
+    "crypto/modes/src/asm_aes_cfb.c",
+    "crypto/modes/src/noasm_aes_ccm.c",
+
+    "crypto/ecc/src/asm/ecp256_armv8.S",
+    "crypto/ecc/src/asm/ecp_sm2_armv8.S",
+
+    "crypto/curve25519/src/asm/x25519_armv8.S"
+]
+
+openhitls_libcrypto_build_all_generated_linux_x8664_sources = [
+    "crypto/bn/src/asm/bn_mont_x86_64.S",
+    "crypto/bn/src/asm/bn_montx_x86_64.S",
+    "crypto/bn/src/x8664_bn_bincal.c",
+
+    "crypto/aes/src/asm/crypt_aes_cbc_x86_64.S",
+    "crypto/aes/src/asm/crypt_aes_ctr_x86_64.S",
+    "crypto/aes/src/asm/crypt_aes_ecb_x86_64.S",
+    "crypto/aes/src/asm/crypt_aes_x86_64.S",
+    "crypto/aes/src/asm/crypt_aes_xts_x86_64.S",
+
+    "crypto/sm4/src/asm/crypt_sm4_macro_x86_64.s",
+    "crypto/sm4/src/asm/crypt_sm4_modes_macro_x86_64.s",
+    "crypto/sm4/src/asm/crypt_sm4_modes_x86_64.S",
+    "crypto/sm4/src/asm/crypt_sm4_x86_64.S",
+    "crypto/sm4/src/crypt_sm4_x86_64.c",
+
+    "crypto/chacha20/src/asm/chacha20block_x8664_avx2.S",
+
+    "crypto/md5/src/asm/md5_x86_64.S",
+
+    "crypto/sm3/src/asm/sm3_x86_64.s",
+
+    "crypto/sha1/src/asm/sha1_x86_64.S",
+    "crypto/sha2/src/asm/sha2_256_x86_64.S",
+    "crypto/sha2/src/asm/sha2_512_x86_64.S",
+
+    "crypto/sha3/src/noasm_sha3.c",
+
+    "crypto/modes/src/asm/aes_ccm_x86_64.S",
+    "crypto/modes/src/asm/aes_gcm_16block_x86_64.S",
+    "crypto/modes/src/asm/aes_gcm_64block_x86_64.S",
+    "crypto/modes/src/asm/aes_gcm_96block_x86_64.S",
+    "crypto/modes/src/asm/ghash_x86_64.S",
+    "crypto/modes/src/asm/poly1305_x86_64_avx2.S",
+    "crypto/modes/src/asm_aes_ccm.c",
+    "crypto/modes/src/asm_sm4_ofb_x86_64.c",
+    "crypto/modes/src/noasm_aes_cfb.c",
+
+    "crypto/ecc/src/asm/ecp256_x86_64.S",
+    "crypto/ecc/src/asm/ecp_sm2_x86_64.S",
+
+    "crypto/curve25519/src/asm/x25519_x86_64.S",
+]
+
+openhitls_libcrypto_build_all_generated_linux_c_sources = [
+    "crypto/bn/src/noasm_bn_bincal.c",
+    "crypto/bn/src/noasm_bn_mont.c",
+
+    "crypto/aes/src/crypt_aes.c",
+    "crypto/aes/src/crypt_aes_sbox.c",
+    "crypto/aes/src/crypt_aes_tbox.c",
+
+    "crypto/chacha20/src/chacha20block.c",
+
+    "crypto/md5/src/noasm_md5.c",
+
+    "crypto/sm3/src/noasm_sm3.c",
+
+    "crypto/sha1/src/noasm_sha1.c",
+    "crypto/sha1/src/noasm_sha1_small.c",
+
+    "crypto/sha2/src/noasm_sha256.c",
+    "crypto/sha2/src/noasm_sha256_small.c",
+    "crypto/sha2/src/noasm_sha512.c",
+    "crypto/sha2/src/noasm_sha512_small.c",
+
+    "crypto/sha3/src/noasm_sha3.c",
+
+    "crypto/modes/src/noasm_aes_cbc.c",
+    "crypto/modes/src/noasm_aes_ccm.c",
+    "crypto/modes/src/noasm_aes_cfb.c",
+    "crypto/modes/src/noasm_aes_ctr.c",
+    "crypto/modes/src/noasm_aes_ecb.c",
+    "crypto/modes/src/noasm_aes_gcm.c",
+    "crypto/modes/src/noasm_aes_xts.c",
+    "crypto/modes/src/noasm_ghash.c",
+    "crypto/modes/src/noasm_poly1305.c",
+    "crypto/modes/src/noasm_sm4_cbc.c",
+    "crypto/modes/src/noasm_sm4_cfb.c",
+    "crypto/modes/src/noasm_sm4_ctr.c",
+    "crypto/modes/src/noasm_sm4_ecb.c",
+    "crypto/modes/src/noasm_sm4_gcm.c",
+    "crypto/modes/src/noasm_sm4_ofb.c",
+    "crypto/modes/src/noasm_sm4_setkey.c",
+    "crypto/modes/src/noasm_sm4_xts.c",
+
+    "crypto/ecc/src/noasm_ecp_nistp256.c",
+
+    "crypto/curve25519/src/noasm_curve25519_fp51_ops.c"
+]
+
+openhitls_libcrypto_build_all_generated_linux_asm_public_sources = [
+    "crypto/bn/src/asm_bn_mont.c",
+
+    "crypto/sm3/src/asm_sm3.c",
+
+    "crypto/modes/src/asm_aes_cbc.c",
+    "crypto/modes/src/asm_aes_ctr.c",
+    "crypto/modes/src/asm_aes_ecb.c",
+    "crypto/modes/src/asm_aes_gcm.c",
+    "crypto/modes/src/asm_aes_xts.c",
+    "crypto/modes/src/asm_sm4_cbc.c",
+    "crypto/modes/src/asm_sm4_cfb.c",
+    "crypto/modes/src/asm_sm4_ctr.c",
+    "crypto/modes/src/asm_sm4_ecb.c",
+    "crypto/modes/src/asm_sm4_gcm.c",
+    "crypto/modes/src/asm_sm4_setkey.c",
+    "crypto/modes/src/asm_sm4_xts.c",
+
+    "crypto/ecc/src/asm64_ecp_nistp256.c",
+    "crypto/ecc/src/asm_ecp_nistp256.c",
+    "crypto/ecc/src/asm_ecp_sm2.c",
+    "crypto/ecc/src/asm_ecp_sm2_table.c",
+
+    "crypto/curve25519/src/asm_curve25519_ops.c",
+]
+
+openhitls_libcrypto_build_all_generated_linux_c_public_sources = [
+    "crypto/bn/src/bn_basic.c",
+    "crypto/bn/src/bn_bincal.c",
+    "crypto/bn/src/bn_comba.c",
+    "crypto/bn/src/bn_const.c",
+    "crypto/bn/src/bn_gcd.c",
+    "crypto/bn/src/bn_lcm.c",
+    "crypto/bn/src/bn_mont.c",
+    "crypto/bn/src/bn_nistmod.c",
+    "crypto/bn/src/bn_operation.c",
+    "crypto/bn/src/bn_optimizer.c",
+    "crypto/bn/src/bn_prime.c",
+    "crypto/bn/src/bn_rand.c",
+    "crypto/bn/src/bn_sqrt.c",
+    "crypto/bn/src/bn_ucal.c",
+    "crypto/bn/src/bn_utils.c",
+
+    "crypto/util/crypt_util_algId.c",
+    "crypto/util/crypt_util_mgf.c",
+    "crypto/util/crypt_util_pkey.c",
+    "crypto/util/crypt_util_rand.c",
+
+    "crypto/aes/src/crypt_aes_setkey.c",
+
+    "crypto/sm4/src/crypt_sm4.c",
+    "crypto/sm4/src/crypt_sm4_public.c",
+    "crypto/sm4/src/sm4_key.c",
+
+    "crypto/chacha20/src/chacha20.c",
+    "codecs/src/decode.c",
+    "codecs/src/decode_chain.c",
+    "crypto/codecskey/src/crypt_decode_der2key.c",
+    "crypto/codecskey/src/crypt_decode_ecc.c",
+    "crypto/codecskey/src/crypt_decode_epki2pki.c",
+    "crypto/codecskey/src/crypt_decode_lowkey2pkey.c",
+    "crypto/codecskey/src/crypt_decode_pem2der.c",
+    "crypto/codecskey/src/crypt_decode_pkey.c",
+    "crypto/codecskey/src/crypt_decode_rsa.c",
+    "crypto/codecskey/src/crypt_encode_decode.c",
+    "crypto/codecskey/src/crypt_encode_decode_local.c",
+    "crypto/codecskey/src/crypt_encode_decode_utils.c",
+
+    "crypto/drbg/src/drbg.c",
+    "crypto/drbg/src/drbg_ctr.c",
+    "crypto/drbg/src/drbg_hash.c",
+    "crypto/drbg/src/drbg_hmac.c",
+
+    "crypto/eal/src/eal_cipher.c",
+    "crypto/eal/src/eal_cipher_method.c",
+    "crypto/eal/src/eal_common.c",
+    "crypto/eal/src/eal_entropy.c",
+    "crypto/eal/src/eal_entropyPool.c",
+    "crypto/eal/src/eal_entropy_ecf.c",
+    "crypto/eal/src/eal_kdf.c",
+    "crypto/eal/src/eal_kdf_method.c",
+    "crypto/eal/src/eal_keymgmt_util.c",
+    "crypto/eal/src/eal_mac.c",
+    "crypto/eal/src/eal_mac_method.c",
+    "crypto/eal/src/eal_md.c",
+    "crypto/eal/src/eal_md_method.c",
+    "crypto/eal/src/eal_pkey_computesharekey.c",
+    "crypto/eal/src/eal_pkey_crypt.c",
+    "crypto/eal/src/eal_pkey_gen.c",
+    "crypto/eal/src/eal_pkey_kem.c",
+    "crypto/eal/src/eal_pkey_method.c",
+    "crypto/eal/src/eal_pkey_sign.c",
+    "crypto/eal/src/eal_rand.c",
+    "crypto/eal/src/eal_rand_method.c",
+
+    "crypto/ealinit/src/asmcap_alg_asm.c",
+    "crypto/ealinit/src/cpucap.c",
+    "crypto/ealinit/src/crypt_init.c",
+
+    "crypto/entropy/src/entropy.c",
+    "crypto/entropy/src/entropy_hardware.c",
+    "crypto/entropy/src/entropy_seed_pool.c",
+    "crypto/entropy/src/entropy_system.c",
+    "crypto/entropy/src/es_cf.c",
+    "crypto/entropy/src/es_cf_df.c",
+    "crypto/entropy/src/es_entropy.c",
+    "crypto/entropy/src/es_entropy_pool.c",
+    "crypto/entropy/src/es_health_test.c",
+    "crypto/entropy/src/es_noise_source.c",
+    "crypto/entropy/src/es_ns_jitter.c",
+    "crypto/entropy/src/es_ns_timestamp.c",
+
+    "crypto/hpke/src/hpke.c",
+
+    "crypto/scrypt/src/scrypt.c",
+
+    "crypto/hkdf/src/hkdf.c",
+
+    "crypto/pbkdf2/src/pbkdf2.c",
+
+    "crypto/kdf/src/kdf_tls12.c",
+
+    "crypto/hmac/src/hmac.c",
+
+    "crypto/gmac/src/gmac.c",
+
+    "crypto/cmac/src/cbc_mac.c",
+    "crypto/cmac/src/cipher_mac_common.c",
+    "crypto/cmac/src/cmac.c",
+
+    "crypto/siphash/src/siphash.c",
+
+    "crypto/md5/src/md5.c",
+
+    "crypto/sm3/src/sm3_public.c",
+
+    "crypto/sha1/src/sha1.c",
+
+    "crypto/sha2/src/sha2_256.c",
+    "crypto/sha2/src/sha2_512.c",
+
+    "crypto/sha3/src/sha3.c",
+
+    "crypto/modes/src/modes.c",
+    "crypto/modes/src/modes_cbc.c",
+    "crypto/modes/src/modes_ccm.c",
+    "crypto/modes/src/modes_cfb.c",
+    "crypto/modes/src/modes_chacha20_poly1305.c",
+    "crypto/modes/src/modes_ctr.c",
+    "crypto/modes/src/modes_ecb.c",
+    "crypto/modes/src/modes_gcm.c",
+    "crypto/modes/src/modes_ofb.c",
+    "crypto/modes/src/modes_xts.c",
+
+    "crypto/ecc/src/ecc.c",
+    "crypto/ecc/src/ecc_method.c",
+    "crypto/ecc/src/ecc_para.c",
+    "crypto/ecc/src/ecc_pkey.c",
+    "crypto/ecc/src/ecp_mont.c",
+    "crypto/ecc/src/ecp_nist.c",
+    "crypto/ecc/src/ecp_nistp224.c",
+    "crypto/ecc/src/ecp_nistp521.c",
+    "crypto/ecc/src/ecp_simple.c",
+
+    "crypto/rsa/src/rsa_blinding.c",
+    "crypto/rsa/src/rsa_ctrl.c",
+    "crypto/rsa/src/rsa_encdec.c",
+    "crypto/rsa/src/rsa_keygen.c",
+    "crypto/rsa/src/rsa_keyop.c",
+    "crypto/rsa/src/rsa_padding.c",
+
+    "crypto/dsa/src/dsa_core.c",
+
+    "crypto/encode/src/crypt_encode.c",
+
+    "crypto/dh/src/dh_core.c",
+    "crypto/dh/src/dh_para.c",
+
+    "crypto/ecdh/src/ecdh.c",
+    "crypto/ecdsa/src/ecdsa.c",
+
+    "crypto/curve25519/src/curve25519.c",
+    "crypto/curve25519/src/curve25519_op.c",
+    "crypto/curve25519/src/curve25519_table.c",
+
+    "crypto/sm2/src/sm2_crypt.c",
+    "crypto/sm2/src/sm2_exch.c",
+    "crypto/sm2/src/sm2_sign.c",
+
+    "crypto/mlkem/src/ml_kem.c",
+    "crypto/mlkem/src/ml_kem_ntt.c",
+    "crypto/mlkem/src/ml_kem_pke.c",
+    "crypto/mlkem/src/ml_kem_poly.c",
+
+    "crypto/mldsa/src/ml_dsa.c",
+    "crypto/mldsa/src/ml_dsa_core.c",
+    "crypto/mldsa/src/ml_dsa_ntt.c",
+
+    "crypto/hybridkem/src/crypt_hybridkem.c",
+
+    "crypto/paillier/src/paillier_encdec.c",
+    "crypto/paillier/src/paillier_keygen.c",
+    "crypto/paillier/src/paillier_keyop.c",
+
+    "crypto/elgamal/src/elgamal_encdec.c",
+    "crypto/elgamal/src/elgamal_keygen.c",
+    "crypto/elgamal/src/elgamal_keyop.c",
+    "crypto/elgamal/src/originalroot.c",
+
+    "crypto/slh_dsa/src/slh_dsa.c",
+    "crypto/slh_dsa/src/slh_dsa_fors.c",
+    "crypto/slh_dsa/src/slh_dsa_hash.c",
+    "crypto/slh_dsa/src/slh_dsa_hypertree.c",
+    "crypto/slh_dsa/src/slh_dsa_wots.c",
+    "crypto/slh_dsa/src/slh_dsa_xmss.c",
+
+    "crypto/provider/src/default/crypt_default_cipher.c",
+    "crypto/provider/src/default/crypt_default_decode.c",
+    "crypto/provider/src/default/crypt_default_kdf.c",
+    "crypto/provider/src/default/crypt_default_kem.c",
+    "crypto/provider/src/default/crypt_default_keyexch.c",
+    "crypto/provider/src/default/crypt_default_keymgmt.c",
+    "crypto/provider/src/default/crypt_default_mac.c",
+    "crypto/provider/src/default/crypt_default_md.c",
+    "crypto/provider/src/default/crypt_default_pkeycipher.c",
+    "crypto/provider/src/default/crypt_default_provider.c",
+    "crypto/provider/src/default/crypt_default_rand.c",
+    "crypto/provider/src/default/crypt_default_sign.c",
+    "crypto/provider/src/mgr/crypt_provider.c",
+    "crypto/provider/src/mgr/crypt_provider_common.c",
+    "crypto/provider/src/mgr/crypt_provider_compare.c"
+]
+
+
+openhitls_libcrypto_build_all_generated_selected_platform_sources = []
+
+
+if (openhitls_selected_platform == "linux-armv8") {
+    openhitls_libcrypto_build_all_generated_selected_platform_sources += openhitls_libcrypto_build_all_generated_linux_armv8_sources
+    openhitls_libcrypto_build_all_generated_selected_platform_sources += openhitls_libcrypto_build_all_generated_linux_asm_public_sources
+    openhitls_libcrypto_build_all_generated_selected_platform_sources += openhitls_libcrypto_build_all_generated_linux_c_public_sources
+} else if (openhitls_selected_platform == "linux-x86_64") {
+    openhitls_libcrypto_build_all_generated_selected_platform_sources += openhitls_libcrypto_build_all_generated_linux_x8664_sources
+    openhitls_libcrypto_build_all_generated_selected_platform_sources += openhitls_libcrypto_build_all_generated_linux_asm_public_sources
+    openhitls_libcrypto_build_all_generated_selected_platform_sources += openhitls_libcrypto_build_all_generated_linux_c_public_sources
+} else {
+    openhitls_libcrypto_build_all_generated_selected_platform_sources += openhitls_libcrypto_build_all_generated_linux_c_public_sources
+    openhitls_libcrypto_build_all_generated_selected_platform_sources += openhitls_libcrypto_build_all_generated_linux_c_sources
+}
+
+unused_variables = []
+unused_variables += unused_variables
+unused_variables += openhitls_libcrypto_build_all_generated_linux_armv8_sources
+unused_variables += openhitls_libcrypto_build_all_generated_linux_asm_public_sources
+unused_variables += openhitls_libcrypto_build_all_generated_linux_c_public_sources
+unused_variables += openhitls_libcrypto_build_all_generated_linux_x8664_sources
+unused_variables += openhitls_libcrypto_build_all_generated_linux_c_sources
+
+ohos_source_set("crypto_source") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    # crypto 源码列表
+    sources = openhitls_libcrypto_build_all_generated_selected_platform_sources
+    configs = [
+        ":bsl_config",
+        ":crypto_config"
+    ]
+    deps = [
+        ":openhitls_bsl"
+    ]
+    external_deps = [
+        "bounds_checking_function:libsec_shared"
+    ]
+    defines = all_defines
+    cflags = [
+        "-Wno-int-conversion",
+        "-fPIC"
+    ]
+    ldflags = [
+        "-fPIC",
+        "-Wl,-Bsymbolic"
+    ]
+}
+
+ohos_shared_library("openhitls_crypto") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    sources = []
+    deps = [
+        ":crypto_source"
+    ]
+}
+
+config("pki_config") {
+    include_dirs = [
+        "bsl/asn1/include",
+        "bsl/err/include",
+        "bsl/list/include",
+        "bsl/log/include",
+        "bsl/obj/include",
+        "bsl/pem/include",
+        "bsl/sal/include",
+        "bsl/uio/include",
+        "include/bsl",
+
+        "config/macro_config",
+        "crypto/codecskey/include",
+        "include/pki",
+        "pki/cms/include",
+        "pki/pkcs12/include",
+        "pki/print/include",
+        "pki/x509_cert/include",
+        "pki/x509_common/include",
+        "pki/x509_crl/include",
+        "pki/x509_csr/include",
+        "pki/x509_verify/include",
+    ]
+}
+
+ohos_source_set("pki_source") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    # pki 源码目录
+    sources = [
+        "pki/cms/src/hitls_cms_common.c",
+        "pki/pkcs12/src/hitls_pkcs12_common.c",
+        "pki/pkcs12/src/hitls_pkcs12_util.c",
+        "pki/print/src/hitls_pki_print.c",
+        "pki/x509_cert/src/hitls_x509_cert.c",
+        "pki/x509_common/src/hitls_x509_attrs.c",
+        "pki/x509_common/src/hitls_x509_common.c",
+        "pki/x509_common/src/hitls_x509_ctrl.c",
+        "pki/x509_common/src/hitls_x509_ext.c",
+        "pki/x509_crl/src/hitls_x509_crl.c",
+        "pki/x509_csr/src/hitls_x509_csr.c",
+        "pki/x509_verify/src/hitls_x509_verify.c"
+    ]
+    configs = [
+        ":bsl_config",
+        ":crypto_config",
+        ":pki_config"
+    ]
+    deps = [
+        ":openhitls_bsl",
+        ":openhitls_crypto"
+    ]
+    external_deps = [
+        "bounds_checking_function:libsec_shared"
+    ]
+    defines = all_defines
+    cflags = [
+        "-Wno-int-conversion",
+        "-fPIC"
+    ]
+    ldflags = [
+        "-fPIC",
+        "-Wl,-Bsymbolic"
+    ]
+}
+
+ohos_shared_library("openhitls_pki") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    sources = []
+    deps = [
+        ":pki_source"
+    ]
+}
+
+
+config("tls_config") {
+    include_dirs = [
+        "bsl/asn1/include",
+        "bsl/err/include",
+        "bsl/hash/include",
+        "bsl/log/include",
+        "bsl/sal/include",
+        "bsl/tlv/include",
+        "bsl/uio/include",
+        "bsl/uio/src",
+
+        "config/macro_config",
+        "crypto/eal/include",
+        "include/bsl",
+        "include/pki",
+        "include/tls",
+        "pki/x509_cert/include",
+        "pki/x509_common/include",
+        "tls/alert/include",
+        "tls/app/include",
+        "tls/ccs/include",
+        "tls/cert/cert_adapt",
+        "tls/cert/include",
+        "tls/cm/include",
+        "tls/config/include",
+        "tls/crypt/crypt_self",
+        "tls/crypt/include",
+        "tls/feature/custom_extensions/include",
+        "tls/handshake/common/include",
+        "tls/handshake/cookie/include",
+        "tls/handshake/include",
+        "tls/handshake/pack/include",
+        "tls/handshake/parse/src",
+        "tls/handshake/parse/include",
+        "tls/handshake/reass/include",
+        "tls/handshake/recv/include",
+        "tls/handshake/send/include",
+        "tls/include",
+        "tls/record/include",
+        "tls/record/src",
+    ]
+}
+
+ohos_source_set("tls_source") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    # tls 源码目录
+    sources = [
+        "tls/cm/src/conn_cert.c",
+        "tls/cm/src/conn_common.c",
+        "tls/cm/src/conn_create.c",
+        "tls/cm/src/conn_ctrl.c",
+        "tls/cm/src/conn_debug.c",
+        "tls/cm/src/conn_establish.c",
+        "tls/cm/src/conn_init.c",
+        "tls/cm/src/conn_read.c",
+        "tls/cm/src/conn_write.c",
+
+        "tls/crypt/crypt_adapt/crypt.c",
+        "tls/crypt/crypt_self/crypt_default.c",
+        "tls/crypt/crypt_self/crypt_init.c",
+        "tls/crypt/crypt_self/hitls_crypt.c",
+
+        "tls/alert/src/alert.c",
+        "tls/app/src/app.c",
+        "tls/ccs/src/change_cipher_spec.c",
+        "tls/cert/cert_adapt/cert.c",
+        "tls/cert/cert_adapt/cert_chain.c",
+        "tls/cert/cert_adapt/cert_method.c",
+        "tls/cert/cert_adapt/cert_mgr_create.c",
+        "tls/cert/cert_adapt/cert_mgr_ctrl.c",
+        "tls/cert/cert_adapt/cert_pair.c",
+        "tls/cert/hitls_x509_adapt/hitls_x509_cert_chain.c",
+        "tls/cert/hitls_x509_adapt/hitls_x509_cert_magr.c",
+        "tls/cert/hitls_x509_adapt/hitls_x509_cert_store.c",
+        "tls/cert/hitls_x509_adapt/hitls_x509_crypto.c",
+        "tls/cert/hitls_x509_adapt/hitls_x509_init.c",
+        "tls/cert/hitls_x509_adapt/hitls_x509_pkey_magr.c",
+        "tls/config/src/cipher_suite.c",
+        "tls/config/src/config.c",
+        "tls/config/src/config_cert.c",
+        "tls/config/src/config_check.c",
+        "tls/config/src/config_default.c",
+        "tls/config/src/config_group.c",
+        "tls/config/src/config_sign.c",
+        "tls/config/src/config_tls13.c",
+
+        "tls/record/src/record.c",
+        "tls/record/src/rec_alert.c",
+        "tls/record/src/rec_anti_replay.c",
+        "tls/record/src/rec_buf.c",
+        "tls/record/src/rec_conn.c",
+        "tls/record/src/rec_crypto.c",
+        "tls/record/src/rec_crypto_aead.c",
+        "tls/record/src/rec_crypto_cbc.c",
+        "tls/record/src/rec_read.c",
+        "tls/record/src/rec_retransmit.c",
+        "tls/record/src/rec_unprocessed_msg.c",
+        "tls/record/src/rec_write.c",
+
+        "tls/handshake/common/src/hs_common.c",
+        "tls/handshake/common/src/hs_dtls_timer.c",
+        "tls/handshake/common/src/hs_kx.c",
+        "tls/handshake/common/src/hs_verify.c",
+        "tls/handshake/common/src/tls13key.c",
+        "tls/handshake/common/src/transcript_hash.c",
+        "tls/handshake/cookie/src/hs_cookie.c",
+        "tls/handshake/pack/src/pack.c",
+        "tls/handshake/pack/src/pack_certificate.c",
+        "tls/handshake/pack/src/pack_certificate_request.c",
+        "tls/handshake/pack/src/pack_certificate_verify.c",
+        "tls/handshake/pack/src/pack_client_hello.c",
+        "tls/handshake/pack/src/pack_client_key_exchange.c",
+        "tls/handshake/pack/src/pack_common.c",
+        "tls/handshake/pack/src/pack_encrypted_extensions.c",
+        "tls/handshake/pack/src/pack_extensions.c",
+        "tls/handshake/pack/src/pack_finished.c",
+        "tls/handshake/pack/src/pack_hello_verify_request.c",
+        "tls/handshake/pack/src/pack_key_update.c",
+        "tls/handshake/pack/src/pack_new_session_ticket.c",
+        "tls/handshake/pack/src/pack_server_hello.c",
+        "tls/handshake/pack/src/pack_server_key_exchange.c",
+        "tls/handshake/parse/src/parse.c",
+        "tls/handshake/parse/src/parse_certificate.c",
+        "tls/handshake/parse/src/parse_certificate_request.c",
+        "tls/handshake/parse/src/parse_certificate_verify.c",
+        "tls/handshake/parse/src/parse_client_hello.c",
+        "tls/handshake/parse/src/parse_client_key_exchange.c",
+        "tls/handshake/parse/src/parse_common.c",
+        "tls/handshake/parse/src/parse_encrypted_extensions.c",
+        "tls/handshake/parse/src/parse_extensions.c",
+        "tls/handshake/parse/src/parse_extensions_client.c",
+        "tls/handshake/parse/src/parse_extensions_server.c",
+        "tls/handshake/parse/src/parse_finished.c",
+        "tls/handshake/parse/src/parse_hello_verify_request.c",
+        "tls/handshake/parse/src/parse_key_update.c",
+        "tls/handshake/parse/src/parse_new_sesion_ticket.c",
+        "tls/handshake/parse/src/parse_server_hello.c",
+        "tls/handshake/parse/src/parse_server_key_exchange.c",
+        "tls/handshake/reass/src/hs_reass.c",
+        "tls/handshake/recv/src/hs_state_recv.c",
+        "tls/handshake/recv/src/recv_cert_request.c",
+        "tls/handshake/recv/src/recv_cert_verify.c",
+        "tls/handshake/recv/src/recv_certificate.c",
+        "tls/handshake/recv/src/recv_client_hello.c",
+        "tls/handshake/recv/src/recv_client_key_exchange.c",
+        "tls/handshake/recv/src/recv_encrypted_extensions.c",
+        "tls/handshake/recv/src/recv_finished.c",
+        "tls/handshake/recv/src/recv_hello_verify_request.c",
+        "tls/handshake/recv/src/recv_new_session_ticket.c",
+        "tls/handshake/recv/src/recv_server_hello.c",
+        "tls/handshake/recv/src/recv_server_hello_done.c",
+        "tls/handshake/recv/src/recv_server_key_exchange.c",
+        "tls/handshake/send/src/hs_state_send.c",
+        "tls/handshake/send/src/send_cert_request.c",
+        "tls/handshake/send/src/send_cert_verify.c",
+        "tls/handshake/send/src/send_certificate.c",
+        "tls/handshake/send/src/send_change_cipher_spec.c",
+        "tls/handshake/send/src/send_client_hello.c",
+        "tls/handshake/send/src/send_client_key_exchange.c",
+        "tls/handshake/send/src/send_common.c",
+        "tls/handshake/send/src/send_encrypted_extensions.c",
+        "tls/handshake/send/src/send_finished.c",
+        "tls/handshake/send/src/send_hello_request.c",
+        "tls/handshake/send/src/send_hello_verify_request.c",
+        "tls/handshake/send/src/send_new_session_ticket.c",
+        "tls/handshake/send/src/send_server_hello.c",
+        "tls/handshake/send/src/send_server_hello_done.c",
+        "tls/handshake/send/src/send_server_key_exchange.c",
+        "tls/handshake/sm/src/hs_init.c",
+        "tls/handshake/sm/src/hs_sm.c",
+
+        "tls/feature/alpn/src/alpn.c",
+        "tls/feature/custom_extensions/src/custom_extensions.c",
+        "tls/feature/indicator/src/indicator.c",
+        "tls/feature/security/src/security.c",
+        "tls/feature/security/src/security_default.c",
+        "tls/feature/session/src/session.c",
+        "tls/feature/session/src/session_dec.c",
+        "tls/feature/session/src/session_enc.c",
+        "tls/feature/session/src/session_mgr.c",
+        "tls/feature/session/src/session_ticket.c",
+        "tls/feature/sni/src/sni.c",
+    ]
+    configs = [
+        ":bsl_config",
+        ":crypto_config",
+        ":pki_config",
+        ":tls_config"
+    ]
+    deps = [
+        ":openhitls_bsl",
+        ":openhitls_crypto",
+        ":openhitls_pki"
+    ]
+    external_deps = [
+        "bounds_checking_function:libsec_shared"
+    ]
+    defines = all_defines
+    cflags = [
+        "-Wno-int-conversion",
+        "-fPIC"
+    ]
+    ldflags = [
+        "-fPIC",
+        "-Wl,-Bsymbolic"
+    ]
+}
+
+ohos_shared_library("openhitls_tls") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    sources = []
+    deps = [
+        ":tls_source"
+    ]
+}
+
+
+config("auth_config") {
+    include_dirs = [
+        "bsl/log/include",
+        "bsl/err/include",
+        "bsl/sal/include",
+        "include/auth",
+        "config/macro_config",
+        "auth/privpass_token/include"
+    ]
+}
+
+ohos_source_set("auth_source") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    # auth 源码目录
+    sources = [
+        "auth/privpass_token/src/privpass_token.c",
+        "auth/privpass_token/src/privpass_token_util.c",
+        "auth/privpass_token/src/privpass_token_wrapper.c"
+    ]
+    configs = [
+        ":bsl_config",
+        ":crypto_config",
+        ":auth_config"
+    ]
+    deps = [
+        ":openhitls_bsl",
+        ":openhitls_crypto",
+    ]
+    external_deps = [
+        "bounds_checking_function:libsec_shared"
+    ]
+    defines = all_defines
+    cflags = [
+        "-Wno-int-conversion",
+        "-fPIC"
+    ]
+    ldflags = [
+        "-fPIC",
+        "-Wl,-Bsymbolic"
+    ]
+}
+
+ohos_shared_library("openhitls_auth") {
+    subsystem_name = "thirdparty"
+    part_name = "openhitls"
+    sources = []
+    deps = [
+        ":auth_source"
+    ]
+}
+
+
