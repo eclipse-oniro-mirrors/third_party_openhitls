@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "openHiTLS",
+    "License": "Mulan Permissive Software License，Version 2",
+    "License File": "LICENSE",
+    "Version Number": "0.2.1",
+    "Owner": "zhangxiaozan1@huawei.com",
+    "Upstream URL": "https://raw.gitcode.com/openHiTLS/openhitls/archive/refs/heads/openhitls-0.2.1.zip",
+    "Description": "openHiTLS aims to provide highly efficient and agile open-source SDKs for Cryptography and Transport Layer Security in all scenarios."
+  }
+]
