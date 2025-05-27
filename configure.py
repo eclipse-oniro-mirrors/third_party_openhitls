@@ -127,7 +127,7 @@ def get_cfg_args():
         parser.add_argument('--hitls_version', default='openHiTLS 0.2.0 15 May 2025', help='%(prog)s version str')
         parser.add_argument('--hitls_version_num', default=0x00200000, help='%(prog)s version num')
         parser.add_argument('--bundle_libs', action='store_true', help='Indicates that multiple libraries are bundled together. By default, it is not bound.\
-                            It need to be used together whit "-m"')
+                            It need to be used together with "-m"')
 
         args = vars(parser.parse_args())
 
@@ -381,21 +381,21 @@ class CMakeGenerator:
         if lib_name == 'hitls_bsl':
             for item in macros:
                 if item == '-DHITLS_BSL_UIO' or item == '-DHITLS_BSL_UIO_SCTP':
-                    cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared sctp" + str(self._args.securec_lib))
+                    cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared sctp " + str(self._args.securec_lib))
                 if item == '-DHITLS_BSL_SAL_DL':
-                    cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared dl" + str(self._args.securec_lib))
+                    cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared dl " + str(self._args.securec_lib))
         if lib_name == 'hitls_crypto':
-            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_crypto-shared hitls_bsl-shared" + str(self._args.securec_lib))
+            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_tls':
-            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_tls-shared hitls_bsl-shared" + str(self._args.securec_lib))
+            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_tls-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_pki':
             cmake += self._gen_cmd_cmake("target_link_directories", "hitls_pki-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake(
-                "target_link_libraries", "hitls_pki-shared hitls_crypto-shared hitls_bsl-shared" + str(self._args.securec_lib))
+                "target_link_libraries", "hitls_pki-shared hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_auth':
             cmake += self._gen_cmd_cmake("target_link_directories", "hitls_auth-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake(
-                "target_link_libraries", "hitls_auth-shared hitls_crypto-shared hitls_bsl-shared" + str(self._args.securec_lib))
+                "target_link_libraries", "hitls_auth-shared hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         tgt_list.append(tgt_name)
         return cmake
 
