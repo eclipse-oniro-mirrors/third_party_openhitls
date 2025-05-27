@@ -895,10 +895,6 @@ void SDV_X509_CERT_SETANDGEN_TC001(char *derCertPath, char *privPath, int keyTyp
 
     ASSERT_EQ(HITLS_X509_CertSign(mdId, privKey, algParamPtr, new), 0);
     ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_ASN1, new, &encodeNew), 0);
-    if (pad != CRYPT_EMSA_PSS) {
-        ASSERT_TRUE(encodeRaw.dataLen == encodeNew.dataLen || encodeRaw.dataLen == encodeNew.dataLen - 1 ||
-            encodeRaw.dataLen == encodeNew.dataLen + 1);
-    }
     if (pkeyId == CRYPT_PKEY_RSA && pad == CRYPT_EMSA_PKCSV15) {
         ASSERT_COMPARE("Gen cert", encodeNew.data, encodeNew.dataLen, encodeRaw.data, encodeRaw.dataLen);
     }

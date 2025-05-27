@@ -590,7 +590,7 @@ EXIT:
 * @brief
 *   1. Input an empty cipher suite. Expected result 1 is obtained.
 *   2. Transfer an empty hashId. Expected result 1 is obtained.
-*   3. Import the HITLS_RSA_WITH_AES_128_CBC_SHA cipher suite and set hashAlg to HITLS_HASH_NULL. Expected result 2 is
+*   3. Import the HITLS_RSA_WITH_AES_128_CBC_SHA cipher suite and set hashAlg to HITLS_HASH_BUTT. Expected result 2 is
 *      obtained.
 * @expect
 *   1. Returns HITLS_NULL_INPUT
@@ -601,7 +601,7 @@ EXIT:
 void UT_TLS_CFG_GET_HASHID_API_TC001(void)
 {
     const HITLS_Cipher *cipher = NULL;
-    HITLS_HashAlgo hashId = HITLS_HASH_NULL;
+    HITLS_HashAlgo hashId = HITLS_HASH_BUTT;
     ASSERT_TRUE(HITLS_CFG_GetHashId(cipher, &hashId) == HITLS_NULL_INPUT);
 
     const uint16_t cipherID = HITLS_RSA_WITH_AES_128_CBC_SHA;
@@ -633,7 +633,7 @@ EXIT:
 void UT_TLS_CFG_GET_MACID_API_TC001(void)
 {
     const HITLS_Cipher *cipher = NULL;
-    HITLS_MacAlgo macAlg = HITLS_MAC_NULL;
+    HITLS_MacAlgo macAlg = HITLS_MAC_BUTT;
     ASSERT_TRUE(HITLS_CFG_GetMacId(cipher, &macAlg) == HITLS_NULL_INPUT);
 
     const uint16_t cipherID = HITLS_RSA_WITH_AES_128_CBC_SHA;

@@ -416,6 +416,7 @@ typedef enum {
     BSL_CID_AT_DESCRIPTION = 350,
 
     BSL_CID_DECODE_UNKNOWN = 1000,
+    BSL_CID_NULL = 1001,
 
     BSL_CID_HMAC_SHA3_224 = 2000,        /* identifies hmac with SHA3_224 */
     BSL_CID_HMAC_SHA3_256 = 2001,        /* identifies hmac with SHA3_256 */
