@@ -286,9 +286,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RECV_ZEROLENGTH_MSG_FUNC_TC008(void)
     HITLS_Config *config = HITLS_CFG_NewTLS13Config();
     ASSERT_TRUE(config != NULL);
 
-    FRAME_LinkObj *client = FRAME_CreateLink(config, BSL_UIO_SCTP);
+    FRAME_LinkObj *client = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(client != NULL);
-    FRAME_LinkObj *server = FRAME_CreateLink(config, BSL_UIO_SCTP);
+    FRAME_LinkObj *server = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
 
     HITLS_Ctx *clientTlsCtx = FRAME_GetTlsCtx(client);

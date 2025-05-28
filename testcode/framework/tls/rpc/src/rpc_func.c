@@ -68,7 +68,6 @@ RpcFunList g_rpcFuncList[] = {
     {"HLT_RpcTlsGetAlertDescription", RpcTlsGetAlertDescription},
     {"HLT_RpcTlsClose", RpcTlsClose},
     {"HLT_RpcFreeResFormSsl", RpcFreeResFormSsl},
-    {"HLT_RpcSctpClose", RpcSctpClose},
     {"HLT_RpcCloseFd", RpcCloseFd},
     {"HLT_RpcTlsSetMtu", RpcTlsSetMtu},
     {"HLT_RpcTlsGetErrorCode", RpcTlsGetErrorCode},
@@ -718,22 +717,6 @@ int RpcFreeResFormSsl(CmdData *cmdData)
 
     // Return the result
     ret = sprintf_s(cmdData->result, sizeof(cmdData->result), "%s|%s|%d", cmdData->id, cmdData->funcId, ret);
-    ASSERT_RETURN(ret > 0);
-    return SUCCESS;
-}
-
-int RpcSctpClose(CmdData *cmdData)
-{
-    int ret, fd;
-    char *endPtr = NULL;
-
-    ASSERT_RETURN(memset_s(cmdData->result, sizeof(cmdData->result), 0, sizeof(cmdData->result)) == EOK);
-    fd = (int)strtol(cmdData->paras[0], &endPtr, 0);
-
-    SctpClose(fd);
-
-    // Return the result
-    ret = sprintf_s(cmdData->result, sizeof(cmdData->result), "%s|%s|%d", cmdData->id, cmdData->funcId, SUCCESS);
     ASSERT_RETURN(ret > 0);
     return SUCCESS;
 }

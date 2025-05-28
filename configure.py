@@ -379,7 +379,7 @@ class CMakeGenerator:
         if lib_name == 'hitls_bsl':
             for item in macros:
                 if item == '-DHITLS_BSL_UIO' or item == '-DHITLS_BSL_UIO_SCTP':
-                    cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared sctp " + str(self._args.securec_lib))
+                    cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared " + str(self._args.securec_lib))
                 if item == '-DHITLS_BSL_SAL_DL':
                     cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared dl " + str(self._args.securec_lib))
         if lib_name == 'hitls_crypto':

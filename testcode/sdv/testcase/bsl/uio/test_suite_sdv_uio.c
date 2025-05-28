@@ -37,7 +37,6 @@
 #include "bsl_uio.h"
 #include "uio_base.h"
 #include "uio_local.h"
-#include "uio_sctp.h"
 #include "uio_udp.h"
 #include "sal_atomic.h"
 #include "uio_abstraction.h"
@@ -119,10 +118,6 @@ const BSL_UIO_Method * GetUioMethodByType(int uioType)
     switch (uioType) {
         case BSL_UIO_TCP:
             return BSL_UIO_TcpMethod();
-#ifdef HITLS_BSL_UIO_SCTP
-        case BSL_UIO_SCTP:
-            return BSL_UIO_SctpMethod();
-#endif
         case BSL_UIO_UDP:
             return BSL_UIO_UdpMethod();
         case BSL_UIO_BUFFER:
@@ -258,20 +253,6 @@ void SDV_BSL_UIO_NEW_API_TC001(void)
     /* Set method to NULL */
     BSL_UIO *uio = BSL_UIO_New(NULL);
     ASSERT_TRUE(uio == NULL);
-#ifdef HITLS_BSL_UIO_SCTP
-    /* Set transportType to sctp and construct a method structure. */
-    {
-        const BSL_UIO_Method *ori = BSL_UIO_SctpMethod();
-        BSL_UIO_Method method = {0};
-        memcpy(&method, ori, sizeof(method));
-        method.write = STUB_Write;
-        method.read = STUB_Read;
-        method.ctrl = STUB_Ctrl;
-        uio = BSL_UIO_New(&method);
-        ASSERT_TRUE(uio != NULL && BSL_UIO_GetTransportType(uio) == BSL_UIO_SCTP);
-        BSL_UIO_Free(uio);
-    }
-#endif
     /* Set transportType to tcp and construct the method structure. */
     {
         const BSL_UIO_Method *ori = BSL_UIO_TcpMethod();
@@ -434,13 +415,6 @@ void SDV_BSL_UIO_INIT_FUNC_TC001(int uioType)
         case BSL_UIO_TCP:
         case BSL_UIO_UDP:
             ori = GetUioMethodByType(uioType);
-            break;
-        case BSL_UIO_SCTP:
-#ifdef HITLS_BSL_UIO_SCTP
-            ori = GetUioMethodByType(uioType);
-#else
-            SKIP_TEST();
-#endif
             break;
         default: // The uio of the FD cannot be set.
             ASSERT_TRUE(false);
@@ -616,11 +590,6 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_UIO_FLAGS_FUNC_TC001(int uioType)
 {
-    if (uioType == BSL_UIO_SCTP) {
-#ifndef HITLS_BSL_UIO_SCTP
-    SKIP_TEST();
-#endif
-    }
     BSL_UIO *uio = NULL;
 
     const BSL_UIO_Method *ori = GetUioMethodByType(uioType);

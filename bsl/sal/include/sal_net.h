@@ -28,9 +28,6 @@
 #include <netinet/tcp.h>
 #endif
 
-#ifdef HITLS_BSL_UIO_SCTP
-#include <netinet/sctp.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {

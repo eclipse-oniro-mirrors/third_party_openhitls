@@ -361,10 +361,7 @@ int32_t HS_SetSctpAuthKey(TLS_Ctx *ctx)
 
     /* If the UIO_SctpAddAuthKey is added but not active, return HITLS_SUCCESS when the interface
         is invoked again */
-    BSL_UIO_SctpAuthKey key = {0};
-    key.authKey = authKey;
-    key.authKeySize = authKeyLen;
-    ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_SCTP_ADD_AUTH_SHARED_KEY, (int32_t)sizeof(BSL_UIO_SctpAuthKey), &key);
+    ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_SCTP_ADD_AUTH_SHARED_KEY, (int32_t)authKeyLen, authKey);
     /* Clear sensitive information */
     BSL_SAL_CleanseData(authKey, DTLS_SCTP_SHARED_AUTHKEY_LEN);
     if (ret != BSL_SUCCESS) {

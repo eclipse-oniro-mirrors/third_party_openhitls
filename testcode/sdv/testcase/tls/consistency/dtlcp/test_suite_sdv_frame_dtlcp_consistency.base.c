@@ -134,7 +134,7 @@ int32_t DefaultCfgStatusParkWithSuite(HandshakeTestInfo *testInfo)
     testInfo->config->isSupportClientVerify = testInfo->isSupportClientVerify;
     testInfo->config->isSupportNoClientCert = testInfo->isSupportNoClientCert;
 
-    return StatusPark(testInfo, BSL_UIO_SCTP);
+    return StatusPark(testInfo, BSL_UIO_UDP);
 }
 
 int32_t SendHelloReqWithIndex(HITLS_Ctx *ctx, uint8_t index)
@@ -337,7 +337,7 @@ int32_t DefaultCfgStatusPark1(HandshakeTestInfo *testInfo)
     HITLS_CFG_SetClientVerifySupport(testInfo->config, testInfo->isSupportClientVerify);
     HITLS_CFG_SetNoClientCertSupport(testInfo->config, false);
     HITLS_CFG_SetExtenedMasterSecretSupport(testInfo->config, true);
-    return StatusPark(testInfo, BSL_UIO_SCTP);
+    return StatusPark(testInfo, BSL_UIO_UDP);
 }
 
 static int32_t GetRepeatsApp(FRAME_LinkObj *obj, uint8_t *data, uint32_t *usedLen)

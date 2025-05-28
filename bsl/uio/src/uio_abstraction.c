@@ -25,7 +25,6 @@
 #include "bsl_errno.h"
 #include "bsl_uio.h"
 #include "uio_base.h"
-#include "uio_sctp.h"
 #include "uio_abstraction.h"
 
 BSL_UIO_Method *BSL_UIO_NewMethod(void)

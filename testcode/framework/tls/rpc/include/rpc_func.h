@@ -164,10 +164,6 @@ int RpcTlsClose(CmdData *cmdData);
 */
 int RpcFreeResFormSsl(CmdData *cmdData);
 
-/**
-* @brief RPC Disable the SCTP connection.
-*/
-int RpcSctpClose(CmdData *cmdData);
 
 int RpcCloseFd(CmdData *cmdData);
 

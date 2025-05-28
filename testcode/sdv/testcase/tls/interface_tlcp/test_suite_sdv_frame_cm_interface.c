@@ -3334,7 +3334,7 @@ void UT_TLS_CM_InfoCb_API_TC001(void)
 
     HITLS_Config *config = HITLS_CFG_NewDTLS12Config();
     ASSERT_TRUE(config != NULL);
-    FRAME_LinkObj *client = FRAME_CreateLink(config, BSL_UIO_SCTP);
+    FRAME_LinkObj *client = FRAME_CreateLink(config, BSL_UIO_UDP);
     ASSERT_TRUE(client != NULL);
     HITLS_Ctx *clientTlsCtx = FRAME_GetTlsCtx(client);
     ASSERT_TRUE(clientTlsCtx != NULL);

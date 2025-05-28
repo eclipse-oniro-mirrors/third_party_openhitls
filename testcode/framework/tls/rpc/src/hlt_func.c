@@ -400,7 +400,6 @@ int RunDataChannelBind(void *param)
     LOG_DEBUG("RunDataChannelBind Ing...\n");
     DataChannelParam *channelParam = (DataChannelParam*)param;
     switch (channelParam->type) {
-        case SCTP: sockFd = SctpBind(channelParam->port); break;
         case TCP: sockFd = TcpBind(channelParam->port); break;
         case UDP: sockFd = UdpBind(channelParam->port); break;
         default:
@@ -421,9 +420,6 @@ int RunDataChannelAccept(void *param)
     LOG_DEBUG("RunDataChannelAccept Ing...\n");
     DataChannelParam *channelParam = (DataChannelParam *)param;
     switch (channelParam->type) {
-        case SCTP:
-            sockFd = SctpAccept(channelParam->ip, channelParam->bindFd, channelParam->isBlock);
-            break;
         case TCP:
             sockFd = TcpAccept(channelParam->ip, channelParam->bindFd, channelParam->isBlock, true);
             break;
@@ -456,7 +452,6 @@ int HLT_DataChannelBind(DataChannelParam *channelParam)
 int HLT_DataChannelConnect(DataChannelParam *dstChannelParam)
 {
     switch (dstChannelParam->type) {
-        case SCTP: return SctpConnect(dstChannelParam->ip, dstChannelParam->port, dstChannelParam->isBlock);
         case TCP: return TcpConnect(dstChannelParam->ip, dstChannelParam->port);
         case UDP: return UdpConnect(dstChannelParam->ip, dstChannelParam->port);
         default:
@@ -529,7 +524,6 @@ void HLT_CloseFd(int fd, int linkType)
 {
     switch (linkType) {
         case TCP: TcpClose(fd); break;
-        case SCTP: SctpClose(fd); break;
         case UDP: UdpClose(fd); break;
         default:
             /* Unknown fd type */
@@ -1362,22 +1356,7 @@ void HLT_CleanFrameHandle(void)
     CleanFrameHandle();
 }
 
-#define SCTP_AUTH_FILE_PATH "/proc/sys/net/sctp/auth_enable"
-#define SCTP_AUTH_ENABLE "echo 1 > /proc/sys/net/sctp/auth_enable"
-#define SCTP_FLAG_BUFF 10
-
 bool IsEnableSctpAuth(void)
 {
-    system(SCTP_AUTH_ENABLE);
-    char buf[SCTP_FLAG_BUFF] = { 0 };
-    FILE* file = fopen(SCTP_AUTH_FILE_PATH, "r+");
-    if (file == NULL) {
-        return false;
-    }
-    (void)fgets(buf, SCTP_FLAG_BUFF, file);
-    fclose(file);
-    if (strcmp(buf, "1\n") == 0) {
-        return true;
-    }
     return false;
 }
