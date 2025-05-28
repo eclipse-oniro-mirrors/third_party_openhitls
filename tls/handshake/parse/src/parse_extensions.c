@@ -218,13 +218,13 @@ bool GetExtensionFlagValue(TLS_Ctx *ctx, uint32_t hsExTypeId)
         case HS_EX_TYPE_ID_CERTIFICATE_AUTHORITIES:     return ctx->hsCtx->extFlag.haveCA;
         case HS_EX_TYPE_ID_POST_HS_AUTH:                return ctx->hsCtx->extFlag.havePostHsAuth;
         case HS_EX_TYPE_ID_KEY_SHARE:                   return ctx->hsCtx->extFlag.haveKeyShare;
-        case HS_EX_TYPE_ID_EARLY_DATA:               return ctx->hsCtx->extFlag.haveEarlyData;
+        case HS_EX_TYPE_ID_EARLY_DATA:                  return ctx->hsCtx->extFlag.haveEarlyData;
         case HS_EX_TYPE_ID_PSK_KEY_EXCHANGE_MODES:      return ctx->hsCtx->extFlag.havePskExMode;
         case HS_EX_TYPE_ID_PRE_SHARED_KEY:              return ctx->hsCtx->extFlag.havePreShareKey;
         case HS_EX_TYPE_ID_APP_LAYER_PROTOCOLS:         return ctx->hsCtx->extFlag.haveAlpn;
         case HS_EX_TYPE_ID_SESSION_TICKET:              return ctx->hsCtx->extFlag.haveTicket;
         case HS_EX_TYPE_ID_ENCRYPT_THEN_MAC:            return ctx->hsCtx->extFlag.haveEncryptThenMac;
-        case HS_EX_TYPE_ID_SIGNATURE_ALGORITHMS_CERT:return ctx->hsCtx->extFlag.haveSignatureAlgorithmsCert;
+        case HS_EX_TYPE_ID_SIGNATURE_ALGORITHMS_CERT:   return ctx->hsCtx->extFlag.haveSignatureAlgorithmsCert;
         case HS_EX_TYPE_ID_COOKIE:
         case HS_EX_TYPE_ID_RENEGOTIATION_INFO:
         default:

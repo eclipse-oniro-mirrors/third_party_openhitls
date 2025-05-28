@@ -219,8 +219,9 @@ typedef struct TlsConfig {
     bool isSupportServerPreference;     /* server cipher suites can be preferentially selected */
 
     /* DTLS */
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
     bool isSupportDtlsCookieExchange;    /* is dtls support cookie exchange */
-
+#endif
     /**
      * Configurations in the HITLS_Ctx are classified into private configuration and global configuration.
      * The following parameters directly reference the global configuration in tls.

@@ -30,13 +30,11 @@
 #include "crypt_eal_kdf.h"
 #include "crypt_errno.h"
 #include "hitls_error.h"
-#include "hitls_build.h"
-
 #include "crypt_default.h"
 #include "bsl_params.h"
 #include "crypt_params_key.h"
 #include "config_type.h"
-#include  "hitls_crypt.h"
+#include "hitls_crypt.h"
 
 #ifndef HITLS_CRYPTO_EAL
 #error "Missing definition of HITLS_CRYPTO_EAL"
@@ -693,8 +691,7 @@ static int32_t SetSM2SelfCtx(CRYPT_EAL_PkeyCtx *selfCtx, HITLS_Sm2GenShareKeyPar
     localPrv.key.eccPrv.data = localPrvData;
     localPrv.key.eccPrv.len = sizeof(localPrvData);
 
-    int32_t ret = 0;
-    ret = CRYPT_EAL_PkeyGetPrv(sm2Params->tmpPriKey, &localPrv);
+    int32_t ret = CRYPT_EAL_PkeyGetPrv(sm2Params->tmpPriKey, &localPrv);
     if (ret != CRYPT_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16667, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "GetPrv fail", 0, 0, 0, 0);
         return ret;

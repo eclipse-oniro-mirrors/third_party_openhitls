@@ -52,8 +52,8 @@ int32_t DtlsRecordRead(TLS_Ctx *ctx, REC_Type recordType, uint8_t *data, uint32_
  * @param   ctx [IN] TLS context
  * @param   recordType [IN] Record type
  * @param   data [OUT] Read data
- * @param   len [OUT] Read data length
- * @param   bufSize [IN] buffer length
+ * @param   readLen [OUT] Length of the read data
+ * @param   num [IN] The read buffer has num bytes
  *
  * @retval  HITLS_SUCCESS
  * @retval  HITLS_REC_NORMAL_RECV_BUF_EMPTY needs to be read again

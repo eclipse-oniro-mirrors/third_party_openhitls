@@ -217,9 +217,8 @@ int32_t HS_CheckAndProcess2MslTimeout(TLS_Ctx *ctx)
         return HITLS_SUCCESS;
     }
 
-    int32_t ret = HITLS_SUCCESS;
     bool isTimeout = false;
-    ret = HS_IsTimeout(ctx, &isTimeout);
+    int32_t ret = HS_IsTimeout(ctx, &isTimeout);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17189, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "HS_IsTimeout fail", 0, 0, 0, 0);

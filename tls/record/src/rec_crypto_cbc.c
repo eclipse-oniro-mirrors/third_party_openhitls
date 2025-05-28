@@ -127,31 +127,6 @@ static int32_t RecConnCbcDecCheckPaddingEtM(TLS_Ctx *ctx, const REC_TextInput *c
     return HITLS_SUCCESS;
 }
 
-static uint32_t GetHashOfMac(HITLS_MacAlgo macAlgo)
-{
-    switch (macAlgo) {
-        case HITLS_MAC_1:
-            return HITLS_HASH_SHA1;
-        case HITLS_MAC_256:
-            return HITLS_HASH_SHA_256;
-        case HITLS_MAC_224:
-            return HITLS_HASH_SHA_224;
-        case HITLS_MAC_384:
-            return HITLS_HASH_SHA_384;
-        case HITLS_MAC_512:
-            return HITLS_HASH_SHA_512;
-#ifdef HITLS_TLS_PROTO_TLCP11
-        case HITLS_MAC_SM3:
-            return HITLS_HASH_SM3;
-#endif
-        default:
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15388, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "CBC encrypt error: unsupport MAC algorithm = %u.", macAlgo, 0, 0, 0);
-            break;
-    }
-    return HITLS_HASH_BUTT;
-}
-
 static uint32_t GetHmacBLen(HITLS_MacAlgo macAlgo)
 {
     switch (macAlgo) {
@@ -254,7 +229,7 @@ static int32_t RecConnCbcDecMtECheckMacTls(TLS_Ctx *ctx, const REC_TextInput *cr
     uint8_t *plain, uint32_t plainLen)
 {
     const RecConnState *state = ctx->recCtx->readStates.currentState;
-    uint32_t hashAlg = GetHashOfMac(state->suiteInfo->macAlg);
+    uint32_t hashAlg = RecGetHashAlgoFromMACAlgo(state->suiteInfo->macAlg);
     if (hashAlg == HITLS_HASH_BUTT) {
         return HITLS_CRYPT_ERR_HMAC;
     }

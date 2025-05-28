@@ -293,11 +293,10 @@ static int32_t ReadThenParseTlsHsMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
 #ifdef HITLS_TLS_PROTO_TLS_BASIC
 static int32_t Tls12TryRecvHandShakeMsg(TLS_Ctx *ctx)
 {
-    int32_t ret = HITLS_SUCCESS;
     HS_Msg hsMsg = {0};
     (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
 
-    ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
+    int32_t ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
     if (ret != HITLS_SUCCESS) {
         HS_CleanMsg(&hsMsg);
         return ret;
@@ -312,11 +311,10 @@ static int32_t Tls12TryRecvHandShakeMsg(TLS_Ctx *ctx)
 #ifdef HITLS_TLS_PROTO_TLS13
 static int32_t Tls13TryRecvHandShakeMsg(TLS_Ctx *ctx)
 {
-    int32_t ret = HITLS_SUCCESS;
     HS_Msg hsMsg = {0};
     (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
 
-    ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
+    int32_t ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
     if (ret != HITLS_SUCCESS) {
         HS_CleanMsg(&hsMsg);
         return ret;
@@ -334,9 +332,8 @@ static int32_t DtlsCheckTimeoutAndProcess(TLS_Ctx *ctx, int32_t retValue)
 {
     (void)ctx;
 #ifdef HITLS_BSL_UIO_UDP
-    int32_t ret = HITLS_SUCCESS;
     bool isTimeout = false;
-    ret = HS_IsTimeout(ctx, &isTimeout);
+    int32_t ret = HS_IsTimeout(ctx, &isTimeout);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17032, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "HS_IsTimeout fail", 0, 0, 0, 0);
@@ -514,8 +511,7 @@ static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
 #ifdef HITLS_TLS_FEATURE_FLIGHT
 static int32_t FlightTransmit(TLS_Ctx *ctx)
 {
-    int32_t ret = HITLS_SUCCESS;
-    ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
+    int32_t ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
     if (ret == BSL_UIO_IO_BUSY) {
         return HITLS_REC_NORMAL_IO_BUSY;
     }

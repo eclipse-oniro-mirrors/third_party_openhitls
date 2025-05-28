@@ -37,12 +37,8 @@ bool RecAntiReplayCheck(const RecSlidWindow *w, uint64_t seq)
         /* The sequence number must be smaller than or equal to the minimum value of the sliding window */
         return true;
     }
-    if ((w->window & ((uint64_t)1 << bit)) != 0) {
-        /* The sequence number is equal to a certain value in the sliding window */
-        return true;
-    }
-
-    return false;
+    /* return true: The sequence number is equal to a certain value in the sliding window */
+    return (w->window & ((uint64_t)1 << bit)) != 0;
 }
 
 void RecAntiReplayUpdate(RecSlidWindow *w, uint64_t seq)
