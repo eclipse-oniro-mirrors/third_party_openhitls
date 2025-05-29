@@ -31,6 +31,16 @@ if (current_cpu == "arm64" && current_os == "ohos" && host_os == "linux") {
 
 print("openhitls detecting os done, openhitls_selected_platform = ${openhitls_selected_platform}")
 
+public_ldflags = [
+    "-fPIC",
+    "-Wl,-Bsymbolic"
+]
+if (current_cpu == "arm64" && current_os == "ohos") {
+    public_ldflags += [
+        "-Wl,--lto-O0"
+    ]
+}
+
 all_defines = []
 
 public_armv8_defines = [
@@ -149,7 +159,7 @@ public_all_defines = [
     "HITLS_TLS_SUITE_KX",
 
     "HITLS_SIXTY_FOUR_BITS",
-    "__FILENAME__"
+    "__FILENAME__=__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__"
 ]
 
 if (openhitls_selected_platform == "linux-armv8") {
@@ -249,10 +259,7 @@ ohos_source_set("bsl_source") {
         "-Wno-int-conversion",
         "-fPIC"
     ]
-    ldflags = [
-        "-fPIC",
-        "-Wl,-Bsymbolic"
-    ]
+    ldflags = public_ldflags
 }
 
 ohos_shared_library("openhitls_bsl") {
@@ -736,10 +743,7 @@ ohos_source_set("crypto_source") {
         "-Wno-int-conversion",
         "-fPIC"
     ]
-    ldflags = [
-        "-fPIC",
-        "-Wl,-Bsymbolic"
-    ]
+    ldflags = public_ldflags
 }
 
 ohos_shared_library("openhitls_crypto") {
@@ -812,10 +816,7 @@ ohos_source_set("pki_source") {
         "-Wno-int-conversion",
         "-fPIC"
     ]
-    ldflags = [
-        "-fPIC",
-        "-Wl,-Bsymbolic"
-    ]
+    ldflags = public_ldflags
 }
 
 ohos_shared_library("openhitls_pki") {
@@ -1031,10 +1032,7 @@ ohos_source_set("tls_source") {
         "-Wno-int-conversion",
         "-fPIC"
     ]
-    ldflags = [
-        "-fPIC",
-        "-Wl,-Bsymbolic"
-    ]
+    ldflags = public_ldflags
 }
 
 ohos_shared_library("openhitls_tls") {
@@ -1084,10 +1082,8 @@ ohos_source_set("auth_source") {
         "-Wno-int-conversion",
         "-fPIC"
     ]
-    ldflags = [
-        "-fPIC",
-        "-Wl,-Bsymbolic"
-    ]
+    ldflags = public_ldflags
+
 }
 
 ohos_shared_library("openhitls_auth") {
