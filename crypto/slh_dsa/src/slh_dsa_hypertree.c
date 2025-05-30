@@ -39,8 +39,7 @@ int32_t HypertreeSign(const uint8_t *msg, uint32_t msgLen, uint64_t treeIdx, uin
         return CRYPT_SLHDSA_ERR_SIG_LEN_NOT_ENOUGH;
     }
 
-    SlhDsaAdrs adrs;
-    (void)memset_s(&adrs, sizeof(adrs), 0, sizeof(adrs));
+    SlhDsaAdrs adrs = {0};
 
     uint32_t offset = 0;
     uint32_t tmpLen = *sigLen;
@@ -84,8 +83,7 @@ int32_t HypertreeVerify(const uint8_t *msg, uint32_t msgLen, const uint8_t *sig,
         return CRYPT_SLHDSA_ERR_SIG_LEN_NOT_ENOUGH;
     }
 
-    SlhDsaAdrs adrs;
-    (void)memset_s(&adrs, sizeof(adrs), 0, sizeof(adrs));
+    SlhDsaAdrs adrs = {0};
     uint32_t offset = 0;
 
     uint8_t node[SLH_DSA_MAX_N] = {0};

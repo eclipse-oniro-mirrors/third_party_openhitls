@@ -66,8 +66,7 @@ int32_t CRYPT_ELGAMAL_PubEnc(const CRYPT_ELGAMAL_Ctx *ctx, const uint8_t *input,
         return CRYPT_NULL_INPUT;
     }
 
-    BN_Mont *mont = NULL;
-    mont = BN_MontCreate(pubKey->p);
+    BN_Mont *mont = BN_MontCreate(pubKey->p);
 
     uint32_t bits = CRYPT_ELGAMAL_GetBits(ctx);
     uint32_t k_bits = CRYPT_ELGAMAL_GetKBits(ctx);
@@ -157,7 +156,6 @@ int32_t CRYPT_ELGAMAL_PubEnc(const CRYPT_ELGAMAL_Ctx *ctx, const uint8_t *input,
     ret = BN_Bn2Bin(c2, out2, out2Len);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto EXIT;
     }
 EXIT:
     BN_Destroy(m);
@@ -223,7 +221,6 @@ int32_t CRYPT_ELGAMAL_PrvDec(const CRYPT_ELGAMAL_Ctx *ctx, const BN_BigNum *c1, 
     ret = ResultToOut(bits, result, out, outLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto EXIT;
     }
 EXIT:
     BN_Destroy(m);
@@ -303,7 +300,6 @@ int32_t CRYPT_ELGAMAL_Encrypt(CRYPT_ELGAMAL_Ctx *ctx, const uint8_t *data, uint3
     ret = ResultToOut(2 * bits, result, out, outLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto EXIT;
     }
 
 EXIT:
@@ -378,7 +374,6 @@ static int32_t CheckCiphertext(const BN_BigNum *c1, const BN_BigNum *c2, const C
     if (BN_IsOne(gcd_result) == false) {
         BSL_ERR_PUSH_ERROR(CRYPT_ELGAMAL_ERR_INPUT_VALUE);
         ret = CRYPT_ELGAMAL_ERR_INPUT_VALUE;
-        goto EXIT;
     }
 EXIT:
     BN_Destroy(gcd_result);

@@ -489,7 +489,6 @@ int32_t MODES_CCM_Ctrl(MODES_CCM_Ctx *modeCtx, int32_t opt, void *val, uint32_t 
     }
     switch (opt) {
         case CRYPT_CTRL_SET_IV:
-            return SetIv(&modeCtx->ccmCtx, val, len);
         case CRYPT_CTRL_REINIT_STATUS:
             return SetIv(&modeCtx->ccmCtx, val, len);
         case CRYPT_CTRL_GET_BLOCKSIZE:

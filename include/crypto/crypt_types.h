@@ -71,7 +71,7 @@ typedef enum {
     // When the padding type is PSS, the salt data is obtained by the DRBG.
     // and the length is padLen - mdMethod->GetDigestSize - 2
     CRYPT_RSA_SALTLEN_TYPE_MAXLEN = -2,
-// get salt length from signature, only used verify.
+    // get salt length from signature, only used verify.
     CRYPT_RSA_SALTLEN_TYPE_AUTOLEN = -3
 } CRYPT_RSA_SaltLenType;
 

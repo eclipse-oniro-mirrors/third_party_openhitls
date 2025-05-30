@@ -26,7 +26,6 @@
 #include "hitls_error.h"
 #include "hitls_psk.h"
 #include "hitls_session.h"
-#include "hitls_session.h"
 #include "hitls_debug.h"
 #include "hitls_sni.h"
 #include "hitls_alpn.h"

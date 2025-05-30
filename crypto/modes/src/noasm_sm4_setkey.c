@@ -21,11 +21,11 @@
 #include "modes_local.h"
 
 /**
- * @brief Set the decryption key in SM4-ECB mode.
+ * @brief Set the encryption key.
  *
  * @param ctx [IN] Mode handle
- * @param key [IN] Decrypt key
- * @param len [IN] Decrypt key length. Only 16 bytes (128 bits) are supported.
+ * @param key [IN] Encrypt key
+ * @param len [IN] Encrypt key length. Only 16 bytes (128 bits) are supported.
  * @return Success: CRYPT_SUCCESS
  *         Other error codes are returned if the operation fails.
  */
@@ -35,7 +35,7 @@ int32_t MODES_SM4_SetEncryptKey(MODES_CipherCommonCtx *ctx, const uint8_t *key, 
 }
 
 /**
- * @brief Set the decryption key in SM4-ECB mode.
+ * @brief Set the decryption key.
  *
  * @param ctx [IN] Mode handle
  * @param key [IN] Decrypt key

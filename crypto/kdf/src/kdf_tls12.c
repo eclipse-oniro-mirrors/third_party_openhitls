@@ -262,14 +262,13 @@ int32_t CRYPT_KDFTLS12_Deinit(CRYPT_KDFTLS12_Ctx *ctx)
 
 void CRYPT_KDFTLS12_FreeCtx(CRYPT_KDFTLS12_Ctx *ctx)
 {
-    CRYPT_KDFTLS12_Ctx *kdfCtx = ctx;
-    if (kdfCtx == NULL) {
+    if (ctx == NULL) {
         return;
     }
     BSL_SAL_ClearFree((void *)ctx->key, ctx->keyLen);
     BSL_SAL_ClearFree((void *)ctx->label, ctx->labelLen);
     BSL_SAL_ClearFree((void *)ctx->seed, ctx->seedLen);
-    BSL_SAL_FREE(kdfCtx);
+    BSL_SAL_Free(ctx);
 }
 
 #endif // HITLS_CRYPTO_KDFTLS12

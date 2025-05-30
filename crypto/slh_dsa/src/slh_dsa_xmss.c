@@ -63,7 +63,7 @@ int32_t XmssNode(uint8_t *node, uint32_t idx, uint32_t height, SlhDsaAdrs *adrs,
 
     uint8_t tmp[SLH_DSA_MAX_N * 2];
     (void)memcpy_s(tmp, SLH_DSA_MAX_N * 2, leftNode, n);
-    (void)memcpy_s(tmp + n, SLH_DSA_MAX_N, rightNode, n);
+    (void)memcpy_s(tmp + n, SLH_DSA_MAX_N * 2 - n, rightNode, n);
 
     return ctx->hashFuncs.h(ctx, adrs, tmp, 2 * n, node);
 }

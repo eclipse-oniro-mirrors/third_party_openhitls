@@ -325,6 +325,7 @@ void CRYPT_EAL_FreePreDefinedProviders(void)
     // Free thread lock
     if (libCtx->lock != NULL) {
         BSL_SAL_ThreadLockFree(libCtx->lock);
+        libCtx->lock = NULL;
     }
 
     // Free the libctx structure itself

@@ -771,8 +771,6 @@ static int32_t SampleInBall(const CRYPT_ML_DSA_Ctx *ctx, const uint8_t *p, uint3
         c[j] = 1 - ((h & 1) << 1);
         h >>= 1;
     }
-    hashMethod->freeCtx(mdCtx);
-    return CRYPT_SUCCESS;
 ERR:
     hashMethod->freeCtx(mdCtx);
     return ret;

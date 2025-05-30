@@ -111,6 +111,10 @@ CRYPT_ML_DSA_Ctx *CRYPT_ML_DSA_DupCtx(CRYPT_ML_DSA_Ctx *ctx)
         CRYPT_MEM_ALLOC_FAIL);
     newCtx->pubLen = ctx->pubLen;
     newCtx->prvLen = ctx->prvLen;
+    newCtx->needEncodeCtx = ctx->needEncodeCtx;
+    newCtx->isMuMsg = ctx->isMuMsg;
+    newCtx->deterministicSignFlag = ctx->deterministicSignFlag;
+    newCtx->needPreHash = ctx->needPreHash;
     return newCtx;
 ERR:
     CRYPT_ML_DSA_FreeCtx(newCtx);

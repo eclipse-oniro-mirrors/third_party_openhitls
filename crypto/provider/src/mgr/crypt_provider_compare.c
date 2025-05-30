@@ -108,9 +108,7 @@ static void *ValueDupFunc(void *ptr, size_t size)
     return newList;
 
 ERR:
-    if (newValue!= NULL) {
-        AttributeValueFree(newValue);
-    }
+    AttributeValueFree(newValue);
     BSL_SAL_Free(newList);
     return NULL;
 }
@@ -134,8 +132,6 @@ static void KeyFreeFunc(void *ptr)
 static int32_t UpdateAttributeValueNode(BSL_HASH_Hash *hash, BSL_HASH_Iterator node,
     uintptr_t value, uint32_t valueSize)
 {
-    int32_t ret;
-
     if (hash == NULL || valueSize == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
@@ -150,23 +146,16 @@ static int32_t UpdateAttributeValueNode(BSL_HASH_Hash *hash, BSL_HASH_Iterator n
     newValue->valueStr = BSL_SAL_Dump(srcValue->valueStr, BSL_SAL_Strnlen(srcValue->valueStr, UINT32_MAX) + 1);
     if (newValue->judgeStr == NULL || newValue->valueStr == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-        ret = CRYPT_MEM_ALLOC_FAIL;
-        goto ERR;
+        AttributeValueFree(newValue);
+        return CRYPT_MEM_ALLOC_FAIL;
     }
 
     BslList *valueList = (BslList *)BSL_HASH_IterValue(hash, node);
-    ret = BSL_LIST_AddElement(valueList, (AttributeValue *)newValue, BSL_LIST_POS_END);
+    int32_t ret = BSL_LIST_AddElement(valueList, (AttributeValue *)newValue, BSL_LIST_POS_END);
     if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
+        AttributeValueFree(newValue);
     }
-
-    return CRYPT_SUCCESS;
-
-ERR:
-    BSL_SAL_FREE(newValue->judgeStr);
-    BSL_SAL_FREE(newValue->valueStr);
-    BSL_SAL_FREE(newValue);
     return ret;
 }
 

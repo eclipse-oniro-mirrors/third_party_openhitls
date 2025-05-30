@@ -137,22 +137,13 @@ int32_t MODE_CheckUpdateParam(uint8_t blockSize, uint32_t cacheLen, uint32_t inL
 
 static bool IfXts(CRYPT_CIPHER_AlgId id)
 {
-    CRYPT_CIPHER_AlgId XTS_list[] = {
-        CRYPT_CIPHER_AES128_XTS, CRYPT_CIPHER_AES256_XTS, CRYPT_CIPHER_SM4_XTS,
-    };
-    for (uint32_t i = 0; i < sizeof(XTS_list) / sizeof(XTS_list[0]); i++) {
-        if (id == XTS_list[i]) {
-            return true;
-        }
-    }
-    return false;
+    return id == CRYPT_CIPHER_AES128_XTS || id == CRYPT_CIPHER_AES256_XTS || id == CRYPT_CIPHER_SM4_XTS;
 }
 
 static int32_t UnPaddingISO7816(const uint8_t *pad, uint32_t padLen, uint32_t *finLen)
 {
-    uint32_t len;
     const uint8_t *p = pad;
-    len = padLen - 1;
+    uint32_t len = padLen - 1;
     while (*(p + len) == 0 && len > 0) {
         len--;
     }
@@ -444,6 +435,10 @@ void MODES_Clean(MODES_CipherCommonCtx *ctx)
 
 int32_t MODES_CipherDeInitCtx(MODES_CipherCtx *modeCtx)
 {
+    if (modeCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
     (void)memset_s(modeCtx->data, EAL_MAX_BLOCK_LENGTH, 0, EAL_MAX_BLOCK_LENGTH);
     modeCtx->dataLen = 0;
     modeCtx->pad = CRYPT_PADDING_NONE;
@@ -453,6 +448,9 @@ int32_t MODES_CipherDeInitCtx(MODES_CipherCtx *modeCtx)
 
 void MODES_CipherFreeCtx(MODES_CipherCtx *modeCtx)
 {
+    if (modeCtx == NULL) {
+        return;
+    }
     (void)MODES_CipherDeInitCtx(modeCtx);
     BSL_SAL_FREE(modeCtx->commonCtx.ciphCtx);
     BSL_SAL_Free(modeCtx);

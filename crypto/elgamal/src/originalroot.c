@@ -28,7 +28,6 @@
 
 int32_t OriginalRoot(void *libCtx, BN_BigNum *g, const BN_BigNum *p, const BN_BigNum *q, uint32_t bits)
 {
-    int32_t ret;
     if (g == NULL || p == NULL || q == NULL ) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
@@ -40,23 +39,23 @@ int32_t OriginalRoot(void *libCtx, BN_BigNum *g, const BN_BigNum *p, const BN_Bi
         return CRYPT_MEM_ALLOC_FAIL;
     }
 
+    int32_t ret = CRYPT_MEM_ALLOC_FAIL;
     BN_BigNum *x1 = BN_Create(bits);
     BN_BigNum *x2 = BN_Create(bits);
-    BN_BigNum *x_top = BN_Create(bits);
-    if (x1 == NULL || x2 == NULL || x_top == NULL) {
+    BN_BigNum *xTop = BN_Create(bits);
+    if (x1 == NULL || x2 == NULL || xTop == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-        BN_OptimizerDestroy(optimizer);
-        return CRYPT_MEM_ALLOC_FAIL;
+        goto EXIT;
     }
 
-    ret = BN_SubLimb(x_top, p, 1);
+    ret = BN_SubLimb(xTop, p, 1);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         goto EXIT;
     }
 
     while (true) {
-        ret = BN_RandRangeEx(libCtx, g, x_top);
+        ret = BN_RandRangeEx(libCtx, g, xTop);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             goto EXIT;
@@ -82,7 +81,7 @@ int32_t OriginalRoot(void *libCtx, BN_BigNum *g, const BN_BigNum *p, const BN_Bi
         }
     }
 EXIT:
-    BN_Destroy(x_top);
+    BN_Destroy(xTop);
     BN_Destroy(x2);
     BN_Destroy(x1);
     BN_OptimizerDestroy(optimizer);

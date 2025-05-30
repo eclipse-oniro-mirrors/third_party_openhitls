@@ -25,7 +25,6 @@
 #include "crypt_entropy.h"
 #include "crypt_eal_rand.h"
 #include "eal_entropy.h"
-#include "eal_entropy.h"
 #include "securec.h"
 #include "crypt_eal_entropy.h"
 #include "crypt_algid.h"

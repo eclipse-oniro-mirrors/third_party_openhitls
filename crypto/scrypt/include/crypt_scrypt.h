@@ -61,7 +61,7 @@ int32_t CRYPT_SCRYPT_SetParam(CRYPT_SCRYPT_Ctx *ctx, const BSL_Param *param);
  *
  * @param ctx   [in, out] Pointer to the SCRYPT context.
  * @param out   [out] Derived key buffer.
- * @param out   [out] Derived key buffer size.
+ * @param len   [in] Derived key buffer size.
  *
  * @retval Success: CRYPT_SUCCESS
  *         For other error codes, see crypt_errno.h.

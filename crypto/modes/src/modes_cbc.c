@@ -163,6 +163,10 @@ int32_t MODES_CBC_Ctrl(MODES_CipherCtx *modeCtx, int32_t cmd, void *val, uint32_
     
     switch (cmd) {
         case CRYPT_CTRL_SET_PADDING:
+            if (val == NULL || valLen != sizeof(int32_t)) {
+                BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+                return CRYPT_INVALID_ARG;
+            }
             ret = MODES_SetPaddingCheck(*(int32_t *)val);
             if (ret != CRYPT_SUCCESS) {
                 return ret;
@@ -170,6 +174,10 @@ int32_t MODES_CBC_Ctrl(MODES_CipherCtx *modeCtx, int32_t cmd, void *val, uint32_
             modeCtx->pad = *(int32_t *)val;
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_GET_PADDING:
+            if (val == NULL || valLen != sizeof(int32_t)) {
+                BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+                return CRYPT_INVALID_ARG;
+            }
             *(int32_t *)val = modeCtx->pad;
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_GET_BLOCKSIZE:

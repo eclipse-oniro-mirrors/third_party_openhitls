@@ -174,9 +174,9 @@ int32_t CRYPT_ELGAMAL_PubEnc(const CRYPT_ELGAMAL_Ctx *ctx, const uint8_t *input,
    *                        Before being transferred, the value must be set to the maximum length of the array.
    *
    * @retval CRYPT_NULL_INPUT                 Invalid null pointer input
-   * @retval CRYPT_ElGamal_ERR_DEC_BITS      Incorrect length of the encrypted private key.
-   * @retval CRYPT_ElGamal_NO_KEY_INFO       does not contain the key information.
-   * @retval CRYPT_ElGamal_ERR_INPUT_VALUE   The entered value does not meet the calculation conditions.
+   * @retval CRYPT_ELGAMAL_ERR_DEC_BITS      Incorrect length of the encrypted private key.
+   * @retval CRYPT_ELGAMAL_NO_KEY_INFO       does not contain the key information.
+   * @retval CRYPT_ELGAMAL_ERR_INPUT_VALUE   The entered value does not meet the calculation conditions.
    * @retval CRYPT_MEM_ALLOC_FAIL             Memory allocation failure
    * @retval CRYPT_SECUREC_FAIL               A security function error occurs.
    * @retval BN error.                        An error occurs in the internal BigNum operation.

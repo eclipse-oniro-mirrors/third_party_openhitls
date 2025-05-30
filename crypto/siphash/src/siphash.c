@@ -158,14 +158,13 @@ CRYPT_SIPHASH_Ctx *CRYPT_SIPHASH_NewCtx(CRYPT_MAC_AlgId id)
     ctx->hashSize = method->hashSize;
     ctx->accInLen = 0;
     ctx->offset = 0;
-    (void)memset_s(ctx->remainder, SIPHASH_WORD_SIZE, 0, SIPHASH_WORD_SIZE);
     return ctx;
 }
 
 int32_t CRYPT_SIPHASH_Init(CRYPT_SIPHASH_Ctx *ctx, const uint8_t *key, uint32_t keyLen, void *param)
 {
     (void)param;
-    if (ctx == NULL || (key == NULL && keyLen != 0)) {
+    if (ctx == NULL || key == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
@@ -175,7 +174,7 @@ int32_t CRYPT_SIPHASH_Init(CRYPT_SIPHASH_Ctx *ctx, const uint8_t *key, uint32_t 
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
     }
-    // invalide digest size
+    // invalid digest size
     if (!((hashSize == SIPHASH_MIN_DIGEST_SIZE) || (hashSize == SIPHASH_MAX_DIGEST_SIZE))) {
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
@@ -324,9 +323,8 @@ int32_t CRYPT_SIPHASH_Ctrl(CRYPT_SIPHASH_Ctx *ctx, uint32_t opt, void *val, uint
 
 void CRYPT_SIPHASH_FreeCtx(CRYPT_SIPHASH_Ctx *ctx)
 {
-    if (ctx == NULL) {
-        return;
+    if (ctx != NULL) {
+        BSL_SAL_Free(ctx);
     }
-    BSL_SAL_FREE(ctx);
 }
 #endif /* HITLS_CRYPTO_SIPHASH */

@@ -391,13 +391,12 @@ int32_t CRYPT_PBKDF2_Deinit(CRYPT_PBKDF2_Ctx *ctx)
 
 void CRYPT_PBKDF2_FreeCtx(CRYPT_PBKDF2_Ctx *ctx)
 {
-    CRYPT_PBKDF2_Ctx *kdfCtx = ctx;
-    if (kdfCtx == NULL) {
+    if (ctx == NULL) {
         return;
     }
     BSL_SAL_ClearFree((void *)ctx->password, ctx->passLen);
-    BSL_SAL_FREE(kdfCtx->salt);
-    BSL_SAL_FREE(kdfCtx);
+    BSL_SAL_FREE(ctx->salt);
+    BSL_SAL_Free(ctx);
 }
 
 #endif // HITLS_CRYPTO_PBKDF2

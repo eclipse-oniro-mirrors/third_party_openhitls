@@ -37,7 +37,6 @@
 #include "bsl_uio.h"
 #include "uio_base.h"
 #include "uio_local.h"
-#include "uio_udp.h"
 #include "sal_atomic.h"
 #include "uio_abstraction.h"
 

@@ -113,10 +113,6 @@ int32_t MODES_CTR_Final(MODES_CipherCtx *modeCtx, uint8_t *out, uint32_t *outLen
 
 int32_t MODES_CTR_DeInitCtx(MODES_CipherCtx *modeCtx)
 {
-    if (modeCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return CRYPT_NULL_INPUT;
-    }
     return MODES_CipherDeInitCtx(modeCtx);
 }
 
@@ -141,9 +137,6 @@ int32_t MODES_CTR_Ctrl(MODES_CipherCtx *modeCtx, int32_t cmd, void *val, uint32_
 
 void MODES_CTR_FreeCtx(MODES_CipherCtx *modeCtx)
 {
-    if (modeCtx == NULL) {
-        return;
-    }
     MODES_CipherFreeCtx(modeCtx);
 }
 

@@ -272,10 +272,6 @@ int32_t CRYPT_SM4_Decrypt(CRYPT_SM4_Ctx *ctx, const uint8_t *in, uint8_t *out, u
 
 void CRYPT_SM4_Clean(CRYPT_SM4_Ctx *ctx)
 {
-    if (ctx == NULL) {
-        return;
-    }
     BSL_SAL_CleanseData((void *)(ctx), sizeof(CRYPT_SM4_Ctx));
-    return;
 }
 #endif // HITLS_CRYPTO_SM4

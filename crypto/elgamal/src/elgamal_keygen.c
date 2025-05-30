@@ -23,7 +23,6 @@
 #include "securec.h"
 #include "bsl_sal.h"
 #include "bsl_err_internal.h"
-#include "crypt_utils.h"
 #include "crypt_params_key.h"
 
 CRYPT_ELGAMAL_Ctx *CRYPT_ELGAMAL_NewCtx(void)
@@ -467,7 +466,6 @@ static int32_t ElGamal_GenP(void *libCtx, BN_BigNum *p, CRYPT_ELGAMAL_Para *para
     ret = BN_AddLimb(p, kq, 1);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto EXIT;
     }
 EXIT:
     BN_Destroy(k);
@@ -479,11 +477,10 @@ static int32_t ElGamal_CalcPrvKey(void *libCtx, CRYPT_ELGAMAL_PrvKey *prvKey, CR
     BN_Optimizer *optimizer)
 {
     int32_t ret = CRYPT_SUCCESS;
-    BN_BigNum *x_top = BN_Create(para->bits);
-    if (x_top == NULL) {
+    BN_BigNum *xTop = BN_Create(para->bits);
+    if (xTop == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-        ret = CRYPT_MEM_ALLOC_FAIL;
-        goto EXIT;
+        return CRYPT_MEM_ALLOC_FAIL;
     }
 
     ret = ElGamal_GenP(libCtx, prvKey->p, para, optimizer);
@@ -498,19 +495,18 @@ static int32_t ElGamal_CalcPrvKey(void *libCtx, CRYPT_ELGAMAL_PrvKey *prvKey, CR
         goto EXIT;
     }
 
-    ret = BN_SubLimb(x_top, para->q, 1);
+    ret = BN_SubLimb(xTop, para->q, 1);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         goto EXIT;
     }
 
-    ret = BN_RandRangeEx(libCtx, prvKey->x, x_top);
+    ret = BN_RandRangeEx(libCtx, prvKey->x, xTop);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto EXIT;
     }
 EXIT:
-    BN_Destroy(x_top);
+    BN_Destroy(xTop);
     return ret;
 }
 
@@ -519,19 +515,17 @@ static int32_t ElGamal_CalcPubKey(CRYPT_ELGAMAL_PubKey *pubKey, CRYPT_ELGAMAL_Pr
     int32_t ret = BN_Copy(pubKey->p, prvKey->p);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto EXIT;
+        return ret;
     }
     ret = BN_Copy(pubKey->g, prvKey->g);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto EXIT;
+        return ret;
     }
     ret = BN_ModExp(pubKey->y, pubKey->g, prvKey->x, pubKey->p, optimizer);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        goto EXIT;
     }
-EXIT:
     return ret;
 }
 

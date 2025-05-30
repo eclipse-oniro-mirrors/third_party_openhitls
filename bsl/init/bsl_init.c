@@ -35,7 +35,7 @@ int32_t BSL_GLOBAL_DeInit(void)
 #ifdef HITLS_BSL_HASH
     BSL_OBJ_FreeSignHashTable();
     BSL_OBJ_FreeHashTable();
-#endif // HITLS_BSL_OBJ
+#endif // HITLS_BSL_HASH
     return BSL_SUCCESS;
 }
 

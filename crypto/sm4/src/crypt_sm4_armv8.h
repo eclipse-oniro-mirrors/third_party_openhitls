@@ -34,11 +34,6 @@ void Vpsm4SetEncryptKey(const unsigned char *userKey, SM4_KEY *key);
 void Vpsm4SetDecryptKey(const unsigned char *userKey, SM4_KEY *key);
 
 #ifdef HITLS_CRYPTO_XTS
-void Vpsm4XtsEncrypt(const unsigned char *in, unsigned char *out, size_t length, const SM4_KEY *key1,
-                     const SM4_KEY *key2, const uint8_t *iv);
-
-void Vpsm4XtsDecrypt(const unsigned char *in, unsigned char *out, size_t length, const SM4_KEY *key1,
-                     const SM4_KEY *key2, const uint8_t *iv);
 
 void Vpsm4XtsCipher(const unsigned char *in, unsigned char *out, uint32_t length, const SM4_KEY *key1,
                     const SM4_KEY *key2, const uint8_t *iv, uint32_t enc);
