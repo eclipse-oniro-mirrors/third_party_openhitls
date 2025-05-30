@@ -252,13 +252,7 @@ HITLS_HASH_Ctx *HITLS_CRYPT_DigestInit(HITLS_Lib_Ctx *libCtx, const char *attrNa
 {
 #ifdef HITLS_CRYPTO_MD
     CRYPT_EAL_MdCTX *ctx = NULL;
-#ifdef HITLS_TLS_FEATURE_PROVIDER
     ctx = CRYPT_EAL_ProviderMdNewCtx(libCtx, hashAlgo, attrName);
-#else
-    (void)libCtx;
-    (void)attrName;
-    ctx = CRYPT_EAL_MdNewCtx((CRYPT_MD_AlgId)hashAlgo);
-#endif
     if (ctx == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16628, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,  "MdNewCtx fail", 0, 0, 0, 0);
         return NULL;
@@ -287,13 +281,7 @@ int32_t HITLS_CRYPT_Digest(HITLS_Lib_Ctx *libCtx, const char *attrName,
 #ifdef HITLS_CRYPTO_MD
     int32_t ret;
     CRYPT_EAL_MdCTX *ctx = NULL;
-#ifdef HITLS_TLS_FEATURE_PROVIDER
     ctx = CRYPT_EAL_ProviderMdNewCtx(libCtx, hashAlgo, attrName);
-#else
-    (void)libCtx;
-    (void)attrName;
-    ctx = CRYPT_EAL_MdNewCtx((CRYPT_MD_AlgId)hashAlgo);
-#endif
     if (ctx == NULL) {
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_CRYPT_ERR_DIGEST, BINLOG_ID16631, "MdNewCtx fail");
     }
@@ -616,14 +604,7 @@ CRYPT_EAL_PkeyCtx *GeneratePkeyByParaId(HITLS_Lib_Ctx *libCtx, const char *attrN
 {
     int32_t ret;
     CRYPT_EAL_PkeyCtx *pkey = NULL;
-#ifdef HITLS_TLS_FEATURE_PROVIDER
     pkey = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, algId, isKem ? CRYPT_EAL_PKEY_KEM_OPERATE : CRYPT_EAL_PKEY_EXCH_OPERATE, attrName);
-#else
-    (void)libCtx;
-    (void)attrName;
-    (void)isKem;
-    pkey = CRYPT_EAL_PkeyNewCtx(algId);
-#endif
     if (pkey == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16658, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "PkeyNewCtx fail", 0, 0, 0, 0);
@@ -758,13 +739,7 @@ int32_t HITLS_CRYPT_CalcSM2SharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrN
         return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16671, "SetSM2SelfCtx fail");
     }
     CRYPT_EAL_PkeyCtx *peerCtx = NULL;
-#ifdef HITLS_TLS_FEATURE_PROVIDER
     peerCtx = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_SM2, CRYPT_EAL_PKEY_EXCH_OPERATE, attrName);
-#else
-    (void)libCtx;
-    (void)attrName;
-    peerCtx = CRYPT_EAL_PkeyNewCtx(CRYPT_PKEY_SM2);
-#endif
     if (peerCtx == NULL) {
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_CRYPT_ERR_CALC_SHARED_KEY, BINLOG_ID16672, "peerCtx new fail");
     }
@@ -820,13 +795,7 @@ int32_t HITLS_CRYPT_EcdhCalcSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attr
     int32_t ret;
     int32_t id = CRYPT_EAL_PkeyGetId(key);
     CRYPT_EAL_PkeyCtx *peerPk = NULL;
-#ifdef HITLS_TLS_FEATURE_PROVIDER
     peerPk = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, id, CRYPT_EAL_PKEY_EXCH_OPERATE, attrName);
-#else
-    (void)libCtx;
-    (void)attrName;
-    peerPk = CRYPT_EAL_PkeyNewCtx(id);
-#endif
     if (peerPk == NULL) {
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_CRYPT_ERR_CALC_SHARED_KEY, BINLOG_ID16678, "peerPk new fail");
     }
@@ -896,13 +865,7 @@ HITLS_CRYPT_Key *HITLS_CRYPT_GenerateDhKeyByParameters(HITLS_Lib_Ctx *libCtx,
 {
 #ifdef HITLS_CRYPTO_DH
     CRYPT_EAL_PkeyCtx *pkey = NULL;
-#ifdef HITLS_TLS_FEATURE_PROVIDER
     pkey = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_DH, CRYPT_EAL_PKEY_EXCH_OPERATE, attrName);
-#else
-    (void)libCtx;
-    (void)attrName;
-    pkey = CRYPT_EAL_PkeyNewCtx(CRYPT_PKEY_DH);
-#endif
     if (pkey == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16683, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "PkeyNewCtx fail", 0, 0, 0, 0);
@@ -1196,13 +1159,7 @@ int32_t HITLS_CRYPT_KemEncapsulate(HITLS_Lib_Ctx *libCtx, const char *attrName,
     }
         int32_t ret;
     CRYPT_EAL_PkeyCtx *pkey = NULL;
-#ifdef HITLS_TLS_FEATURE_PROVIDER
     pkey = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, groupInfo->algId, CRYPT_EAL_PKEY_KEM_OPERATE, attrName);
-#else
-    (void)libCtx;
-    (void)attrName;
-    pkey = CRYPT_EAL_PkeyNewCtx(groupInfo->algId);
-#endif
     if (pkey == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16658, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "PkeyNewCtx fail", 0, 0, 0, 0);

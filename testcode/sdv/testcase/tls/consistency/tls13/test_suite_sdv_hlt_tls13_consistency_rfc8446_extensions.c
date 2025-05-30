@@ -993,7 +993,7 @@ static void Test_Client_PskTicket(HITLS_Ctx *ctx, uint8_t *data, uint32_t *len, 
     FRAME_ParseMsgBody(&frameType, data, *len, &frameMsg, &parseLen);
     ASSERT_EQ(parseLen, *len);
     ASSERT_EQ(frameMsg.body.hsMsg.type.data, CLIENT_HELLO);
-    frameMsg.body.hsMsg.body.clientHello.psks.identities.data->identity.data[0] = 0x01;
+    frameMsg.body.hsMsg.body.clientHello.psks.identities.data->identity.data[0] += 0x01;
 
     memset_s(data, bufSize, 0, bufSize);
     FRAME_PackRecordBody(&frameType, &frameMsg, data, bufSize, len);
