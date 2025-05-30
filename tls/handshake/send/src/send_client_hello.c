@@ -359,7 +359,7 @@ static bool IsTls13SessionValid(HITLS_HashAlgo hashAlgo, HITLS_Session* session,
             "GetCipherSuiteInfo fail", 0, 0, 0, 0);
         return false;
     }
-    if (hashAlgo != HITLS_HASH_NULL) {
+    if (hashAlgo != HITLS_HASH_BUTT) {
         return (hashAlgo == cipherInfo.hashAlg);
     }
     if (tls13CipherSuites != NULL) {
@@ -404,7 +404,7 @@ static int32_t Tls13ClientPreparePSK(TLS_Ctx *ctx)
 {
     int32_t ret = 0;
     HS_Ctx *hsCtx = ctx->hsCtx;
-    HITLS_HashAlgo hashAlgo = hsCtx->haveHrr ? ctx->negotiatedInfo.cipherSuiteInfo.hashAlg : HITLS_HASH_NULL;
+    HITLS_HashAlgo hashAlgo = hsCtx->haveHrr ? ctx->negotiatedInfo.cipherSuiteInfo.hashAlg : HITLS_HASH_BUTT;
     uint8_t identity[HS_PSK_IDENTITY_MAX_LEN + 1] = {0};
     const uint8_t *id = NULL;
     uint32_t idLen = 0;
@@ -526,12 +526,12 @@ static uint32_t GetBindersOffset(const TLS_Ctx *ctx)
     PskInfo13 *pskInfo = &ctx->hsCtx->kxCtx->pskInfo13;
     uint32_t binderLen = 0;
     if (pskInfo->resumeSession != NULL) {
-        HITLS_HashAlgo hashAlg = HITLS_HASH_NULL;
+        HITLS_HashAlgo hashAlg = HITLS_HASH_BUTT;
         binderLen = HS_GetBinderLen(pskInfo->resumeSession, &hashAlg);  // Success guaranteed by the context
         ret += binderLen + sizeof(uint8_t);
     }
     if (pskInfo->userPskSess != NULL) {
-        HITLS_HashAlgo hashAlg = HITLS_HASH_NULL;
+        HITLS_HashAlgo hashAlg = HITLS_HASH_BUTT;
         binderLen = HS_GetBinderLen(pskInfo->userPskSess->pskSession, &hashAlg);  // Success guaranteed by the context
         ret += binderLen + sizeof(uint8_t);
     }
@@ -549,7 +549,7 @@ static int32_t PackClientPreSharedKeyBinders(const TLS_Ctx *ctx, uint8_t *buf, u
     uint32_t binderLen = 0;
     int32_t ret = HITLS_SUCCESS;
     if (pskInfo->resumeSession != NULL) {
-        HITLS_HashAlgo hashAlg = HITLS_HASH_NULL;
+        HITLS_HashAlgo hashAlg = HITLS_HASH_BUTT;
         binderLen = HS_GetBinderLen(pskInfo->resumeSession, &hashAlg);  // Success guaranteed by the context
         buf[offset] = binderLen;
         offset++;
@@ -567,7 +567,7 @@ static int32_t PackClientPreSharedKeyBinders(const TLS_Ctx *ctx, uint8_t *buf, u
     }
 
     if (pskInfo->userPskSess != NULL) {
-        HITLS_HashAlgo hashAlg = HITLS_HASH_NULL;
+        HITLS_HashAlgo hashAlg = HITLS_HASH_BUTT;
         pskLen = HS_PSK_MAX_LEN;
         binderLen = HS_GetBinderLen(pskInfo->userPskSess->pskSession, &hashAlg);  // context is guaranteed to succeed
         buf[offset] = (uint8_t)binderLen;

@@ -330,6 +330,7 @@ int32_t HITLS_AUTH_PrivPassGenTokenResponse(HITLS_AUTH_PrivPassCtx *ctx, const H
         return BSL_MALLOC_FAIL;
     }
     PrivPass_TokenResponse *response = output->st.tokenResponse;
+    response->type = HITLS_AUTH_PRIVPASS_TOKEN_RESPONSE_PUB;
     // Calculate blind signature
     response->st.pubResp.blindSig = BSL_SAL_Malloc(authenticatorLen);
     if (response->st.pubResp.blindSig == NULL) {
@@ -345,7 +346,6 @@ int32_t HITLS_AUTH_PrivPassGenTokenResponse(HITLS_AUTH_PrivPassCtx *ctx, const H
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
     }
-    output->st.tokenResponse->type = HITLS_AUTH_PRIVPASS_TOKEN_RESPONSE_PUB;
     *tokenResponse = output;
     return HITLS_AUTH_SUCCESS;
 

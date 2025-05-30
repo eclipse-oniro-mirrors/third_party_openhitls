@@ -688,7 +688,7 @@ static uint32_t GetPreSharedKeyExtLen(const PskInfo13 *pskInfo)
     uint32_t extLen =  HS_EX_HEADER_LEN;
     uint32_t binderLen = 0;
     if (pskInfo->resumeSession != NULL) {
-        HITLS_HashAlgo hashAlg = HITLS_HASH_NULL;
+        HITLS_HashAlgo hashAlg = HITLS_HASH_BUTT;
         binderLen = HS_GetBinderLen(pskInfo->resumeSession, &hashAlg);
         if (binderLen == 0) {
             return 0;
@@ -700,7 +700,7 @@ static uint32_t GetPreSharedKeyExtLen(const PskInfo13 *pskInfo)
     }
 
     if (pskInfo->userPskSess != NULL) {
-        HITLS_HashAlgo hashAlg = HITLS_HASH_NULL;
+        HITLS_HashAlgo hashAlg = HITLS_HASH_BUTT;
         binderLen = HS_GetBinderLen(pskInfo->userPskSess->pskSession, &hashAlg);
         if (binderLen == 0) {
             return 0;

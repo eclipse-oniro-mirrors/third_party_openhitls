@@ -21,38 +21,18 @@
 #include "bsl_errno.h"
 #include "bsl_err_internal.h"
 #include "crypt_eal_md.h"
+#include "crypt_eal_rand.h"
 #include "crypt_errno.h"
 #include "crypt_eal_codecs.h"
-#include "crypt_util_rand.h"
 #include "auth_privpass_token.h"
 #include "privpass_token.h"
 #include "bsl_sal.h"
-
-static int32_t ConvertCryptoAlgId(int32_t algId)
-{
-    switch (algId) {
-        case HITLS_AUTH_PRIVPASS_CRYPTO_RSA:
-            return CRYPT_PKEY_RSA;
-        case HITLS_AUTH_PRIVPASS_CRYPTO_SHA256:
-            return CRYPT_MD_SHA256;
-        case HITLS_AUTH_PRIVPASS_CRYPTO_SHA384:
-            return CRYPT_MD_SHA384;
-        default:
-            BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_ALG);
-            return HITLS_AUTH_PRIVPASS_INVALID_ALG;
-    }
-}
 
 void *PrivPassNewPkeyCtx(void *libCtx, const char *attrName, int32_t algId)
 {
     (void)libCtx;
     (void)attrName;
-    int32_t cryptAlgId = ConvertCryptoAlgId(algId);
-    if (cryptAlgId == HITLS_AUTH_PRIVPASS_INVALID_ALG) {
-        BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_ALG);
-        return NULL;
-    }
-    return CRYPT_EAL_PkeyNewCtx(cryptAlgId);
+    return CRYPT_EAL_PkeyNewCtx(algId);
 }
 
 void PrivPassFreePkeyCtx(void *pkeyCtx)
@@ -69,12 +49,7 @@ int32_t PrivPassPubDigest(void *libCtx, const char *attrName, int32_t algId, con
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_INPUT);
         return HITLS_AUTH_PRIVPASS_INVALID_INPUT;
     }
-    int32_t cryptAlgId = ConvertCryptoAlgId(algId);
-    if (cryptAlgId == HITLS_AUTH_PRIVPASS_INVALID_ALG) {
-        BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_ALG);
-        return HITLS_AUTH_PRIVPASS_INVALID_ALG;
-    }
-    uint32_t mdSize = CRYPT_EAL_MdGetDigestSize(cryptAlgId);
+    uint32_t mdSize = CRYPT_EAL_MdGetDigestSize(algId);
     if (mdSize == 0) {
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_INPUT);
         return HITLS_AUTH_PRIVPASS_INVALID_INPUT;
@@ -83,7 +58,7 @@ int32_t PrivPassPubDigest(void *libCtx, const char *attrName, int32_t algId, con
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_INPUT);
         return HITLS_AUTH_PRIVPASS_INVALID_INPUT;
     }
-    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_MdNewCtx(cryptAlgId);
+    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_MdNewCtx(algId);
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
         return BSL_MALLOC_FAIL;
@@ -106,7 +81,6 @@ int32_t PrivPassPubDigest(void *libCtx, const char *attrName, int32_t algId, con
         CRYPT_EAL_MdFreeCtx(ctx);
         return ret;
     }
-    *digestLen = mdSize;
     CRYPT_EAL_MdFreeCtx(ctx);
     return CRYPT_SUCCESS;
 }
@@ -117,11 +91,6 @@ int32_t PrivPassPubBlind(void *pkeyCtx, int32_t algId, const uint8_t *data, uint
     if (pkeyCtx == NULL || data == NULL || dataLen == 0 || blindedData == NULL || blindedDataLen == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_INPUT);
         return HITLS_AUTH_PRIVPASS_INVALID_INPUT;
-    }
-    int32_t cryptAlgId = ConvertCryptoAlgId(algId);
-    if (cryptAlgId == HITLS_AUTH_PRIVPASS_INVALID_ALG) {
-        BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_ALG);
-        return HITLS_AUTH_PRIVPASS_INVALID_ALG;
     }
     CRYPT_EAL_PkeyCtx *ctx = (CRYPT_EAL_PkeyCtx *)pkeyCtx;
     uint32_t flag = CRYPT_RSA_BSSA;
@@ -141,7 +110,7 @@ int32_t PrivPassPubBlind(void *pkeyCtx, int32_t algId, const uint8_t *data, uint
         return ret;
     }
 
-    ret = CRYPT_EAL_PkeyBlind(ctx, cryptAlgId, data, dataLen, blindedData, blindedDataLen);
+    ret = CRYPT_EAL_PkeyBlind(ctx, algId, data, dataLen, blindedData, blindedDataLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
     }
@@ -188,11 +157,6 @@ int32_t PrivPassPubVerify(void *pkeyCtx, int32_t algId, const uint8_t *data, uin
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_INPUT);
         return HITLS_AUTH_PRIVPASS_INVALID_INPUT;
     }
-    int32_t cryptAlgId = ConvertCryptoAlgId(algId);
-    if (cryptAlgId == HITLS_AUTH_PRIVPASS_INVALID_ALG) {
-        BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_ALG);
-        return HITLS_AUTH_PRIVPASS_INVALID_ALG;
-    }
     CRYPT_EAL_PkeyCtx *ctx = (CRYPT_EAL_PkeyCtx *)pkeyCtx;
     uint32_t flag = CRYPT_RSA_BSSA;
     uint32_t padType = 0;
@@ -210,7 +174,7 @@ int32_t PrivPassPubVerify(void *pkeyCtx, int32_t algId, const uint8_t *data, uin
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    return CRYPT_EAL_PkeyVerify(ctx, cryptAlgId, data, dataLen, sign, signLen);
+    return CRYPT_EAL_PkeyVerify(ctx, algId, data, dataLen, sign, signLen);
 }
 
 static int32_t PubKeyCheck(CRYPT_EAL_PkeyCtx *ctx)

@@ -692,8 +692,6 @@ void HitlsFreeSsl(void *ssl)
 const BSL_UIO_Method *GetDefaultMethod(HILT_TransportType type)
 {
     switch (type) {
-        case SCTP:
-            return SctpGetDefaultMethod();
         case TCP:
             return TcpGetDefaultMethod();
         case UDP:
@@ -707,7 +705,6 @@ const BSL_UIO_Method *GetDefaultMethod(HILT_TransportType type)
 int HitlsSetSsl(void *ssl, HLT_Ssl_Config *sslConfig)
 {
     int ret;
-    SetNeedCbSctpCtrlCmd(sslConfig->sctpCtrlCmd);
     if (sslConfig->SupportType == SERVER_CTX_SET_TRUE) {
         HITLS_SetCipherServerPreference((HITLS_Ctx *)ssl, true);
     }

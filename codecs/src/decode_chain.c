@@ -178,13 +178,11 @@ static int32_t CollectDecoder(CRYPT_DECODER_Ctx *decoderCtx, void *args)
     ret = CRYPT_DECODE_SetParam(decoderCtx, param);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        CRYPT_DECODE_Free(decoderCtx);
         return ret;
     }
     ret = BSL_LIST_AddElement(poolCtx->decoders, decoderCtx, BSL_LIST_POS_END);
     if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        CRYPT_DECODE_Free(decoderCtx);
         return ret;
     }
 
@@ -240,6 +238,7 @@ static int32_t UpdateDecoderPath(CRYPT_DECODER_PoolCtx *poolCtx, CRYPT_DECODER_N
     }
     int32_t ret = BSL_LIST_AddElement(poolCtx->decoderPath, newNode, BSL_LIST_POS_END);
     if (ret != BSL_SUCCESS) {
+        BSL_SAL_FREE(newNode);
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }

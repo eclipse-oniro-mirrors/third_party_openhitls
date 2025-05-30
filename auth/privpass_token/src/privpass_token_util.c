@@ -57,9 +57,8 @@ static int32_t EncodeTokenChallengeReq(const PrivPass_TokenChallengeReq *tokenCh
     return HITLS_AUTH_SUCCESS;
 }
 
-static int32_t ValidateInitialParams(HITLS_AUTH_PrivPassCtx *ctx, uint32_t remainLen)
+static int32_t ValidateInitialParams(uint32_t remainLen)
 {
-    (void)ctx;
     // MinLength: tokenType(2) + issuerNameLen(2) + redemptionLen(1) + originInfoLen(2)
     if (remainLen < 2 + 2 + 1 + 2) {
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_TOKEN_CHALLENGE);
@@ -157,10 +156,9 @@ static int32_t DecodeOriginInfo(uint8_t **originInfo, uint32_t *originInfoLen, c
     return HITLS_AUTH_SUCCESS;
 }
 
-static int32_t DecodeTokenChallenge(HITLS_AUTH_PrivPassCtx *ctx, PrivPass_TokenChallenge *challenge,
-    const uint8_t *buffer, uint32_t buffLen)
+static int32_t DecodeTokenChallenge(PrivPass_TokenChallenge *challenge, const uint8_t *buffer, uint32_t buffLen)
 {
-    int32_t ret = ValidateInitialParams(ctx, buffLen);
+    int32_t ret = ValidateInitialParams(buffLen);
     if (ret != HITLS_AUTH_SUCCESS) {
         return ret;
     }
@@ -183,9 +181,8 @@ static int32_t DecodeTokenChallenge(HITLS_AUTH_PrivPassCtx *ctx, PrivPass_TokenC
     return DecodeOriginInfo(&challenge->originInfo.data, &challenge->originInfo.dataLen, &curr, &remainLen);
 }
 
-static int32_t CheckTokenChallengeParam(HITLS_AUTH_PrivPassCtx *ctx, const PrivPass_TokenChallenge *challenge)
+static int32_t CheckTokenChallengeParam(const PrivPass_TokenChallenge *challenge)
 {
-    (void)ctx;
     if (challenge->issuerName.dataLen == 0 || challenge->issuerName.dataLen > PRIVPASS_MAX_ISSUER_NAME_LEN ||
         challenge->originInfo.dataLen > PRIVPASS_MAX_ORIGIN_INFO_LEN ||
         (challenge->redemption.dataLen != 0 && challenge->redemption.dataLen != PRIVPASS_REDEMPTION_LEN)) {
@@ -195,10 +192,10 @@ static int32_t CheckTokenChallengeParam(HITLS_AUTH_PrivPassCtx *ctx, const PrivP
     return HITLS_AUTH_SUCCESS;
 }
 
-static int32_t EncodeTokenChallenge(HITLS_AUTH_PrivPassCtx *ctx, const PrivPass_TokenChallenge *challenge,
+static int32_t EncodeTokenChallenge(const PrivPass_TokenChallenge *challenge,
     uint8_t *buffer, uint32_t *outBuffLen)
 {
-    int32_t ret = CheckTokenChallengeParam(ctx, challenge);
+    int32_t ret = CheckTokenChallengeParam(challenge);
     if (ret != HITLS_AUTH_SUCCESS) {
         return ret;
     }
@@ -408,7 +405,7 @@ static int32_t EncodeToken(const PrivPass_TokenInstance *token, uint8_t *buffer,
         return ret;
     }
     // Calculate total length: 2(tokenType) + 32(nonce) + 32(challengeDigest) + 32(tokenKeyId) + authenticatorLen
-    uint32_t totalLen = 2 + PRIVPASS_TOKEN_SHA256_SIZE + PRIVPASS_TOKEN_SHA256_SIZE + PRIVPASS_TOKEN_SHA256_SIZE +
+    uint32_t totalLen = 2 + PRIVPASS_TOKEN_NONCE_LEN + PRIVPASS_TOKEN_SHA256_SIZE + PRIVPASS_TOKEN_SHA256_SIZE +
         token->authenticator.dataLen;
     if (buffer == NULL) {
         *outBuffLen = totalLen;
@@ -461,7 +458,7 @@ static int32_t DecodeToken(PrivPass_TokenInstance *token, const uint8_t *buffer,
     token->tokenType = tokenType;
     uint32_t authenticatorLen = ObtainAuthenticatorLen(tokenType);
     // Calculate total length: 2(tokenType) + 32(nonce) + 32(challengeDigest) + 32(tokenKeyId) + authenticatorLen
-    if (buffLen != (2 + PRIVPASS_TOKEN_SHA256_SIZE + PRIVPASS_TOKEN_SHA256_SIZE + PRIVPASS_TOKEN_SHA256_SIZE +
+    if (buffLen != (2 + PRIVPASS_TOKEN_NONCE_LEN + PRIVPASS_TOKEN_SHA256_SIZE + PRIVPASS_TOKEN_SHA256_SIZE +
         authenticatorLen)) {
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_BUFFER_NOT_ENOUGH);
         return HITLS_AUTH_PRIVPASS_BUFFER_NOT_ENOUGH;
@@ -513,6 +510,7 @@ static int32_t CheckDeserializationInput(int32_t tokenType, const uint8_t *buffe
 int32_t HITLS_AUTH_PrivPassDeserialization(HITLS_AUTH_PrivPassCtx *ctx, int32_t tokenType, const uint8_t *buffer,
     uint32_t buffLen, HITLS_AUTH_PrivPassToken **object)
 {
+    (void)ctx;
     int32_t ret = CheckDeserializationInput(tokenType, buffer, buffLen, object);
     if (ret != HITLS_AUTH_SUCCESS) {
         return ret;
@@ -529,7 +527,7 @@ int32_t HITLS_AUTH_PrivPassDeserialization(HITLS_AUTH_PrivPassCtx *ctx, int32_t 
             ret = DecodeTokenChallengeReq(output->st.tokenChallengeReq, buffer, buffLen);
             break;
         case HITLS_AUTH_PRIVPASS_TOKEN_CHALLENGE:
-            ret = DecodeTokenChallenge(ctx, output->st.tokenChallenge, buffer, buffLen);
+            ret = DecodeTokenChallenge(output->st.tokenChallenge, buffer, buffLen);
             break;
         case HITLS_AUTH_PRIVPASS_TOKEN_REQUEST:
             ret = DecodeTokenRequest(output->st.tokenRequest, buffer, buffLen);
@@ -558,6 +556,7 @@ int32_t HITLS_AUTH_PrivPassDeserialization(HITLS_AUTH_PrivPassCtx *ctx, int32_t 
 int32_t HITLS_AUTH_PrivPassSerialization(HITLS_AUTH_PrivPassCtx *ctx, const HITLS_AUTH_PrivPassToken *object,
     uint8_t *buffer, uint32_t *outBuffLen)
 {
+    (void)ctx;
     if (object == NULL || outBuffLen == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_INPUT);
         return HITLS_AUTH_PRIVPASS_INVALID_INPUT;
@@ -566,7 +565,7 @@ int32_t HITLS_AUTH_PrivPassSerialization(HITLS_AUTH_PrivPassCtx *ctx, const HITL
         case HITLS_AUTH_PRIVPASS_TOKEN_CHALLENGE_REQUEST:
             return EncodeTokenChallengeReq(object->st.tokenChallengeReq, buffer, outBuffLen);
         case HITLS_AUTH_PRIVPASS_TOKEN_CHALLENGE:
-            return EncodeTokenChallenge(ctx, object->st.tokenChallenge, buffer, outBuffLen);
+            return EncodeTokenChallenge(object->st.tokenChallenge, buffer, outBuffLen);
         case HITLS_AUTH_PRIVPASS_TOKEN_REQUEST:
             return EncodeTokenRequest(object->st.tokenRequest, buffer, outBuffLen);
         case HITLS_AUTH_PRIVPASS_TOKEN_RESPONSE:

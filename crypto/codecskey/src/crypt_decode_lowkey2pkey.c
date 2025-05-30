@@ -76,6 +76,10 @@ int32_t DECODER_LowKeyObject2PkeyObject_SetParam(void *ctx, const BSL_Param *par
 int32_t DECODER_LowKeyObject2PkeyObject_GetParam(void *ctx, BSL_Param *param)
 {
     DECODER_Lowkey2Pkey_Ctx *decoderCtx = (DECODER_Lowkey2Pkey_Ctx *)ctx;
+    if (decoderCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
     DECODER_CommonCtx commonCtx = {
         .outFormat = decoderCtx->outFormat,
         .outType = decoderCtx->outType

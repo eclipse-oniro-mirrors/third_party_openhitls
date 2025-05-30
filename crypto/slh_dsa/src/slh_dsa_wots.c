@@ -128,9 +128,6 @@ int32_t WotsSign(uint8_t *sig, uint32_t *sigLen, const uint8_t *msg, uint32_t ms
         goto ERR;
     }
 
-    for (uint32_t i = 0; i < len; i++) {
-    }
-
     SlhDsaAdrs skAdrs = *adrs;
     ctx->adrsOps.setType(&skAdrs, WOTS_PRF);
     ctx->adrsOps.copyKeyPairAddr(&skAdrs, adrs);

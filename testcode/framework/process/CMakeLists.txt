@@ -49,6 +49,6 @@ if(ENABLE_PKI AND ${BUILD_PKI} GREATER -1)
     list(APPEND PROCESS_LIBS hitls_pki)
 endif()
 
-list(APPEND PROCESS_LIBS hitls_crypto hitls_bsl boundscheck pthread dl sctp rec_wrapper)
+list(APPEND PROCESS_LIBS hitls_crypto hitls_bsl boundscheck pthread dl rec_wrapper)
 
 target_link_libraries(process ${PROCESS_LIBS})

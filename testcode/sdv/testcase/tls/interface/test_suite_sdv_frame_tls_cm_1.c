@@ -458,9 +458,9 @@ void UT_TLS_CM_VERIFY_CLIENT_POST_HANDSHAKE_API_TC001(void)
 
     // Apply for and initialize the configuration file
     config = HITLS_CFG_NewTLS13Config();
-    client = FRAME_CreateLink(config, BSL_UIO_SCTP);
+    client = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(client != NULL);
-    server = FRAME_CreateLink(config, BSL_UIO_SCTP);
+    server = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
 
     // Configure the client and server to support post-handshake extension
@@ -512,10 +512,10 @@ void UT_TLS_CM_REMOVE_CERTANDKEY_API_TC001(void)
     ret = HITLS_CFG_SetNoClientCertSupport(config, true);
     ASSERT_TRUE(ret == HITLS_SUCCESS);
 
-    client = FRAME_CreateLink(config, BSL_UIO_SCTP);
+    client = FRAME_CreateLink(config, BSL_UIO_UDP);
     ASSERT_TRUE(client != NULL);
 
-    server = FRAME_CreateLink(config, BSL_UIO_SCTP);
+    server = FRAME_CreateLink(config, BSL_UIO_UDP);
     ASSERT_TRUE(server != NULL);
 
     ret = HITLS_RemoveCertAndKey(client->ssl);

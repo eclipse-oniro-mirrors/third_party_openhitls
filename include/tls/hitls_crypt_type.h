@@ -76,7 +76,7 @@ typedef enum {
  * @brief   Enumerated value of the symmetric encryption algorithm.
  */
 typedef enum {
-    HITLS_CIPHER_NULL = BSL_CID_UNKNOWN,
+    HITLS_CIPHER_NULL = BSL_CID_NULL, // Represents a null value, no encryption or decryption
     HITLS_CIPHER_AES_128_CBC = BSL_CID_AES128_CBC,
     HITLS_CIPHER_AES_256_CBC = BSL_CID_AES256_CBC,
     HITLS_CIPHER_AES_128_GCM = BSL_CID_AES128_GCM,
@@ -88,6 +88,7 @@ typedef enum {
     HITLS_CIPHER_CHACHA20_POLY1305 = BSL_CID_CHACHA20_POLY1305,
     HITLS_CIPHER_SM4_CBC = BSL_CID_SM4_CBC,
     HITLS_CIPHER_SM4_GCM = BSL_CID_SM4_GCM,
+    HITLS_CIPHER_BUTT = BSL_CID_UNKNOWN // Represents an unrecognized algorithm type
 } HITLS_CipherAlgo;
 
 /**
@@ -95,7 +96,7 @@ typedef enum {
  * @brief   Hash algorithm enumeration
  */
 typedef enum {
-    HITLS_HASH_NULL = BSL_CID_UNKNOWN,
+    HITLS_HASH_NULL = BSL_CID_NULL, // Represents a null value, no hash operation
     HITLS_HASH_MD5 = BSL_CID_MD5,
     HITLS_HASH_SHA1 = BSL_CID_SHA1,
     HITLS_HASH_SHA_224 = BSL_CID_SHA224,
@@ -103,6 +104,7 @@ typedef enum {
     HITLS_HASH_SHA_384 = BSL_CID_SHA384,
     HITLS_HASH_SHA_512 = BSL_CID_SHA512,
     HITLS_HASH_SM3 = BSL_CID_SM3,
+    HITLS_HASH_BUTT = BSL_CID_UNKNOWN // Represents an unrecognized algorithm type
 } HITLS_HashAlgo; // CRYPT_MD_AlgId
 
 /**
@@ -110,7 +112,7 @@ typedef enum {
  * @brief   MAC algorithm enumerated value
  */
 typedef enum {
-    HITLS_MAC_NULL = BSL_CID_UNKNOWN,
+    HITLS_MAC_NULL = BSL_CID_NULL, // Represents a null value, no MAC operation
     HITLS_MAC_MD5 = BSL_CID_HMAC_MD5,
     HITLS_MAC_1 = BSL_CID_HMAC_SHA1,
     HITLS_MAC_224 = BSL_CID_HMAC_SHA224,
@@ -119,6 +121,7 @@ typedef enum {
     HITLS_MAC_512 = BSL_CID_HMAC_SHA512,
     HITLS_MAC_SM3 = BSL_CID_HMAC_SM3,
     HITLS_MAC_AEAD = BSL_CID_MAC_AEAD,
+    HITLS_MAC_BUTT = BSL_CID_UNKNOWN // Represents an unrecognized algorithm type
 } HITLS_MacAlgo;
 
 /**

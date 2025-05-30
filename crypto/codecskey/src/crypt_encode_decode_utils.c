@@ -248,7 +248,7 @@ typedef enum {
     CRYPT_PKCS_ENC_DERPARAM_MAX
 } CRYPT_PKCS_ENC_DERIVEPARAM_IDX;
 
-int32_t CRYPT_ENCODE_DECODE_DecryptEncData(CRYPT_EAL_LibCtx *libctx, const char *attrName, BSL_Buffer *ivData,
+static int32_t CRYPT_ENCODE_DECODE_DecryptEncData(CRYPT_EAL_LibCtx *libctx, const char *attrName, BSL_Buffer *ivData,
     BSL_Buffer *enData, int32_t alg, bool isEnc, BSL_Buffer *key, uint8_t *output, uint32_t *dataLen)
 {
     uint32_t buffLen = *dataLen;

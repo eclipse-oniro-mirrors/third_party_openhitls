@@ -58,10 +58,6 @@ endif()
 
 list(APPEND TEST_INTF_LIBS hitls_bsl boundscheck pthread dl)
 
-if(ENABLE_UIO_SCTP OR (ENABLE_TLS AND ${BUILD_TLS} GREATER -1))
-    list(APPEND TEST_INTF_LIBS sctp)
-endif()
-
 target_link_libraries(TEST_INTF INTERFACE ${TEST_INTF_LIBS})
 
 target_include_directories(TEST_INTF

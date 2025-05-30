@@ -37,7 +37,6 @@ int32_t OriginalRoot(void *libCtx, BN_BigNum *g, const BN_BigNum *p, const BN_Bi
     BN_Optimizer *optimizer = BN_OptimizerCreate();
     if (optimizer == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-        BN_OptimizerDestroy(optimizer);
         return CRYPT_MEM_ALLOC_FAIL;
     }
 

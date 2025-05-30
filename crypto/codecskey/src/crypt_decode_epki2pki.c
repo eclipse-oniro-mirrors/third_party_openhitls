@@ -49,6 +49,10 @@ void *DECODER_EPki2Pki_NewCtx(void *provCtx)
 int32_t DECODER_EPki2Pki_GetParam(void *ctx, BSL_Param *param)
 {
     DECODER_EPki2Pki_Ctx *decoderCtx = (DECODER_EPki2Pki_Ctx *)ctx;
+    if (decoderCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
     DECODER_CommonCtx commonCtx = {
         .outFormat = decoderCtx->outFormat,
         .outType = decoderCtx->outType

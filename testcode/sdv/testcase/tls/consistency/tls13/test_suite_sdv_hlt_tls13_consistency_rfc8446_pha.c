@@ -191,7 +191,7 @@ static void Test_Certificate_Ctx_NotSame(HITLS_Ctx *ctx, uint8_t *data, uint32_t
     ASSERT_EQ(frameMsg.body.hsMsg.type.data, CERTIFICATE);
 
     frameMsg.body.hsMsg.body.certificate.certificateReqCtx.state = ASSIGNED_FIELD;
-    *(frameMsg.body.hsMsg.body.certificate.certificateReqCtx.data) = 123;
+    *(frameMsg.body.hsMsg.body.certificate.certificateReqCtx.data) += 1;
 
     FRAME_PackRecordBody(&frameType, &frameMsg, data, bufSize, len);
 EXIT:

@@ -11,8 +11,6 @@ Check whether the build tools have been installed in the system and can be used 
 | CMake    | ≥ 3.16        | Linux    |
 | Sctp        | No restriction on versions   | Linux    |
 
-P.S. The DTLS feature depends on sctp. By default, sctp is disabled. To enable it, you need to pre-install sctp dependencies.
-
 ## 2. Preparing the Source Code
 
 Method 1
@@ -83,7 +81,6 @@ openHiTLS provides the CMake build mode, which can be configured using **configu
 |--compile_config|Specifies the compilation parameter configuration file.|python3 configure.py --compile_config path/to/xxx.json|
 |--enable|Specifies build features.<br>Please refer to [Feature Description](./4_Configuration%20guide.md#1-Feature%20Description) to get supported features|python3 configure.py --enable hitls_crypto hitls_tls hitls_pse|
 |--disable|disable buld features|python3 configure.py --disable sal_thread |
-|--enable-sctp|enable sctp which is DTLS depended on|python3 configure.py --enable-sctp|
 |--asm_type|Indicates the assembly type.|python3 configure.py --lib_type  static --asm_type armv8|
 |--asm|Specifes build asm features, whicht needs to be used simultaneously with parameter `asm_type`.|python3 configure.py --lib_type  static --asm_type armv8 --asm sha2|
 |--endian|Indicates big-endian or little-endian build.|python3 configure.py --endian little|
@@ -118,9 +115,6 @@ python3 ../configure.py --disable [feature]::[module]
 
 # Enable a feature.
 python3 ../configure.py --enable [feature]::[module]
-
-# Enable sctp
-python3 ../configure.py --enable-sctp
 
 # Default configuration file. If the file does not exist, a file is generated. Otherwise, no action is performed.
 python3 ../configure.py -m

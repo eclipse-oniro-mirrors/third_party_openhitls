@@ -50,6 +50,10 @@ void *DECODER_Pem2Der_NewCtx(void *provCtx)
 int32_t DECODER_Pem2Der_GetParam(void *ctx, BSL_Param *param)
 {
     DECODER_Pem2Der_Ctx *decoderCtx = (DECODER_Pem2Der_Ctx *)ctx;
+    if (decoderCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
     DECODER_CommonCtx commonCtx = {
         .outFormat = decoderCtx->outFormat,
         .outType = decoderCtx->outType
