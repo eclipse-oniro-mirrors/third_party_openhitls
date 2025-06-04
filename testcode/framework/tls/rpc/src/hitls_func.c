@@ -660,7 +660,14 @@ int HitlsSetCtx(HITLS_Config *outCfg, HLT_Ctx_Config *inCtxCfg)
 
     LOG_DEBUG("HiTLS Set Empty Record Number is %u", inCtxCfg->emptyRecordsNum);
     ret = HITLS_CFG_SetEmptyRecordsNum(outCfg, inCtxCfg->emptyRecordsNum);
-    ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetEmptyRecordsNum");
+    ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetEmptyRecordsNum ERROR");
+
+#ifdef HITLS_TLS_FEATURE_MODE
+    // HiTLS Set ModeSupport
+    LOG_DEBUG("HiTLS Set ModeSupport is %u", inCtxCfg->modeSupport);
+    ret = HITLS_CFG_SetModeSupport(outCfg, inCtxCfg->modeSupport);
+    ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetModeSupport ERROR");
+#endif
 
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
     LOG_DEBUG("HiTLS Set allow Legacy Renegotiate is %d", inCtxCfg->allowLegacyRenegotiate);

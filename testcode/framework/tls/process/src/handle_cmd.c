@@ -397,6 +397,10 @@ int ParseCtxConfigFromString(char (*string)[CONTROL_CHANNEL_MAX_MSG_LEN], HLT_Ct
     ctxConfig->isEncryptThenMac = (((int)strtol(string[index++], NULL, 10)) > 0) ? true : false;
     LOG_DEBUG("Remote Process Set Ctx isEncryptThenMac is %d", ctxConfig->isEncryptThenMac);
 
+    // set the features supported by modesupport, The value is a decimal number.
+    ctxConfig->modeSupport = (int)strtol(string[index++], NULL, 10);
+    LOG_DEBUG("Remote Process Set Ctx modeSupport is %d", ctxConfig->modeSupport);
+
     // Setting the info cb
     ctxConfig->infoCb = NULL; // The pointer cannot be transferred. Set this parameter to null.
 

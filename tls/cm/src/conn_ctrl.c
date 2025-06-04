@@ -329,6 +329,24 @@ int32_t HITLS_ClearRenegotiationNum(HITLS_Ctx *ctx, uint32_t *renegotiationNum)
 }
 #endif
 
+#ifdef HITLS_TLS_FEATURE_MODE
+int32_t HITLS_SetModeSupport(HITLS_Ctx *ctx, uint32_t mode)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    return HITLS_CFG_SetModeSupport(&(ctx->config.tlsConfig), mode);
+}
+
+int32_t HITLS_GetModeSupport(HITLS_Ctx *ctx, uint32_t *mode)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    return HITLS_CFG_GetModeSupport(&(ctx->config.tlsConfig), mode);
+}
+#endif
+
 #ifdef HITLS_TLS_SUITE_CIPHER_CBC
 int32_t HITLS_SetEncryptThenMac(HITLS_Ctx *ctx, uint32_t encryptThenMacType)
 {

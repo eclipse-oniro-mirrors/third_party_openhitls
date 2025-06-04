@@ -1168,6 +1168,28 @@ int32_t HITLS_GetNegotiateGroup(const HITLS_Ctx *ctx, uint16_t *group);
 
 /**
  * @ingroup hitls
+ * @brief   Set the function to support the specified feature.
+ *
+ * @param   ctx [OUT] TLS Connection Handle
+ * @param   mode [IN] Mode features to enabled.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_SetModeSupport(HITLS_Ctx *ctx, uint32_t mode);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain the mode of the function feature in the config file.
+ *
+ * @param   ctx [OUT] TLS Connection Handle
+ * @param   mode [OUT] Mode obtain the output parameters of the mode.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_GetModeSupport(HITLS_Ctx *ctx, uint32_t *mode);
+
+/**
+ * @ingroup hitls
  * @brief   Setting the Encrypt-Then-Mac mode.
  *
  * @param   ctx [IN] TLS connection handle.

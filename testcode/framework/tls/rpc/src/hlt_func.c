@@ -1090,6 +1090,12 @@ int HLT_SetExtenedMasterSecretSupport(HLT_Ctx_Config *ctxConfig, bool support)
     return SUCCESS;
 }
 
+int HLT_SetModeSupport(HLT_Ctx_Config *ctxConfig, uint32_t mode)
+{
+    ctxConfig->modeSupport = mode;
+    return SUCCESS;
+}
+
 int HLT_SetCipherSuites(HLT_Ctx_Config *ctxConfig, const char *cipherSuites)
 {
     int ret;

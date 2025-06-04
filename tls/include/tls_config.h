@@ -126,6 +126,7 @@ typedef struct TlsConfig {
     uint32_t originVersionMask;         /* the original supported proto version mask */
     uint16_t minVersion;                /* min supported proto version */
     uint16_t maxVersion;                /* max supported proto version */
+    uint32_t modeSupport;               /* support mode */
 
     uint16_t *tls13CipherSuites;        /* tls13 cipher suite */
     uint32_t tls13cipherSuitesSize;
@@ -190,8 +191,6 @@ typedef struct TlsConfig {
 
     void *userData;                     /* user data */
     HITLS_ConfigUserDataFreeCb userDataFreeCb;
-
-    char *providerAttr;
 
     bool needCheckKeyUsage;             /* whether to check keyusage, default on */
     bool needCheckPmsVersion;           /* whether to verify the version in premastersecret */

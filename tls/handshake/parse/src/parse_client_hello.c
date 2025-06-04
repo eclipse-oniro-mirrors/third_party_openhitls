@@ -34,19 +34,18 @@
 #ifdef HITLS_TLS_CONNECTION_INFO_NEGOTIATION
 static int32_t StoreClientCipherSuites(TLS_Ctx *ctx, ClientHelloMsg *msg)
 {
-    if (msg->haveScsvCipher && msg->cipherSuitesSize == 1) {
+    uint32_t scsvCount = 0;
+    scsvCount += msg->haveEmptyRenegoScsvCipher ? 1 : 0;
+    scsvCount += msg->haveFallBackScsvCipher ? 1 : 0;
+    if (scsvCount == msg->cipherSuitesSize) {
         BSL_SAL_FREE(ctx->peerInfo.cipherSuites);
         ctx->peerInfo.cipherSuitesSize = 0;
         return HITLS_SUCCESS;
     }
     uint32_t tmpSize = 0;
     BSL_SAL_FREE(ctx->peerInfo.cipherSuites);
-    if (msg->haveScsvCipher == true) {
-        ctx->peerInfo.cipherSuites =
-            (uint16_t *)BSL_SAL_Malloc(((uint32_t)msg->cipherSuitesSize - 1) * sizeof(uint16_t));
-    } else {
-        ctx->peerInfo.cipherSuites = (uint16_t *)BSL_SAL_Malloc(((uint32_t)msg->cipherSuitesSize) * sizeof(uint16_t));
-    }
+    uint32_t peerCipherSuitesSize = ((uint32_t)msg->cipherSuitesSize - scsvCount) * sizeof(uint16_t);
+    ctx->peerInfo.cipherSuites = (uint16_t *)BSL_SAL_Malloc(peerCipherSuitesSize);
     if (ctx->peerInfo.cipherSuites == NULL) {
         BSL_SAL_FREE(msg->cipherSuites);
         ctx->peerInfo.cipherSuitesSize = 0;
@@ -54,7 +53,8 @@ static int32_t StoreClientCipherSuites(TLS_Ctx *ctx, ClientHelloMsg *msg)
             BINGLOG_STR("peer cipherSuites dump fail"), ALERT_UNKNOWN);
     }
     for (uint16_t index = 0u; index < msg->cipherSuitesSize; index++) {
-        if (msg->cipherSuites[index] == TLS_EMPTY_RENEGOTIATION_INFO_SCSV) {
+        if (msg->cipherSuites[index] == TLS_EMPTY_RENEGOTIATION_INFO_SCSV ||
+            msg->cipherSuites[index] == TLS_FALLBACK_SCSV) {
             continue;
         }
         ctx->peerInfo.cipherSuites[tmpSize] = msg->cipherSuites[index];
@@ -108,7 +108,10 @@ static int32_t ParseClientHelloCipherSuites(ParsePacket *pkt, ClientHelloMsg *ms
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15703, BSL_LOG_LEVEL_INFO, BSL_LOG_BINLOG_TYPE_RUN,
             "got cipher suite from client:0x%x.", msg->cipherSuites[index], 0, 0, 0);
         if (msg->cipherSuites[index] == TLS_EMPTY_RENEGOTIATION_INFO_SCSV) {
-            msg->haveScsvCipher = true;
+            msg->haveEmptyRenegoScsvCipher = true;
+        }
+        if (msg->cipherSuites[index] == TLS_FALLBACK_SCSV) {
+            msg->haveFallBackScsvCipher = true;
         }
     }
 #ifdef HITLS_TLS_CONNECTION_INFO_NEGOTIATION

@@ -30,6 +30,8 @@ extern "C" {
 
 #define TLS_EMPTY_RENEGOTIATION_INFO_SCSV 0x00ffu   /* renegotiation cipher suite */
 
+#define TLS_FALLBACK_SCSV 0x5600u   /* downgraded protocol cipher suite */
+
 /* cert request Type of the certificate requested */
 typedef enum {
     /* rfc5246 7.4.4 */
@@ -39,7 +41,6 @@ typedef enum {
     CERT_TYPE_DSS_FIXED_DH = 4,
     /* rfc8422 5.5 */
     CERT_TYPE_ECDSA_SIGN = 64,
-    CERT_TYPE_SM2_SIGN = 64,
     CERT_TYPE_UNKNOWN = 255
 } CERT_Type;
 

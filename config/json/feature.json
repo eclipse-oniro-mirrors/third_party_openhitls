@@ -260,6 +260,9 @@
                             "feature_session_ticket": null,
                             "feature_session_id": null
                         },
+                        "feature_mode": {
+                            "feature_mode_fall_back_scsv": null
+                        },
                         "feature_key_update": null,
                         "feature_flight": null,
                         "feature_cert_mode": null,

@@ -160,6 +160,9 @@ static void ShallowCopy(HITLS_Ctx *ctx, const HITLS_Config *srcConfig)
 #endif
     destConfig->userData = srcConfig->userData;
     destConfig->userDataFreeCb = srcConfig->userDataFreeCb;
+#ifdef HITLS_TLS_FEATURE_MODE
+    destConfig->modeSupport = srcConfig->modeSupport;
+#endif
     destConfig->readAhead = srcConfig->readAhead;
     destConfig->recordPaddingCb = srcConfig->recordPaddingCb;
 #ifdef HITLS_TLS_CONFIG_MANUAL_DH
@@ -1164,6 +1167,38 @@ int32_t HITLS_CFG_SetNeedCheckPmsVersion(HITLS_Config *config, bool needCheck)
         return HITLS_NULL_INPUT;
     }
     config->needCheckPmsVersion = needCheck;
+    return HITLS_SUCCESS;
+}
+#endif
+
+#ifdef HITLS_TLS_FEATURE_MODE
+int32_t HITLS_CFG_SetModeSupport(HITLS_Config *config, uint32_t mode)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    config->modeSupport |= mode;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_CFG_ClearModeSupport(HITLS_Config *config, uint32_t mode)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    config->modeSupport &= (~mode);
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_CFG_GetModeSupport(HITLS_Config *config, uint32_t *mode)
+{
+    if (config == NULL || mode == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    *mode = config->modeSupport;
     return HITLS_SUCCESS;
 }
 #endif
