@@ -178,9 +178,9 @@ void UT_TLS13_LOADPROVIDER_NEWKEYTYPE_TC001(char *path, char *provider_new_alg_t
         "new_keyAlg/ca.der",
         "new_keyAlg/inter.der",
         "new_keyAlg/client.der",
-        0,
+        NULL,
         "new_keyAlg/client.key.der",
-        0,
+        NULL
     };
 
     client = FRAME_CreateLinkWithCert(config, BSL_UIO_TCP, &certInfo);

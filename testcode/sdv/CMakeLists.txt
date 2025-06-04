@@ -261,11 +261,10 @@ foreach(test_suite ${TEST_FILES})
     set_target_properties(${sdv_exe} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${openHiTLS_SRC}/testcode/output"
     )
-    target_link_libraries(${sdv_exe} PRIVATE TEST_INTF TESTCASE_PRE)
     # Choose between static and shared libraries based on test case
     if(${sdv_exe} IN_LIST TEST_SHARED_LIBS)
-        target_link_libraries(${sdv_exe} PRIVATE TEST_INTF_SHARED)
+        target_link_libraries(${sdv_exe} PRIVATE TEST_INTF_SHARED TESTCASE_PRE_SHARED)
     else()
-        target_link_libraries(${sdv_exe} PRIVATE TEST_INTF)
+        target_link_libraries(${sdv_exe} PRIVATE TEST_INTF TESTCASE_PRE)
     endif()
 endforeach()

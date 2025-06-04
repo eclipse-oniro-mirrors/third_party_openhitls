@@ -385,7 +385,7 @@ static void *DECODER_NewAlgDer2Key_NewCtx(void *provCtx)
     return ctx;
 }
 
-static int32_t DECODER_NewAlgDer2Key_GetParam(void *ctx, int32_t paramId, void *param, uint32_t *paramLen)
+static int32_t DECODER_NewAlgDer2Key_GetParam(void *ctx, void *param)
 {
     if (ctx == NULL || param == NULL) {
         return CRYPT_NULL_INPUT;
@@ -408,7 +408,7 @@ static int32_t DECODER_NewAlgDer2Key_GetParam(void *ctx, int32_t paramId, void *
     return CRYPT_SUCCESS;
 }
 
-static int32_t DECODER_NewAlgDer2Key_SetParam(void *ctx, int32_t paramId, const void *param, uint32_t paramLen)
+static int32_t DECODER_NewAlgDer2Key_SetParam(void *ctx, const void *param)
 {
     TestNewAlgDer2KeyCtx *decoderCtx = (TestNewAlgDer2KeyCtx *)ctx;
     if (decoderCtx == NULL || param == NULL) {
