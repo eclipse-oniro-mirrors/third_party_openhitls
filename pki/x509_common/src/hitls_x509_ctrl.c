@@ -441,6 +441,7 @@ int32_t HITLS_X509_AddDnName(BslList *list, HITLS_X509_DN *dnNames, uint32_t siz
     // sort
     dnNameList = BSL_LIST_Sort(dnNameList, CmpDnNameByEncode);
     if (dnNameList == NULL) {
+        ret = HITLS_X509_ERR_SORT_NAME_NODE;
         goto EXIT;
     }
     // add dnNameList to list

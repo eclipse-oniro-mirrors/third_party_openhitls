@@ -348,7 +348,7 @@ static void KdfUpdate(uint8_t *I, uint8_t *A, uint8_t *B, uint32_t k, const Pkcs
             uint8_t temp = tempI[r] + carry;
             carry = temp < tempI[r] ? 1 : 0;
             temp += B[r];
-            carry = temp < B[r] ? 1 : 0;
+            carry += temp < B[r] ? 1 : 0;
             tempI[r] = temp;
         }
     }

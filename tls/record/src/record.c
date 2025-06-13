@@ -240,7 +240,6 @@ static void RecDeInit(RecCtx *recordCtx)
 
 int32_t REC_Init(TLS_Ctx *ctx)
 {
-    int32_t ret = HITLS_MEMALLOC_FAIL;
     if (ctx == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17300, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "ctx null", 0, 0, 0, 0);
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
@@ -264,7 +263,7 @@ int32_t REC_Init(TLS_Ctx *ctx)
     LIST_INIT(&newRecCtx->retransmitList.head);
 #endif
 #endif
-    ret = RecBufInit(ctx, newRecCtx);
+    int32_t ret = RecBufInit(ctx, newRecCtx);
     if (ret != HITLS_SUCCESS) {
         goto ERR;
     }

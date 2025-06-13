@@ -720,7 +720,7 @@ int32_t HITLS_LogSecret(HITLS_Ctx *ctx, const char *label, const uint8_t *secret
         BSL_SAL_FREE(outBuffer);
         return ret;
     }
-    offset += index;
+
     ctx->globalConfig->keyLogCb(ctx, (const char *)outBuffer);
 
     BSL_SAL_CleanseData(outBuffer, outLen);

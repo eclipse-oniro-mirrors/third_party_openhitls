@@ -233,14 +233,12 @@ int32_t CRYPT_EAL_MacInit(CRYPT_EAL_MacCtx *ctx, const uint8_t *key, uint32_t le
         return CRYPT_NULL_INPUT;
     }
 
-    int32_t ret = CRYPT_EAL_ALG_NOT_SUPPORT;
-
     if (ctx->macMeth == NULL || ctx->macMeth->init == NULL) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MAC, ctx->id, CRYPT_EAL_ALG_NOT_SUPPORT);
         return CRYPT_EAL_ALG_NOT_SUPPORT;
     }
 
-    ret = ctx->macMeth->init(ctx->ctx, key, len, NULL);
+    int32_t ret = ctx->macMeth->init(ctx->ctx, key, len, NULL);
     if (ret != CRYPT_SUCCESS) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MAC, ctx->id, ret);
         return ret;
@@ -266,14 +264,12 @@ int32_t CRYPT_EAL_MacUpdate(CRYPT_EAL_MacCtx *ctx, const uint8_t *in, uint32_t l
         return CRYPT_EAL_ERR_STATE;
     }
 
-    int32_t ret = CRYPT_EAL_ALG_NOT_SUPPORT;
-
     if (ctx->macMeth == NULL || ctx->macMeth->update == NULL) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MAC, ctx->id, CRYPT_EAL_ALG_NOT_SUPPORT);
         return CRYPT_EAL_ALG_NOT_SUPPORT;
     }
 
-    ret = ctx->macMeth->update(ctx->ctx, in, len);
+    int32_t ret = ctx->macMeth->update(ctx->ctx, in, len);
     if (ret != CRYPT_SUCCESS) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MAC, ctx->id, ret);
         return ret;
@@ -298,14 +294,12 @@ int32_t CRYPT_EAL_MacFinal(CRYPT_EAL_MacCtx *ctx, uint8_t *out, uint32_t *len)
         return CRYPT_EAL_ERR_STATE;
     }
 
-    int32_t ret = CRYPT_EAL_ALG_NOT_SUPPORT;
-
     if (ctx->macMeth == NULL || ctx->macMeth->final == NULL) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MAC, ctx->id, CRYPT_EAL_ALG_NOT_SUPPORT);
         return CRYPT_EAL_ALG_NOT_SUPPORT;
     }
 
-    ret = ctx->macMeth->final(ctx->ctx, out, len);
+    int32_t ret = ctx->macMeth->final(ctx->ctx, out, len);
     if (ret != CRYPT_SUCCESS) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MAC, ctx->id, ret);
         return ret;

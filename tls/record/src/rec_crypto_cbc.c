@@ -194,10 +194,10 @@ static int32_t ConstTimeHmac(RecConnSuitInfo *suiteInfo, HITLS_HASH_Ctx **hashCt
     maxLen = Uint32ConstTimeSelect(good, maxLen, dataLen);
     uint32_t flag = Uint32ConstTimeGt(maxLen, 256); // the value of 1 byte is up to 256
     uint32_t minLen = Uint32ConstTimeSelect(flag, maxLen - 256, 0);
-    pos = 0;
+
     (void)SAL_CRYPT_DigestUpdate(hashCtx[0], data, minLen);
     (void)SAL_CRYPT_DigestUpdate(obCtx, data, minLen);
-    pos += minLen;
+
     for (uint32_t i = minLen; i < maxLen; i++) {
         if (i < plainLen) {
             SAL_CRYPT_DigestUpdate(hashCtx[0], data + i, 1);

@@ -172,7 +172,7 @@ static void CleanSensitiveDataLess16Byte(void *buf, uint32_t bufLen)
         /* FALLTHRU */
         case 2: *(tmp++) = (uint8_t)0;
         /* FALLTHRU */
-        case 1: *(tmp++) = (uint8_t)0;
+        case 1: *(tmp) = (uint8_t)0;
         /* FALLTHRU */
         default:
             break;

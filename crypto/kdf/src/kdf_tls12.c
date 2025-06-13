@@ -55,9 +55,8 @@ bool CRYPT_KDFTLS12_IsValidAlgId(CRYPT_MAC_AlgId id)
 
 int32_t KDF_Hmac(const EAL_MacMethod *macMeth, void *macCtx, uint8_t *data, uint32_t *len)
 {
-    int32_t ret;
     macMeth->reinit(macCtx);
-    ret = macMeth->update(macCtx, data, *len);
+    int32_t ret = macMeth->update(macCtx, data, *len);
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }
@@ -67,7 +66,7 @@ int32_t KDF_Hmac(const EAL_MacMethod *macMeth, void *macCtx, uint8_t *data, uint
 // algorithm implementation see https://datatracker.ietf.org/doc/pdf/rfc5246.pdf, chapter 5, p_hash function
 int32_t KDF_PHASH(CRYPT_KDFTLS12_Ctx *ctx, uint8_t *out, uint32_t len)
 {
-    int32_t ret;
+    int32_t ret = CRYPT_SUCCESS;
     const EAL_MacMethod *macMeth = ctx->macMeth;
     uint32_t totalLen = 0;
     uint8_t nextIn[KDFTLS12_MAX_BLOCKSIZE];
