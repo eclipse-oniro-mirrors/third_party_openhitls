@@ -285,7 +285,7 @@ int32_t HS_ProcessClientKxMsgRsa(TLS_Ctx *ctx, const ClientKeyExchangeMsg *clien
                             Uint32ConstTimeEqual(version, HITLS_VERSION_TLS12) |
                             Uint32ConstTimeEqual(version, HITLS_VERSION_DTLS12) |
                             ~Uint32ConstTimeIsZero((uint32_t)ctx->config.tlsConfig.needCheckPmsVersion);
-    valid = (~versionCheck) | Uint32ConstTimeEqual(version, BSL_ByteToUint16(premasterSecret));
+    valid &= (~versionCheck) | Uint32ConstTimeEqual(version, BSL_ByteToUint16(premasterSecret));
 
     for (uint32_t i = 0; i < MASTER_SECRET_LEN; i++) {
         uint32_t mask = valid & Uint32ConstTimeLt(i, secretLen);
