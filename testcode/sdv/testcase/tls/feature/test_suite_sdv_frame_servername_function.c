@@ -340,7 +340,7 @@ void UT_TLS_SNI_RESUME_SERVERNAME_FUNC_TC001(int version, int type)
     CONN_Init(testInfo.server->ssl);
 
     if (testInfo.type == BSL_UIO_TCP) {
-        ASSERT_TRUE(Tls12ServerRecvClientHelloProcess(testInfo.server->ssl, &frameMsg.body.handshakeMsg) ==
+        ASSERT_TRUE(Tls12ServerRecvClientHelloProcess(testInfo.server->ssl, &frameMsg.body.handshakeMsg, true) ==
                     HITLS_SUCCESS);
     } else {
         ASSERT_TRUE(DtlsServerRecvClientHelloProcess(testInfo.server->ssl, &frameMsg.body.handshakeMsg) ==

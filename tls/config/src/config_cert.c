@@ -691,6 +691,17 @@ HITLS_VerifyCb HITLS_CFG_GetVerifyCb(HITLS_Config *config)
     return SAL_CERT_GetVerifyCb(config->certMgrCtx);
 }
 
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+int32_t HITLS_CFG_SetCertCb(HITLS_Config *config, HITLS_CertCb certCb, void *arg)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return SAL_CERT_SetCertCb(config->certMgrCtx, certCb, arg);
+}
+#endif /* HITLS_TLS_FEATURE_CERT_CB */
+
 #ifdef HITLS_TLS_FEATURE_CERT_MODE
 int32_t HITLS_CFG_SetVerifyNoneSupport(HITLS_Config *config, bool support)
 {

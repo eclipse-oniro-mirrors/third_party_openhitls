@@ -373,6 +373,16 @@ int32_t SAL_CERT_SetVerifyCb(CERT_MgrCtx *mgrCtx, HITLS_VerifyCb cb);
  * @return  Callback function
  */
 HITLS_VerifyCb SAL_CERT_GetVerifyCb(CERT_MgrCtx *mgrCtx);
+/**
+ * @brief   Set the certificate callback function.
+ *
+ * @param   mgrCtx [IN] Certificate management struct
+ * @param   certCb [IN] Certificate callback function
+ * @param   arg    [IN] Parameter for the certificate callback function
+ *
+ * @retval  HITLS_SUCCESS           succeeded.
+ */
+int32_t SAL_CERT_SetCertCb(CERT_MgrCtx *mgrCtx, HITLS_CertCb certCb, void *arg);
 
 #ifdef __cplusplus
 }

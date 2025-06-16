@@ -180,6 +180,9 @@ typedef struct {
     uint32_t truncateHelloLen; /* is used for binder calculation. */
     ClientHelloExt extension;
     uint64_t extensionTypeMask;
+    uint8_t *extensionBuff;
+    uint32_t extensionBuffLen;
+    uint8_t extensionCount; /* Size of the extension buffer */
 } ClientHelloMsg;
 
 /* It is used to transmit server hello message */
@@ -278,7 +281,6 @@ typedef struct {
     uint8_t reserved;               /* Four-byte alignment */
     uint8_t certTypesSize;
     uint16_t signatureAlgorithmsSize;
-    HITLS_TrustedCAList *caList;
 #ifdef HITLS_TLS_PROTO_TLS13
     uint16_t *signatureAlgorithmsCert;
     uint16_t signatureAlgorithmsCertSize;

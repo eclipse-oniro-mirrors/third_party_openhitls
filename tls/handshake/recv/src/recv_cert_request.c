@@ -29,7 +29,7 @@
 #include "hitls_error.h"
 #include "tls_binlog_id.h"
 #include "cert_mgr_ctx.h"
-
+#include "recv_process.h"
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
 // The client processes the certificate request
 int32_t ClientRecvCertRequestProcess(TLS_Ctx *ctx, HS_Msg *msg)
@@ -39,6 +39,13 @@ int32_t ClientRecvCertRequestProcess(TLS_Ctx *ctx, HS_Msg *msg)
      *  RFC 5246 7.4.4: Note: It is a fatal handshake_failure alert for
      *  an anonymous server to request client authentication.
      */
+    (void) msg;
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+    int32_t ret = ProcessCertCallback(ctx);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+#endif /* HITLS_TLS_FEATURE_CERT_CB */
     if (ctx->hsCtx->peerCert == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_NO_PEER_CERTIFIACATE);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_HANDSHAKE_FAILURE);
@@ -52,14 +59,12 @@ int32_t ClientRecvCertRequestProcess(TLS_Ctx *ctx, HS_Msg *msg)
      * server configuration (isSupportClientVerify). */
     ctx->hsCtx->isNeedClientCert = true;
 
-    CertificateRequestMsg *certReq = &msg->body.certificateReq;
     CERT_ExpectInfo expectCertInfo = {0};
     expectCertInfo.certType = CERT_TYPE_UNKNOWN;
-    expectCertInfo.signSchemeList = certReq->signatureAlgorithms;
-    expectCertInfo.signSchemeNum = certReq->signatureAlgorithmsSize;
-    expectCertInfo.caList = certReq->caList;
+    expectCertInfo.signSchemeList = ctx->peerInfo.signatureAlgorithms;
+    expectCertInfo.signSchemeNum = ctx->peerInfo.signatureAlgorithmsSize;
+    expectCertInfo.caList = ctx->peerInfo.caList;
     (void)SAL_CERT_SelectCertByInfo(ctx, &expectCertInfo);
-
     return HS_ChangeState(ctx, TRY_RECV_SERVER_HELLO_DONE);
 }
 #endif /* HITLS_TLS_PROTO_TLS_BASIC || HITLS_TLS_PROTO_DTLS12 */
@@ -98,17 +103,13 @@ static int32_t Tls13ClientStoreCertReqCtx(TLS_Ctx *ctx, const CertificateRequest
 #endif /* HITLS_TLS_FEATURE_PHA */
 
 #ifdef HITLS_TLS_PROTO_TLS13
-int32_t Tls13ClientRecvCertRequestProcess(TLS_Ctx *ctx, const HS_Msg *msg)
+static int32_t Tls13ClientPreProcessCertRequest(TLS_Ctx *ctx, const CertificateRequestMsg *certReq)
 {
-    const CertificateRequestMsg *certReq = &msg->body.certificateReq;
-    int32_t ret = HITLS_SUCCESS;
-    
-    ret = HS_CheckReceivedExtension(
+    int32_t ret = HS_CheckReceivedExtension(
         ctx, CERTIFICATE_REQUEST, certReq->extensionTypeMask, HS_EX_TYPE_TLS1_3_ALLOWED_OF_CERTIFICATE_REQUEST);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-
 #ifdef HITLS_TLS_FEATURE_PHA
     ret = Tls13ClientStoreCertReqCtx(ctx, certReq);
     if (ret != HITLS_SUCCESS) {
@@ -129,16 +130,37 @@ int32_t Tls13ClientRecvCertRequestProcess(TLS_Ctx *ctx, const HS_Msg *msg)
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_MISSING_EXTENSION);
         return HITLS_MSG_HANDLE_MISSING_EXTENSION;
     }
+    return HITLS_SUCCESS;
+}
 
-    CERT_ExpectInfo expectCertInfo = {0};
-    expectCertInfo.certType = CERT_TYPE_UNKNOWN;
-    expectCertInfo.signSchemeList = certReq->signatureAlgorithms;
-    expectCertInfo.signSchemeNum = certReq->signatureAlgorithmsSize;
-
-    expectCertInfo.caList = certReq->caList;
-    /* If no certificate is selected, the client sends an empty certificate message */
-    (void)SAL_CERT_SelectCertByInfo(ctx, &expectCertInfo);
+int32_t Tls13ClientRecvCertRequestProcess(TLS_Ctx *ctx, const HS_Msg *msg)
+{
+    const CertificateRequestMsg *certReq = &msg->body.certificateReq;
+    int32_t ret = HITLS_SUCCESS;
+    if (ctx->hsCtx->readSubState == TLS_PROCESS_STATE_A) {
+        ret = Tls13ClientPreProcessCertRequest(ctx, certReq);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+        ctx->hsCtx->readSubState = TLS_PROCESS_STATE_B;
+    }
 #ifdef HITLS_TLS_FEATURE_PHA
+    if (ctx->hsCtx->readSubState == TLS_PROCESS_STATE_B) {
+        if (ctx->phaState == PHA_REQUESTED) {
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+            ret = ProcessCertCallback(ctx);
+            if (ret != HITLS_SUCCESS) {
+                return ret;
+            }
+#endif /* HITLS_TLS_FEATURE_CERT_CB */
+            CERT_ExpectInfo expectCertInfo = {0};
+            expectCertInfo.certType = CERT_TYPE_UNKNOWN;
+            expectCertInfo.signSchemeList = ctx->peerInfo.signatureAlgorithms;
+            expectCertInfo.signSchemeNum = ctx->peerInfo.signatureAlgorithmsSize;
+            expectCertInfo.caList = ctx->peerInfo.caList;
+            (void)SAL_CERT_SelectCertByInfo(ctx, &expectCertInfo);
+        }
+    }
     if (ctx->phaState == PHA_REQUESTED) {
         return HS_ChangeState(ctx, TRY_SEND_CERTIFICATE);
     }

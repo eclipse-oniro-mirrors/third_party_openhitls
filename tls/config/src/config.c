@@ -1116,7 +1116,7 @@ int32_t HITLS_CFG_SetDtlsTimerCb(HITLS_Config *config, HITLS_DtlsTimerCb callbac
 }
 #endif
 
-#ifdef HITLS_TLS_FEATURE_SNI
+#ifdef HITLS_TLS_FEATURE_CLIENT_HELLO_CB
 int32_t HITLS_CFG_SetClientHelloCb(HITLS_Config *config, HITLS_ClientHelloCb callback, void *arg)
 {
     if (config == NULL || callback == NULL) {

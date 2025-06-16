@@ -232,8 +232,10 @@ typedef struct TlsConfig {
     void *alpnUserData;                 /* the user data for alpn callback */
     void *sniArg;			            /* the args for servername callback */
     HITLS_SniDealCb sniDealCb;          /* server name callback function */
+#ifdef HITLS_TLS_FEATURE_CLIENT_HELLO_CB
     HITLS_ClientHelloCb clientHelloCb;          /* ClientHello callback */
     void *clientHelloCbArg;                     /* the args for ClientHello callback */
+#endif /* HITLS_TLS_FEATURE_CLIENT_HELLO_CB */
 #ifdef HITLS_TLS_PROTO_DTLS12
     HITLS_AppGenCookieCb appGenCookieCb;
     HITLS_AppVerifyCookieCb appVerifyCookieCb;

@@ -409,7 +409,12 @@ int32_t HITLS_GetError(const HITLS_Ctx *ctx, int32_t ret)
     if (ret == HITLS_SUCCESS) {
         return HITLS_SUCCESS;
     }
-
+    if (ret == HITLS_CALLBACK_CLIENT_HELLO_RETRY) {
+        return HITLS_WANT_CLIENT_HELLO_CB;
+    }
+    if (ret == HITLS_CALLBACK_CERT_RETRY) {
+        return HITLS_WANT_X509_LOOKUP;
+    }
     /* HANDSHAKING state */
     if (ctx->state == CM_STATE_HANDSHAKING) {
         /* In non-blocking mode, I/O read/write failure is acceptable and link establishment is allowed */

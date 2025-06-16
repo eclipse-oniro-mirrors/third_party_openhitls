@@ -217,7 +217,7 @@ int HLT_GetTlsAcceptResultFromId(unsigned long int threadId)
 
 int HLT_GetTlsAcceptResult(HLT_Tls_Res* tlsRes)
 {
-    int ret;
+    static int ret;
     if (tlsRes->acceptId <= 0) {
         LOG_ERROR("This Res Has Not acceptId");
         return ERROR;
@@ -1376,9 +1376,18 @@ int HLT_SetAlpnProtosSelectCb(HLT_Ctx_Config *ctxConfig, char *callback, char *u
     return SUCCESS;
 }
 
-int HLT_SetDtlsCookieExchangeSupport(HLT_Ctx_Config *ctxConfig, bool isSupport)
+
+int HLT_SetClientHelloCb(HLT_Ctx_Config *ctxConfig, HITLS_ClientHelloCb callback, void *arg)
 {
-    ctxConfig->isSupportDtlsCookieExchange = isSupport;
+    ctxConfig->clientHelloCb = callback;
+    ctxConfig->clientHelloArg = arg;
+    return SUCCESS;
+}
+
+int HLT_SetCertCb(HLT_Ctx_Config *ctxConfig, HITLS_CertCb certCb, void *arg)
+{
+    ctxConfig->certCb = certCb;
+    ctxConfig->certArg = arg;
     return SUCCESS;
 }
 

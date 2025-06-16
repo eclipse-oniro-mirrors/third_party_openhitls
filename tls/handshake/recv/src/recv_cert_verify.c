@@ -27,6 +27,7 @@
 #include "hs_verify.h"
 #include "hs_common.h"
 #include "hs_msg.h"
+#include "recv_process.h"
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
 int32_t ServerRecvClientCertVerifyProcess(TLS_Ctx *ctx)
 {
@@ -48,17 +49,35 @@ int32_t ServerRecvClientCertVerifyProcess(TLS_Ctx *ctx)
 int32_t Tls13RecvCertVerifyProcess(TLS_Ctx *ctx)
 {
     int32_t ret;
-
-    /* The signature verification has been completed in the parser part.
-       Only the finish data of the peer needs to be calculated. */
-    ret = VERIFY_Tls13CalcVerifyData(ctx, !ctx->isClient);
-    if (ret != HITLS_SUCCESS) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15872, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "calculate finished data fail.", 0, 0, 0, 0);
-        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
-        return ret;
+    if (ctx->hsCtx->readSubState == TLS_PROCESS_STATE_A) {
+        /* The signature verification has been completed in the parser part.
+        Only the finish data of the peer needs to be calculated. */
+        ret = VERIFY_Tls13CalcVerifyData(ctx, !ctx->isClient);
+        if (ret != HITLS_SUCCESS) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15872, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "calculate finished data fail.", 0, 0, 0, 0);
+            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
+            return ret;
+        }
+        ctx->hsCtx->readSubState = TLS_PROCESS_STATE_B;
     }
 
+    if (ctx->hsCtx->readSubState == TLS_PROCESS_STATE_B) {
+        if (ctx->isClient && ctx->hsCtx->isNeedClientCert) {
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+            ret = ProcessCertCallback(ctx);
+            if (ret != HITLS_SUCCESS) {
+                return ret;
+            }
+#endif /* HITLS_TLS_FEATURE_CERT_CB */
+            CERT_ExpectInfo expectCertInfo = {0};
+            expectCertInfo.certType = CERT_TYPE_UNKNOWN;
+            expectCertInfo.signSchemeList = ctx->peerInfo.signatureAlgorithms;
+            expectCertInfo.signSchemeNum = ctx->peerInfo.signatureAlgorithmsSize;
+            expectCertInfo.caList = ctx->peerInfo.caList;
+            (void)SAL_CERT_SelectCertByInfo(ctx, &expectCertInfo);
+        }
+    }
     return HS_ChangeState(ctx, TRY_RECV_FINISH);
 }
 #endif /* HITLS_TLS_PROTO_TLS13 */

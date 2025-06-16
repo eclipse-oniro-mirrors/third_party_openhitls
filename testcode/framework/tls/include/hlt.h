@@ -87,7 +87,8 @@ int HLT_SetAlpnProtosSelectCb(HLT_Ctx_Config *ctxConfig, char *callback, char *u
 int HLT_SetFrameHandle(HLT_FrameHandle *frameHandle);
 void HLT_CleanFrameHandle(void);
 int HLT_FreeResFromSsl(const void *ssl);
-
+int HLT_SetClientHelloCb(HLT_Ctx_Config *ctxConfig, HITLS_ClientHelloCb callback, void *arg);
+int HLT_SetCertCb(HLT_Ctx_Config *ctxConfig, HITLS_CertCb certCb, void *arg);
 // General initialization interface
 int HLT_LibraryInit(TLS_TYPE tlsType);
 

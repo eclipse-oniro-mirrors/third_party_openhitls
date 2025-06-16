@@ -175,6 +175,11 @@ typedef enum {
     HS_STATE_BUTT = 255             /* enumerated Maximum Value */
 } HITLS_HandshakeState;
 
+typedef enum {
+    TLS_PROCESS_STATE_A,
+    TLS_PROCESS_STATE_B
+} HitlsProcessState;
+
 typedef void (*SendAlertCallback)(const TLS_Ctx *ctx, ALERT_Level level, ALERT_Description description);
 
 typedef bool (*GetAlertFlagCallback)(const TLS_Ctx *ctx);
@@ -242,6 +247,8 @@ typedef struct {
     uint16_t *cipherSuites;             /* all cipher suites sent by the peer end */
     uint16_t cipherSuitesSize;          /* size of a cipher suites */
     HITLS_SignHashAlgo peerSignHashAlg; /* peer signature algorithm */
+    uint16_t *signatureAlgorithms;
+    uint16_t signatureAlgorithmsSize;
     HITLS_ERROR verifyResult;           /* record the certificate verification result of the peer end */
     HITLS_TrustedCAList *caList;        /* peer trusted ca list */
 } PeerInfo;

@@ -236,6 +236,10 @@ typedef struct {
     void *infoCb;                       // connection establishment callback function
     void *msgCb;                        // Message callback function
     void *msgArg;                       // Message callback parameter function
+    void *certCb;
+    void *certArg;
+    void *clientHelloCb;
+    void *clientHelloArg;
     // Indicates whether to enable the function of sending handshake information by flight
     bool isFlightTransmitEnable;
     bool isNoSetCert;                   // Indicates whether the certificate does not need to be set

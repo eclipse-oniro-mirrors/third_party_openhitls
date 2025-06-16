@@ -1398,6 +1398,85 @@ int32_t HITLS_GetMaxCertList(const HITLS_Ctx *ctx, uint32_t *maxSize);
  * @retval  For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_VerifyClientPostHandshake(HITLS_Ctx *ctx);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain the legacy version from client hello.
+ * @attention This interface is valid only in client hello callback.
+ * @param   ctx [IN] TLS connection handle.
+ * @param   out [OUT] Pointer to the output buffer for legacy version.
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_ClientHelloGetLegacyVersion(HITLS_Ctx *ctx, uint16_t *version);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain the random value from client hello.
+ *
+ * @attention This interface is valid only in client hello callback.
+ * @param   ctx [IN] TLS connection handle.
+ * @param   out [OUT] Pointer to the output buffer for random value.
+ * @param   outlen [IN] Length of the output buffer.
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_ClientHelloGetRandom(HITLS_Ctx *ctx, uint8_t **out, uint8_t *outlen);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain the session ID from client hello.
+ *
+ * @attention This interface is valid only in client hello callback.
+ * @param   ctx [IN] TLS connection handle.
+ * @param   out [OUT] Pointer to the output buffer for session ID.
+ * @param   outlen [OUT] Length of the output buffer.
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_ClientHelloGetSessionID(HITLS_Ctx *ctx, uint8_t **out, uint8_t *outlen);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain the cipher suites from client hello.
+ *
+ * @attention This interface is valid only in client hello callback.
+ * @param   ctx [IN] TLS connection handle.
+ * @param   out [OUT] Pointer to the output buffer for cipher suites.
+ * @param   outlen [OUT] Length of the output buffer.
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_ClientHelloGetCiphers(HITLS_Ctx *ctx, uint16_t **out, uint16_t *outlen);
+
+/**
+* @ingroup hitls
+* @brief   Obtain the all extension types from client hello.
+*
+* @attention This interface is valid only in client hello callback.
+* @attention the caller must release the storage allocated for *out using BSL_SAL_FREE().
+* @param   ctx [IN] TLS connection handle.
+* @param   out [OUT] Pointer to the output buffer for all extensions.
+* @param   outlen [OUT] Length of the output buffer.
+* @retval  HITLS_SUCCESS, if successful.
+*          For details about other error codes, see hitls_error.h.
+    */
+int32_t HITLS_ClientHelloGetExtensionsPresent(HITLS_Ctx *ctx, uint16_t **out, uint8_t *outlen);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain a specific extension from client hello.
+ *
+ * @attention This interface is valid only in client hello callback.
+ * @param   ctx [IN] TLS connection handle.
+ * @param   type [IN] Type of the extension to be obtained.
+ * @param   out [OUT] Pointer to the output buffer for the extension.
+ * @param   outlen [OUT] Length of the output buffer.
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_ClientHelloGetExtension(HITLS_Ctx *ctx, uint16_t type, uint8_t **out, uint32_t *outlen);
+
 #ifdef __cplusplus
 }
 #endif

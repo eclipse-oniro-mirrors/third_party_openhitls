@@ -24,7 +24,7 @@
 #include "frame_tls.h"
 #include "frame_io.h"
 #include "frame_link.h"
-
+#include "parse.h"
 #define ENTER_USER_SPECIFY_STATE (HITLS_UIO_FAIL_START + 0xFFFF)
 
 #define READ_BUF_SIZE 18432
@@ -67,6 +67,8 @@ static int32_t STUB_ChangeState(TLS_Ctx *ctx, uint32_t nextState)
     int32_t ret = HITLS_SUCCESS;
     if (g_nextState == nextState) {
         if (g_isClient == ctx->isClient) {
+            HS_CleanMsg(ctx->hsCtx->hsMsg);
+            ctx->hsCtx->hsMsg = NULL;
             ret = HITLS_REC_NORMAL_RECV_BUF_EMPTY;
         }
     }

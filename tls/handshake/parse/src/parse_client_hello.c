@@ -255,7 +255,7 @@ void CleanClientHello(ClientHelloMsg *msg)
     BSL_SAL_FREE(msg->cookie);
     BSL_SAL_FREE(msg->cipherSuites);
     BSL_SAL_FREE(msg->compressionMethods);
-
+    BSL_SAL_FREE(msg->extensionBuff);
     CleanClientHelloExtension(msg);
 
     return;

@@ -854,15 +854,49 @@ int32_t HITLS_CFG_AddExtraChainCert(HITLS_Config *config, HITLS_CERT_X509 *cert)
  */
 HITLS_CERT_Chain *HITLS_CFG_GetExtraChainCerts(HITLS_Config *config);
 
+/* If the ClientHello callback is successfully executed, the handshake continues */
+#define HITLS_CERT_CALLBACK_SUCCESS 1
+/* The  ClientHello callback fails. Send an alert message and terminate the handshake */
+#define HITLS_CERT_CALLBACK_FAILED 0
+/* The ClientHello callback is suspended. The handshake process is suspended and the callback is called again */
+#define HITLS_CERT_CALLBACK_RETRY (-1)
+
 /**
  * @ingroup hitls_cert
  * @brief   Process the certificate callback.
- * @attention This callback function must be compatible with OpenSSL and has the same logic as OpenSSL.
+ * @attention This callback function is compatible with OpenSSL and has the same logic as OpenSSL.
  *
  * @param   ctx [IN] TLS link object
  * @param   arg [IN] Related parameters arg
+ * @return  HITLS_CERT_CALLBACK_SUCCESS if the callback is successfully executed.
+ *          HITLS_CERT_CALLBACK_FAILED if the callback fails.
+ *          HITLS_CERT_CALLBACK_RETRY if the callback is suspended.
  */
 typedef int32_t (*HITLS_CertCb)(HITLS_Ctx *ctx, void *arg);
+
+/**
+ * @ingroup hitls_cert
+ * @brief  set the processing certificate callback function, which checks the passed ctx structure and
+ * sets or clear any appropriate certificate, cb can be NULL.
+ * @param   config [OUT] TLS link configuration
+ * @param   certCb [IN] Certificate callback function
+ * @param   arg    [IN] Parameters required in the callback function.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_SetCertCb(HITLS_Config *config, HITLS_CertCb certCb, void *arg);
+
+/**
+ * @ingroup hitls_cert
+ * @brief  set the processing certificate callback function, which checks the passed ctx structure and
+ * sets or clear any appropriate certificate, cb can be NULL.
+ * @param   ctx [OUT] TLS link configuration
+ * @param   certCb [IN] Certificate callback function
+ * @param   arg    [IN] Parameters required in the callback function.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_SetCertCb(HITLS_Ctx *ctx, HITLS_CertCb certCb, void *arg);
 
 /**
  * @ingroup hitls_cert

@@ -498,24 +498,15 @@ HITLS_VerifyCb SAL_CERT_GetVerifyCb(CERT_MgrCtx *mgrCtx)
     }
     return mgrCtx->verifyCb;
 }
-
-int32_t SAL_CERT_CtrlVerifyParams(HITLS_Config *config, HITLS_CERT_Store *store, uint32_t cmd, void *in, void *out)
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+int32_t SAL_CERT_SetCertCb(CERT_MgrCtx *mgrCtx, HITLS_CertCb certCb, void *arg)
 {
-    CERT_MgrCtx *mgrCtx = config->certMgrCtx;
     if (mgrCtx == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
         return HITLS_NULL_INPUT;
     }
-    HITLS_CERT_Store *tempStore = store;
-    if (tempStore == NULL) {
-        tempStore = (mgrCtx->verifyStore != NULL) ? mgrCtx->verifyStore : mgrCtx->certStore;
-        if (tempStore == NULL) {
-            return RETURN_ERROR_NUMBER_PROCESS(HITLS_NULL_INPUT, BINLOG_ID15327, "store is null");
-        }
-    }
-    int32_t ret = SAL_CERT_StoreCtrl(config, tempStore, cmd, in, out);
-    if (ret != HITLS_SUCCESS) {
-        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15326, "SAL_CERT_StoreCtrl fail");
-    }
+    mgrCtx->certCb = certCb;
+    mgrCtx->certCbArg = arg;
     return HITLS_SUCCESS;
 }
+#endif /* HITLS_TLS_FEATURE_CERT_CB */

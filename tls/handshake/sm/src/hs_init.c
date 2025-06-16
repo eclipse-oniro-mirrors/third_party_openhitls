@@ -189,7 +189,8 @@ void HS_DeInit(TLS_Ctx *ctx)
         return;
     }
     HS_Ctx *hsCtx = ctx->hsCtx;
-
+    HS_CleanMsg(ctx->hsCtx->hsMsg);
+    BSL_SAL_FREE(ctx->hsCtx->hsMsg);
     BSL_SAL_FREE(hsCtx->msgBuf);
 #if defined(HITLS_TLS_FEATURE_SESSION) || defined(HITLS_TLS_PROTO_TLS13)
     BSL_SAL_FREE(hsCtx->sessionId);

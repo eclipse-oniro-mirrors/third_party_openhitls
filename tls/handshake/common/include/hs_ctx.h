@@ -139,6 +139,8 @@ typedef struct {
 /* Used to pass the handshake context */
 struct HsCtx {
     HITLS_HandshakeState state;
+    HitlsProcessState readSubState;
+    HS_Msg *hsMsg;
     ExtensionFlag extFlag;
 #ifdef HITLS_TLS_PROTO_TLS13
     HITLS_HandshakeState ccsNextState;

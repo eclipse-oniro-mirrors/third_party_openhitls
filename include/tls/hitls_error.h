@@ -73,6 +73,21 @@ extern "C" {
  */
 #define HITLS_ERR_SYSCALL  6
 
+#define HITLS_WANT_BACKUP  7
+
+/**
+ * @ingroup hitls_errno
+ * @brief   The operation did not complete because an application callback set by
+ * HITLS_CFG_SetClientHelloCb() has asked to be called again.
+ */
+#define HITLS_WANT_CLIENT_HELLO_CB 8
+
+/**
+ * @ingroup hitls_errno
+ * @brief   The operation did not complete because an application callback set by
+ * HITLS_CFG_SetCertCb() has asked to be called again.
+ */
+#define HITLS_WANT_X509_LOOKUP 9
 /**
  * @ingroup hitls_errno
  *
@@ -336,8 +351,6 @@ typedef enum {
     HITLS_APP_ERR_ZERO_READ_BUF_LEN,               /**< The buffer size read by the APP cannot be 0. */
     HITLS_APP_ERR_WRITE_BAD_RETRY,                 /**< The addresses of the buffers sent twice are inconsistent. */
 
-    HITLS_CLIENT_HELLO_CHECK_ERROR,                /**< ClientHello callback detection failure. */
-
     HITLS_SESS_FAIL_START = 0x02100001,            /**< Session feature error code start bit. */
     HITLS_SESS_ERR_SESSION_ID_GENRATE,             /**< Session id output error. */
     HITLS_SESS_ERR_DECODE_TICKET,                  /**< Error decoding session ticket object. */
@@ -376,6 +389,13 @@ typedef enum {
     HITLS_CERT_SELF_ADAPT_INVALID_TIME,
     HITLS_CERT_SELF_ADAPT_UNSUPPORT_FORMAT,
     HITLS_CERT_SELF_ADAPT_BUILD_CERT_CHAIN_ERR,
+
+    HITLS_CALLBACK_CERT_RETRY = 0x02140001,            /**< Certificate callback retry. */
+    HITLS_CALLBACK_CERT_ERROR,                         /**< Certificate callback failure. */
+    HITLS_CALLBACK_CLIENT_HELLO_ERROR,                 /**< ClientHello callback failure. */
+    HITLS_CALLBACK_CLIENT_HELLO_RETRY,                 /**< ClientHello callback retry. */
+    HITLS_CALLBACK_CLIENT_HELLO_INVALID_CALL,          /**< Invalid use of HITLS_ClientHelloGet* function. */
+    HITLS_CALLBACK_CLIENT_HELLO_EXTENSION_NOT_FOUND,   /**< Extension not found. */
 } HITLS_ERROR;
 
 /**

@@ -56,19 +56,20 @@ static int32_t ParseSignatureAndHashAlgo(ParsePacket *pkt, CertificateRequestMsg
     }
 
     /* Parse the length of the signature algorithm */
-    msg->signatureAlgorithmsSize = signatureAndHashAlgLen / SINGLE_SIG_HASH_ALG_SIZE;
-    BSL_SAL_FREE(msg->signatureAlgorithms);
-    msg->signatureAlgorithms = (uint16_t *)BSL_SAL_Malloc(signatureAndHashAlgLen);
-    if (msg->signatureAlgorithms == NULL) {
+    pkt->ctx->peerInfo.signatureAlgorithmsSize = signatureAndHashAlgLen / SINGLE_SIG_HASH_ALG_SIZE;
+    BSL_SAL_FREE(pkt->ctx->peerInfo.signatureAlgorithms);
+    pkt->ctx->peerInfo.signatureAlgorithms = (uint16_t *)BSL_SAL_Malloc(signatureAndHashAlgLen);
+    if (pkt->ctx->peerInfo.signatureAlgorithms == NULL) {
         return ParseErrorProcess(pkt->ctx, HITLS_MEMALLOC_FAIL, BINLOG_ID15460,
             BINGLOG_STR("signatureAlgorithms malloc fail"), ALERT_UNKNOWN);
     }
     /* Extract the signature algorithm */
-    for (uint16_t index = 0u; index < msg->signatureAlgorithmsSize; index++) {
-        msg->signatureAlgorithms[index] = BSL_ByteToUint16(&pkt->buf[*pkt->bufOffset]);
+    for (uint16_t index = 0u; index < pkt->ctx->peerInfo.signatureAlgorithmsSize; index++) {
+        pkt->ctx->peerInfo.signatureAlgorithms[index] = BSL_ByteToUint16(&pkt->buf[*pkt->bufOffset]);
         *pkt->bufOffset += sizeof(uint16_t);
     }
-
+    msg->signatureAlgorithms = pkt->ctx->peerInfo.signatureAlgorithms;
+    msg->signatureAlgorithmsSize = pkt->ctx->peerInfo.signatureAlgorithmsSize;
     msg->haveSignatureAndHashAlgo = true;
     return HITLS_SUCCESS;
 }
@@ -193,8 +194,8 @@ static int32_t ParseDistinguishedName(ParsePacket *pkt, CertificateRequestMsg *m
     }
 
     if (distinguishedNamesLen > 0u) {
-        msg->caList = ParseDNList(&pkt->buf[*pkt->bufOffset], distinguishedNamesLen);
-        if (msg->caList == NULL) {
+        pkt->ctx->peerInfo.caList = ParseDNList(&pkt->buf[*pkt->bufOffset], distinguishedNamesLen);
+        if (pkt->ctx->peerInfo.caList == NULL) {
             return ParseErrorProcess(pkt->ctx, HITLS_PARSE_CA_LIST_ERR, BINLOG_ID16951,
                 BINGLOG_STR("ParseDNList fail"), ALERT_DECODE_ERROR);
         }
@@ -376,13 +377,10 @@ void CleanCertificateRequest(CertificateRequestMsg *msg)
     }
 
     BSL_SAL_FREE(msg->certTypes);
-    BSL_SAL_FREE(msg->signatureAlgorithms);
 #ifdef HITLS_TLS_PROTO_TLS13
     BSL_SAL_FREE(msg->certificateReqCtx);
     BSL_SAL_FREE(msg->signatureAlgorithmsCert);
 #endif /* HITLS_TLS_PROTO_TLS13 */
-    FreeDNList(msg->caList);
-    msg->caList = NULL;
     return;
 }
 #endif /* HITLS_TLS_HOST_CLIENT */

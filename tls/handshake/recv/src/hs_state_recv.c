@@ -91,7 +91,7 @@ static int32_t ProcessHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
             }
 #endif /* HITLS_TLS_PROTO_DTLS12 */
 #ifdef HITLS_TLS_PROTO_TLS_BASIC
-            return Tls12ServerRecvClientHelloProcess(ctx, hsMsg);
+            return Tls12ServerRecvClientHelloProcess(ctx, hsMsg, true);
 #else
             break;
 #endif /* HITLS_TLS_PROTO_TLS_BASIC only for tls13 */
@@ -278,8 +278,8 @@ static int32_t ReadThenParseTlsHsMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
         /* Session hash is needed to compute ems, the VERIFY_Append must be dealt with beforehand */
         ret = VERIFY_Append(hsCtx->verifyCtx, hsCtx->msgBuf, hsMsgInfo.headerAndBodyLen);
         if (ret != HITLS_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17031, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "VERIFY_Append fail", 0, 0, 0, 0);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17031, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "VERIFY_Append fail", 0,
+                                  0, 0, 0);
             HS_CleanMsg(hsMsg);
             return ret;
         }
@@ -296,17 +296,36 @@ static int32_t ReadThenParseTlsHsMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
 #ifdef HITLS_TLS_PROTO_TLS_BASIC
 static int32_t Tls12TryRecvHandShakeMsg(TLS_Ctx *ctx)
 {
+    int32_t ret = HITLS_SUCCESS;
     HS_Msg hsMsg = {0};
     (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
-
-    int32_t ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
-    if (ret != HITLS_SUCCESS) {
-        HS_CleanMsg(&hsMsg);
-        return ret;
+    if (ctx->hsCtx->hsMsg == NULL) {
+        ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
+        if (ret != HITLS_SUCCESS) {
+            HS_CleanMsg(&hsMsg);
+            return ret;
+        }
+        ctx->hsCtx->hsMsg = &hsMsg;
+        ctx->hsCtx->readSubState = TLS_PROCESS_STATE_A;
     }
-
-    ret = ProcessReceivedHandshakeMsg(ctx, &hsMsg);
-    HS_CleanMsg(&hsMsg);
+    ret = ProcessReceivedHandshakeMsg(ctx, ctx->hsCtx->hsMsg);
+    if (ret == HITLS_SUCCESS) {
+        HS_CleanMsg(ctx->hsCtx->hsMsg);
+        if (ctx->hsCtx->hsMsg != &hsMsg) {
+            BSL_SAL_FREE(ctx->hsCtx->hsMsg);
+        }
+        ctx->hsCtx->hsMsg = NULL;
+    }
+    if (ctx->hsCtx->hsMsg == &hsMsg) {
+        ctx->hsCtx->hsMsg = BSL_SAL_Dump(&hsMsg, sizeof(HS_Msg));
+        if (ctx->hsCtx->hsMsg == NULL) {
+            HS_CleanMsg(&hsMsg);
+            BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17357, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "hsMsg dump fail.", 0, 0,
+                                  0, 0);
+            return HITLS_MEMALLOC_FAIL;
+        }
+    }
 
     return ret;
 }
@@ -314,17 +333,36 @@ static int32_t Tls12TryRecvHandShakeMsg(TLS_Ctx *ctx)
 #ifdef HITLS_TLS_PROTO_TLS13
 static int32_t Tls13TryRecvHandShakeMsg(TLS_Ctx *ctx)
 {
+    int32_t ret = HITLS_SUCCESS;
     HS_Msg hsMsg = {0};
     (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
-
-    int32_t ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
-    if (ret != HITLS_SUCCESS) {
-        HS_CleanMsg(&hsMsg);
-        return ret;
+    if (ctx->hsCtx->hsMsg == NULL) {
+        ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
+        if (ret != HITLS_SUCCESS) {
+            HS_CleanMsg(&hsMsg);
+            return ret;
+        }
+        ctx->hsCtx->hsMsg = &hsMsg;
+        ctx->hsCtx->readSubState = TLS_PROCESS_STATE_A;
     }
-
-    ret = Tls13ProcessReceivedHandshakeMsg(ctx, &hsMsg);
-    HS_CleanMsg(&hsMsg);
+    ret = Tls13ProcessReceivedHandshakeMsg(ctx, ctx->hsCtx->hsMsg);
+    if (ret == HITLS_SUCCESS) {
+        HS_CleanMsg(ctx->hsCtx->hsMsg);
+        if (ctx->hsCtx->hsMsg != &hsMsg) {
+            BSL_SAL_FREE(ctx->hsCtx->hsMsg);
+        }
+        ctx->hsCtx->hsMsg = NULL;
+    }
+    if (ctx->hsCtx->hsMsg == &hsMsg) {
+        ctx->hsCtx->hsMsg = BSL_SAL_Dump(&hsMsg, sizeof(HS_Msg));
+        if (ctx->hsCtx->hsMsg == NULL) {
+            HS_CleanMsg(&hsMsg);
+            BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17358, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "hsMsg dump fail.", 0, 0,
+                                  0, 0);
+            return HITLS_MEMALLOC_FAIL;
+        }
+    }
 
     return ret;
 }
@@ -445,15 +483,10 @@ static int32_t ReadDtlsHsMessage(TLS_Ctx *ctx, HS_MsgInfo *hsMsgInfo)
     return ret;
 }
 
-static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
+static int32_t DtlsReadAndParseHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
 {
-    uint32_t dataLen = 0;
-    HS_Msg hsMsg = {0};
-    (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
     HS_MsgInfo hsMsgInfo = {0};
-
-    /* Read the message with the expected sequence number from the reassembly queue. If no message exists, read the
-     * message from the record layer */
+    uint32_t dataLen = 0;
     int32_t ret = HS_GetReassMsg(ctx, &hsMsgInfo, &dataLen);
     if (ret != HITLS_SUCCESS) {
         return ret;
@@ -488,7 +521,7 @@ static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
         }
     }
 
-    ret = DtlsCheckAndParseMsg(ctx, &hsMsgInfo, &hsMsg);
+    ret = DtlsCheckAndParseMsg(ctx, &hsMsgInfo, hsMsg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -498,18 +531,49 @@ static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
         /* Session hash is needed to compute ems, the VERIFY_Append must be dealt with beforehand */
         ret = VERIFY_Append(ctx->hsCtx->verifyCtx, buf, dataLen);
         if (ret != HITLS_SUCCESS) {
-            HS_CleanMsg(&hsMsg);
+            HS_CleanMsg(hsMsg);
             return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17036, "VERIFY_Append fail");
         }
     }
+    ctx->hsCtx->hsMsg = hsMsg;
 #ifdef HITLS_TLS_FEATURE_INDICATOR
-    INDICATOR_MessageIndicate(0, HS_GetVersion(ctx), REC_TYPE_HANDSHAKE, hsMsgInfo.rawMsg, hsMsgInfo.headerAndBodyLen,
-        ctx, ctx->config.tlsConfig.msgArg);
-    INDICATOR_StatusIndicate(ctx, ctx->isClient ? INDICATE_EVENT_STATE_CONNECT_LOOP : INDICATE_EVENT_STATE_ACCEPT_LOOP,
-        INDICATE_VALUE_SUCCESS);
+        INDICATOR_MessageIndicate(0, HS_GetVersion(ctx), REC_TYPE_HANDSHAKE, hsMsgInfo.rawMsg,
+                                  hsMsgInfo.length, ctx, ctx->config.tlsConfig.msgArg);
 #endif /* HITLS_TLS_FEATURE_INDICATOR */
-    ret = ProcessReceivedHandshakeMsg(ctx, &hsMsg);
-    HS_CleanMsg(&hsMsg);
+    return HITLS_SUCCESS;
+}
+
+static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
+{
+    int32_t ret = HITLS_SUCCESS;
+    HS_Msg hsMsg = {0};
+    (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
+    if (ctx->hsCtx->hsMsg == NULL) {
+        ret = DtlsReadAndParseHandshakeMsg(ctx, &hsMsg);
+        if (ret != HITLS_SUCCESS || ctx->hsCtx->hsMsg == NULL) {
+            return ret;
+        }
+        ctx->hsCtx->readSubState = TLS_PROCESS_STATE_A;
+    }
+
+    ret = ProcessReceivedHandshakeMsg(ctx, ctx->hsCtx->hsMsg);
+    if (ret == HITLS_SUCCESS) {
+        HS_CleanMsg(ctx->hsCtx->hsMsg);
+        if (ctx->hsCtx->hsMsg != &hsMsg) {
+            BSL_SAL_FREE(ctx->hsCtx->hsMsg);
+        }
+        ctx->hsCtx->hsMsg = NULL;
+    }
+    if (ctx->hsCtx->hsMsg == &hsMsg) {
+        ctx->hsCtx->hsMsg = BSL_SAL_Dump(&hsMsg, sizeof(HS_Msg));
+        if (ctx->hsCtx->hsMsg == NULL) {
+            HS_CleanMsg(&hsMsg);
+            BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17359, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "hsMsg dump fail.", 0, 0,
+                                  0, 0);
+            return HITLS_MEMALLOC_FAIL;
+        }
+    }
     return ret;
 }
 #endif

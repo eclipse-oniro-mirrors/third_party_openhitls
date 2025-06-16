@@ -3911,6 +3911,7 @@ static int32_t STUB_ChangeState(TLS_Ctx *ctx, uint32_t nextState)
     int32_t ret = HITLS_SUCCESS;
     if (HS_STATE_BUTT == nextState) {
         if (true == ctx->isClient) {
+            ctx->hsCtx->hsMsg = NULL;
             ret = HITLS_REC_NORMAL_RECV_BUF_EMPTY;
         }
     }

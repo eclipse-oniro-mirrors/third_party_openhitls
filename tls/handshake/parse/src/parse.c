@@ -27,6 +27,8 @@
 #include "hs_common.h"
 #include "parse_msg.h"
 #include "parse_common.h"
+#include "hs_extensions.h"
+#include "parse_extensions.h"
 #ifdef HITLS_TLS_FEATURE_INDICATOR
 #include "indicator.h"
 #endif /* HITLS_TLS_FEATURE_INDICATOR */
@@ -473,3 +475,127 @@ void HS_CleanMsg(HS_Msg *hsMsg)
         "clean unsupport handshake msg type[%d].", hsMsg->type, 0, 0, 0);
     return;
 }
+#ifdef HITLS_TLS_FEATURE_CLIENT_HELLO_CB
+int32_t HITLS_ClientHelloGetLegacyVersion(HITLS_Ctx *ctx, uint16_t *version)
+{
+    if (ctx == NULL || version == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    if (ctx->hsCtx == NULL || ctx->hsCtx->hsMsg == NULL || ctx->hsCtx->hsMsg->type != CLIENT_HELLO) {
+        return HITLS_CALLBACK_CLIENT_HELLO_INVALID_CALL;
+    }
+    *version = ctx->hsCtx->hsMsg->body.clientHello.version;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_ClientHelloGetRandom(HITLS_Ctx *ctx, uint8_t **out, uint8_t *outlen)
+{
+    if (ctx == NULL || out == NULL || outlen == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    if (ctx->hsCtx == NULL || ctx->hsCtx->hsMsg == NULL || ctx->hsCtx->hsMsg->type != CLIENT_HELLO) {
+        return HITLS_CALLBACK_CLIENT_HELLO_INVALID_CALL;
+    }
+    *out = ctx->hsCtx->hsMsg->body.clientHello.randomValue;
+    *outlen = RANDOM_SIZE;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_ClientHelloGetSessionID(HITLS_Ctx *ctx, uint8_t **out, uint8_t *outlen)
+{
+    if (ctx == NULL || out == NULL || outlen == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    if (ctx->hsCtx == NULL || ctx->hsCtx->hsMsg == NULL || ctx->hsCtx->hsMsg->type != CLIENT_HELLO) {
+        return HITLS_CALLBACK_CLIENT_HELLO_INVALID_CALL;
+    }
+    *out = ctx->hsCtx->hsMsg->body.clientHello.sessionId;
+    *outlen = ctx->hsCtx->hsMsg->body.clientHello.sessionIdSize;
+    
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_ClientHelloGetCiphers(HITLS_Ctx *ctx, uint16_t **out, uint16_t *outlen)
+{
+    if (ctx == NULL || out == NULL || outlen == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    if (ctx->hsCtx == NULL || ctx->hsCtx->hsMsg == NULL || ctx->hsCtx->hsMsg->type != CLIENT_HELLO) {
+        return HITLS_CALLBACK_CLIENT_HELLO_INVALID_CALL;
+    }
+    *out = ctx->hsCtx->hsMsg->body.clientHello.cipherSuites;
+    *outlen = ctx->hsCtx->hsMsg->body.clientHello.cipherSuitesSize;
+    
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_ClientHelloGetExtensionsPresent(HITLS_Ctx *ctx, uint16_t **out, uint8_t *outlen)
+{
+    if (ctx == NULL || out == NULL || outlen == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    if (ctx->hsCtx == NULL || ctx->hsCtx->hsMsg == NULL || ctx->hsCtx->hsMsg->type != CLIENT_HELLO) {
+        return HITLS_CALLBACK_CLIENT_HELLO_INVALID_CALL;
+    }
+    uint32_t bufOffset = 0u;
+    uint8_t *buf = ctx->hsCtx->hsMsg->body.clientHello.extensionBuff;
+    uint32_t bufLen = ctx->hsCtx->hsMsg->body.clientHello.extensionBuffLen;
+    uint16_t *extPresent = BSL_SAL_Malloc(ctx->hsCtx->hsMsg->body.clientHello.extensionCount * sizeof(uint16_t));
+    if (extPresent == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17355, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "malloc extPresent fail.", 0, 0, 0, 0);
+        return HITLS_MEMALLOC_FAIL;
+    }
+    int32_t ret;
+    uint32_t extPresentCount = 0;
+    while (bufOffset < bufLen) {
+        uint16_t extMsgType = HS_EX_TYPE_END;
+        uint32_t extMsgLen = 0u;
+        ret = ParseExHeader(ctx, &buf[bufOffset], bufLen - bufOffset, &extMsgType, &extMsgLen);
+        if (ret != HITLS_SUCCESS) {
+            BSL_SAL_FREE(extPresent);
+            return ret;
+        }
+        bufOffset += HS_EX_HEADER_LEN;
+        extPresent[extPresentCount++] = extMsgType;
+        bufOffset += extMsgLen;
+    }
+
+    *out = extPresent;
+    *outlen = ctx->hsCtx->hsMsg->body.clientHello.extensionCount;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_ClientHelloGetExtension(HITLS_Ctx *ctx, uint16_t type, uint8_t **out, uint32_t *outlen)
+{
+    if (ctx == NULL || out == NULL || outlen == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    if (ctx->hsCtx == NULL || ctx->hsCtx->hsMsg == NULL || ctx->hsCtx->hsMsg->type != CLIENT_HELLO) {
+        return HITLS_CALLBACK_CLIENT_HELLO_INVALID_CALL;
+    }
+    uint32_t bufOffset = 0u;
+    uint8_t *buf = ctx->hsCtx->hsMsg->body.clientHello.extensionBuff;
+    uint32_t bufLen = ctx->hsCtx->hsMsg->body.clientHello.extensionBuffLen;
+    int32_t ret;
+    while (bufOffset < bufLen) {
+        uint16_t extMsgType = HS_EX_TYPE_END;
+        uint32_t extMsgLen = 0u;
+        ret = ParseExHeader(ctx, &buf[bufOffset], bufLen - bufOffset, &extMsgType, &extMsgLen);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+        bufOffset += HS_EX_HEADER_LEN;
+        if (extMsgType != type) {
+            /* If the extension type is not the one we are looking for, skip it */
+            bufOffset += extMsgLen;
+            continue;
+        }
+        *out = &buf[bufOffset];
+        *outlen = extMsgLen;
+        return HITLS_SUCCESS;
+    }
+    return HITLS_CALLBACK_CLIENT_HELLO_EXTENSION_NOT_FOUND;
+}
+#endif /* HITLS_TLS_FEATURE_CLIENT_HELLO_CB */

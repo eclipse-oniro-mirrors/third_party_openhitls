@@ -115,6 +115,7 @@ static void CleanPeerInfo(PeerInfo *peerInfo)
     BSL_SAL_FREE(peerInfo->groups);
     BSL_SAL_FREE(peerInfo->cipherSuites);
     BSL_LIST_FREE(peerInfo->caList, CaListNodeDestroy);
+    BSL_SAL_FREE(peerInfo->signatureAlgorithms);
 }
 
 #if defined(HITLS_TLS_EXTENSION_COOKIE) || defined(HITLS_TLS_FEATURE_ALPN)
@@ -719,3 +720,14 @@ int32_t HITLS_LogSecret(HITLS_Ctx *ctx, const char *label, const uint8_t *secret
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_MAINTAIN_KEYLOG */
+
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+int32_t HITLS_SetCertCb(HITLS_Ctx *ctx, HITLS_CertCb certCb, void *arg)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_SetCertCb(&(ctx->config.tlsConfig), certCb, arg);
+}
+#endif /* HITLS_TLS_FEATURE_CERT_CB */

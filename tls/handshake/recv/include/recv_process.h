@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-int32_t Tls12ServerRecvClientHelloProcess(TLS_Ctx *ctx, const HS_Msg *msg);
+int32_t Tls12ServerRecvClientHelloProcess(TLS_Ctx *ctx, const HS_Msg *msg, bool isNeedClientHelloCb);
 
 /**
  * @brief   Server processes DTLS client hello message
@@ -264,6 +264,7 @@ int32_t Tls13ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg);
  */
 int32_t Tls13ServerRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg);
 
+int32_t ProcessCertCallback(TLS_Ctx *ctx);
 #ifdef __cplusplus
 }
 #endif /* end __cplusplus */

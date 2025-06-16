@@ -140,7 +140,8 @@ typedef enum {
 #define HITLS_READING              3u
 #define HITLS_ASYNC_PAUSED         4u
 #define HITLS_ASYNC_NO_JOBS        5u
-
+#define HITLS_CLIENT_HELLO_CB      6u
+#define HITLS_X509_LOOKUP          7u
 #define HITLS_CC_READ  0x001u       /* Read state */
 #define HITLS_CC_WRITE 0x002u       /* Write status */
 

@@ -159,6 +159,10 @@ CERT_MgrCtx *SAL_CERT_MgrCtxDup(CERT_MgrCtx *mgrCtx)
 
     newCtx->libCtx = LIBCTX_FROM_CERT_MGR_CTX(mgrCtx);
     newCtx->attrName = ATTRIBUTE_FROM_CERT_MGR_CTX(mgrCtx);
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+    newCtx->certCb = mgrCtx->certCb;
+    newCtx->certCbArg = mgrCtx->certCbArg;
+#endif /* HITLS_TLS_FEATURE_CERT_CB */
     return newCtx;
 }
 
