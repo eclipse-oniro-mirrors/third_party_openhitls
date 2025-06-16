@@ -88,6 +88,8 @@ typedef enum {
     CERT_KEY_CTRL_IS_KEY_CERT_SIGN_USAGE,     /**< Is the certificate issuing permission. */
     CERT_KEY_CTRL_IS_KEY_AGREEMENT_USAGE,     /**< Is it the certificate verification permission. */
     CERT_KEY_CTRL_GET_PARAM_ID,               /**< Obtain the parameter ID. */
+    CERT_KEY_CTRL_IS_DATA_ENC_USAGE,          /**< Is it the data encryption permission. */
+    CERT_KEY_CTRL_IS_NON_REPUDIATION_USAGE,   /**< Is it the non-repudiation permission. */
 
     CERT_CTRL_BUTT,
 } HITLS_CERT_CtrlCmd;

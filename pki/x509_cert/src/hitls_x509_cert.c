@@ -468,17 +468,6 @@ int32_t HITLS_X509_CertParseBundleFile(int32_t format, const char *path, HITLS_X
 #endif // HITLS_BSL_SAL_FILE
 #endif // HITLS_PKI_X509_CRT_PARSE
 
-static int32_t X509_KeyUsageCheck(HITLS_X509_Cert *cert, bool *val, uint32_t valLen, uint64_t exp)
-{
-    if (val == NULL || valLen != sizeof(bool)) {
-        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
-        return HITLS_X509_ERR_INVALID_PARAM;
-    }
-    HITLS_X509_CertExt *certExt = (HITLS_X509_CertExt *)cert->tbs.ext.extData;
-    *val = (certExt->keyUsage & exp);
-    return HITLS_PKI_SUCCESS;
-}
-
 #ifdef HITLS_PKI_INFO
 /* RFC2253 https://www.rfc-editor.org/rfc/rfc2253 */
 static int32_t GetDistinguishNameStrFromList(BSL_ASN1_List *nameList, BSL_Buffer *buff)
@@ -759,23 +748,6 @@ static int32_t X509_CertSetCtrl(HITLS_X509_Cert *cert, int32_t cmd, void *val, u
 }
 #endif // HITLS_PKI_X509_CRT_GEN
 
-static int32_t X509_CertExtCtrl(HITLS_X509_Cert *cert, int32_t cmd, void *val, uint32_t valLen)
-{
-    switch (cmd) {
-        case HITLS_X509_EXT_KU_DIGITALSIGN:
-            return X509_KeyUsageCheck(cert, val, valLen, HITLS_X509_EXT_KU_DIGITAL_SIGN);
-        case HITLS_X509_EXT_KU_CERTSIGN:
-            return X509_KeyUsageCheck(cert, val, valLen, HITLS_X509_EXT_KU_KEY_CERT_SIGN);
-        case HITLS_X509_EXT_KU_KEYAGREEMENT:
-            return X509_KeyUsageCheck(cert, val, valLen, HITLS_X509_EXT_KU_KEY_AGREEMENT);
-        case HITLS_X509_EXT_KU_KEYENC:
-            return X509_KeyUsageCheck(cert, val, valLen, HITLS_X509_EXT_KU_KEY_ENCIPHERMENT);
-        default:
-            BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
-            return HITLS_X509_ERR_INVALID_PARAM;
-    }
-}
-
 int32_t HITLS_X509_CertCtrl(HITLS_X509_Cert *cert, int32_t cmd, void *val, uint32_t valLen)
 {
     if (cert == NULL) {
@@ -787,16 +759,13 @@ int32_t HITLS_X509_CertCtrl(HITLS_X509_Cert *cert, int32_t cmd, void *val, uint3
     } else if (cmd >= HITLS_X509_GET_ENCODELEN && cmd < HITLS_X509_SET_VERSION) {
         return X509_CertGetCtrl(cert, cmd, val, valLen);
 #ifdef HITLS_PKI_X509_CRT_GEN
-    } else if (cmd >= HITLS_X509_SET_VERSION && cmd < HITLS_X509_EXT_KU_KEYENC) {
+    } else if (cmd >= HITLS_X509_SET_VERSION && cmd < HITLS_X509_EXT_SET_SKI) {
         return X509_CertSetCtrl(cert, cmd, val, valLen);
 #endif
-    } else if (cmd >= HITLS_X509_EXT_KU_KEYENC && cmd < HITLS_X509_EXT_SET_SKI) {
-        return X509_CertExtCtrl(cert, cmd, val, valLen);
     } else if (cmd <= HITLS_X509_EXT_CHECK_SKI) {
         static int32_t cmdSet[] = {HITLS_X509_EXT_SET_SKI, HITLS_X509_EXT_SET_AKI, HITLS_X509_EXT_SET_KUSAGE,
             HITLS_X509_EXT_SET_SAN, HITLS_X509_EXT_SET_BCONS, HITLS_X509_EXT_SET_EXKUSAGE, HITLS_X509_EXT_GET_SKI,
-            HITLS_X509_EXT_GET_AKI, HITLS_X509_EXT_CHECK_SKI, HITLS_X509_EXT_KU_KEYENC, HITLS_X509_EXT_KU_DIGITALSIGN,
-            HITLS_X509_EXT_KU_CERTSIGN, HITLS_X509_EXT_KU_KEYAGREEMENT};
+            HITLS_X509_EXT_GET_AKI, HITLS_X509_EXT_CHECK_SKI, HITLS_X509_EXT_GET_KUSAGE};
         if (!X509_CheckCmdValid(cmdSet, sizeof(cmdSet) / sizeof(int32_t), cmd)) {
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_EXT_UNSUPPORT);
             return HITLS_X509_ERR_EXT_UNSUPPORT;

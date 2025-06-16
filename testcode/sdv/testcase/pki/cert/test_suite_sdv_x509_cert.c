@@ -415,9 +415,10 @@ EXIT:
 
 /* BEGIN_CASE */
 void SDV_X509_CERT_CTRL_FUNC_TC001(char *path, int expRawDataLen, int expSignAlg, int expSignMdAlg,
-    int expKuDigitailSign, int expKuCertSign, int expKuKeyAgreement)
+    int expKuDigitailSign, int expKuCertSign, int expKuKeyAgreement, int expKeyUsage)
 {
     HITLS_X509_Cert *cert = NULL;
+    uint32_t keyUsage = 0;
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, path, &cert), HITLS_PKI_SUCCESS);
     int32_t rawDataLen;
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_GET_ENCODELEN, &rawDataLen, sizeof(rawDataLen)), HITLS_PKI_SUCCESS);
@@ -445,15 +446,13 @@ void SDV_X509_CERT_CTRL_FUNC_TC001(char *path, int expRawDataLen, int expSignAlg
     ASSERT_EQ(ref, 2);
     HITLS_X509_CertFree(cert);
 
-    bool isTrue = false;
-    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_KU_DIGITALSIGN, &isTrue, sizeof(isTrue)), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(isTrue, expKuDigitailSign);
-
-    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_KU_CERTSIGN, &isTrue, sizeof(isTrue)), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(isTrue, expKuCertSign);
-
-    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_KU_KEYAGREEMENT, &isTrue, sizeof(isTrue)), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(isTrue, expKuKeyAgreement);
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_GET_KUSAGE, &keyUsage, sizeof(keyUsage)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(keyUsage, expKeyUsage);
+    if (expKeyUsage != HITLS_X509_EXT_KU_NONE) {
+        ASSERT_EQ((keyUsage & HITLS_X509_EXT_KU_DIGITAL_SIGN) != 0, expKuDigitailSign);
+        ASSERT_EQ((keyUsage & HITLS_X509_EXT_KU_KEY_CERT_SIGN) != 0, expKuCertSign);
+        ASSERT_EQ((keyUsage & HITLS_X509_EXT_KU_KEY_AGREEMENT) != 0, expKuKeyAgreement);
+    }
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -527,8 +526,9 @@ EXIT:
 
 /* BEGIN_CASE */
 void SDV_X509_CERT_DUP_FUNC_TC001(char *path, int expSignAlg,
-    int expKuDigitailSign, int expKuCertSign, int expKuKeyAgreement)
+    int expKuDigitailSign, int expKuCertSign, int expKuKeyAgreement, int expKeyUsage)
 {
+    uint32_t keyUsage = 0;
     HITLS_X509_Cert *cert = NULL;
     HITLS_X509_Cert *dest = NULL;
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, path, &cert), HITLS_PKI_SUCCESS);
@@ -540,15 +540,13 @@ void SDV_X509_CERT_DUP_FUNC_TC001(char *path, int expSignAlg,
     ASSERT_EQ(HITLS_X509_CertCtrl(dest, HITLS_X509_GET_SIGNALG, &alg, sizeof(alg)), HITLS_PKI_SUCCESS);
     ASSERT_EQ(alg, expSignAlg);
 
-    bool isTrue = false;
-    ASSERT_EQ(HITLS_X509_CertCtrl(dest, HITLS_X509_EXT_KU_DIGITALSIGN, &isTrue, sizeof(isTrue)), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(isTrue, expKuDigitailSign);
-
-    ASSERT_EQ(HITLS_X509_CertCtrl(dest, HITLS_X509_EXT_KU_CERTSIGN, &isTrue, sizeof(isTrue)), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(isTrue, expKuCertSign);
-
-    ASSERT_EQ(HITLS_X509_CertCtrl(dest, HITLS_X509_EXT_KU_KEYAGREEMENT, &isTrue, sizeof(isTrue)), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(isTrue, expKuKeyAgreement);
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_GET_KUSAGE, &keyUsage, sizeof(keyUsage)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(keyUsage, expKeyUsage);
+    if (expKeyUsage != HITLS_X509_EXT_KU_NONE) {
+        ASSERT_EQ((keyUsage & HITLS_X509_EXT_KU_DIGITAL_SIGN) != 0, expKuDigitailSign);
+        ASSERT_EQ((keyUsage & HITLS_X509_EXT_KU_KEY_CERT_SIGN) != 0, expKuCertSign);
+        ASSERT_EQ((keyUsage & HITLS_X509_EXT_KU_KEY_AGREEMENT) != 0, expKuKeyAgreement);
+    }
 
 EXIT:
     HITLS_X509_CertFree(cert);

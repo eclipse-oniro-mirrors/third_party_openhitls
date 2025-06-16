@@ -46,6 +46,8 @@ typedef void HITLS_PKI_LibCtx;
 #define HITLS_X509_EXT_KU_ENCIPHER_ONLY         0x0001
 #define HITLS_X509_EXT_KU_DECIPHER_ONLY         0x8000
 
+#define HITLS_X509_EXT_KU_NONE                  0xFFFF /* No Key Usage extension. */
+
 typedef enum {
     HITLS_X509_REF_UP = 0,             /** Increase the reference count of the object */
 
@@ -80,11 +82,6 @@ typedef enum {
     HITLS_X509_ADD_SUBJECT_NAME,       /** Add the subject name for the cert/csr. */
     HITLS_X509_CRL_ADD_REVOKED_CERT,   /** Add the revoke cert to crl. */
 
-    HITLS_X509_EXT_KU_KEYENC = 0x0300,          /** Check if key encipherment usage is set in key usage extension */
-    HITLS_X509_EXT_KU_DIGITALSIGN,              /** Check if digital signature usage is set in key usage extension */
-    HITLS_X509_EXT_KU_CERTSIGN,                 /** Check if certificate signing usage is set in key usage extension */
-    HITLS_X509_EXT_KU_KEYAGREEMENT,             /** Check if key agreement usage is set in key usage extension */
-
     HITLS_X509_EXT_SET_SKI = 0x0400,            /** Set the subject key identifier extension. */
     HITLS_X509_EXT_SET_AKI,                     /** Set the authority key identifier extension. */
     HITLS_X509_EXT_SET_KUSAGE,                  /** Set the key usage extension. */
@@ -97,6 +94,8 @@ typedef enum {
                                                     Note: Kid is a shallow copy. */
     HITLS_X509_EXT_GET_CRLNUMBER,               /** get the crlnumber form the crl. */
     HITLS_X509_EXT_GET_AKI,                     /** get the Authority Key Identifier form the crl/cert/csr. */
+    HITLS_X509_EXT_GET_KUSAGE,                  /** get the key usage form the crl/cert/csr.
+                                                    Note: If key usage is not set, return 0xffff. */
 
     HITLS_X509_EXT_CHECK_SKI = 0x0600,          /** Check if ski is exists. */
 
