@@ -36,9 +36,11 @@
 #ifdef HITLS_TLS_PROTO_TLS
 static int32_t TlsSendHandShakeMsg(TLS_Ctx *ctx)
 {
-    int32_t ret = HITLS_SUCCESS;
     HS_Ctx *hsCtx = (HS_Ctx *)ctx->hsCtx;
-
+    int32_t ret = REC_RecBufReSet(ctx);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
     uint32_t maxRecPayloadLen = 0;
     ret = REC_GetMaxWriteSize(ctx, &maxRecPayloadLen);
     if (ret != HITLS_SUCCESS) {

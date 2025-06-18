@@ -27,8 +27,8 @@
 #include "uio_base.h"
 #include "uio_abstraction.h"
 
-#define IPV4_WITH_UDP_HEADER_LEN 28
-#define IPV6_WITH_UDP_HEADER_LEN 48
+#define IPV4_WITH_UDP_HEADER_LEN 28                     /* IPv4 protocol header 20 + UDP header 8 */
+#define IPV6_WITH_UDP_HEADER_LEN 48                     /* IPv6 protocol header 40 + UDP header 8 */
 
 typedef struct {
     BSL_SAL_SockAddr peer;
@@ -285,12 +285,11 @@ static int32_t UdpSocketWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint3
     int32_t sendBytes = 0;
     int32_t fd = BSL_UIO_GetFd(uio);
     UdpParameters *ctx = (UdpParameters *)BSL_UIO_GetCtx(uio);
-    ctx->sysErrno = 0;
     if (ctx == NULL || fd < 0) {
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
         return BSL_UIO_IO_EXCEPTION;
     }
-
+    ctx->sysErrno = 0;
     uint32_t peerAddrSize = SAL_SockAddrSize(ctx->peer);
     if (ctx->connected == 1) {
         sendBytes = SAL_Write(fd, buf, len, &err);

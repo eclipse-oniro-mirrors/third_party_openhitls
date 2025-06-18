@@ -2903,3 +2903,57 @@ EXIT:
     FRAME_FreeLink(server);
 }
 /* END_CASE */
+
+/* @
+* @test UT_TLS_DTLS_CONSISTENCY_RETANSIMATE_TC001
+* @spec -
+* @title When testing the behavior of the client preparing to receive messages, querying the remaining timeout time,
+            selecting whether to sleep, and then retransmitting the message
+* @precon nan
+* @brief 1. Use the default configuration items to configure the client and server. Expected result 1.
+* 2. Stop the client in the TRY1 RECV_SERVER HELLO or TRY1 RECV_FINISH state. Expected result 2.
+* 3. Obtain the remaining timeout period. Expected result 3.
+* 4. Choose sleep mode and then resend the message. Expected result 4.
+* 5. Do not sleep, and then retransmit the message. Expected result 5.
+* @expect 1. The initialization is successful.
+* 2. return success.
+* 3. return success.
+* 4. expecting the message to be successfully retransmit.
+* 5. expecting to return HITLS_MSG_HANDLE_DTLS_RETRANSMIT_NOT_TIMEOUT.
+* @prior Level 1
+* @auto TRUE
+@ */
+/* BEGIN_CASE */
+void UT_TLS_DTLS_CONSISTENCY_RETANSIMATE_TC001(int isNeedSleep, int clientState)
+{
+    FRAME_Init();
+    HITLS_Config *tlsConfig = HITLS_CFG_NewDTLS12Config();
+    tlsConfig->isSupportRenegotiation = true;
+    ASSERT_TRUE(tlsConfig != NULL);
+    FRAME_LinkObj *client = FRAME_CreateLink(tlsConfig, BSL_UIO_UDP);
+    FRAME_LinkObj *server = FRAME_CreateLink(tlsConfig, BSL_UIO_UDP);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_TRUE(server != NULL);
+    ASSERT_TRUE(FRAME_CreateConnection(client, server, true, clientState) == HITLS_SUCCESS);
+    uint64_t timeout = 0;
+    int32_t ret = HITLS_DtlsGetTimeout(client->ssl, &timeout);
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+    if (isNeedSleep) {
+        usleep(timeout);
+        ret = HITLS_DtlsProcessTimeout(client->ssl);
+        // When there are multiple messages, retransmission will be blocked, so it will be busy.
+        // If there is only one message, it will be successfully sent.
+        if (ret == HITLS_REC_NORMAL_IO_BUSY) {
+            ret = FRAME_TrasferMsgBetweenLink(client, server);
+        }
+        ASSERT_EQ(ret, HITLS_SUCCESS);
+    } else {
+        ret = HITLS_DtlsProcessTimeout(client->ssl);
+        ASSERT_TRUE(ret == HITLS_MSG_HANDLE_DTLS_RETRANSMIT_NOT_TIMEOUT);
+    }
+EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */

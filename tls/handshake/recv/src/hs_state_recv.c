@@ -373,27 +373,11 @@ static int32_t DtlsCheckTimeoutAndProcess(TLS_Ctx *ctx, int32_t retValue)
 {
     (void)ctx;
 #ifdef HITLS_BSL_UIO_UDP
-    bool isTimeout = false;
-    int32_t ret = HS_IsTimeout(ctx, &isTimeout);
-    if (ret != HITLS_SUCCESS) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17032, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "HS_IsTimeout fail", 0, 0, 0, 0);
+    int32_t ret = HITLS_DtlsProcessTimeout(ctx);
+    if (ret != HITLS_SUCCESS && ret != HITLS_MSG_HANDLE_DTLS_RETRANSMIT_NOT_TIMEOUT) {
         return ret;
     }
-
-    if (isTimeout) {
-        /* Receive the message of the last flight when the receiving times out */
-        ret = REC_RetransmitListFlush(ctx);
-        if (ret != HITLS_SUCCESS) {
-            return ret;
-        }
-
-        ret = HS_TimeoutProcess(ctx);
-        if (ret != HITLS_SUCCESS) {
-            return ret;
-        }
-    }
-#endif /* HITLS_BSL_UIO_UDP */
+#endif
     /* HITLS_REC_NORMAL_RECV_BUF_EMPTY is returned here, and the choice is given to the user instead of the next read,
      * Prevents users from waiting for a long time due to long timeout. */
     return retValue;

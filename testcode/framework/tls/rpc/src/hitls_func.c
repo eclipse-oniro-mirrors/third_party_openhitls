@@ -818,15 +818,18 @@ int HitlsSetSsl(void *ssl, HLT_Ssl_Config *sslConfig)
 void *HitlsAccept(void *ssl)
 {
     static int ret;
-    int tryNum = 0;
+    int timeout = TIME_OUT_SEC;
+    if (getenv("SSL_TIMEOUT") != NULL) {
+        timeout = atoi(getenv("SSL_TIMEOUT"));
+    }
+    time_t start = time(NULL);
     LOG_DEBUG("HiTLS Tls Accept Ing...");
     do {
         ret = HITLS_Accept(ssl);
         usleep(1000); // stay 1000us
-        tryNum++;
     } while ((ret == HITLS_REC_NORMAL_RECV_BUF_EMPTY || ret == HITLS_REC_NORMAL_IO_BUSY ||
             ret == HITLS_CALLBACK_CLIENT_HELLO_RETRY || ret == HITLS_CALLBACK_CERT_RETRY) &&
-            (tryNum < FUNC_TIME_OUT_SEC * 1000)); // usleep(1000) after each attemp.
+            ((time(NULL) - start < timeout))); // usleep(1000) after each attemp.
     if (ret != SUCCESS) {
         LOG_ERROR("HITLS_Accept Error is %d", ret);
     } else {
@@ -837,16 +840,19 @@ void *HitlsAccept(void *ssl)
 
 int HitlsConnect(void *ssl)
 {
-    int ret, tryNum;
-    tryNum = 0;
+    int ret;
+    int timeout = TIME_OUT_SEC;
+    if (getenv("SSL_TIMEOUT") != NULL) {
+        timeout = atoi(getenv("SSL_TIMEOUT"));
+    }
+    time_t start = time(NULL);
     LOG_DEBUG("HiTLS Tls Connect Ing...");
     do {
         ret = HITLS_Connect(ssl);
         usleep(1000); // stay 1000us
-        tryNum++;
     } while ((ret == HITLS_REC_NORMAL_RECV_BUF_EMPTY || ret == HITLS_REC_NORMAL_IO_BUSY ||
             ret == HITLS_CALLBACK_CERT_RETRY) &&
-            (tryNum < FUNC_TIME_OUT_SEC * 1000)); // usleep(1000) after each attemp.
+            ((time(NULL) - start < timeout))); // usleep(1000) after each attemp.
     if (ret != SUCCESS) {
         LOG_ERROR("HITLS_Connect Error is %d", ret);
     } else {
@@ -857,33 +863,39 @@ int HitlsConnect(void *ssl)
 
 int HitlsWrite(void *ssl, uint8_t *data, uint32_t dataLen)
 {
-    int ret, tryNum;
+    int ret;
+    int timeout = 4;
+    if (getenv("SSL_TIMEOUT") != NULL) {
+        timeout = atoi(getenv("SSL_TIMEOUT"));
+    }
+    time_t start = time(NULL);
     LOG_DEBUG("HiTLS Write Ing...");
-    tryNum = 0;
     uint32_t len = 0;
     do {
         ret = HITLS_Write(ssl, data, dataLen, &len);
-        tryNum++;
         usleep(1000); // stay 1000us
     } while ((ret == HITLS_REC_NORMAL_RECV_BUF_EMPTY ||
             ret == HITLS_REC_NORMAL_IO_BUSY) &&
-            (tryNum < 4000)); // A maximum of 4000 calls
+            (time(NULL) - start < timeout)); // A maximum of 4000 calls
     LOG_DEBUG("HiTLS Write Result is %d", ret);
     return ret;
 }
 
 int HitlsRead(void *ssl, uint8_t *data, uint32_t bufSize, uint32_t *readLen)
 {
-    int ret, tryNum;
+    int ret;
+    int timeout = 8;
+    if (getenv("SSL_TIMEOUT") != NULL) {
+        timeout = atoi(getenv("SSL_TIMEOUT"));
+    }
+    time_t start = time(NULL);
     LOG_DEBUG("HiTLS Read Ing...");
-    tryNum = 0;
     do {
         ret = HITLS_Read(ssl, data, bufSize, readLen);
-        tryNum++;
         usleep(1000); // stay 1000us
     } while ((ret == HITLS_REC_NORMAL_RECV_BUF_EMPTY || ret == HITLS_REC_NORMAL_IO_BUSY ||
             ret == HITLS_CALLBACK_CERT_RETRY) &&
-            (tryNum < 8000)); // A maximum of 4000 calls
+            ((time(NULL) - start < timeout))); // A maximum of 8000 calls
     LOG_DEBUG("HiTLS Read Result is %d", ret);
     return ret;
 }

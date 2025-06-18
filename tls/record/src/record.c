@@ -82,12 +82,13 @@ static uint32_t RecGetWriteBufferSize(const TLS_Ctx *ctx)
     uint32_t recSize = RecGetDefaultBufferSize(IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask), false);
     uint32_t maxSendFragment =
 #ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+    (uint32_t)ctx->config.tlsConfig.maxSendFragment == 0 ? REC_MAX_PLAIN_TEXT_LENGTH :
     (uint32_t)ctx->config.tlsConfig.maxSendFragment;
 #else
     REC_MAX_PLAIN_TEXT_LENGTH;
 #endif
     recSize -= REC_MAX_PLAIN_TEXT_LENGTH - maxSendFragment;
-    if (ctx->negotiatedInfo.peerRecordSizeLimit != 0 && ctx->negotiatedInfo.recordSizeLimit <= maxSendFragment) {
+    if (ctx->negotiatedInfo.peerRecordSizeLimit != 0 && ctx->negotiatedInfo.peerRecordSizeLimit <= maxSendFragment) {
         recSize -= maxSendFragment - ctx->negotiatedInfo.peerRecordSizeLimit;
         if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
             recSize--;
@@ -534,11 +535,12 @@ static uint32_t REC_GetRecordSizeLimitWriteLen(const TLS_Ctx *ctx)
 {
     uint32_t defaultLen =
 #ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+    (uint32_t)ctx->config.tlsConfig.maxSendFragment == 0 ? REC_MAX_PLAIN_TEXT_LENGTH :
     (uint32_t)ctx->config.tlsConfig.maxSendFragment;
 #else
     REC_MAX_PLAIN_TEXT_LENGTH;
 #endif
-    if (ctx->negotiatedInfo.recordSizeLimit != 0 && ctx->negotiatedInfo.recordSizeLimit <= defaultLen) {
+    if (ctx->negotiatedInfo.recordSizeLimit != 0 && ctx->negotiatedInfo.peerRecordSizeLimit <= defaultLen) {
         defaultLen = ctx->negotiatedInfo.peerRecordSizeLimit;
         if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
             defaultLen--;

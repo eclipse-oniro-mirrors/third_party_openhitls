@@ -1536,6 +1536,29 @@ int32_t HITLS_ClientHelloGetExtensionsPresent(HITLS_Ctx *ctx, uint16_t **out, ui
  */
 int32_t HITLS_ClientHelloGetExtension(HITLS_Ctx *ctx, uint16_t type, uint8_t **out, uint32_t *outlen);
 
+/**
+ * @ingroup hitls
+ * @brief   Handle the timeout of sending and receiving DTLS messages.
+ *
+ * @param   ctx [IN] TLS Connection Handle
+ * @retval  HITLS_SUCCESS, if retransmit the message successful.
+ * @retval  HITLS_MSG_HANDLE_DTLS_RETRANSMIT_NOT_TIMEOUT, It hasn't timed out yet.
+ * @retval  For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_DtlsProcessTimeout(HITLS_Ctx *ctx);
+
+/**
+ * @ingroup hitls
+ * @brief   Get the remaining timeout time for timeout retransmission.
+ *
+ * @param   ctx [IN] TLS Connection Handle
+ * @param   remainTimeOut [OUT] remaining timeout time for timeout retransmission, unit: us
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_MSG_HANDLE_ERR_WITHOUT_TIMEOUT_ACTION, Indicates non UDP links or absence of timeout behavior.
+ * @retval  For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_DtlsGetTimeout(HITLS_Ctx *ctx, uint64_t *remainTimeOut);
+
 #ifdef __cplusplus
 }
 #endif

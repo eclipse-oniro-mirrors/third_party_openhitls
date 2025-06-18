@@ -1405,3 +1405,13 @@ bool IsEnableSctpAuth(void)
 {
     return false;
 }
+
+void HLT_ConfigTimeOut(const char* timeout)
+{
+    setenv("SSL_TIMEOUT", timeout, 1);
+}
+
+void HLT_UnsetTimeOut()
+{
+    unsetenv("SSL_TIMEOUT");
+}

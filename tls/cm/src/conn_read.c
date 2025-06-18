@@ -34,6 +34,10 @@
 #include "hs_dtls_timer.h"
 
 #define HS_MESSAGE_LEN_FIELD 3u
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+// The HITLS protocol specifies the specification for the maximum timeout period, 3600 seconds.
+#define DTLS_SPECIFY_MAX_TIMEOUT_VALUE  3600
+#endif
 static int32_t ReadEventInIdleState(HITLS_Ctx *ctx, uint8_t *data, uint32_t bufSize, uint32_t *readLen)
 {
     (void)ctx;
@@ -518,3 +522,84 @@ uint32_t HITLS_GetReadPendingBytes(const HITLS_Ctx *ctx)
 {
     return APP_GetReadPendingBytes(ctx);
 }
+
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+int32_t HITLS_DtlsProcessTimeout(HITLS_Ctx *ctx)
+{
+    if (ctx == NULL || ctx->hsCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    bool isTimeout = false;
+    int32_t ret = HS_IsTimeout(ctx, &isTimeout);
+    if (ret != HITLS_SUCCESS) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17032, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "HS_IsTimeout fail", 0, 0, 0, 0);
+        return ret;
+    }
+
+    if (isTimeout) {
+        /* Receive the message of the last flight when the receiving times out */
+        ret = REC_RetransmitListFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+        ret = HS_TimeoutProcess(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+        return HITLS_SUCCESS;
+    }
+    return HITLS_MSG_HANDLE_DTLS_RETRANSMIT_NOT_TIMEOUT;
+}
+
+int32_t HITLS_DtlsGetTimeout(HITLS_Ctx *ctx, uint64_t *remainTimeOut)
+{
+    if (ctx == NULL || ctx->hsCtx == NULL || remainTimeOut == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    
+    *remainTimeOut = 0;
+    if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP) || ctx->hsCtx->timeoutValue == 0) {
+        return HITLS_MSG_HANDLE_ERR_WITHOUT_TIMEOUT_ACTION;
+    }
+    BSL_TIME curTime;
+    int32_t ret = (uint64_t)BSL_SAL_SysTimeGet(&curTime);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+    BSL_TIME endTime = ctx->hsCtx->deadline;
+    ret = BSL_SAL_DateTimeCompareByUs(&curTime, &endTime);
+    if (ret == BSL_TIME_DATE_AFTER || ret == BSL_TIME_CMP_EQUAL) {
+        return HITLS_SUCCESS;
+    } else if (ret == BSL_TIME_CMP_ERROR) {
+        return BSL_TIME_CMP_ERROR;
+    }
+
+    int64_t curUtcTime = 0;
+    int64_t endUtcTime = 0;
+    /* Convert the date into seconds. */
+    ret = BSL_SAL_DateToUtcTimeConvert(&curTime, &curUtcTime);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+    ret = BSL_SAL_DateToUtcTimeConvert(&endTime, &endUtcTime);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+
+    uint64_t remainSecTimeout = endUtcTime - curUtcTime;
+    if (remainSecTimeout >= DTLS_SPECIFY_MAX_TIMEOUT_VALUE) {
+        *remainTimeOut = DTLS_SPECIFY_MAX_TIMEOUT_VALUE * BSL_SECOND_TRANSFER_RATIO * BSL_SECOND_TRANSFER_RATIO;
+        return HITLS_SUCCESS;
+    }
+
+    uint64_t endMicroSec = endTime.millSec * BSL_SECOND_TRANSFER_RATIO + endTime.microSec;
+    uint64_t curMicroSec = curTime.millSec * BSL_SECOND_TRANSFER_RATIO + curTime.microSec;
+
+    *remainTimeOut = remainSecTimeout * BSL_SECOND_TRANSFER_RATIO * BSL_SECOND_TRANSFER_RATIO +
+        endMicroSec - curMicroSec;
+
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
+

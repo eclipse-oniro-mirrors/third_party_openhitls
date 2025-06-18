@@ -110,7 +110,6 @@ static int32_t DefaultEncryptPreProcess(TLS_Ctx *ctx, uint8_t recordType, const 
     recPlaintext->isTlsInnerPlaintext = true;
     /* Currently, the padding length is set to 0. If required, the padding length can be customized */
     uint16_t recPaddingLength = 0;
-    /* Currently, the padding length is set to 0. If required, the padding length can be customized */
     if (ctx->config.tlsConfig.recordPaddingCb != NULL) {
         recPaddingLength =
             (uint16_t)ctx->config.tlsConfig.recordPaddingCb(ctx, recordType, plainLen,

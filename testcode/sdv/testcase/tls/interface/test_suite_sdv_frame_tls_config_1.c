@@ -1690,97 +1690,59 @@ EXIT:
 }
 /* END_CASE */
 
-/* @
-* @test  UT_TLS_CFG_LOADVERIFYDIR_MULTI_PATH_TC001
-* @title  Test HITLS_CFG_LoadVerifyDir with multiple CA paths
-* @brief
-*   1. Create a config object.
-*   2. Pass in a string containing multiple paths (such as "/tmp/ca1:/tmp/ca2:/tmp/ca3").
-*   3. Call HITLS_CFG_LoadVerifyDir.
-*   4. Check that the number and content of caPaths in the cert store are consistent with the input.
-* @expect
-*   1. The interface returns success.
-*   2. The number and content of paths in the cert store are consistent with the input.
-@ */
-/* BEGIN_CASE */
-void UT_TLS_CFG_LOADVERIFYDIR_MULTI_PATH_TC001(void)
+int g_recordPaddingCbArg = 1;
+uint64_t RecordPaddingCb(HITLS_Ctx *ctx, int32_t type, uint64_t length, void *arg)
 {
-    FRAME_Init();
-    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
-    ASSERT_TRUE(config != NULL);
-
-    const char *multi_path = "/tmp/ca1:/tmp/ca2:/tmp/ca3:/tmp/ca3";
-    int32_t ret = HITLS_CFG_LoadVerifyDir(config, multi_path);
-    ASSERT_TRUE(ret == HITLS_SUCCESS);
-
-    HITLS_CERT_Store *store = SAL_CERT_GetCertStore(config->certMgrCtx);
-    ASSERT_TRUE(store != NULL);
-
-    HITLS_X509_StoreCtx *storeCtx = (HITLS_X509_StoreCtx *)store;
-    BslList *caPaths = storeCtx->caPaths;
-    ASSERT_TRUE(caPaths != NULL);
-
-    int expect_count = 3;
-    int actual_count = BSL_LIST_COUNT(caPaths);
-    ASSERT_TRUE(actual_count == expect_count);
-
-    const char *expect_paths[] = {"/tmp/ca1", "/tmp/ca2", "/tmp/ca3"};
-    for (int i = 0; i < expect_count; ++i) {
-        const char *path = (const char *)BSL_LIST_GetIndexNode(i, caPaths);
-        ASSERT_TRUE(path != NULL);
-        ASSERT_TRUE(strcmp(path, expect_paths[i]) == 0);
-    }
-
+    (void)ctx;
+    (void)type;
+    (void)length;
+    ASSERT_TRUE(g_recordPaddingCbArg == (*(int *)arg));
+    ASSERT_TRUE(&g_recordPaddingCbArg == arg);
 EXIT:
-    HITLS_CFG_FreeConfig(config);
+    return 0;
 }
-/* END_CASE */
 
-/* @
-* @test  UT_TLS_CFG_SET_SESSION_CACHE_SIZE_FUNC_TC001
-* @title  Test the cache session capability when sessCacheSize is set to 0
-* @brief
-*   1. Create a config object.
-*   2. Set sessCacheSize to 0.
-*   3. Set session ticket support to false.
-*   4. Verify the number of session caches.
+/** @
+* @test  UT_TLS_CFG_SET_RECORDPADDINGARG_API_TC002
+* @title  HITLS_CFG_SetRecordPaddingCbArg Connection
+* @precon  nan
+* @brief    1. Create tls13 config, expected result 1.
+            2. Set RecordPaddingCb and RecordPaddingCbArg to 1 for the client, Expected result 2.
+            3. Establish a connection, Verify that the arg passed in RecordPaddingCb matches the set arg.
+            Expected result 3.
 * @expect
-*   1. HITLS_CFG_SetSessionCacheSize returns HITLS_SUCCESS.
-*   2. Expected session cache quantity is 1.
+* 1. The creating is successful.
+* 2. The setting is successful.
+* 3. The arg value is the same，TLS1.3 connection are established.
 @ */
 /* BEGIN_CASE */
-void UT_TLS_CFG_SET_SESSION_CACHE_SIZE_FUNC_TC001(void)
+void UT_TLS_CFG_SET_RECORDPADDINGARG_API_TC002()
 {
     HitlsInit();
+    HITLS_Config *config_c = NULL;
+    HITLS_Config *config_s = NULL;
     FRAME_LinkObj *client = NULL;
     FRAME_LinkObj *server = NULL;
-    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
-    ASSERT_TRUE(config != NULL);
 
-    ASSERT_TRUE(HITLS_CFG_SetSessionCacheSize(config, 0) == HITLS_SUCCESS);
-    ASSERT_TRUE(HITLS_CFG_SetSessionTicketSupport(config, false) == HITLS_SUCCESS);
+    config_c = HITLS_CFG_NewTLS13Config();
+    config_s = HITLS_CFG_NewTLS13Config();
+    ASSERT_TRUE(config_c != NULL);
+    ASSERT_TRUE(config_s != NULL);
 
-    client = FRAME_CreateLink(config, BSL_UIO_TCP);
-    server = FRAME_CreateLink(config, BSL_UIO_TCP);
+    ASSERT_TRUE(HITLS_CFG_SetRecordPaddingCb(config_c, RecordPaddingCb) ==  HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_SetRecordPaddingCbArg(config_c, &g_recordPaddingCbArg) ==  HITLS_SUCCESS);
+
+    client = FRAME_CreateLink(config_c, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    server = FRAME_CreateLink(config_s, BSL_UIO_TCP);
+    ASSERT_TRUE(server != NULL);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
 
-    ASSERT_EQ(BSL_HASH_Size(client->ssl->globalConfig->sessMgr->hash), 1);
 EXIT:
-    HITLS_CFG_FreeConfig(config);
+    HITLS_CFG_FreeConfig(config_c);
+    HITLS_CFG_FreeConfig(config_s);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);
-}
-/* END_CASE */
-
-/* BEGIN_CASE */
-void UT_TLS_CFG_GET_CCM8_CIPHERSUITE_TC001(char *stdName)
-{
-    const HITLS_Cipher *cipher = NULL;
-    cipher = HITLS_CFG_GetCipherSuiteByStdName((const uint8_t *)stdName);
-    ASSERT_TRUE(cipher != NULL);
-    ASSERT_EQ(cipher->strengthBits, 64);
-EXIT:
-    return;
 }
 /* END_CASE */

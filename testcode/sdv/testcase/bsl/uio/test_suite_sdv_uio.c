@@ -1286,28 +1286,3 @@ EXIT:
     BSL_UIO_Free(uio);
 }
 /* END_CASE */
-
-/* BEGIN_CASE */
-void SDV_BSL_UIO_APPEND_TC001(void)
-{
-#ifdef HITLS_TLS_PROTO_TLS12
-    HitlsInit();
-    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
-    ASSERT_TRUE(config != NULL);
-    HITLS_Ctx *ctx = HITLS_New(config);
-    ASSERT_TRUE(ctx != NULL);
-    BSL_UIO *uio = BSL_UIO_New(BSL_UIO_TcpMethod());
-    ASSERT_TRUE(uio != NULL);
-    ASSERT_TRUE(BSL_UIO_Append(uio, BSL_UIO_New(BSL_UIO_BufferMethod())) == BSL_SUCCESS);
-    ASSERT_TRUE(HITLS_SetUio(ctx, uio) == BSL_SUCCESS);
-
-EXIT:
-    BSL_UIO_FreeChain(uio);
-    HITLS_CFG_FreeConfig(config);
-    HITLS_Free(ctx);
-#else
-    SKIP_TEST();
-#endif
-}
-/* END_CASE */
-

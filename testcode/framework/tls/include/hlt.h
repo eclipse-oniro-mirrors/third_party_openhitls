@@ -23,6 +23,8 @@
 extern "C" {
 #endif
 
+void HLT_ConfigTimeOut(const char* timeout);
+void HLT_UnsetTimeOut();
 
 // Create a process
 HLT_Process* InitSrcProcess(TLS_TYPE tlsType, char* srcDomainPath);

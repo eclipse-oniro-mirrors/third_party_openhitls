@@ -177,6 +177,7 @@ static void ShallowCopy(HITLS_Ctx *ctx, const HITLS_Config *srcConfig)
 #endif
     destConfig->readAhead = srcConfig->readAhead;
     destConfig->recordPaddingCb = srcConfig->recordPaddingCb;
+    destConfig->recordPaddingArg = srcConfig->recordPaddingArg;
 #ifdef HITLS_TLS_CONFIG_MANUAL_DH
     destConfig->isSupportDhAuto = srcConfig->isSupportDhAuto;
     destConfig->dhTmpCb = srcConfig->dhTmpCb;

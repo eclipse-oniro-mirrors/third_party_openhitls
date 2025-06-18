@@ -80,12 +80,16 @@ int ExpectResult(CmdData *expectCmdData)
 int WaitResultFromPeer(CmdData *expectCmdData)
 {
     int ret;
-    int tryNum = 0;
+    int timeout = TIME_OUT_SEC;
+    if (getenv("SSL_TIMEOUT") != NULL) {
+        timeout = atoi(getenv("SSL_TIMEOUT"));
+    }
+    timeout *= 2;
+    time_t start = time(NULL);
     do {
         ret = ExpectResult(expectCmdData);
         usleep(1000); // Waiting for 1000 subtleties
-        tryNum++;
-    } while ((ret != SUCCESS) && (tryNum < 150000));
+    } while ((ret != SUCCESS) && (time(NULL) - start < timeout));
     ASSERT_RETURN(ret == SUCCESS, "ExpectResult Error");
     return SUCCESS;
 }

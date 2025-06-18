@@ -32,6 +32,8 @@
 #define DTLS_HS_DEFAULT_TIMEOUT_VALUE 1000000
 #define DTLS_HS_MAX_TIMEOUT_VALUE     60000000
 #define DTLS_HS_MAX_TIMEOUT_NUM       12        /* Maximum Timeout Times */
+#define DTLS_IP_MIN_MTU 548 /* ipv4 min mtu is 576, ipv4 protocol header 20, udp header 8, it needs subtraction here */
+#define NEED_REDUCE_MTU_TIMEOUT_NUM 2
 
 static int32_t SetDtlsTimerDeadLine(TLS_Ctx *ctx, uint32_t timeoutValue)
 {
@@ -161,6 +163,12 @@ int32_t HS_TimeoutProcess(TLS_Ctx *ctx)
 
     hsCtx->timeoutValue = timeoutValue;
     hsCtx->timeoutNum++;
+    if (hsCtx->timeoutNum > NEED_REDUCE_MTU_TIMEOUT_NUM && !ctx->noQueryMtu) {
+        if (ctx->config.pmtu > DTLS_IP_MIN_MTU) {
+            ctx->config.pmtu = DTLS_IP_MIN_MTU;
+        }
+    }
+
     if (hsCtx->timeoutNum > DTLS_HS_MAX_TIMEOUT_NUM) {
         BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_DTLS_CONNECT_TIMEOUT);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15778, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
