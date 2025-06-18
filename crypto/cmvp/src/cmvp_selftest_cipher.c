@@ -548,8 +548,10 @@ bool AesAeadDec(const CMVP_CIPHER_VECTOR *cipherVec, CIPHER_SELFTEST_DATA data)
 
     plain = BSL_SAL_Malloc(plainLen);
     GOTO_EXIT_IF(plain == NULL, CRYPT_MEM_ALLOC_FAIL);
-    tag = BSL_SAL_Malloc(tagLen);
-    GOTO_EXIT_IF(tag == NULL, CRYPT_MEM_ALLOC_FAIL);
+    if (cipherVec->mode != CRYPT_MODE_CCM) {
+        tag = BSL_SAL_Malloc(tagLen);
+        GOTO_EXIT_IF(tag == NULL, CRYPT_MEM_ALLOC_FAIL);
+    }
 
     ctx = CRYPT_EAL_CipherNewCtx(cipherVec->id);
     GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);

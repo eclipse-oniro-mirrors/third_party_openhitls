@@ -125,7 +125,7 @@ static bool RsaParamCheck(const CRYPT_EAL_PkeyC2Data *data)
         return true;
     }
     if (data->pkcsv15 != CRYPT_MD_MAX) {
-        GOTO_EXIT_IF((GetVaildFlag(data->pkcsv15, false) == false), CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_EXIT_IF((GetVaildFlag(data->pkcsv15->mdId, false) == false), CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     if (data->pss != NULL) {

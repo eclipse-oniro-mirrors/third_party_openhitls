@@ -1,0 +1,86 @@
+{
+    "libType":["static", "shared"],
+    "bits":64,
+    "system":"linux",
+    "endian":"little",
+    "asmType":"no_asm",
+    "bundleLibs":true,
+    "libs":{
+        "hitls_crypto":{
+            "c": [
+                "eal",
+                "ealinit",
+                "md",
+                "mac",
+                "hpke",
+                "kdf",
+                "drbg",
+                "entropy",
+                "modes",
+                "cipher",
+                "pkey",
+                "provider",
+                "bn",
+                "codecskey",
+                "codecs",
+                "cmvp"
+            ]
+        },
+        "hitls_bsl": {
+            "c": [
+                "err",
+                "hash",
+                "init",
+                "base64",
+                "buffer",
+                "pem",
+                "list",
+                "log",
+                "obj",
+                "sal",
+                "sal_mem",
+                "sal_thread",
+                "sal_lock",
+                "sal_time",
+                "sal_file",
+                "sal_net",
+                "sal_str",
+                "sal_dl",
+                "tlv",
+                "uio",
+                "usrdata",
+                "params",
+                "asn1"
+            ]
+        },
+        "hitls_tls": {
+            "c": [
+                "proto_version",
+                "host",
+                "callback",
+                "feature",
+                "proto",
+                "config",
+                "connection",
+                "suite",
+                "suite_cipher",
+                "suite_kx",
+                "suite_auth",
+                "maintain"
+            ]
+        },
+        "hitls_pki":{
+            "c": [
+                "x509",
+                "pkcs12",
+                "info"
+            ]
+        },
+        "hitls_auth":{
+            "c": [
+                "privpass_token"
+            ]
+        }
+    }
+}
+  

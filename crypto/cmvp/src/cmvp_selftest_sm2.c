@@ -291,7 +291,6 @@ static int32_t SignEncode(const char *signR, const char *signS, uint8_t *vectorS
     GOTO_EXIT_IF(BN_Bin2Bn(bnS, s, sLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = CRYPT_EAL_EncodeSign(bnR, bnS, vectorSign, vectorSignLen);
-    ret = CRYPT_SUCCESS;
 EXIT:
     BSL_SAL_FREE(r);
     BSL_SAL_FREE(s);

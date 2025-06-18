@@ -36,6 +36,7 @@
 #include "crypt_eal_kdf.h"
 #include "crypt_entropy.h"
 #include "bsl_sal.h"
+#include "crypt_cmvp.h"
 #include "bsl_errno.h"
 
 typedef enum {
@@ -173,7 +174,6 @@ static CMVP_SelftestFlagMap g_kdfSelfTestFlag[] = {
 static bool g_selfTestRun = false;
 static BSL_SAL_ThreadLockHandle g_cmvpSelftestLock = NULL;
 
-bool CMVP_Pct(CRYPT_EAL_PkeyCtx *pkey);
 void CMVP_EventProcess(CRYPT_EVENT_TYPE oper, CRYPT_ALGO_TYPE type, int32_t id, int32_t err);
 
 int32_t CRYPT_CMVP_StatusGet(void)
@@ -665,8 +665,8 @@ static void *CmvpMalloc(uint32_t len)
 void __attribute__((constructor(101))) CMVP_DefaultEntryPoint(void)
 {
     // Register memory callbacks for pre-run self-test
-    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC_CB_FUNC, CmvpMalloc);
-    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE_CB_FUNC, free);
+    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC, CmvpMalloc);
+    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE, free);
 
 #if defined(HITLS_CRYPTO_ASM_CHECK)
     GetCpuInstrSupportState();

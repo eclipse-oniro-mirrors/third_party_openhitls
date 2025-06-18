@@ -194,7 +194,8 @@
                         "deps": ["asn1", "obj"],
                         "opts":["ecdsa", "sm2_sign", "sm2_crypt", "ed25519", "rsa_sign", "rsa_verify"]
                     },
-                    "codecs": null
+                    "codecs": null,
+                    "cmvp": {"deps": ["pkey", "cipher", "modes", "md", "bn", "entropy"]}
                 },
                 "x8664": {
                     "sha1": {"ins_set":["x8664", "avx512"]},
@@ -1006,7 +1007,13 @@
             },
             "provider": {
                 ".features": ["provider"],
-                ".srcs": ["crypto/provider/src/mgr/*.c", "crypto/provider/src/default/*.c"],
+                ".srcs": [
+                    "crypto/provider/src/mgr/*.c",
+                    "crypto/provider/src/default/*.c",
+                    "crypto/provider/src/cmvp/*.c",
+                    "crypto/provider/src/cmvp/iso19790_prov/*.c",
+                    "crypto/provider/src/cmvp/cmvp_gmt/*.c",
+                    "crypto/provider/src/cmvp/cmvp_fips/*.c"],
                 ".deps": ["bsl::sal", "bsl::hash", "bsl::err", "bsl::params"],
                 ".include": [
                     "crypto/provider/include",
@@ -1232,6 +1239,17 @@
                 ".srcs": "crypto/slh_dsa/src/*.c",
                 ".deps": ["crypto::sha3", "crypto::sha2", "bsl::obj"],
                 ".include": ["crypto/eal/src", "bsl/asn1/include"]
+            },
+            "cmvp": {
+                ".features": ["cmvp"],
+                ".srcs": "crypto/cmvp/src/*.c",
+                ".deps": ["crypto::eal", "crypto::bn", "crypto::entropy", "crypto::encode", "bsl::sal"],
+                ".include": ["crypto/cmvp/src",
+                            "crypto/bn/include",
+                            "crypto/entropy/include",
+                            "include/bsl",
+                            "include/crypto"
+                ]
             }
         },
         "bsl":{

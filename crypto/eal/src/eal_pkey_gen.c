@@ -38,6 +38,13 @@
 #include "crypt_params_key.h"
 #include "eal_pkey.h"
 
+static CRYPT_EAL_PCT g_pctFunc = NULL;
+
+void CRYPT_EAL_RegPct(CRYPT_EAL_PCT func)
+{
+    g_pctFunc = func;
+}
+
 static void EalPkeyCopyMethod(const EAL_PkeyMethod *method, EAL_PkeyUnitaryMethod *dest)
 {
     dest->newCtx = method->newCtx;

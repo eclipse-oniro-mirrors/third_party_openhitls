@@ -1,0 +1,16 @@
+{
+    "compileFlag": {
+        "CC_DEFINE_FLAGS":{
+            "CC_FLAGS_ADD":[
+                "-DHITLS_CRYPTO_CMVP_FIPS",
+                "-DHITLS_CRYPTO_CMVP_GM",
+                "-DHITLS_CRYPTO_CMVP_ISO19790"
+            ]
+        }
+    },
+    "linkFlag": {
+        "LINK_FLAG_ADD":[
+            "-I${HiTLS_SOURCE_ROOT_DIR}/platform/Secure_C/include"
+        ]
+    }
+}
