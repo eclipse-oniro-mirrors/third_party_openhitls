@@ -576,7 +576,7 @@ int32_t CRYPT_ECDSA_Import(CRYPT_ECDSA_Ctx *ctx, const BSL_Param *params)
     }
     int32_t ret = CRYPT_SUCCESS;
     const BSL_Param *prv = BSL_PARAM_FindConstParam(params, CRYPT_PARAM_EC_PRVKEY);
-    const BSL_Param *pub = BSL_PARAM_FindConstParam(params, CRYPT_PARAM_EC_POINT_UNCOMPRESSED);
+    const BSL_Param *pub = BSL_PARAM_FindConstParam(params, CRYPT_PARAM_EC_PUBKEY);
     const BSL_Param *curve = BSL_PARAM_FindConstParam(params, CRYPT_PARAM_EC_CURVE_ID);
     if (curve != NULL) {
         ret = SetCurveInfo(ctx, curve);
@@ -639,7 +639,7 @@ int32_t CRYPT_ECDSA_Export(const CRYPT_ECDSA_Ctx *ctx, BSL_Param *params)
         return CRYPT_MEM_ALLOC_FAIL;
     }
     if (ctx->pubkey != NULL) {
-        (void)BSL_PARAM_InitValue(&ecdsaParams[index], CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS,
+        (void)BSL_PARAM_InitValue(&ecdsaParams[index], CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS,
             buffer, keyBytes);
         ret = CRYPT_ECDSA_GetPubKey(ctx, ecdsaParams);
         if (ret != CRYPT_SUCCESS) {

@@ -383,7 +383,7 @@ static int32_t TestSm2SetPubKey(void *ctx, const BSL_Param *param)
     if (ctx == NULL || param == NULL) {
         return CRYPT_NULL_INPUT;
     }
-    const BSL_Param *pubKey = TestFindConstParam(param, CRYPT_PARAM_EC_POINT_UNCOMPRESSED);
+    const BSL_Param *pubKey = TestFindConstParam(param, CRYPT_PARAM_EC_PUBKEY);
     if (PARAMISNULL(pubKey)) {
         return CRYPT_NULL_INPUT;
     }
@@ -422,7 +422,7 @@ static int32_t TestSm2Import(void *ctx, const BSL_Param *param)
     int32_t ret;
     TestSm2OrEd25519Ctx *sm2Ctx = (TestSm2OrEd25519Ctx *)ctx;
 
-    const BSL_Param *pubKey = TestFindConstParam(param, CRYPT_PARAM_EC_POINT_UNCOMPRESSED);
+    const BSL_Param *pubKey = TestFindConstParam(param, CRYPT_PARAM_EC_PUBKEY);
     if (!PARAMISNULL(pubKey)) {
         ret = TestSm2SetPubKey(ctx, param);
         if (ret != CRYPT_SUCCESS) {

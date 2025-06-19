@@ -314,8 +314,8 @@ int32_t CRYPT_HYBRID_KEM_GetEncapsKey(const CRYPT_HybridKemCtx *ctx, BSL_Param *
     }
     RETURN_RET_IF(pub == NULL || pub->value == NULL, CRYPT_NULL_INPUT);
 
-    BSL_Param pubKey[2] = {{CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
-    BSL_Param kemEK[2] = {{CRYPT_PARAM_ML_KEM_PUBKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
+    BSL_Param pubKey[2] = {{CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
+    BSL_Param kemEK[2] = {{CRYPT_PARAM_ML_KEM_PUBKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
     RETURN_RET_IF_ERR(CRYPT_HybridGetEncapsKeyLen(ctx, &(pubKey[0].valueLen), &(kemEK[0].valueLen)), ret);
     RETURN_RET_IF_ERR(CRYPT_HybridGetKeyPtr(ctx, pub, pubKey, kemEK), ret);
 
@@ -335,8 +335,8 @@ int32_t CRYPT_HYBRID_KEM_GetDecapsKey(const CRYPT_HybridKemCtx *ctx, BSL_Param *
     BSL_Param *prv = BSL_PARAM_FindParam(param, CRYPT_PARAM_HYBRID_PRVKEY);
     RETURN_RET_IF(prv == NULL || prv->value == NULL, CRYPT_NULL_INPUT);
 
-    BSL_Param prvKey[2] = {{CRYPT_PARAM_EC_PRVKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
-    BSL_Param kemDK[2] = {{CRYPT_PARAM_ML_KEM_PRVKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
+    BSL_Param prvKey[2] = {{CRYPT_PARAM_EC_PRVKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
+    BSL_Param kemDK[2] = {{CRYPT_PARAM_ML_KEM_PRVKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
     RETURN_RET_IF_ERR(CRYPT_HybridGetDecapsKeyLen(ctx, &prvKey[0].valueLen, &kemDK[0].valueLen), ret);
     RETURN_RET_IF_ERR(CRYPT_HybridGetKeyPtr(ctx, prv, prvKey, kemDK), ret);
 
@@ -359,8 +359,8 @@ int32_t CRYPT_HYBRID_KEM_SetEncapsKey(CRYPT_HybridKemCtx *ctx, const BSL_Param *
         pub = BSL_PARAM_FindConstParam(param, CRYPT_PARAM_PKEY_ENCODE_PUBKEY);
     }
     RETURN_RET_IF(pub == NULL || pub->value == NULL, CRYPT_NULL_INPUT);
-    BSL_Param pubKey[2] = {{CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
-    BSL_Param kemEK[2] = {{CRYPT_PARAM_ML_KEM_PUBKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
+    BSL_Param pubKey[2] = {{CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
+    BSL_Param kemEK[2] = {{CRYPT_PARAM_ML_KEM_PUBKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
     RETURN_RET_IF_ERR(CRYPT_HybridGetEncapsKeyLen(ctx, &pubKey[0].valueLen, &kemEK[0].valueLen), ret);
     RETURN_RET_IF(pub->valueLen < kemEK[0].valueLen, CRYPT_INVALID_ARG);
     pubKey[0].valueLen = pub->valueLen - kemEK[0].valueLen;
@@ -379,8 +379,8 @@ int32_t CRYPT_HYBRID_KEM_SetDecapsKey(CRYPT_HybridKemCtx *ctx, const BSL_Param *
     RETURN_RET_IF((ctx == NULL || param == NULL), CRYPT_NULL_INPUT);
     const BSL_Param *prv = BSL_PARAM_FindConstParam(param, CRYPT_PARAM_HYBRID_PRVKEY);
     RETURN_RET_IF(prv == NULL || prv->value == NULL, CRYPT_NULL_INPUT);
-    BSL_Param prvKey[2] = {{CRYPT_PARAM_EC_PRVKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
-    BSL_Param kemDK[2] = {{CRYPT_PARAM_ML_KEM_PRVKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
+    BSL_Param prvKey[2] = {{CRYPT_PARAM_EC_PRVKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
+    BSL_Param kemDK[2] = {{CRYPT_PARAM_ML_KEM_PRVKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
     RETURN_RET_IF_ERR(CRYPT_HybridGetDecapsKeyLen(ctx, &(prvKey[0].valueLen), &(kemDK[0].valueLen)), ret);
     RETURN_RET_IF_ERR(CRYPT_HybridGetKeyPtr(ctx, prv, prvKey, kemDK), ret);
 
@@ -399,7 +399,7 @@ int32_t CRYPT_HYBRID_KEM_Encaps(const CRYPT_HybridKemCtx *ctx, uint8_t *cipher, 
         CRYPT_NULL_INPUT);
 
     BSL_Param kemCT = { 0 };
-    BSL_Param pubKey[2] = {{CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
+    BSL_Param pubKey[2] = {{CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
     BSL_Param cipherData = { 0 };
     cipherData.value = cipher;
     cipherData.valueLen = *cipherLen;
@@ -442,7 +442,7 @@ int32_t CRYPT_HYBRID_KEM_Decaps(const CRYPT_HybridKemCtx *ctx, uint8_t *cipher, 
     cipherData.value = cipher;
     cipherData.valueLen = cipherLen;
     BSL_Param kemCT = { 0 };
-    BSL_Param pubKey[2] = {{CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0} , BSL_PARAM_END};
+    BSL_Param pubKey[2] = {{CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, NULL, 0, 0}, BSL_PARAM_END};
     RETURN_RET_IF_ERR(CRYPT_HybridGetCipherTextLen(ctx, &pubKey[0].valueLen, &kemCT.valueLen), ret);
     RETURN_RET_IF_ERR(CRYPT_HybridGetKeyPtr(ctx, &cipherData, pubKey, &kemCT), ret);
 

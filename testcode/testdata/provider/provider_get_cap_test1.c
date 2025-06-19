@@ -139,7 +139,7 @@ static int32_t TestEccSetPubKey(TestEccKeyCtx *ctx, const BSL_Param *para)
     if (ctx == NULL || para == NULL) {
         return CRYPT_NULL_INPUT;
     }
-    const BSL_Param *pub = TestFindConstParam(para, CRYPT_PARAM_EC_POINT_UNCOMPRESSED);
+    const BSL_Param *pub = TestFindConstParam(para, CRYPT_PARAM_EC_PUBKEY);
     if (pub == NULL) {
         pub = TestFindConstParam(para, CRYPT_PARAM_PKEY_ENCODE_PUBKEY);
     }
@@ -173,7 +173,7 @@ static int32_t TestEccGetPubKey(TestEccKeyCtx *ctx, BSL_Param *para)
     if (ctx == NULL || para == NULL) {
         return CRYPT_NULL_INPUT;
     }
-    BSL_Param *pub = TestFindParam(para, CRYPT_PARAM_EC_POINT_UNCOMPRESSED);
+    BSL_Param *pub = TestFindParam(para, CRYPT_PARAM_EC_PUBKEY);
     if (pub == NULL) {
         pub = TestFindParam(para, CRYPT_PARAM_PKEY_ENCODE_PUBKEY);
     }
@@ -309,7 +309,7 @@ int32_t TestEccImport(void *ctx, const BSL_Param *params)
     }
     int32_t ret = CRYPT_SUCCESS;
     const BSL_Param *curve = TestFindConstParam(params, CRYPT_PARAM_EC_CURVE_ID);
-    const BSL_Param *pub = TestFindConstParam(params, CRYPT_PARAM_EC_POINT_UNCOMPRESSED);
+    const BSL_Param *pub = TestFindConstParam(params, CRYPT_PARAM_EC_PUBKEY);
     const BSL_Param *prv = TestFindConstParam(params, CRYPT_PARAM_EC_PRVKEY);
     if (curve != NULL) {
         ret = TestEccSetPara(ctx, params);

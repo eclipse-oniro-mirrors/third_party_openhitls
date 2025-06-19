@@ -147,7 +147,7 @@ int32_t CRYPT_ECC_ParseSubPubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, void *
         return ret;
     }
     BSL_Param pubParam[2] = {
-        {CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, subPubkeyInfo.pubKey.buff,
+        {CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, subPubkeyInfo.pubKey.buff,
             subPubkeyInfo.pubKey.len, 0},
         BSL_PARAM_END
     };
@@ -182,7 +182,7 @@ int32_t CRYPT_ECC_ParsePrikeyAsn1Buff(uint8_t *buffer, uint32_t bufferLen, BSL_A
         return ret;
     }
     BSL_Param pubParam[2] = {
-        {CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, (eccPrvInfo.pubkey.buff + 1),
+        {CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, (eccPrvInfo.pubkey.buff + 1),
             eccPrvInfo.pubkey.len - 1, 0},
         BSL_PARAM_END
     };
@@ -267,7 +267,7 @@ int32_t CRYPT_SM2_ParseSubPubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, CRYPT_
         return ret;
     }
     BSL_Param pubParam[2] = {
-        {CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, subPubkeyInfo.pubKey.buff,
+        {CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, subPubkeyInfo.pubKey.buff,
             subPubkeyInfo.pubKey.len, 0},
         BSL_PARAM_END
     };
@@ -297,7 +297,7 @@ int32_t CRYPT_SM2_ParsePrikeyAsn1Buff(uint8_t *buffer, uint32_t bufferLen, BSL_A
         return ret;
     }
     BSL_Param pubParam[2] = {
-        {CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, eccPrvInfo.pubkey.buff + 1,
+        {CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, eccPrvInfo.pubkey.buff + 1,
             eccPrvInfo.pubkey.len - 1, 0},
         BSL_PARAM_END
     };

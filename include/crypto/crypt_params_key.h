@@ -45,7 +45,7 @@ extern "C" {
 #define CRYPT_PARAM_KDF_R                                   (CRYPT_PARAM_KDF_BASE + 15)
 
 #define CRYPT_PARAM_EC_BASE                                 200
-#define CRYPT_PARAM_EC_POINT_UNCOMPRESSED                   (CRYPT_PARAM_EC_BASE + 1)
+#define CRYPT_PARAM_EC_PUBKEY                               (CRYPT_PARAM_EC_BASE + 1)
 #define CRYPT_PARAM_EC_PRVKEY                               (CRYPT_PARAM_EC_BASE + 2)
 #define CRYPT_PARAM_EC_P                                    (CRYPT_PARAM_EC_BASE + 3)
 #define CRYPT_PARAM_EC_A                                    (CRYPT_PARAM_EC_BASE + 4)
