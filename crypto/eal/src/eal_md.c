@@ -307,7 +307,6 @@ void CRYPT_EAL_MdFreeCtx(CRYPT_EAL_MdCTX *ctx)
         BSL_SAL_FREE(ctx);
         return;
     }
-    EAL_EventReport(CRYPT_EVENT_ZERO, CRYPT_ALGO_MD, ctx->id, CRYPT_SUCCESS);
     ctx->method->freeCtx(ctx->data);
     BSL_SAL_FREE(ctx->method);
     BSL_SAL_FREE(ctx);
@@ -385,7 +384,6 @@ int32_t CRYPT_EAL_MdFinal(CRYPT_EAL_MdCTX *ctx, uint8_t *out, uint32_t *len)
         return ret;
     }
     ctx->state = CRYPT_MD_STATE_FINAL;
-    EAL_EventReport(CRYPT_EVENT_MD, CRYPT_ALGO_MD, ctx->id, CRYPT_SUCCESS);
     return CRYPT_SUCCESS;
 }
 
@@ -410,7 +408,6 @@ int32_t CRYPT_EAL_MdSqueeze(CRYPT_EAL_MdCTX *ctx, uint8_t *out, uint32_t len)
         return ret;
     }
     ctx->state = CRYPT_MD_STATE_SQUEEZE;
-    EAL_EventReport(CRYPT_EVENT_MD, CRYPT_ALGO_MD, ctx->id, CRYPT_SUCCESS);
     return CRYPT_SUCCESS;
 }
 

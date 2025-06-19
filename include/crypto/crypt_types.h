@@ -613,7 +613,9 @@ typedef enum {
     CRYPT_CTRL_SET_CTX_INFO,             /**< Set the context string. */
     CRYPT_CTRL_SET_PREHASH_FLAG,         /**< Change the SLH-DSA or ML-DSA mode to prehash version or pure version. */
     CRYPT_CTRL_GEN_PARA,                 /**< Asymmetric cipher generate para. */
-    CRYPT_CTRL_SET_FIPS_FLAG,            /**< Set cipher fips flag. */
+    CRYPT_CTRL_SET_GEN_FLAG,             /**< Set SP800-56Ar3 generate private key flag. */
+    CRYPT_CTRL_PCT_TEST,
+    CRYPT_CTRL_CLEAN_PUB_KEY,            /**< Clean the public key. */
 
     // dh
     CRYPT_CTRL_SET_DH_FLAG = 150,          /**< Set the dh flag.*/
@@ -721,6 +723,7 @@ typedef enum {
                                                obtained each time is the output length of the adjustment function.
                                                The caller can use this interface to implement the automatic collection
                                                function of the entropy pool. */
+    CRYPT_ENTROPY_SET_LOG_CALLBACK,
     CRYPT_ENTROPY_MAX
 } CRYPT_ENTROPY_TYPE;
 
@@ -766,8 +769,7 @@ typedef enum {
     CRYPT_EVENT_MAC,          /**< MAC. */
     CRYPT_EVENT_KDF,          /**< KDF. */
     CRYPT_EVENT_KEYAGGREMENT, /**< Key negotiation. */
-    CRYPT_EVENT_KEYDERIVE,    /**< Derived key. */
-    CRYPT_EVENT_RANDGEN,      /**< Generating a random number. */
+    CRYPT_EVENT_RANDGEN = CRYPT_EVENT_KEYAGGREMENT + 1, /**< Generating a random number. */
     CRYPT_EVENT_ZERO,         /**< sensitive information to zero. */
     CRYPT_EVENT_ERR,          /**< An error occurred. */
     CRYPT_EVENT_SETSSP,       /**< Adding and Modifying Password Data and SSP. */
@@ -776,6 +778,12 @@ typedef enum {
     CRYPT_EVENT_DECAPS,       /**< Key decapsulation. */
     CRYPT_EVENT_BLIND,        /**< Message blinding. */
     CRYPT_EVENT_UNBLIND,      /**< Signature unblinding. */
+    CRYPT_EVENT_PARAM_CHECK,
+    CRYPT_EVENT_PCT_TEST,
+    CRYPT_EVENT_KAT_TEST,
+    CRYPT_EVENT_ES_HEALTH_TEST,
+    CRYPT_EVENT_INTEGRITY_TEST,
+    CRYPT_EVENT_GET_VERSION,
     CRYPT_EVENT_MAX
 } CRYPT_EVENT_TYPE;
 
@@ -873,6 +881,43 @@ typedef struct {
 } CRYPT_Pbkdf2Param;
 
 typedef struct EAL_LibCtx CRYPT_EAL_LibCtx;
+
+/* Optional parameter set for MLDSA */
+typedef enum {
+    CRYPT_MLDSA_TYPE_MLDSA_44 = 0x01,            // MLDSA-44
+    CRYPT_MLDSA_TYPE_MLDSA_65 = 0x02,            // MLDSA-65
+    CRYPT_MLDSA_TYPE_MLDSA_87 = 0x03,            // MLDSA-87
+    CRYPT_MLDSA_TYPE_INVALID = 0x7fffffff        // invalid value
+} CRYPT_MLDSA_KeyType;
+
+/* Optional parameter set for MLKEM */
+typedef enum {
+    CRYPT_KEM_TYPE_MLKEM_512 = 0x01,            // MLKEM512
+    CRYPT_KEM_TYPE_MLKEM_768 = 0x02,            // MLKEM768
+    CRYPT_KEM_TYPE_MLKEM_1024 = 0x03,            // MLKEM1024
+    CRYPT_KEM_TYPE_INVALID = 0x7fffffff        // invalid value
+} CRYPT_MLKEM_KeyType;
+
+/* Optional parameter set for SLHDSA */
+typedef enum {
+    CRYPT_SLH_DSA_SHA2_128S,
+    CRYPT_SLH_DSA_SHAKE_128S,
+    CRYPT_SLH_DSA_SHA2_128F,
+    CRYPT_SLH_DSA_SHAKE_128F,
+    CRYPT_SLH_DSA_SHA2_192S,
+    CRYPT_SLH_DSA_SHAKE_192S,
+    CRYPT_SLH_DSA_SHA2_192F,
+    CRYPT_SLH_DSA_SHAKE_192F,
+    CRYPT_SLH_DSA_SHA2_256S,
+    CRYPT_SLH_DSA_SHAKE_256S,
+    CRYPT_SLH_DSA_SHA2_256F,
+    CRYPT_SLH_DSA_SHAKE_256F,
+    CRYPT_SLH_DSA_ALG_ID_MAX,
+} CRYPT_SLH_DSA_AlgId;
+
+typedef enum {
+    CRYPT_CMVP_CTF_ISO19790 = 0x01,
+} CRYPT_CMVP_CTF_AlgId;
 
 #ifdef __cplusplus
 }
