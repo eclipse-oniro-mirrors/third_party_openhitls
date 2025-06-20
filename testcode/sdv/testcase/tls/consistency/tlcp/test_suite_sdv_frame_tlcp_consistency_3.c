@@ -246,7 +246,7 @@ void UT_TLS_TLCP_CONSISTENCY_CERTFICATE_TC001()
 
     int32_t ret;
     ret = FRAME_CreateConnection(client, server, true, HS_STATE_BUTT);
-    ASSERT_EQ(ret, HITLS_CERT_ERR_EXP_CERT);
+    ASSERT_EQ(ret, HITLS_CERT_ERR_KEYUSAGE);
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
     FRAME_FreeLink(client);
@@ -1528,6 +1528,206 @@ void UT_FRAME_FUNC_TLCP_CERT_MISMATCH_TC001(char *cipherSuite)
     ALERT_Info alertInfo = { 0 };
     ALERT_GetInfo(server->ssl, &alertInfo);
     ASSERT_EQ(alertInfo.description, ALERT_HANDSHAKE_FAILURE);
+EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test   UT_TLS_TLCP_CONSISTENCY_KEYUSAGE_TC001
+* @title  The encryption certificate does not have a keyusage extension, and check the result.
+* @precon nan
+* @brief  1. Use the default configuration on the client and server，Server setting encryption certificate without 
+*               keyusage extension. Expected result 1.
+*         2. Start a handshake. Expected result 2.
+* @expect 1. The initialization is successful.
+*         2. The client sends the ALERT_BAD_CERTIFICATE message.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLCP_CONSISTENCY_KEYUSAGE_TC001()
+{
+    FRAME_Init();
+
+    HITLS_Config *tlsConfig = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    FRAME_CertInfo certInfo = {
+        "sm2_cert/root.der",
+        "sm2_cert/intCa.der",
+        "sm2_cert/server_enc_no_keyusage.der",
+        "sm2_cert/server_sign.der",
+        "sm2_cert/server_enc_no_keyusage.key.der",
+        "sm2_cert/server_sign.key.der",
+    };
+
+    tlsConfig = HITLS_CFG_NewTLCPConfig();
+    ASSERT_TRUE(tlsConfig != NULL);
+
+    client = FRAME_CreateLinkWithCert(tlsConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+
+    server = FRAME_CreateLinkWithCert(tlsConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(server != NULL);
+
+    int32_t ret = FRAME_CreateConnection(client, server, true, HS_STATE_BUTT);
+    ASSERT_EQ(ret, HITLS_CERT_ERR_EXP_CERT);
+    ALERT_Info info = { 0 };
+    ALERT_GetInfo(client->ssl, &info);
+    ASSERT_EQ(info.flag, ALERT_FLAG_SEND);
+    ASSERT_EQ(info.level, ALERT_LEVEL_FATAL);
+    ASSERT_EQ(info.description, ALERT_BAD_CERTIFICATE);
+EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test   UT_TLS_TLCP_CONSISTENCY_KEYUSAGE_TC002
+* @title  The signing certificate does not have a keyusage extension, and check the result.
+* @precon nan
+* @brief  1. Use the default configuration on the client and server，Server setting signing certificate without 
+*               keyusage extension. Expected result 1.
+*         2. Start a handshake. Expected result 2.
+* @expect 1. The initialization is successful.
+*         2. The client sends the ALERT_BAD_CERTIFICATE message.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLCP_CONSISTENCY_KEYUSAGE_TC002()
+{
+    FRAME_Init();
+
+    HITLS_Config *tlsConfig = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    FRAME_CertInfo certInfo = {
+        "sm2_cert/root.der",
+        "sm2_cert/intCa.der",
+        "sm2_cert/server_enc.der",
+        "sm2_cert/server_sign_no_keyusage.der",
+        "sm2_cert/server_enc.key.der",
+        "sm2_cert/server_sign_no_keyusage.key.der",
+    };
+
+    tlsConfig = HITLS_CFG_NewTLCPConfig();
+    ASSERT_TRUE(tlsConfig != NULL);
+
+    client = FRAME_CreateLinkWithCert(tlsConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+
+    server = FRAME_CreateLinkWithCert(tlsConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(server != NULL);
+
+    int32_t ret = FRAME_CreateConnection(client, server, true, HS_STATE_BUTT);
+    ASSERT_EQ(ret, HITLS_CERT_ERR_KEYUSAGE);
+    ALERT_Info info = { 0 };
+    ALERT_GetInfo(client->ssl, &info);
+    ASSERT_EQ(info.flag, ALERT_FLAG_SEND);
+    ASSERT_EQ(info.level, ALERT_LEVEL_FATAL);
+    ASSERT_EQ(info.description, ALERT_BAD_CERTIFICATE);
+EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test   UT_TLS_TLCP_CONSISTENCY_KEYUSAGE_TC003
+* @title  The signature certificate has an incorrect keyusage extension, and check the result.
+* @precon nan
+* @brief  1. Use the default configuration on the client and server，The server's signature certificate contains an
+*               incorrect keyusage extension. Expected result 1.
+*         2. Start a handshake. Expected result 2.
+* @expect 1. The initialization is successful.
+*         2. The client sends the ALERT_BAD_CERTIFICATE message.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLCP_CONSISTENCY_KEYUSAGE_TC003()
+{
+    FRAME_Init();
+
+    HITLS_Config *tlsConfig = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    FRAME_CertInfo certInfo = {
+        "sm2_cert/root.der",
+        "sm2_cert/intCa.der",
+        "sm2_cert/server_enc.der",
+        "sm2_cert/client_sign_err_keyusage.der",
+        "sm2_cert/server_enc.key.der",
+        "sm2_cert/client_sign_err_keyusage.key.der",
+    };
+
+    tlsConfig = HITLS_CFG_NewTLCPConfig();
+    ASSERT_TRUE(tlsConfig != NULL);
+
+    client = FRAME_CreateLinkWithCert(tlsConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+
+    server = FRAME_CreateLinkWithCert(tlsConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(server != NULL);
+
+    int32_t ret = FRAME_CreateConnection(client, server, true, HS_STATE_BUTT);
+    ASSERT_EQ(ret, HITLS_CERT_ERR_KEYUSAGE);
+    ALERT_Info info = { 0 };
+    ALERT_GetInfo(client->ssl, &info);
+    ASSERT_EQ(info.flag, ALERT_FLAG_SEND);
+    ASSERT_EQ(info.level, ALERT_LEVEL_FATAL);
+    ASSERT_EQ(info.description, ALERT_BAD_CERTIFICATE);
+EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test   UT_TLS_TLCP_CONSISTENCY_KEYUSAGE_TC004
+* @title  The encryption certificate has an incorrect keyusage extension, and check the result.
+* @precon nan
+* @brief  1. Use the default configuration on the client and server，The server's encryption certificate contains an
+*               incorrect keyusage extension. Expected result 1.
+*         2. Start a handshake. Expected result 2.
+* @expect 1. The initialization is successful.
+*         2. The client sends the ALERT_BAD_CERTIFICATE message.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLCP_CONSISTENCY_KEYUSAGE_TC004()
+{
+    FRAME_Init();
+
+    HITLS_Config *tlsConfig = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    FRAME_CertInfo certInfo = {
+        "sm2_cert/root.der",
+        "sm2_cert/intCa.der",
+        "sm2_cert/client_enc_err_keyusage.der",
+        "sm2_cert/server_sign.der",
+        "sm2_cert/client_enc_err_keyusage.key.der",
+        "sm2_cert/server_sign.key.der",
+    };
+
+    tlsConfig = HITLS_CFG_NewTLCPConfig();
+    ASSERT_TRUE(tlsConfig != NULL);
+
+    client = FRAME_CreateLinkWithCert(tlsConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+
+    server = FRAME_CreateLinkWithCert(tlsConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(server != NULL);
+
+    int32_t ret = FRAME_CreateConnection(client, server, true, HS_STATE_BUTT);
+    ASSERT_EQ(ret, HITLS_CERT_ERR_EXP_CERT);
+    ALERT_Info info = { 0 };
+    ALERT_GetInfo(client->ssl, &info);
+    ASSERT_EQ(info.flag, ALERT_FLAG_SEND);
+    ASSERT_EQ(info.level, ALERT_LEVEL_FATAL);
+    ASSERT_EQ(info.description, ALERT_BAD_CERTIFICATE);
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
     FRAME_FreeLink(client);

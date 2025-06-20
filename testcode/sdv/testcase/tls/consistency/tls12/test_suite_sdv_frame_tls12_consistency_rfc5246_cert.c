@@ -592,3 +592,56 @@ EXIT:
     FRAME_FreeLink(server);
 }
 /* END_CASE */
+
+/** @
+* @test UT_TLS_TLS12_RFC5246_CONSISTENCY_KEYUSAGE_CERT_TC004
+* @title The certificate without keyuage extension, and the link is successfully established.
+* @precon nan
+* @brief    1. Configure the server certificate without keyuage extension and support CheckKeyUsage. The link is successfully established. Expected result 1 is obtained.
+* @expect   1. The link is set up successfully.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLS12_RFC5246_CONSISTENCY_KEYUSAGE_CERT_TC004(int isCheckKeyUsage)
+{
+    FRAME_Init();
+
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+    uint16_t cipherSuits[] = {HITLS_RSA_WITH_AES_128_CBC_SHA256};
+    ASSERT_TRUE(
+        HITLS_CFG_SetCipherSuites(config, cipherSuits, sizeof(cipherSuits) / sizeof(uint16_t)) == HITLS_SUCCESS);
+    HITLS_CFG_SetClientVerifySupport(config, true);
+
+    FRAME_CertInfo certInfoClient = {
+        "rsa_sha256/ca.der",
+        "rsa_sha256/inter.der",
+        "rsa_sha256/client.der",
+        0,
+        "rsa_sha256/client.key.der",
+        0,
+    };
+    FRAME_CertInfo certInfoServer = {
+        "rsa_sha256/ca.der",
+        "rsa_sha256/inter.der",
+        "rsa_sha256/server.der",
+        0,
+        "rsa_sha256/server.key.der",
+        0,
+    };
+    FRAME_LinkObj *client = FRAME_CreateLinkWithCert(config, BSL_UIO_TCP, &certInfoClient);
+    ASSERT_TRUE(client != NULL);
+    FRAME_LinkObj *server = FRAME_CreateLinkWithCert(config, BSL_UIO_TCP, &certInfoServer);
+    ASSERT_TRUE(server != NULL);
+    if (isCheckKeyUsage) {
+        HITLS_SetCheckKeyUsage(client->ssl, true);
+    } else {
+        HITLS_SetCheckKeyUsage(client->ssl, false);
+    }
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */

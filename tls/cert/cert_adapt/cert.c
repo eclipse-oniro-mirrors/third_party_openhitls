@@ -785,12 +785,33 @@ int32_t CheckCertSignature(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert)
 }
 #endif
 
-static void DestoryParseChain(HITLS_CERT_Chain *encCert, HITLS_CERT_Chain *cert, HITLS_CERT_Chain *newChain)
+static void DestoryParseChain(HITLS_CERT_X509 *encCert, HITLS_CERT_X509 *cert, HITLS_CERT_Chain *newChain)
 {
     SAL_CERT_X509Free(encCert);
     SAL_CERT_X509Free(cert);
     SAL_CERT_ChainFree(newChain);
 }
+
+#ifdef HITLS_TLS_PROTO_TLCP11
+static bool TlcpCheckSignCertKeyUsage(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert)
+{
+    if (ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11) {
+        return SAL_CERT_CheckCertKeyUsage(ctx, cert, CERT_KEY_CTRL_IS_DIGITAL_SIGN_USAGE) ||
+                SAL_CERT_CheckCertKeyUsage(ctx, cert, CERT_KEY_CTRL_IS_NON_REPUDIATION_USAGE);
+    }
+    return true;
+}
+
+static bool TlcpCheckEncCertKeyUsage(HITLS_Ctx *ctx, HITLS_CERT_X509 *encCert)
+{
+    if (ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11) {
+        return SAL_CERT_CheckCertKeyUsage(ctx, encCert, CERT_KEY_CTRL_IS_KEYENC_USAGE) ||
+                SAL_CERT_CheckCertKeyUsage(ctx, encCert, CERT_KEY_CTRL_IS_DATA_ENC_USAGE) ||
+                SAL_CERT_CheckCertKeyUsage(ctx, encCert, CERT_KEY_CTRL_IS_KEY_AGREEMENT_USAGE);
+    }
+    return false;
+}
+#endif
 
 int32_t ParseChain(HITLS_Ctx *ctx, CERT_Item *item, HITLS_CERT_Chain **chain, HITLS_CERT_X509 **encCert)
 {
@@ -822,7 +843,7 @@ int32_t ParseChain(HITLS_Ctx *ctx, CERT_Item *item, HITLS_CERT_Chain **chain, HI
 #endif
 
 #ifdef HITLS_TLS_PROTO_TLCP11
-        if ((encCert != NULL) && (SAL_CERT_CheckCertKeyUsage(ctx, cert, CERT_KEY_CTRL_IS_KEYENC_USAGE) == true)) {
+        if ((encCert != NULL) && (TlcpCheckEncCertKeyUsage(ctx, cert) == true)) {
             SAL_CERT_X509Free(encCertLocal);
             encCertLocal = cert;
             listNode = listNode->next;
@@ -849,11 +870,9 @@ int32_t SAL_CERT_ParseCertChain(HITLS_Ctx *ctx, CERT_Item *item, CERT_Pair **cer
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_NULL_INPUT, BINLOG_ID16327, "input null");
     }
-    int32_t ret;
     HITLS_CERT_X509 *encCert = NULL;
     HITLS_Config *config = &ctx->config.tlsConfig;
-    CERT_MgrCtx *mgrCtx = config->certMgrCtx;
-    if (mgrCtx == NULL) {
+    if (config->certMgrCtx == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_UNREGISTERED_CALLBACK);
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_UNREGISTERED_CALLBACK, BINLOG_ID16328, "unregistered callback");
     }
@@ -872,10 +891,17 @@ int32_t SAL_CERT_ParseCertChain(HITLS_Ctx *ctx, CERT_Item *item, CERT_Pair **cer
     }
 #endif
 
+#ifdef HITLS_TLS_PROTO_TLCP11
+    if (!TlcpCheckSignCertKeyUsage(ctx, cert)) {
+        SAL_CERT_X509Free(cert);
+        return RETURN_ERROR_NUMBER_PROCESS(HITLS_CERT_ERR_KEYUSAGE, BINLOG_ID15341, "check sign cert keyusage fail");
+    }
+#endif
+
     /* Parse other certificates in the certificate chain. */
     HITLS_CERT_Chain *chain = NULL;
     HITLS_CERT_X509 **inParseEnc = ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11 ? &encCert : NULL;
-    ret = ParseChain(ctx, item->next, &chain, inParseEnc);
+    int32_t ret = ParseChain(ctx, item->next, &chain, inParseEnc);
     if (ret != HITLS_SUCCESS) {
         SAL_CERT_X509Free(cert);
         return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16330, "ParseChain fail");
@@ -1064,7 +1090,8 @@ bool SAL_CERT_CheckCertKeyUsage(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, HITLS_CER
     }
     uint8_t isUsage = false;
     if (keyusage != CERT_KEY_CTRL_IS_KEYENC_USAGE && keyusage != CERT_KEY_CTRL_IS_DIGITAL_SIGN_USAGE &&
-        keyusage != CERT_KEY_CTRL_IS_KEY_CERT_SIGN_USAGE && keyusage != CERT_KEY_CTRL_IS_KEY_AGREEMENT_USAGE) {
+        keyusage != CERT_KEY_CTRL_IS_KEY_CERT_SIGN_USAGE && keyusage != CERT_KEY_CTRL_IS_KEY_AGREEMENT_USAGE &&
+        keyusage != CERT_KEY_CTRL_IS_DATA_ENC_USAGE && keyusage != CERT_KEY_CTRL_IS_NON_REPUDIATION_USAGE) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16339, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "keyusage err", 0, 0, 0, 0);
         return (bool)isUsage;
     }
