@@ -804,6 +804,30 @@ int32_t SAL_CRYPT_CalcDhSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName
         HITLS_CRYPT_CALLBACK_CALC_DH_SHARED_SECRET, ret, BINLOG_ID15112, HITLS_CRYPT_ERR_CALC_SHARED_KEY);
 }
 
+uint32_t SAL_CRYPT_GetCryptLength(const TLS_Ctx *ctx, int32_t cmd, int32_t param)
+{
+    const TLS_GroupInfo *groupInfo = NULL;
+    if (ctx == NULL) {
+        return 0;
+    }
+    groupInfo = ConfigGetGroupInfo(&ctx->config.tlsConfig, (uint16_t)param);
+    switch (cmd) {
+        case HITLS_CRYPT_INFO_CMD_GET_PUBLIC_KEY_LEN:
+            if (groupInfo == NULL) {
+                return 0;
+            }
+            return groupInfo->pubkeyLen;
+        case HITLS_CRYPT_INFO_CMD_GET_CIPHERTEXT_LEN:
+            if (groupInfo == NULL) {
+                return 0;
+            }
+            return groupInfo->ciphertextLen;
+        default:
+            return 0;
+    }
+    return 0;
+}
+
 #ifdef HITLS_TLS_PROTO_TLS13
 int32_t SAL_CRYPT_HkdfExtract(HITLS_Lib_Ctx *libCtx,
     const char *attrName, HITLS_CRYPT_HkdfExtractInput *input, uint8_t *prk, uint32_t *prkLen)
@@ -918,29 +942,6 @@ int32_t SAL_CRYPT_HkdfExpandLabel(CRYPT_KeyDeriveParameters *deriveInfo, uint8_t
     return SAL_CRYPT_HkdfExpand(deriveInfo->libCtx, deriveInfo->attrName, &expandInput, outSecret, outLen);
 }
 
-uint32_t SAL_CRYPT_GetCryptLength(const TLS_Ctx *ctx, int32_t cmd, int32_t param)
-{
-    const TLS_GroupInfo *groupInfo = NULL;
-    if (ctx == NULL) {
-        return 0;
-    }
-    groupInfo = ConfigGetGroupInfo(&ctx->config.tlsConfig, (uint16_t)param);
-    switch (cmd) {
-        case HITLS_CRYPT_INFO_CMD_GET_PUBLIC_KEY_LEN:
-            if (groupInfo == NULL) {
-                return 0;
-            }
-            return groupInfo->pubkeyLen;
-        case HITLS_CRYPT_INFO_CMD_GET_CIPHERTEXT_LEN:
-            if (groupInfo == NULL) {
-                return 0;
-            }
-            return groupInfo->ciphertextLen;
-        default:
-            return 0;
-    }
-    return 0;
-}
 #ifdef HITLS_TLS_FEATURE_KEM
 int32_t SAL_CRYPT_KemEncapsulate(TLS_Ctx *ctx, HITLS_KemEncapsulateParams *params)
 {

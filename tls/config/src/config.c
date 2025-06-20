@@ -751,7 +751,6 @@ int32_t HITLS_CFG_UpRef(HITLS_Config *config)
     return HITLS_SUCCESS;
 }
 
-#ifdef HITLS_TLS_PROTO_ALL
 uint32_t MapVersion2VersionBit(bool isDatagram, uint16_t version)
 {
     (void)isDatagram;
@@ -779,6 +778,7 @@ uint32_t MapVersion2VersionBit(bool isDatagram, uint16_t version)
     return ret;
 }
 
+#ifdef HITLS_TLS_PROTO_ALL
 static int ChangeVersionMask(HITLS_Config *config, uint16_t minVersion, uint16_t maxVersion)
 {
     uint32_t originVersionMask = config->originVersionMask;

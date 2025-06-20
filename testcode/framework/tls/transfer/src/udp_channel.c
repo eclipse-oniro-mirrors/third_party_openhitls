@@ -24,6 +24,8 @@
 #include <sys/types.h>
 #include <errno.h>
 
+#include "hitls_build.h"
+#ifdef HITLS_BSL_UIO_TCP
 #include "securec.h"
 #include "bsl_uio.h"
 #include "hitls_error.h"
@@ -231,3 +233,4 @@ void *UdpGetDefaultMethod(void)
     g_UdpUioMethodDefault.read = SelectUdpRead;
     return &g_UdpUioMethodDefault;
 }
+#endif

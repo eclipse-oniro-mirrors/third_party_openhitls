@@ -555,6 +555,12 @@
                         },
                         "suite_ecc_sm4_cbc_sm3": {
                             "deps": ["sm3", "cbc", "sm4", "sm2"]
+                        },
+                        "suite_ecdhe_sm4_gcm_sm3": {
+                            "deps": ["sm3", "gcm", "sm4", "sm2", "ecdh"]
+                        },
+                        "suite_ecc_sm4_gcm_sm3": {
+                            "deps": ["sm3", "gcm", "sm4", "sm2"]
                         }
                     },
                     "suite_cipher": {

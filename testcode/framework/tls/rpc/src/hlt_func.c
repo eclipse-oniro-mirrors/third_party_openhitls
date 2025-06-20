@@ -290,6 +290,7 @@ int HLT_TlsRenegotiate(void *ssl)
 
 int HLT_TlsVerifyClientPostHandshake(void *ssl)
 {
+#ifdef HITLS_TLS_FEATURE_PHA
     Process *process;
     process = GetProcess();
     switch (process->tlsType) {
@@ -297,6 +298,10 @@ int HLT_TlsVerifyClientPostHandshake(void *ssl)
         default:
             return ERROR;
     }
+#else
+    (void)ssl;
+#endif
+    return ERROR;
 }
 
 int HLT_TlsClose(void *ssl)
@@ -400,8 +405,12 @@ int RunDataChannelBind(void *param)
     LOG_DEBUG("RunDataChannelBind Ing...\n");
     DataChannelParam *channelParam = (DataChannelParam*)param;
     switch (channelParam->type) {
+#ifdef HITLS_BSL_UIO_TCP
         case TCP: sockFd = TcpBind(channelParam->port); break;
+#endif
+#ifdef HITLS_BSL_UIO_UDP
         case UDP: sockFd = UdpBind(channelParam->port); break;
+#endif
         default:
             return ERROR;
     }
@@ -420,11 +429,15 @@ int RunDataChannelAccept(void *param)
     LOG_DEBUG("RunDataChannelAccept Ing...\n");
     DataChannelParam *channelParam = (DataChannelParam *)param;
     switch (channelParam->type) {
+#ifdef HITLS_BSL_UIO_TCP
         case TCP:
             sockFd = TcpAccept(channelParam->ip, channelParam->bindFd, channelParam->isBlock, true);
             break;
+#endif
+#ifdef HITLS_BSL_UIO_UDP
         case UDP:
             sockFd = UdpAccept(channelParam->ip, channelParam->bindFd, channelParam->isBlock, false);
+#endif
             break;
         default:
             return ERROR;
@@ -452,8 +465,12 @@ int HLT_DataChannelBind(DataChannelParam *channelParam)
 int HLT_DataChannelConnect(DataChannelParam *dstChannelParam)
 {
     switch (dstChannelParam->type) {
+#ifdef HITLS_BSL_UIO_TCP
         case TCP: return TcpConnect(dstChannelParam->ip, dstChannelParam->port);
+#endif
+#ifdef HITLS_BSL_UIO_UDP
         case UDP: return UdpConnect(dstChannelParam->ip, dstChannelParam->port);
+#endif
         default:
             return ERROR;
     }
@@ -523,8 +540,12 @@ HLT_FD HLT_CreateDataChannel(HLT_Process *process1, HLT_Process *process2, DataC
 void HLT_CloseFd(int fd, int linkType)
 {
     switch (linkType) {
+#ifdef HITLS_BSL_UIO_TCP
         case TCP: TcpClose(fd); break;
+#endif
+#ifdef HITLS_BSL_UIO_UDP
         case UDP: UdpClose(fd); break;
+#endif
         default:
             /* Unknown fd type */
             break;

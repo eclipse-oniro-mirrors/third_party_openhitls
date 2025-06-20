@@ -149,9 +149,8 @@ static int32_t SetLinkConfig(uint16_t version, HITLS_KeyExchAlgo keyExAlgo, Link
     HITLS_CFG_SetCheckKeyUsage(linkPara->config, false);
 #endif /* HITLS_TLS_CONFIG_KEY_USAGE */
 
-    int32_t ret;
 #ifdef HITLS_TLS_FEATURE_CERT_MODE
-    ret = HITLS_CFG_SetClientVerifySupport(linkPara->config, true);
+    int32_t ret = HITLS_CFG_SetClientVerifySupport(linkPara->config, true);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }

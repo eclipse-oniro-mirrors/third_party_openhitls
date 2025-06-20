@@ -103,8 +103,10 @@ static int32_t ProcessHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
             return ServerRecvClientCertVerifyProcess(ctx);
 #endif /* HITLS_TLS_HOST_SERVER */
 #ifdef HITLS_TLS_HOST_CLIENT
+#ifdef HITLS_TLS_PROTO_DTLS12
         case TRY_RECV_HELLO_VERIFY_REQUEST:
             return DtlsClientRecvHelloVerifyRequestProcess(ctx, hsMsg);
+#endif
         case TRY_RECV_SERVER_HELLO:
             return ClientRecvServerHelloProcess(ctx, hsMsg);
         case TRY_RECV_SERVER_KEY_EXCHANGE:

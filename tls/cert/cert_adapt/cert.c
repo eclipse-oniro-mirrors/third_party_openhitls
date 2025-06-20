@@ -151,6 +151,7 @@ static int32_t CheckSelectSignAlgorithms(TLS_Ctx *ctx, const SelectSignAlgorithm
     uint32_t selectSignAlgorithmsSize = select->selectSignAlgorithmsSize;
     const uint16_t *selectSignAlgorithms = select->selectSignAlgorithms;
     const TLS_SigSchemeInfo *info = NULL;
+    (void)pubkey;
 #ifdef HITLS_TLS_PROTO_TLS13
     int32_t paraId = 0;
     (void)SAL_CERT_KeyCtrl(&ctx->config.tlsConfig, pubkey, CERT_KEY_CTRL_GET_PARAM_ID, NULL, (void *)&paraId);
@@ -499,6 +500,7 @@ int32_t EncodeCertificate(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, uint8_t *buf, u
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
         return HITLS_NULL_INPUT;
     }
+    (void)certIndex;
     int32_t ret;
     HITLS_Config *config = &ctx->config.tlsConfig;
     uint32_t certLen = 0;

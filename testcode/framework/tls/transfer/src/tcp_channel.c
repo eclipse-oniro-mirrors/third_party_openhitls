@@ -12,7 +12,6 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +23,8 @@
 #include <sys/types.h>
 #include <errno.h>
 
+#include "hitls_build.h"
+#ifdef HITLS_BSL_UIO_TCP
 #include "securec.h"
 #include "bsl_uio.h"
 #include "hitls_error.h"
@@ -284,3 +285,4 @@ void *TcpGetDefaultMethod(void)
     g_TcpUioMethodDefault.read = SelectTcpRead;
     return &g_TcpUioMethodDefault;
 }
+#endif
