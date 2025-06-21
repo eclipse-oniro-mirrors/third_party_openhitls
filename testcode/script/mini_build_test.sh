@@ -40,6 +40,7 @@ DEL_OPTIONS=""
 SYSTEM=""
 BITS=64
 ENDIAN="little"
+FEATURE_CONFIG_FILE=""
 
 print_usage() {
     printf "Usage: $0\n"
@@ -112,6 +113,13 @@ parse_option()
                 ADD_OPTIONS="$ADD_OPTIONS -fsanitize=address -fsanitize-address-use-after-scope -O0 -g3 -fno-stack-protector -fno-omit-frame-pointer -fgnu89-inline"
                 DEL_OPTIONS="$DEL_OPTIONS -fstack-protector-strong -fomit-frame-pointer -O2 -D_FORTIFY_SOURCE=2"
                 ;;
+            "feature-config")
+                FEATURE_CONFIG_FILE=$(find $HITLS_ROOT_DIR -name "$value" -type f | head -n 1)
+                if [ -z "$FEATURE_CONFIG_FILE" ]; then
+                    echo "Error: Cannot find feature config file '$value' under $HITLS_ROOT_DIR"
+                    exit 1
+                fi
+                ;;
             "test")
                 LIB_TYPE="static"
                 TEST_FEATURE=$value
@@ -162,16 +170,66 @@ show_macro()
     cat unique_macro.txt
 }
 
+process_feature_config()
+{
+    local config_file="$1"
+    local endian="$2"
+    local bits="$3"
+    local asm_type="$4"
+    local build_dir="$5"
+
+    python3 - "$config_file" "$endian" "$bits" "$asm_type" "$build_dir" <<END
+#!/usr/bin/env python
+import json
+import sys
+import os
+
+if __name__ == "__main__":
+    config_file = sys.argv[1]
+    endian = sys.argv[2]
+    bits = int(sys.argv[3])
+    asm_type = sys.argv[4] if len(sys.argv) > 4 and sys.argv[4] else None
+    build_dir = sys.argv[5]
+    # Read the current config
+    with open(config_file, 'r') as f:
+        config = json.load(f)
+    # Update the fields
+    config['endian'] = endian
+    config['bits'] = bits
+    if asm_type:
+        config['asmType'] = asm_type
+    else:
+        # If no asm_type is defined, remove the "asm" field from hitls_crypto
+        config['asmType'] = "no_asm"
+        if 'libs' in config and 'hitls_crypto' in config['libs'] and 'asm' in config['libs']['hitls_crypto']:
+            del config['libs']['hitls_crypto']['asm']
+
+    # Create build directory if it doesn't exist
+    os.makedirs(build_dir, exist_ok=True)
+    # Save to build directory
+    output_file = os.path.join(build_dir, 'feature_config_modified.json')
+    with open(output_file, 'w') as f:
+        json.dump(config, f, indent=4)
+    # Print the output file path for the shell script to use
+    print(output_file)
+END
+}
+
 mini_config()
 {
-    enables=""
+    enables="--enable"
     for feature in ${FEATURES[@]}
     do
         enables="$enables $feature"
     done
 
-    echo "python3 configure.py --lib_type $LIB_TYPE --enable $enables --endian=$ENDIAN --bits=$BITS"
-    python3 $HITLS_ROOT_DIR/configure.py --lib_type $LIB_TYPE --enable $enables --endian=$ENDIAN --bits=$BITS
+    if [ "$FEATURE_CONFIG_FILE" != "" ]; then
+        MODIFIED_CONFIG_FILE=$(process_feature_config "$FEATURE_CONFIG_FILE" "$ENDIAN" "$BITS" "$ASM_TYPE" "$HITLS_ROOT_DIR/build/")
+        enables="--feature_config $MODIFIED_CONFIG_FILE"
+    fi
+
+    echo "python3 configure.py --lib_type $LIB_TYPE $enables --endian=$ENDIAN --bits=$BITS"
+    python3 $HITLS_ROOT_DIR/configure.py --lib_type $LIB_TYPE  $enables --endian=$ENDIAN --bits=$BITS
 
     if [ "$ASM_TYPE" != "" ]; then
         echo "python3 configure.py --asm_type $ASM_TYPE"
@@ -230,9 +288,12 @@ import os, sys, json
 if __name__ == "__main__":
     with open('crypto_test_config.json', 'r') as f:
         test_config1 = json.loads(f.read())
+    with open('tls_test_config.json', 'r') as f:
+        test_config2 = json.loads(f.read())
     files = set()
     for fea in sys.argv[1].split(","):
         files.update(test_config1['testFeatures'].get(fea, ''))
+        files.update(test_config2['testFeatures'].get(fea, ''))
     sys.stdout.write('%s' % '|'.join(files))
 END
 }
@@ -247,11 +308,15 @@ import os, sys, json
 if __name__ == "__main__":
     with open('crypto_test_config.json', 'r') as f:
         test_config1 = json.loads(f.read())
-    if sys.argv[1] not in test_config1['testSuiteCases']:
-        raise ValueError('The test case of file %s is not configured in file crypto_test_config.json.'% sys.argv[1])
+    with open('tls_test_config.json', 'r') as f:
+        test_config2 = json.loads(f.read())
+    if sys.argv[1] not in test_config1['testSuiteCases'] and sys.argv[1] not in test_config2['testSuiteCases']:
+        raise ValueError('The test case of file %s is not configured in file crypto_test_config.json or tls_test_config.json.'% sys.argv[1])
     cases = set()
     if sys.argv[1] in test_config1['testSuiteCases']:
         cases.update(test_config1['testSuiteCases'][sys.argv[1]])
+    if sys.argv[1] in test_config2['testSuiteCases']:
+        cases.update(test_config2['testSuiteCases'][sys.argv[1]])
     sys.stdout.write('%s' % ' '.join(cases))
 END
 }
