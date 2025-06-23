@@ -107,12 +107,18 @@ FRAME_LinkObj *CreateLink(HITLS_Config *config, BSL_UIO_TransportType type)
         return NULL;
     }
     HITLS_CFG_SetReadAhead(config, 1);
+#ifdef HITLS_TLS_FEATURE_FLIGHT
     HITLS_CFG_SetFlightTransmitSwitch(config, false);
+#endif
     HITLS_Ctx *sslObj = HITLS_New(config);
     if (sslObj == NULL) {
         goto ERR;
     }
-
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+    if (type == BSL_UIO_UDP) {
+        HITLS_SetMtu(sslObj, 16384);
+    }
+#endif
     INIT_IO_METHOD(method, type, FRAME_Write, FRAME_Read, FRAME_Ctrl);
     io = BSL_UIO_New(&method);
     if (io == NULL) {

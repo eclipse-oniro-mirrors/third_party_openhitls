@@ -184,6 +184,9 @@
     #ifndef HITLS_TLS_FEATURE_CERT_CB
         #define HITLS_TLS_FEATURE_CERT_CB
     #endif
+    #ifndef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+        #define HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+    #endif
 #endif /* HITLS_TLS_FEATURE */
 
 #ifdef HITLS_TLS_FEATURE_SESSION

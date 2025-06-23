@@ -102,6 +102,15 @@ void SAL_NET_SockAddrFree(BSL_SAL_SockAddr sockAddr)
     BSL_SAL_Free(sockAddr);
 }
 
+int32_t SAL_NET_SockAddrGetFamily(const BSL_SAL_SockAddr sockAddr)
+{
+    const LinuxSockAddr *addr = (const LinuxSockAddr *)sockAddr;
+    if (addr == NULL) {
+        return AF_UNSPEC;
+    }
+    return addr->addr.sa_family;
+}
+
 uint32_t SAL_NET_SockAddrSize(const BSL_SAL_SockAddr sockAddr)
 {
     const LinuxSockAddr *addr = (const LinuxSockAddr *)sockAddr;

@@ -643,6 +643,20 @@ typedef int32_t (*BslSalSockAddrNew)(BSL_SAL_SockAddr *sockAddr);
  */
 typedef void (*BslSalSockAddrFree)(BSL_SAL_SockAddr sockAddr);
 
+#define SAL_IPV4 2 /* IPv4 Internet protocols */
+#define SAL_IPV6 10 /* IPv6 Internet protocols */
+
+/**
+ * @ingroup bsl_sal
+ * @brief   Obtain the UIO_Addr protocal family
+ *
+ * @param   sockAddr [IN] UIO_Addr object
+ * @retval  Return 0 if the address is not valid.
+ * @retval  Return SAL_IPV4 if the address is IPv4.
+ * @retval  Return SAL_IPV6 if the address is IPv6.
+ */
+typedef int32_t (*BslSalSockAddrGetFamily)(const BSL_SAL_SockAddr sockAddr);
+
 /**
  * @ingroup bsl_sal
  * @brief   Obtain the size of the BSL_SAL_SockAddr address.
@@ -707,6 +721,10 @@ int32_t BSL_SAL_SockClose(int32_t sockId);
  */
 int32_t BSL_SAL_SetSockopt(int32_t sockId, int32_t level, int32_t name, const void *val, int32_t len);
 
+#define SAL_PROTO_IP_LEVEL 0 /* IPv4 level */
+#define SAL_PROTO_IPV6_LEVEL 41 /* IPv6 level */
+#define SAL_MTU_OPTION 14  /* Retrieve the current known path MTU of the current socket */
+#define SAL_IPV6_MTU_OPTION 24 /* Retrieve the current known path MTU of the current socket for IPv6 */
 /**
  * @ingroup bsl_sal
  * @brief   Get the socket
@@ -716,8 +734,12 @@ int32_t BSL_SAL_SetSockopt(int32_t sockId, int32_t level, int32_t name, const vo
  * @attention none
  * @param sockId [IN] Socket file descriptor ID
  * @param level [IN] Level of the option to be set.
+ * SAL_PROTO_IP_LEVEL: ipv4 level
+ * SAL_PROTO_IPV6_LEVEL: ipv6 level
  * @param name [IN] Options to be set
- * @param val [OUT] Value of the option.
+ * SAL_MTU_OPTION: ipv4 mtu option
+ * SAL_IPV6_MTU_OPTION: ipv6 mtu option
+ * @param val [OUT] Value of the option
  * @param len [OUT] val Length
  * @retval If the operation succeeds, BSL_SUCCESS is returned
  */
@@ -933,6 +955,7 @@ typedef enum {
     BSL_SAL_NET_SOCKADDR_SIZE_CB_FUNC,
     BSL_SAL_NET_SENDTO_CB_FUNC,
     BSL_SAL_NET_RECVFROM_CB_FUNC,
+    BSL_SAL_NET_GETFAMILY_CB_FUNC,
 
     BSL_SAL_TIME_GET_UTC_TIME_CB_FUNC = 0x0400,
     BSL_SAL_TIME_DATE_TO_STR_CONVERT_CB_FUNC,

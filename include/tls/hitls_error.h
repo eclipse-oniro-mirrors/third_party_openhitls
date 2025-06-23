@@ -275,6 +275,7 @@ typedef enum {
     HITLS_UIO_SCTP_ADD_AUTH_KEY_FAIL,              /**< Failed to add the auth key for the sctp UIO object. */
     HITLS_UIO_SCTP_ACTIVE_AUTH_KEY_FAIL,           /**< Failed to activate the auth key for the sctp UIO object. */
     HITLS_UIO_SCTP_DEL_AUTH_KEY_FAIL,              /**< Failed to delete the auth key for the sctp UIO object. */
+    HITLS_UIO_IO_TYPE_ERROR,                       /**< The type of UIO is wrong. */
 
     HITLS_CERT_FAIL_START = 0x020C0001,            /**< Certificate module error code start bit. */
     HITLS_CERT_STORE_CTRL_ERR_SET_VERIFY_DEPTH,

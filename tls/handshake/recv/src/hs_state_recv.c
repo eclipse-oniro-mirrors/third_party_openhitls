@@ -383,7 +383,10 @@ static int32_t DtlsCheckTimeoutAndProcess(TLS_Ctx *ctx, int32_t retValue)
 
     if (isTimeout) {
         /* Receive the message of the last flight when the receiving times out */
-        REC_RetransmitListFlush(ctx);
+        ret = REC_RetransmitListFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
 
         ret = HS_TimeoutProcess(ctx);
         if (ret != HITLS_SUCCESS) {

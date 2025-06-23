@@ -21,6 +21,7 @@
 #include "rec.h"
 #include "bsl_uio.h"
 #include "record.h"
+#include "hs.h"
 
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
 int32_t REC_RetransmitListAppend(REC_Ctx *recCtx, REC_Type type, const uint8_t *msg, uint32_t len)
@@ -68,7 +69,44 @@ void REC_RetransmitListClean(REC_Ctx *recCtx)
     return;
 }
 
-void REC_RetransmitListFlush(TLS_Ctx *ctx)
+static int32_t WriteSingleRetransmitNode(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, uint32_t num)
+{
+    int32_t ret = REC_QueryMtu(ctx);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+
+    ret = REC_RecBufReSet(ctx);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+
+    uint32_t maxRecPayloadLen = 0;
+    ret = REC_GetMaxWriteSize(ctx, &maxRecPayloadLen);
+    if (ret != HITLS_SUCCESS) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17360, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "GetMaxWriteSize fail", 0, 0, 0, 0);
+        return ret;
+    }
+
+    if (maxRecPayloadLen >= num) {
+        /* Send to the record layer */
+        ret = REC_Write(ctx, recordType, data, num);
+        if (ret != HITLS_SUCCESS) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17361, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "send handshake msg to record fail.", 0, 0, 0, 0);
+            return ret;
+        }
+    } else {
+        ret = HS_DtlsSendFragmentHsMsg(ctx, maxRecPayloadLen, data);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+    }
+    return HITLS_SUCCESS;
+}
+
+int32_t REC_RetransmitListFlush(TLS_Ctx *ctx)
 {
     REC_Ctx *recCtx = ctx->recCtx;
     RecRetransmitList *retransmitList = &recCtx->retransmitList;
@@ -78,12 +116,16 @@ void REC_RetransmitListFlush(TLS_Ctx *ctx)
         REC_ActiveOutdatedWriteState(ctx);
     }
 
+    int32_t ret = HITLS_SUCCESS;
     ListHead *head = NULL;
     ListHead *tmpHead = NULL;
     LIST_FOR_EACH_ITEM_SAFE(head, tmpHead, &(retransmitList->head)) {
         retransmitNode = LIST_ENTRY(head, RecRetransmitList, head);
         /* UDP does not fail to send. Therefore, the sending failure case does not need to be considered. */
-        (void)REC_Write(ctx, retransmitNode->type, retransmitNode->msg, retransmitNode->len);
+        ret = WriteSingleRetransmitNode(ctx, retransmitNode->type, retransmitNode->msg, retransmitNode->len);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
         if (retransmitNode->type == REC_TYPE_CHANGE_CIPHER_SPEC) {
             REC_DeActiveOutdatedWriteState(ctx);
         }
@@ -91,6 +133,6 @@ void REC_RetransmitListFlush(TLS_Ctx *ctx)
     if (ctx->config.tlsConfig.isFlightTransmitEnable) {
         (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
     }
-    return;
+    return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */

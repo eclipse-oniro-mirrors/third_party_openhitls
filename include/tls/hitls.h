@@ -701,14 +701,49 @@ int32_t HITLS_IsBeforeHandShake(const HITLS_Ctx *ctx, bool *isBefore);
 
 /**
  * @ingroup hitls
+ * @brief   Set the MTU of Data Link layer.
+ *
+ * @param   ctx  [IN] TLS connection handle
+ * @param   linkMtu  [IN] MTU of Data Link layer.
+ * @retval  HITLS_SUCCESS, set the mtu succeeded.
+ * @retval  HITLS_CONFIG_INVALID_LENGTH, the mtu is invalid
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_SetLinkMtu(HITLS_Ctx *ctx, uint16_t linkMtu);
+
+/**
+ * @ingroup hitls
  * @brief   Set the MTU of a path.
  *
  * @param   ctx  [IN] TLS connection handle
  * @param   mtu  [IN] Set the MTU.
- * @retval  HITLS_SUCCESS, obtaining the status succeeded.
+ * @retval  HITLS_SUCCESS, set the mtu succeeded.
+ * @retval  HITLS_CONFIG_INVALID_LENGTH, the mtu is invalid
  *          For details about other error codes, see hitls_error.h.
  */
-int32_t HITLS_SetMtu(HITLS_Ctx *ctx, long mtu);
+int32_t HITLS_SetMtu(HITLS_Ctx *ctx, uint16_t mtu);
+
+/**
+ * @ingroup hitls
+ * @brief   Set the option that don't query mtu from the bio.
+ *
+ * @param   ctx  [IN] TLS connection handle
+ * @param   noQueryMtu  [IN] whether not to query the mtu from the bio.
+ * @retval  HITLS_SUCCESS, set the option succeeded.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_SetNoQueryMtu(HITLS_Ctx *ctx, bool noQueryMtu);
+
+/**
+ * @ingroup hitls
+ * @brief   Querying whether the EMSGSIZE error occur and mtu need be modified
+ *
+ * @param   ctx [IN] TLS connection handle.
+ * @param   needQueryMtu [IN] Indicates whether the EMSGSIZE error occur and mtu need be modified
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_GetNeedQueryMtu(HITLS_Ctx *ctx, bool *needQueryMtu);
 
 /**
  * @ingroup hitls
@@ -1364,6 +1399,30 @@ int32_t HITLS_SetEmptyRecordsNum(HITLS_Ctx *ctx, uint32_t emptyNum);
  * @retval  HITLS_SUCCESS, if successful.
  */
 int32_t HITLS_GetEmptyRecordsNum(const HITLS_Ctx *ctx, uint32_t *emptyNum);
+
+
+/**
+ * @ingroup hitls
+ * @brief   set the max send fragment to restrict the amount of plaintext bytes in any record
+ *
+ * @param   ctx [IN/OUT] TLS connection handle.
+ * @param   maxSendFragment [IN] Indicates the max send fragment
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_CONFIG_INVALID_LENGTH, the maxSendFragment is less than 64 or greater than 16384.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_SetMaxSendFragment(HITLS_Ctx *ctx, uint16_t maxSendFragment);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain the max send fragment to restrict the amount of plaintext bytes in any record
+ *
+ * @param   ctx [IN] TLS connection handle.
+ * @param   maxSendFragment [OUT] Indicates the max send fragment
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_GetMaxSendFragment(const HITLS_Ctx *ctx, uint16_t *maxSendFragment);
 
 /**
  * @ingroup hitls

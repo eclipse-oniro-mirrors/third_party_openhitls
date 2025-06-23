@@ -26,6 +26,7 @@
 extern "C" {
 #endif
 
+#define DTLS_MIN_MTU 256    /* Minimum MTU setting size */
 #define REC_MAX_PLAIN_LENGTH 16384          /* Maximum plain length */
 /* TLS13 Maximum MAC address padding */
 #define REC_MAX_TLS13_ENCRYPTED_OVERHEAD  256u
@@ -203,6 +204,16 @@ int32_t REC_InitPendingState(const TLS_Ctx *ctx, const REC_SecParameters *param)
 int32_t REC_ActivePendingState(TLS_Ctx *ctx, bool isOut);
 
 /**
+ * @brief   Calculate the mtu
+ *
+ * @param   ctx [IN] TLS_Ctx context
+ *
+ * @retval  HITLS_SUCCESS
+ * @retval  ITLS_UIO_FAIL The uio ctrl failed
+ */
+int32_t REC_QueryMtu(TLS_Ctx *ctx);
+
+/**
  * @brief   Obtain the maximum writable plaintext length of a single record
  *
  * @param   ctx [IN] TLS_Ctx context
@@ -213,6 +224,18 @@ int32_t REC_ActivePendingState(TLS_Ctx *ctx, bool isOut);
  * @retval  HITLS_REC_PMTU_TOO_SMALL The PMTU is too small
  */
 int32_t REC_GetMaxWriteSize(const TLS_Ctx *ctx, uint32_t *len);
+
+/**
+ * @brief   Obtain the maximum writable plaintext according to mtu
+ *
+ * @param   ctx [IN] TLS_Ctx context
+ * @param   len [OUT] Maximum length of the plaintext
+ *
+ * @retval  HITLS_SUCCESS
+ * @retval  HITLS_UIO_IO_TYPE_ERROR Not UDP uio
+ * @retval  HITLS_REC_PMTU_TOO_SMALL The PMTU is too small
+ */
+int32_t REC_GetMaxDataMtu(const TLS_Ctx *ctx, uint32_t *len);
 
 /**
  * @ingroup record
@@ -254,8 +277,9 @@ void REC_RetransmitListClean(REC_Ctx *recCtx);
  * @brief   Flush the retransmit list
  *
  * @param   ctx [IN] TLS object
+ * @retval  HITLS_SUCCESS
  */
-void REC_RetransmitListFlush(TLS_Ctx *ctx);
+int32_t REC_RetransmitListFlush(TLS_Ctx *ctx);
 
 REC_Type REC_GetUnexpectedMsgType(TLS_Ctx *ctx);
 

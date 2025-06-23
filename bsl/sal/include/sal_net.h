@@ -41,6 +41,7 @@ int32_t SAL_RecvFrom(int32_t sock, void *buf, size_t len, int32_t flags, BSL_SAL
                      int32_t *err);
 
 int32_t SAL_SockAddrNew(BSL_SAL_SockAddr *sockAddr);
+int32_t SAL_SockAddrGetFamily(const BSL_SAL_SockAddr sockAddr);
 void SAL_SockAddrFree(BSL_SAL_SockAddr sockAddr);
 uint32_t SAL_SockAddrSize(const BSL_SAL_SockAddr sockAddr);
 void SAL_SockAddrCopy(BSL_SAL_SockAddr dst, BSL_SAL_SockAddr src);

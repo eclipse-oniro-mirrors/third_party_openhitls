@@ -47,6 +47,7 @@ typedef struct {
     BslSalSockAddrCopy pfSockAddrCopy;
     BslSalNetSendTo pfSendTo;
     BslSalNetRecvFrom pfRecvFrom;
+    BslSalSockAddrGetFamily pfSockAddrGetFamily;
 } BSL_SAL_NetCallback;
 
 int32_t SAL_NetCallback_Ctrl(BSL_SAL_CB_FUNC_TYPE type, void *funcCb);
@@ -56,6 +57,7 @@ int32_t SAL_NET_Write(int32_t fd, const void *buf, uint32_t len, int32_t *err);
 int32_t SAL_NET_Read(int32_t fd, void *buf, uint32_t len, int32_t *err);
 int32_t SAL_NET_SockAddrNew(BSL_SAL_SockAddr *sockAddr);
 void SAL_NET_SockAddrFree(BSL_SAL_SockAddr sockAddr);
+int32_t SAL_NET_SockAddrGetFamily(const BSL_SAL_SockAddr sockAddr);
 uint32_t SAL_NET_SockAddrSize(const BSL_SAL_SockAddr sockAddr);
 void SAL_NET_SockAddrCopy(BSL_SAL_SockAddr dst, BSL_SAL_SockAddr src);
 int32_t SAL_NET_Sendto(int32_t sock, const void *buf, size_t len, int32_t flags, void *address, int32_t addrLen,

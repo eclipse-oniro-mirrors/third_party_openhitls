@@ -86,23 +86,6 @@ static int32_t UIO_Deinit(TLS_Ctx *ctx)
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_FEATURE_FLIGHT */
-static uint32_t GetMsgSize(const TLS_Ctx *ctx)
-{
-    (void)ctx;
-    uint32_t msgSize = DTLS_OVER_UDP_DEFAULT_SIZE;
-#if defined(HITLS_BSL_UIO_UDP)
-    /* check whether DTLS over udp */
-    if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask) &&
-        BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
-        /* Before calling this function, the user has set pmtu or pmtu to the default value 1500. */
-        msgSize = (msgSize > ctx->config.pmtu) ? msgSize : (ctx->config.pmtu + EXTRA_DATA_SIZE);
-    } else
-#endif /* HITLS_BSL_UIO_UDP */
-    {
-        msgSize = REC_MAX_PLAIN_DECRYPTO_MAX_LENGTH;
-    }
-    return msgSize;
-}
 
 static int32_t HsInitChangeState(TLS_Ctx *ctx)
 {
@@ -166,7 +149,7 @@ int32_t HS_Init(TLS_Ctx *ctx)
     ctx->hsCtx = hsCtx;
     hsCtx->clientRandom = ctx->negotiatedInfo.clientRandom;
     hsCtx->serverRandom = ctx->negotiatedInfo.serverRandom;
-    hsCtx->bufferLen = GetMsgSize(ctx);
+    hsCtx->bufferLen = REC_MAX_PLAIN_DECRYPTO_MAX_LENGTH;
     hsCtx->msgBuf = BSL_SAL_Malloc(hsCtx->bufferLen);
     if (hsCtx->msgBuf == NULL) {
         (void)RETURN_ERROR_NUMBER_PROCESS(HITLS_MEMALLOC_FAIL, BINLOG_ID17177, "Malloc fail");

@@ -128,6 +128,18 @@ const char *HS_GetServerName(const TLS_Ctx *ctx);
  */
 #ifdef HITLS_TLS_PROTO_DTLS12
 int32_t HS_CheckAndProcess2MslTimeout(TLS_Ctx *ctx);
+
+/**
+ * @brief  Send dtls fragment handshake message according to maxRecPayloadLen
+ *
+ * @param  ctx [IN] TLS context
+ * @param  maxRecPayloadLen [IN] the max plaintext size
+ * @param  msgData [IN] the handshake message data need to be send
+ *
+ * @retval HITLS_SUCCESS succeeded.
+ * @retval  For details about other error codes, see hitls_error.h
+ */
+int32_t HS_DtlsSendFragmentHsMsg(TLS_Ctx *ctx, uint32_t maxRecPayloadLen, const uint8_t *msgData);
 #endif
 
 int32_t HS_CheckPostHandshakeAuth(TLS_Ctx *ctx);

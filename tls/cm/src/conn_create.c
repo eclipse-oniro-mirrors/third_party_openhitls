@@ -209,7 +209,13 @@ static void ConfigPmtu(HITLS_Ctx *ctx, BSL_UIO *uio)
 #ifdef HITLS_TLS_PROTO_DTLS12
     /* The PMTU needs to be set for DTLS. If the PMTU is not set, use the default value */
     if ((ctx->config.pmtu == 0) && IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
-        ctx->config.pmtu = DTLS_SCTP_PMTU;
+        if (BSL_UIO_GetUioChainTransportType(uio, BSL_UIO_UDP)) {
+            uint8_t overhead = 0;
+            (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_GET_MTU_OVERHEAD, sizeof(uint8_t), &overhead);
+            ctx->config.pmtu = DTLS_DEFAULT_PMTU - overhead;
+        } else {
+            ctx->config.pmtu = DTLS_SCTP_PMTU;
+        }
     }
 #endif
 }

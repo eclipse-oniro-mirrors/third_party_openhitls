@@ -293,7 +293,10 @@ int32_t DtlsClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {
 #ifdef HITLS_BSL_UIO_UDP
     if (ctx->preState == CM_STATE_TRANSPORTING && ctx->state == CM_STATE_HANDSHAKING) {
-        REC_RetransmitListFlush(ctx);
+        int32_t ret = REC_RetransmitListFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15888, BSL_LOG_LEVEL_DEBUG, BSL_LOG_BINLOG_TYPE_RUN,
             "recv post hs finished, send retransmit msg.", 0, 0, 0, 0);
         return HS_ChangeState(ctx, TLS_CONNECTED);
@@ -415,7 +418,10 @@ int32_t DtlsServerRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {
 #ifdef HITLS_BSL_UIO_UDP
     if (ctx->preState == CM_STATE_TRANSPORTING && ctx->state == CM_STATE_HANDSHAKING) {
-        REC_RetransmitListFlush(ctx);
+        int32_t ret = REC_RetransmitListFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15885, BSL_LOG_LEVEL_DEBUG, BSL_LOG_BINLOG_TYPE_RUN,
             "recv post hs finished, send retransmit msg.", 0, 0, 0, 0);
         return HS_ChangeState(ctx, TLS_CONNECTED);

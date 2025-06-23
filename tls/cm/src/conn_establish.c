@@ -36,7 +36,7 @@
 #include "hs_common.h"
 
 #ifdef HITLS_TLS_PROTO_DTLS12
-#define DTLS_MIN_MTU 256    /* Minimum MTU setting size */
+#define DTLS_MAX_MTU_OVERHEAD 48    /* Max overhead, ipv6 40 + udp 8 */
 #endif
 #define DATA_MAX_LENGTH 1024
 static int32_t ConnectEventInIdleState(HITLS_Ctx *ctx)
@@ -563,21 +563,57 @@ int32_t HITLS_IsBeforeHandShake(const HITLS_Ctx *ctx, bool *isBefore)
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_CONFIG_STATE */
-#ifdef HITLS_TLS_PROTO_DTLS12
-int32_t HITLS_SetMtu(HITLS_Ctx *ctx, long mtu)
+
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+int32_t HITLS_SetLinkMtu(HITLS_Ctx *ctx, uint16_t linkMtu)
 {
     if (ctx == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    if (mtu < DTLS_MIN_MTU) {
+    if (linkMtu < DTLS_MIN_MTU) {
         return HITLS_CONFIG_INVALID_LENGTH;
     }
 
-    ctx->config.pmtu = (uint16_t)mtu;
+    ctx->config.linkMtu = linkMtu;
     return HITLS_SUCCESS;
 }
-#endif
+
+int32_t HITLS_SetMtu(HITLS_Ctx *ctx, uint16_t mtu)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    if (mtu < DTLS_MIN_MTU - DTLS_MAX_MTU_OVERHEAD) {
+        return HITLS_CONFIG_INVALID_LENGTH;
+    }
+
+    ctx->config.pmtu = mtu;
+    ctx->mtuModified = true;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_SetNoQueryMtu(HITLS_Ctx *ctx, bool noQueryMtu)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    ctx->noQueryMtu = noQueryMtu;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_GetNeedQueryMtu(HITLS_Ctx *ctx, bool *needQueryMtu)
+{
+    if (ctx == NULL || needQueryMtu == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    *needQueryMtu = ctx->needQueryMtu;
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
 
 #ifdef HITLS_TLS_CONNECTION_INFO_NEGOTIATION
 int32_t HITLS_GetClientVersion(const HITLS_Ctx *ctx, uint16_t *clientVersion)

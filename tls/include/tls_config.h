@@ -59,6 +59,9 @@ typedef struct TlsSessionManager TLS_SessionMgr;
 /* the default number of tickets of TLS1.3 server is 2 */
 #define HITLS_TLS13_TICKET_NUM_DEFAULT 2u
 #define HITLS_MAX_EMPTY_RECORDS 32
+#ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+#define HITLS_MAX_SEND_FRAGMENT_DEFAULT 16384
+#endif
 /* max cert list is 100k */
 #define HITLS_MAX_CERT_LIST_DEFAULT (1024 * 100)
 
@@ -187,6 +190,7 @@ typedef struct TlsConfig {
     uint8_t sessionIdCtx[HITLS_SESSION_ID_CTX_MAX_SIZE];  /* the sessionId context */
 
     uint32_t ticketNums;                /* TLS1.3 ticket number */
+    uint16_t maxSendFragment;           /* max send fragment to restrict the amount of plaintext bytes in any record  */
     TLS_SessionMgr *sessMgr;            /* session management */
 
     void *userData;                     /* user data */

@@ -169,6 +169,7 @@ static int32_t CertCtrlGetSignAlgo(HITLS_Config *config, HITLS_CERT_X509 *cert, 
 
 static int32_t CertCheckKeyUsage(HITLS_Config *config, HITLS_CERT_X509 *cert, uint32_t inKeyUsage, bool *res)
 {
+    (void)config;
     uint32_t keyUsage = 0;
     int32_t ret = HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_GET_KUSAGE, &keyUsage, sizeof(uint32_t));
     if (ret != HITLS_SUCCESS) {

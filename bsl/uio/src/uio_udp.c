@@ -27,10 +27,14 @@
 #include "uio_base.h"
 #include "uio_abstraction.h"
 
+#define IPV4_WITH_UDP_HEADER_LEN 28
+#define IPV6_WITH_UDP_HEADER_LEN 48
+
 typedef struct {
     BSL_SAL_SockAddr peer;
     int32_t fd; // Network socket
     uint32_t connected;
+    uint32_t sysErrno;
 } UdpParameters;
 
 static int32_t UdpNew(BSL_UIO *uio)
@@ -129,6 +133,98 @@ static int32_t UdpSetFd(BSL_UIO *uio, int32_t size, const int32_t *fd)
     return BSL_SUCCESS;
 }
 
+static int32_t UdpGetMtuOverhead(UdpParameters *parameters, int32_t size, uint8_t *overhead)
+{
+    if (overhead == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
+        return BSL_NULL_INPUT;
+    }
+
+    if (size != (int32_t)sizeof(uint8_t)) {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        return BSL_INVALID_ARG;
+    }
+
+    switch (SAL_SockAddrGetFamily(parameters->peer)) {
+        case SAL_IPV4:
+            /* 20 for ipv4, 8 for udp */
+            *overhead = IPV4_WITH_UDP_HEADER_LEN;
+            break;
+        case SAL_IPV6:
+            *overhead = IPV6_WITH_UDP_HEADER_LEN;
+            break;
+        default:
+            *overhead = IPV4_WITH_UDP_HEADER_LEN;
+            break;
+    }
+
+    return BSL_SUCCESS;
+}
+
+static int32_t UdpQueryMtu(UdpParameters *parameters, int32_t size, uint32_t *mtu)
+{
+    if (mtu == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
+        return BSL_NULL_INPUT;
+    }
+
+    if (size != (int32_t)sizeof(uint32_t)) {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        return BSL_INVALID_ARG;
+    }
+
+    int32_t socketVal = 0;
+    int32_t socketOptLen = sizeof(socketVal);
+    switch (SAL_SockAddrGetFamily(parameters->peer)) {
+        case SAL_IPV4:
+            if (BSL_SAL_GetSockopt(parameters->fd, SAL_PROTO_IP_LEVEL, SAL_MTU_OPTION,
+                (void *)&socketVal, &socketOptLen) != BSL_SUCCESS || socketVal < IPV4_WITH_UDP_HEADER_LEN) {
+                *mtu = 0;
+            } else {
+                *mtu = socketVal - IPV4_WITH_UDP_HEADER_LEN;
+            }
+            break;
+        case SAL_IPV6:
+            if (BSL_SAL_GetSockopt(parameters->fd, SAL_PROTO_IPV6_LEVEL, SAL_IPV6_MTU_OPTION,
+                (void *)&socketVal, &socketOptLen) != BSL_SUCCESS || socketVal < IPV6_WITH_UDP_HEADER_LEN) {
+                *mtu = 0;
+            } else {
+                *mtu = socketVal - IPV6_WITH_UDP_HEADER_LEN;
+            }
+            break;
+        default:
+            *mtu = 0;
+            break;
+    }
+
+    return BSL_SUCCESS;
+}
+
+static int32_t UdpIsMtuExceeded(UdpParameters *parameters, int32_t size, bool *exceeded)
+{
+    if (exceeded == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
+        return BSL_NULL_INPUT;
+    }
+
+    if (size != (int32_t)sizeof(bool)) {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        return BSL_INVALID_ARG;
+    }
+    (void)parameters;
+#ifdef EMSGSIZE
+    if (parameters->sysErrno == EMSGSIZE) {
+        *exceeded = true;
+        parameters->sysErrno = 0;
+    } else {
+#endif
+        *exceeded = false;
+#ifdef EMSGSIZE
+    }
+#endif
+    return BSL_SUCCESS;
+}
+
 static int32_t UdpGetFd(BSL_UIO *uio, int32_t size, int32_t *fd)
 {
     if (fd == NULL) {
@@ -168,6 +264,12 @@ int32_t UdpSocketCtrl(BSL_UIO *uio, int32_t cmd, int32_t larg, void *parg)
                 parameters->connected = 0;
                 return BSL_SUCCESS;
             }
+        case BSL_UIO_UDP_GET_MTU_OVERHEAD:
+            return UdpGetMtuOverhead(parameters, larg, parg);
+        case BSL_UIO_UDP_QUERY_MTU:
+            return UdpQueryMtu(parameters, larg, parg);
+        case BSL_UIO_UDP_MTU_EXCEEDED:
+            return UdpIsMtuExceeded(parameters, larg, parg);
         case BSL_UIO_FLUSH:
             return BSL_SUCCESS;
         default:
@@ -183,6 +285,7 @@ static int32_t UdpSocketWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint3
     int32_t sendBytes = 0;
     int32_t fd = BSL_UIO_GetFd(uio);
     UdpParameters *ctx = (UdpParameters *)BSL_UIO_GetCtx(uio);
+    ctx->sysErrno = 0;
     if (ctx == NULL || fd < 0) {
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
         return BSL_UIO_IO_EXCEPTION;
@@ -200,6 +303,7 @@ static int32_t UdpSocketWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint3
         /* None-fatal error */
         if (UioIsNonFatalErr(err)) {
             (void)BSL_UIO_SetFlags(uio, BSL_UIO_FLAGS_WRITE | BSL_UIO_FLAGS_SHOULD_RETRY);
+            ctx->sysErrno = err;
             return BSL_SUCCESS;
         }
         /* Fatal error */

@@ -466,6 +466,24 @@ int32_t HITLS_GetEmptyRecordsNum(const HITLS_Ctx *ctx, uint32_t *emptyNum)
     return HITLS_CFG_GetEmptyRecordsNum(&(ctx->config.tlsConfig), emptyNum);
 }
 
+#ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+int32_t HITLS_SetMaxSendFragment(HITLS_Ctx *ctx, uint16_t maxSendFragment)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    return HITLS_CFG_SetMaxSendFragment(&(ctx->config.tlsConfig), maxSendFragment);
+}
+
+int32_t HITLS_GetMaxSendFragment(const HITLS_Ctx *ctx, uint16_t *maxSendFragment)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    return HITLS_CFG_GetMaxSendFragment(&(ctx->config.tlsConfig), maxSendFragment);
+}
+#endif
+
 #ifdef HITLS_TLS_FEATURE_SESSION_TICKET
 int32_t HITLS_SetTicketNums(HITLS_Ctx *ctx, uint32_t ticketNums)
 {

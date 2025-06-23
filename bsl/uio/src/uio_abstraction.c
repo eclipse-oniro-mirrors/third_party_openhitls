@@ -468,8 +468,8 @@ void BSL_UIO_SetInit(BSL_UIO *uio, bool init)
  *
  * @param   err [IN] error type
  *
- * @return  true :Fatal error
- *          false:No fatal errors
+ * @return  true :No Fatal error
+ *          false:fatal errors
  */
 bool UioIsNonFatalErr(int32_t err)
 {
@@ -506,6 +506,9 @@ bool UioIsNonFatalErr(int32_t err)
 
 #ifdef EPROTO
         case EPROTO:
+#endif
+#ifdef EMSGSIZE
+        case EMSGSIZE:
 #endif
             ret = true;
             break;

@@ -101,8 +101,20 @@ static int32_t CheckDataLen(TLS_Ctx *ctx, const uint8_t *data, uint32_t *sendLen
 
 int32_t APP_Write(TLS_Ctx *ctx, const uint8_t *data, uint32_t dataLen, uint32_t *writeLen)
 {
+    int32_t ret = HITLS_SUCCESS;
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+    ret = REC_QueryMtu(ctx);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
+    ret = REC_RecBufReSet(ctx);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+
     uint32_t sendLen = dataLen;
-    int32_t ret = CheckDataLen(ctx, data, &sendLen);
+    ret = CheckDataLen(ctx, data, &sendLen);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }

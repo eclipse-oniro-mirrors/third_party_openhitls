@@ -1362,6 +1362,29 @@ int32_t HITLS_CFG_GetEmptyRecordsNum(const HITLS_Config *config, uint32_t *empty
 
 /**
  * @ingroup hitls_config
+ * @brief   Set the max send fragment to restrict the amount of plaintext bytes in any record
+ *
+ * @param   config [IN/OUT] TLS link configuration
+ * @param   maxSendFragment [IN] Indicates the max send fragment to restrict the amount of plaintext bytes in any record
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_CONFIG_INVALID_LENGTH, the maxSendFragment is less than 64 or greater than 16384.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_SetMaxSendFragment(HITLS_Config *config, uint16_t maxSendFragment);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Obtain the max send fragment to restrict the amount of plaintext bytes in any record
+ *
+ * @param   config [IN] TLS link configuration.
+ * @param   maxSendFragment [OUT] Indicates the max send fragment
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_GetMaxSendFragment(const HITLS_Config *config, uint16_t *maxSendFragment);
+
+/**
+ * @ingroup hitls_config
  * @brief   Set the maximum size of the certificate chain that can be sent by the peer end.
  *
  * @param   config [IN/OUT] TLS link configuration.

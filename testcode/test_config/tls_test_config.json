@@ -2,10 +2,14 @@
     "testDir":"testcode/sdv/testcase/",
     "testFeatures": {
         "tlcp": ["test_suite_sdv_hlt_tlcp_ciphersuite"],
-        "base": ["test_suite_sdv_hlt_base_connect"]
+        "base": ["test_suite_sdv_hlt_base_connect"],
+        "mtu": ["test_suite_sdv_frame_mtu"],
+        "max_send_fragment": ["test_suite_sdv_frame_max_send_fragment"]
     },
     "testSuiteCases": {
         "test_suite_sdv_hlt_tlcp_ciphersuite": [],
-        "test_suite_sdv_hlt_base_connect": []
+        "test_suite_sdv_hlt_base_connect": [],
+        "test_suite_sdv_frame_mtu": [],
+        "test_suite_sdv_frame_max_send_fragment": []
     }
 }

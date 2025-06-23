@@ -25,7 +25,7 @@ static BSL_SAL_NetCallback g_netCallback = {0};
 
 int32_t SAL_NetCallback_Ctrl(BSL_SAL_CB_FUNC_TYPE type, void *funcCb)
 {
-    if (type > BSL_SAL_NET_SOCKGETLASTSOCKETERROR_CB_FUNC || type < BSL_SAL_NET_WRITE_CB_FUNC) {
+    if (type > BSL_SAL_NET_GETFAMILY_CB_FUNC || type < BSL_SAL_NET_WRITE_CB_FUNC) {
         return BSL_SAL_NET_NO_REG_FUNC;
     }
     uint32_t offset = (uint32_t)(type - BSL_SAL_NET_WRITE_CB_FUNC);
@@ -115,6 +115,18 @@ void SAL_SockAddrFree(BSL_SAL_SockAddr sockAddr)
 #ifdef HITLS_BSL_SAL_LINUX
     SAL_NET_SockAddrFree(sockAddr);
     return;
+#endif
+}
+
+int32_t SAL_SockAddrGetFamily(const BSL_SAL_SockAddr sockAddr)
+{
+    if (g_netCallback.pfSockAddrGetFamily != NULL && g_netCallback.pfSockAddrGetFamily != SAL_SockAddrGetFamily) {
+        return g_netCallback.pfSockAddrGetFamily(sockAddr);
+    }
+#ifdef HITLS_BSL_SAL_LINUX
+    return SAL_NET_SockAddrGetFamily(sockAddr);
+#else
+    return BSL_SAL_NET_NO_REG_FUNC;
 #endif
 }
 

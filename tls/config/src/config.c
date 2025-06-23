@@ -51,6 +51,12 @@
 /* Define the upper limit of the group type */
 #define MAX_GROUP_TYPE_NUM 128u
 #endif
+
+#ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+#define MAX_PLAINTEXT_LEN 16384u
+#define MIN_MAX_SEND_FRAGMENT 512u
+#endif
+
 #ifdef HITLS_TLS_EXTENSION_CERT_AUTH
 static void HitlsTrustedCANodeFree(void *caNode)
 {
@@ -148,6 +154,9 @@ static void ShallowCopy(HITLS_Ctx *ctx, const HITLS_Config *srcConfig)
     destConfig->isKeepPeerCert = srcConfig->isKeepPeerCert;
     destConfig->version = srcConfig->version;
     destConfig->originVersionMask = srcConfig->originVersionMask;
+#ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+    destConfig->maxSendFragment = srcConfig->maxSendFragment;
+#endif
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
     destConfig->isSupportRenegotiation = srcConfig->isSupportRenegotiation;
     destConfig->allowClientRenegotiate = srcConfig->allowClientRenegotiate;
@@ -2106,3 +2115,30 @@ int32_t HITLS_CFG_GetEmptyRecordsNum(const HITLS_Config *config, uint32_t *empty
 
     return HITLS_SUCCESS;
 }
+
+#ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+int32_t HITLS_CFG_SetMaxSendFragment(HITLS_Config *config, uint16_t maxSendFragment)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    if (maxSendFragment > MAX_PLAINTEXT_LEN || maxSendFragment < MIN_MAX_SEND_FRAGMENT) {
+        BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_LENGTH);
+        return HITLS_CONFIG_INVALID_LENGTH;
+    }
+
+    config->maxSendFragment = maxSendFragment;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_CFG_GetMaxSendFragment(const HITLS_Config *config, uint16_t *maxSendFragment)
+{
+    if (config == NULL || maxSendFragment == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    *maxSendFragment = config->maxSendFragment;
+
+    return HITLS_SUCCESS;
+}
+#endif

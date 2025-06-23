@@ -190,6 +190,8 @@ typedef int32_t (*UnexpectMsgHandleCallback)(TLS_Ctx *ctx, uint32_t msgType, con
 /** Connection management configure */
 typedef struct TLSCtxConfig {
     void *userData;                         /* user data */
+    uint16_t linkMtu;                       /* Maximum transport unit of a path (bytes),
+                                               including IP header and udp/tcp header */
     uint16_t pmtu;                          /* Maximum transport unit of a path (bytes) */
 
     bool isSupportPto;                      /* is support process based TLS offload */
@@ -305,6 +307,9 @@ struct TlsCtx {
     bool isDtlsListen;
     bool plainAlertForbid;                  /* tls1.3 forbid to receive plain alert message */
     bool allowAppOut;                       /* whether user used HITLS_read to start renegotiation */
+    bool noQueryMtu;                        /* Don't query the mtu from bio */
+    bool needQueryMtu;                      /* whether need query mtu from bio */
+    bool mtuModified;                       /* whether mtu has been modified */
 };
 
 #define LIBCTX_FROM_CTX(ctx) ((ctx == NULL) ? NULL : (ctx)->config.tlsConfig.libCtx)
