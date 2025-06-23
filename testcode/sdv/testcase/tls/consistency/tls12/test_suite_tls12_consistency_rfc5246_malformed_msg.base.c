@@ -559,9 +559,9 @@ int32_t TlsCtxNew(BSL_UIO_TransportType type)
 
     BSL_UIO_Method method = {0};
     memcpy(&method, ori, sizeof(method));
-    method.write = STUB_MethodWrite;
-    method.read = STUB_MethodRead;
-    method.ctrl = STUB_MethodCtrl;
+    method.uioWrite = STUB_MethodWrite;
+    method.uioRead = STUB_MethodRead;
+    method.uioCtrl = STUB_MethodCtrl;
 
     uio = BSL_UIO_New(&method);
     ASSERT_TRUE(uio != NULL);

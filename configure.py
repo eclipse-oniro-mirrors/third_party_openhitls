@@ -106,7 +106,7 @@ def get_cfg_args():
         parser.add_argument('--asm_type', type=str, help='Assembly Type, default is "no_asm".')
         parser.add_argument('--asm', metavar='feature', default=[], nargs='+', help='config asm, such as --asm sha2')
         # System Configuration
-        parser.add_argument('--system', metavar='linux', type=str, choices=['linux'],
+        parser.add_argument('--system', default='linux', metavar='linux', type=str,
                             help='To enable feature "sal_xxx", should specify the system, default is "linux".')
         parser.add_argument('--endian', metavar='little|big', type=str, choices=['little', 'big'],
                             help='Specify the platform endianness as little or big, default is "little".')
@@ -222,7 +222,6 @@ class Configure:
         # Set parameters by referring to "FeatureConfigParser.key_value".
         conf_custom_feature.set_param('libType', self._args.lib_type)
         conf_custom_feature.set_param('endian', self._args.endian)
-        conf_custom_feature.set_param('system', self._args.system, False)
         conf_custom_feature.set_param('bits', self._args.bits, False)
         if self._args.bundle_libs:
             conf_custom_feature.set_param('bundleLibs', self._args.bundle_libs)
@@ -381,17 +380,23 @@ class CMakeGenerator:
         if lib_name == 'hitls_bsl':
             for item in macros:
                 if item == '-DHITLS_BSL_UIO' or item == '-DHITLS_BSL_UIO_SCTP':
+                    cmake += self._gen_cmd_cmake("target_link_directories", "hitls_bsl-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
                     cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared " + str(self._args.securec_lib))
                 if item == '-DHITLS_BSL_SAL_DL':
+                    cmake += self._gen_cmd_cmake("target_link_directories", "hitls_bsl-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
                     cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared dl " + str(self._args.securec_lib))
         if lib_name == 'hitls_crypto':
+            cmake += self._gen_cmd_cmake("target_link_directories", "hitls_crypto-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_tls':
+            cmake += self._gen_cmd_cmake("target_link_directories", "hitls_tls-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_tls-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_pki':
+            cmake += self._gen_cmd_cmake("target_link_directories", "hitls_pki-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake(
                 "target_link_libraries", "hitls_pki-shared hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_auth':
+            cmake += self._gen_cmd_cmake("target_link_directories", "hitls_auth-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake(
                 "target_link_libraries", "hitls_auth-shared hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         tgt_list.append(tgt_name)

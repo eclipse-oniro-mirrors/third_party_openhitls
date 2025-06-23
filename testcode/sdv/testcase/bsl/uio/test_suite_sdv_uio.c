@@ -36,7 +36,6 @@
 #include "bsl_errno.h"
 #include "bsl_uio.h"
 #include "uio_base.h"
-#include "uio_local.h"
 #include "sal_atomic.h"
 #include "uio_abstraction.h"
 
@@ -263,9 +262,9 @@ void SDV_BSL_UIO_NEW_API_TC001(void)
         const BSL_UIO_Method *ori = BSL_UIO_TcpMethod();
         BSL_UIO_Method method = {0};
         memcpy(&method, ori, sizeof(method));
-        method.write = STUB_Write;
-        method.read = STUB_Read;
-        method.ctrl = STUB_Ctrl;
+        method.uioWrite = STUB_Write;
+        method.uioRead = STUB_Read;
+        method.uioCtrl = STUB_Ctrl;
         uio = BSL_UIO_New(&method);
         ASSERT_TRUE(uio != NULL && BSL_UIO_GetTransportType(uio) == BSL_UIO_TCP);
         BSL_UIO_Free(uio);
@@ -277,9 +276,9 @@ void SDV_BSL_UIO_NEW_API_TC001(void)
         const BSL_UIO_Method *ori = BSL_UIO_UdpMethod();
         BSL_UIO_Method method = {0};
         memcpy(&method, ori, sizeof(method));
-        method.write = STUB_Write;
-        method.read = STUB_Read;
-        method.ctrl = STUB_Ctrl;
+        method.uioWrite = STUB_Write;
+        method.uioRead = STUB_Read;
+        method.uioCtrl = STUB_Ctrl;
         uio = BSL_UIO_New(&method);
         ASSERT_TRUE(uio != NULL && BSL_UIO_GetTransportType(uio) == BSL_UIO_UDP);
         BSL_UIO_Free(uio);
@@ -747,8 +746,8 @@ void SDV_BSL_UIO_WRITE_API_TC001(void)
     const BSL_UIO_Method *ori = BSL_UIO_TcpMethod();
     BSL_UIO_Method method = {0};
     memcpy(&method, ori, sizeof(method));
-    method.write = STUB_Write;
-    method.read = STUB_Read;
+    method.uioWrite = STUB_Write;
+    method.uioRead = STUB_Read;
 
     /* The test UIO is empty. */
     int32_t ret = BSL_UIO_Write(NULL, data, len, &writeLen);
@@ -805,8 +804,8 @@ void SDV_BSL_UIO_READ_API_TC001(void)
     const BSL_UIO_Method *ori = BSL_UIO_TcpMethod();
     BSL_UIO_Method method = {0};
     memcpy(&method, ori, sizeof(method));
-    method.write = STUB_Write;
-    method.read = STUB_Read;
+    method.uioWrite = STUB_Write;
+    method.uioRead = STUB_Read;
 
     /* The test UIO is empty. */
     int32_t ret = BSL_UIO_Read(NULL, data, len, &readLen);
@@ -937,8 +936,8 @@ void SDV_BSL_UIO_GET_READANDWRITE_NUM_TC001(void)
     const BSL_UIO_Method *ori = BSL_UIO_TcpMethod();
     BSL_UIO_Method method = {0};
     memcpy(&method, ori, sizeof(method));
-    method.write = STUB_Write;
-    method.read = STUB_Read;
+    method.uioWrite = STUB_Write;
+    method.uioRead = STUB_Read;
 
     uio = BSL_UIO_New(&method);
     ASSERT_TRUE(uio != NULL);
@@ -1024,6 +1023,12 @@ EXIT:
 }
 /* END_CASE */
 
+typedef union {
+    struct sockaddr addr;
+    struct sockaddr_in6 addrIn6;
+    struct sockaddr_in addrIn;
+    struct sockaddr_un addrUn;
+} UIO_Addr;
 /**
  * @test  SDV_BSL_UIO_UDP_API_TC001
  * @title  UDP ctrl test
@@ -1043,24 +1048,24 @@ void SDV_BSL_UIO_UDP_API_TC001(void)
 {
     BSL_UIO *uio = NULL;
     int ret;
-    BSL_UIO_Addr peerAddr = { 0 };
+    UIO_Addr peerAddr = { 0 };
     uint8_t ipv4[IP_V4_LEN] = {0x11, 0x22, 0x33, 0x44};
     peerAddr.addr.sa_family = AF_INET;
-    ASSERT_TRUE(memcpy_s(peerAddr.addr.sa_data, sizeof(BSL_UIO_Addr), ipv4, IP_V4_LEN) == EOK);
+    ASSERT_TRUE(memcpy_s(peerAddr.addr.sa_data, sizeof(UIO_Addr), ipv4, IP_V4_LEN) == EOK);
 
     const BSL_UIO_Method *ori = BSL_UIO_UdpMethod();
     BSL_UIO_Method method = {0};
     memcpy_s(&method, sizeof(method), ori, sizeof(method));
-    method.write = STUB_Write;
-    method.read = STUB_Read;
+    method.uioWrite = STUB_Write;
+    method.uioRead = STUB_Read;
 
     uio = BSL_UIO_New(&method);
     ASSERT_TRUE(uio != NULL);
 
-    ret = BSL_UIO_Ctrl(uio, BSL_UIO_SET_PEER_IP_ADDR, sizeof(peerAddr.addr), &peerAddr);
+    ret = BSL_UIO_Ctrl(uio, BSL_UIO_SET_PEER_IP_ADDR, sizeof(peerAddr), &peerAddr);
     ASSERT_TRUE(ret == BSL_SUCCESS);
 
-    BSL_UIO_Addr getAddr = { 0 };
+    UIO_Addr getAddr = { 0 };
     ret = BSL_UIO_Ctrl(uio, BSL_UIO_GET_PEER_IP_ADDR, sizeof(getAddr), &getAddr);
     ASSERT_TRUE(ret == BSL_SUCCESS);
 
@@ -1107,8 +1112,8 @@ void SDV_BSL_UIO_SCTP_API_TC001(void)
     const BSL_UIO_Method *ori = BSL_UIO_SctpMethod();
     BSL_UIO_Method method = {0};
     memcpy(&method, ori, sizeof(method));
-    method.write = STUB_Write;
-    method.read = STUB_Read;
+    method.uioWrite = STUB_Write;
+    method.uioRead = STUB_Read;
 
     uio = BSL_UIO_New(&method);
     ASSERT_TRUE(uio != NULL);

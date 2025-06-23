@@ -257,6 +257,7 @@ set(TEST_SHARED_LIBS
 foreach(test_suite ${TEST_FILES})
     get_filename_component(sdv_exe ${test_suite} NAME_WE)
     add_executable(${sdv_exe} ${openHiTLS_SRC}/testcode/output/${sdv_exe}.c)
+    target_link_options(${sdv_exe} PRIVATE "LINKER:-z,noexecstack")
     add_dependencies(${sdv_exe} ${sdv_exe}_phony)
     set_target_properties(${sdv_exe} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${openHiTLS_SRC}/testcode/output"

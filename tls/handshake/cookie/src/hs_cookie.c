@@ -23,8 +23,8 @@
 #include "bsl_sal.h"
 #include "bsl_bytes.h"
 #include "bsl_errno.h"
+#include "sal_net.h"
 #include "uio_base.h"
-#include "uio_local.h"
 #include "hitls.h"
 #include "hitls_error.h"
 #include "hitls_cookie.h"
@@ -78,29 +78,31 @@ static int32_t GenerateCookieCalcMaterial(const TLS_Ctx *ctx, const ClientHelloM
     uint8_t ipAddr[MAX_IP_ADDR_SIZE] = {0};
     BSL_UIO_CtrlGetPeerIpAddrParam param = {ipAddr, sizeof(ipAddr)};
     uint32_t offset = 0;
-    BSL_UIO_Addr *peerAddr = BSL_UIO_AddrNew();
-    if (peerAddr == NULL) {
+    BSL_SAL_SockAddr peerAddr = NULL;
+    int32_t ret = SAL_SockAddrNew(&peerAddr);
+    if (ret != BSL_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16916, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "addr New fail", 0, 0, 0, 0);
         return HITLS_MEMCPY_FAIL;
     }
+    int32_t peerAddrLen = SAL_SockAddrSize(peerAddr);
     /* Add the peer IP address */
-    int32_t ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_GET_PEER_IP_ADDR, sizeof(BSL_UIO_Addr), peerAddr);
+    ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_GET_PEER_IP_ADDR, peerAddrLen, peerAddr);
     if (ret == BSL_SUCCESS) {
-        if (memcpy_s(ipAddr, MAX_IP_ADDR_SIZE, peerAddr, BSL_UIO_SockAddrSize(peerAddr)) != EOK) {
-            BSL_UIO_AddrFree(peerAddr);
+        if (memcpy_s(ipAddr, MAX_IP_ADDR_SIZE, peerAddr, SAL_SockAddrSize(peerAddr)) != EOK) {
+            SAL_SockAddrFree(peerAddr);
             return BSL_MEMCPY_FAIL;
         }
-        param.size = BSL_UIO_SockAddrSize(peerAddr);
+        param.size = SAL_SockAddrSize(peerAddr);
         if (memcpy_s(material, materialSize, ipAddr, param.size) != EOK) {
             BSL_ERR_PUSH_ERROR(HITLS_MEMCPY_FAIL);
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15692, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "copy ipAddr fail when calc cookie.", 0, 0, 0, 0);
-            BSL_UIO_AddrFree(peerAddr);
+            SAL_SockAddrFree(peerAddr);
             return HITLS_MEMCPY_FAIL;
         }
         offset += param.size;
     }
-    BSL_UIO_AddrFree(peerAddr);
+    SAL_SockAddrFree(peerAddr);
     /* fill the version */
     BSL_Uint16ToByte(clientHello->version, &material[offset]);
     offset += sizeof(uint16_t);

@@ -219,7 +219,7 @@ int32_t TcpFrameWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *wri
             sendBuf = (void *)newBuf;
         }
     }
-    ret = BSL_UIO_TcpMethod()->write(uio, sendBuf, sendLen, writeLen);
+    ret = BSL_UIO_TcpMethod()->uioWrite(uio, sendBuf, sendLen, writeLen);
     if (sendLen != len && *writeLen != 0) {
         *writeLen = len;
     }
@@ -230,7 +230,7 @@ int32_t TcpFrameWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *wri
 int32_t TcpFrameRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *readLen)
 {
     int ret;
-    ret = BSL_UIO_TcpMethod()->read(uio, buf, len, readLen);
+    ret = BSL_UIO_TcpMethod()->uioRead(uio, buf, len, readLen);
     if (ret != BSL_SUCCESS) {
         return ret;
     }
@@ -259,8 +259,8 @@ int32_t TcpFrameRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *readLen)
 int32_t SelectTcpWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *writeLen)
 {
     HLT_FrameHandle *frameHandle = GetFrameHandle();
-    if (frameHandle->method.write != NULL) {
-        return frameHandle->method.write(uio, buf, len, writeLen);
+    if (frameHandle->method.uioWrite != NULL) {
+        return frameHandle->method.uioWrite(uio, buf, len, writeLen);
     }
     return TcpFrameWrite(uio, buf, len, writeLen);
 }
@@ -268,8 +268,8 @@ int32_t SelectTcpWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *wr
 int32_t SelectTcpRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *readLen)
 {
     HLT_FrameHandle *frameHandle = GetFrameHandle();
-    if (frameHandle->method.read != NULL) {
-        return frameHandle->method.read(uio, buf, len, readLen);
+    if (frameHandle->method.uioRead != NULL) {
+        return frameHandle->method.uioRead(uio, buf, len, readLen);
     }
     return TcpFrameRead(uio, buf, len, readLen);
 }
@@ -281,8 +281,8 @@ void *TcpGetDefaultMethod(void)
 {
     const BSL_UIO_Method *ori = BSL_UIO_TcpMethod();
     memcpy(&g_TcpUioMethodDefault, ori, sizeof(g_TcpUioMethodDefault));
-    g_TcpUioMethodDefault.write = SelectTcpWrite;
-    g_TcpUioMethodDefault.read = SelectTcpRead;
+    g_TcpUioMethodDefault.uioWrite = SelectTcpWrite;
+    g_TcpUioMethodDefault.uioRead = SelectTcpRead;
     return &g_TcpUioMethodDefault;
 }
 #endif
