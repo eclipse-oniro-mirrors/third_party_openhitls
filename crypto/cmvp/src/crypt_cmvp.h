@@ -95,14 +95,6 @@ int32_t CMVP_ModeSet(CRYPT_CMVP_MODE mode);
 CRYPT_CMVP_MODE CRYPT_CMVP_ModeGet(void);
 int32_t CRYPT_CMVP_StatusGet(void);
 int32_t CRYPT_CMVP_ModeSet(CRYPT_CMVP_MODE mode);
-
-void CRYPT_EAL_RegPkeyC2(CRYPT_EAL_PkeyC2 func);
-
-void CRYPT_EAL_RegMdC2(CRYPT_EAL_MdC2 func);
-void CRYPT_EAL_RegCipherC2(CRYPT_EAL_CipherC2 func);
-void CRYPT_EAL_RegMacC2(CRYPT_EAL_MacC2 func);
-void CRYPT_EAL_RegKdfC2(CRYPT_EAL_KdfC2 func);
-void CRYPT_EAL_RegRandC2(CRYPT_EAL_RandC2 func);
 int32_t CRYPT_CMVP_MultiThreadEnable(void);
 
 bool CMVP_Pct(CRYPT_EAL_PkeyCtx *pkey);

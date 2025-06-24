@@ -66,4 +66,10 @@ int32_t CRYPT_CMVP_SelftestGM(void);
 
 bool CRYPT_CMVP_SelftestCipherKat(void);
 
+bool CRYPT_CMVP_SelftestMlkemEncapsDecaps(void);
+
+bool CRYPT_CMVP_SelftestMldsaSignVerify(void);
+
+bool CRYPT_CMVP_SelftestSlhdsaSignVerify(void);
+
 #endif

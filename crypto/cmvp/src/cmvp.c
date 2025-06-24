@@ -690,12 +690,6 @@ void __attribute__((constructor(101))) CMVP_DefaultEntryPoint(void)
 #endif
 
     // Callback required for registering the EAL
-    CRYPT_EAL_RegPkeyC2(CMVP_PkeyC2);
-    CRYPT_EAL_RegMdC2(CMVP_MdC2);
-    CRYPT_EAL_RegCipherC2(CMVP_CipherC2);
-    CRYPT_EAL_RegMacC2(CMVP_MacC2);
-    CRYPT_EAL_RegKdfC2(CMVP_KdfC2);
-    CRYPT_EAL_RegRandC2(CMVP_RandC2);
     CRYPT_CMVP_MultiThreadEnable();
     CMVP_CspFlagSet(false); // Clear the CSP flag set for the pre-run self-test
 }
@@ -711,13 +705,6 @@ void __attribute__((destructor(102))) CMVP_DefaultExitPoint(void)
     CMVP_StatusSet(CRYPT_SUCCESS);
     CMVP_CspFlagSet(false);
     CRYPT_CMVP_ModeSet(CRYPT_CMVP_MODE_NONAPPROVED);
-    CRYPT_EAL_RegPkeyC2(NULL);
-    CRYPT_EAL_RegMdC2(NULL);
-    CRYPT_EAL_RegCipherC2(NULL);
-    CRYPT_EAL_RegMacC2(NULL);
-	CRYPT_EAL_RegKdfC2(NULL);
-
-    CRYPT_EAL_RegRandC2(NULL);
     uint32_t i;
     for (i = 0; i < sizeof(g_cipherSelfTestFlag) / sizeof(g_cipherSelfTestFlag[0]); i++) {
         CMVP_SetSelfTestFin(CRYPT_ALGO_CIPHER, g_cipherSelfTestFlag[i].id, false);

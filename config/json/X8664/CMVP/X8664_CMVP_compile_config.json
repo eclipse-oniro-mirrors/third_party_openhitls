@@ -10,7 +10,7 @@
     },
     "linkFlag": {
         "LINK_FLAG_ADD":[
-            "-I${HiTLS_SOURCE_ROOT_DIR}/platform/Secure_C/include"
+            "-Wl,--version-script=${HiTLS_SOURCE_ROOT_DIR}/config/json/X8664/CMVP/libhitls_iso.ld"
         ]
     }
 }

@@ -68,8 +68,8 @@ static void *StdMalloc(uint32_t len)
 
 static void RegNormalMem(void)
 {
-    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC_CB_FUNC, StdMalloc);
-    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE_CB_FUNC, free);
+    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC, StdMalloc);
+    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE, free);
 }
 
 static void *STUB_Malloc(uint32_t size)
@@ -358,12 +358,6 @@ static void ResetStatus(void)
     CMVP_CspFlagSet(false);
     CRYPT_EAL_RegPct(NULL);
     CRYPT_EAL_RegEventReport(NULL);
-    CRYPT_EAL_RegPkeyC2(NULL);
-    CRYPT_EAL_RegMdC2(NULL);
-    CRYPT_EAL_RegCipherC2(NULL);
-    CRYPT_EAL_RegMacC2(NULL);
-    CRYPT_EAL_RegKdfC2(NULL);
-    CRYPT_EAL_RegRandC2(NULL);
     uint32_t i;
     for (i = 0; i < sizeof(g_cipherId) / sizeof(g_cipherId[0]); i++) {
         CMVP_SetSelfTestFin(CRYPT_ALGO_CIPHER, (int32_t)g_cipherId[i], false);
@@ -1681,6 +1675,66 @@ void SDV_CRYPTO_CMVP_SELFTEST_TC062(void)
     ASSERT_TRUE(CRYPT_CMVP_SelftestCipher(CRYPT_CIPHER_AES128_CBC) == false);
 EXIT:
     STUB_Reset(&tmpStubInfo);
+    CRYPT_EAL_RandDeinit();
+    EndTest();
+}
+/* END_CASE */
+
+/* @
+* @test  SDV_CRYPTO_CMVP_SELFTEST_TC063
+* @spec  -
+* @title  CMVP test for MLDSA
+* @precon  nan
+* @prior  Level 1
+* @auto  TRUE
+@ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_CMVP_SELFTEST_TC063(void)
+{
+    ResetStatusAndStartTest();
+    ASSERT_TRUE(CRYPT_EAL_RandInit(CRYPT_RAND_SHA256, NULL, NULL, NULL, 0) == CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_CMVP_SelftestMldsaSignVerify() == true);
+EXIT:
+    CRYPT_EAL_RandDeinit();
+    EndTest();
+}
+/* END_CASE */
+
+/* @
+* @test  SDV_CRYPTO_CMVP_SELFTEST_TC064
+* @spec  -
+* @title  CMVP test for MLKEM
+* @precon  nan
+* @prior  Level 1
+* @auto  TRUE
+@ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_CMVP_SELFTEST_TC064(void)
+{
+    ResetStatusAndStartTest();
+    ASSERT_TRUE(CRYPT_EAL_RandInit(CRYPT_RAND_SHA256, NULL, NULL, NULL, 0) == CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_CMVP_SelftestMlkemEncapsDecaps() == true);
+EXIT:
+    CRYPT_EAL_RandDeinit();
+    EndTest();
+}
+/* END_CASE */
+
+/* @
+* @test  SDV_CRYPTO_CMVP_SELFTEST_TC065
+* @spec  -
+* @title  CMVP test for SLHDSA
+* @precon  nan
+* @prior  Level 1
+* @auto  TRUE
+@ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_CMVP_SELFTEST_TC065(void)
+{
+    ResetStatusAndStartTest();
+    ASSERT_TRUE(CRYPT_EAL_RandInit(CRYPT_RAND_SHA256, NULL, NULL, NULL, 0) == CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_CMVP_SelftestSlhdsaSignVerify() == true);
+EXIT:
     CRYPT_EAL_RandDeinit();
     EndTest();
 }
