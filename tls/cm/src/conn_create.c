@@ -101,7 +101,7 @@ HITLS_Ctx *HITLS_New(HITLS_Config *config)
     ChangeConnState(newCtx, CM_STATE_IDLE);
     return newCtx;
 }
-#ifdef HITLS_TLS_CONNECTION_INFO_NEGOTIATION
+
 static void CaListNodeDestroy(void *data)
 {
     HITLS_TrustedCANode *tmpData = (HITLS_TrustedCANode *)data;
@@ -116,7 +116,6 @@ static void CleanPeerInfo(PeerInfo *peerInfo)
     BSL_SAL_FREE(peerInfo->cipherSuites);
     BSL_LIST_FREE(peerInfo->caList, CaListNodeDestroy);
 }
-#endif
 
 #if defined(HITLS_TLS_EXTENSION_COOKIE) || defined(HITLS_TLS_FEATURE_ALPN)
 static void CleanNegotiatedInfo(TLS_NegotiatedInfo *negotiatedInfo)
@@ -158,9 +157,7 @@ void HITLS_Free(HITLS_Ctx *ctx)
 #endif
     CFG_CleanConfig(&ctx->config.tlsConfig);
     HITLS_CFG_FreeConfig(ctx->globalConfig);
-#ifdef HITLS_TLS_CONNECTION_INFO_NEGOTIATION
     CleanPeerInfo(&(ctx->peerInfo));
-#endif
 #if defined(HITLS_TLS_EXTENSION_COOKIE) || defined(HITLS_TLS_FEATURE_ALPN)
     CleanNegotiatedInfo(&ctx->negotiatedInfo);
 #endif

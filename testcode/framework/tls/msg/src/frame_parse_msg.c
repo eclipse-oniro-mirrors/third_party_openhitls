@@ -449,6 +449,7 @@ static void CleanClientHelloMsg(FRAME_ClientHelloMsg *clientHello)
     BSL_SAL_FREE(clientHello->supportedVersion.exData.data);
     BSL_SAL_FREE(clientHello->tls13Cookie.exData.data);
     BSL_SAL_FREE(clientHello->pskModes.exData.data);
+    BSL_SAL_FREE(clientHello->caList.list.data);
     return;
 }
 

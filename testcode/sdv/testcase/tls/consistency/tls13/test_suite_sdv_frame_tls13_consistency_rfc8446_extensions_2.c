@@ -41,6 +41,7 @@
 #include "common_func.h"
 #include "alert.h"
 #include "bsl_sal.h"
+#include "hs_extensions.h"
 /* END_HEADER */
 #define MAX_BUF 16384
 
@@ -1259,6 +1260,78 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RECVERSION_FUNC_TC002(int flag, int type)
     ASSERT_TRUE(FRAME_ParseMsgHeader(&frameType, recvBuf, recvLen, &frameMsg, &parseLen) == HITLS_SUCCESS);
     ASSERT_EQ(frameMsg.recVersion.data, 0x0303);
 
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+/** @
+* @test  UT_TLS_TLS13_PARSE_CA_LIST_TC001
+* @spec  -
+* @title  The CA list is parsed correctly.
+* @precon nan
+* @brief  1. Use the default configuration items to configure the client and server. stop the server in the TRY_RECV_CLIENT_HELLO
+*            state. Expected result 1 is obtained.
+*         2. Get the client hello message from the server. Expected result 2 is obtained.
+*         3. Add the CA list to the client hello message. Expected result 3 is obtained.
+*         4. Reconnect the client. Expected result 4 is obtained.
+* @expect 1. The initialization is successful.
+*         2. The recvLen is not 0.
+*         3. The CA list is packed correctly.
+*         4. The client hello message is parsed correctly.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLS13_PARSE_CA_LIST_TC001()
+{
+    FRAME_Init();
+
+    HITLS_Config *config = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    FrameUioUserData *ioUserData = NULL;
+
+    config = HITLS_CFG_NewTLS13Config();
+
+    ASSERT_TRUE(config != NULL);
+
+    client = FRAME_CreateLink(config, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    server = FRAME_CreateLink(config, BSL_UIO_TCP);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, false, TRY_RECV_CLIENT_HELLO), HITLS_SUCCESS);
+    ioUserData = BSL_UIO_GetUserData(server->io);
+
+    uint8_t *recvBuf = ioUserData->recMsg.msg;
+    uint32_t recvLen = ioUserData->recMsg.len;
+    ASSERT_TRUE(recvLen != 0);
+
+    FRAME_Msg frameMsg = { 0 };
+    FRAME_Type frameType = { 0 };
+    frameType.versionType = HITLS_VERSION_TLS13;
+    frameType.recordType = REC_TYPE_HANDSHAKE;
+    frameType.handshakeType = CLIENT_HELLO;
+    frameType.keyExType = HITLS_KEY_EXCH_ECDHE;
+
+    ASSERT_TRUE(FRAME_ParseMsgHeader(&frameType, recvBuf, recvLen, &frameMsg, &recvLen) == HITLS_SUCCESS);
+    uint8_t caList[] = {0x00, 0x06, 0x00, 0x04, 0x4a, 0x4b, 0x4c, 0x4d};
+    frameMsg.body.hsMsg.body.clientHello.caList.exState = ASSIGNED_FIELD;
+    frameMsg.body.hsMsg.body.clientHello.caList.exType.data = HS_EX_TYPE_CERTIFICATE_AUTHORITIES;
+    frameMsg.body.hsMsg.body.clientHello.caList.exType.state = ASSIGNED_FIELD;
+    FRAME_ModifyMsgArray8(caList, sizeof(caList), &frameMsg.body.hsMsg.body.clientHello.caList.list,
+        &frameMsg.body.hsMsg.body.clientHello.caList.listSize);
+    frameMsg.body.hsMsg.body.clientHello.caList.exLen.state = ASSIGNED_FIELD;
+    frameMsg.body.hsMsg.body.clientHello.caList.exLen.data = sizeof(caList) + sizeof(uint16_t);
+
+    uint32_t sendLen = MAX_RECORD_LENTH;
+    uint8_t sendBuf[MAX_RECORD_LENTH] = {0};
+    ASSERT_TRUE(FRAME_PackMsg(&frameType, &frameMsg, sendBuf, sendLen, &sendLen) == HITLS_SUCCESS);
+    ioUserData->recMsg.len = 0;
+    ASSERT_TRUE(FRAME_TransportRecMsg(server->io, sendBuf, sendLen) == HITLS_SUCCESS);
+    FRAME_CleanMsg(&frameType, &frameMsg);
+    memset_s(&frameMsg, sizeof(frameMsg), 0, sizeof(frameMsg));
+    ASSERT_NE(FRAME_CreateConnection(server, client, false, HS_STATE_BUTT), HITLS_SUCCESS);
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
