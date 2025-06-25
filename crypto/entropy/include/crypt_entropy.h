@@ -119,6 +119,7 @@ typedef int32_t (*ExternalConditioningFunction)(uint32_t algId, uint8_t *in, uin
 
 typedef struct EcfCtx {
     uint32_t algId;
+    uint32_t outLen;
     ExternalConditioningFunction conFunc;
 } ENTROPY_ECFCtx;
 

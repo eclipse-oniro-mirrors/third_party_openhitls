@@ -163,6 +163,60 @@ SDV_CRYPTO_EAL_SEEDPOOL_GetTest:48:48:256:1:48
 SDV_CRYPTO_EAL_SEEDPOOL_GetTest
 SDV_CRYPTO_EAL_SEEDPOOL_GetTest:48:512:712:1:98
 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy need ecf
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:8:7:32:256:56
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy need ecf
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:8:7:32:192:56
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy need ecf
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:8:7:40:192:64
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy need ecf
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:8:7:8:64:28
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy need ecf
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:8:7:12:64:28
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy need ecf
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:8:7:32:128:44
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:8:8:32:256:32
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:8:32:256:32
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:8:40:256:40
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:8:48:256:48
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:8:56:256:56
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:8:32:192:32
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:8:8:64:8
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:8:12:64:12
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:7:40:256:64
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:7:40:192:64
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf 
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:7:8:64:28
+
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest full entropy without ecf
+SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest:7:7:12:64:28
+
 SDV_CRYPTO_SEEDPOOL_DrbgTest
 SDV_CRYPTO_SEEDPOOL_DrbgTest:0:CRYPT_RAND_SM3
 
