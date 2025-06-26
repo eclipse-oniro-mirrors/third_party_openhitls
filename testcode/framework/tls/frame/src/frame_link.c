@@ -83,13 +83,19 @@ FRAME_LinkObj *CreateLink(HITLS_Config *config, BSL_UIO_TransportType type)
     const BSL_UIO_Method *ori = NULL;
     switch (type) {
         case BSL_UIO_TCP:
+#ifdef HITLS_BSL_UIO_TCP
             ori = BSL_UIO_TcpMethod();
+#endif
             break;
         case BSL_UIO_UDP:
+#ifdef HITLS_BSL_UIO_UDP
             ori = BSL_UIO_UdpMethod();
+#endif
             break;
         default:
+#ifdef HITLS_BSL_UIO_SCTP
             ori = BSL_UIO_SctpMethod();
+#endif
             break;
     }
     if (memcpy_s(&method, sizeof(BSL_UIO_Method), ori, sizeof(method)) != EOK) {

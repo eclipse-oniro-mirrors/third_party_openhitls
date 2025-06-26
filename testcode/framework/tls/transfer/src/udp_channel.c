@@ -25,7 +25,7 @@
 #include <errno.h>
 
 #include "hitls_build.h"
-#ifdef HITLS_BSL_UIO_TCP
+#ifdef HITLS_BSL_UIO_UDP
 #include "securec.h"
 #include "bsl_uio.h"
 #include "hitls_error.h"

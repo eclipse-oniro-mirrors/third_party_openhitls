@@ -116,9 +116,13 @@ const BSL_UIO_Method * GetUioMethodByType(int uioType)
 {
     switch (uioType) {
         case BSL_UIO_TCP:
+#ifdef HITLS_BSL_UIO_TCP
             return BSL_UIO_TcpMethod();
+#endif
         case BSL_UIO_UDP:
+#ifdef HITLS_BSL_UIO_UDP
             return BSL_UIO_UdpMethod();
+#endif
         case BSL_UIO_BUFFER:
             return BSL_UIO_BufferMethod();
         default:
@@ -248,10 +252,12 @@ static int32_t BslUioGets(BSL_UIO *uio, char *buf, uint32_t *readLen)
 /* BEGIN_CASE */
 void SDV_BSL_UIO_NEW_API_TC001(void)
 {
+#if defined(HITLS_BSL_UIO_TCP) || defined(HITLS_BSL_UIO_UDP)
     TestMemInit();
     /* Set method to NULL */
     BSL_UIO *uio = BSL_UIO_New(NULL);
     ASSERT_TRUE(uio == NULL);
+#ifdef HITLS_BSL_UIO_TCP
     /* Set transportType to tcp and construct the method structure. */
     {
         const BSL_UIO_Method *ori = BSL_UIO_TcpMethod();
@@ -264,6 +270,8 @@ void SDV_BSL_UIO_NEW_API_TC001(void)
         ASSERT_TRUE(uio != NULL && BSL_UIO_GetTransportType(uio) == BSL_UIO_TCP);
         BSL_UIO_Free(uio);
     }
+#endif
+#ifdef HITLS_BSL_UIO_UDP
     /* Set transportType to udp and construct the method structure. */
     {
         const BSL_UIO_Method *ori = BSL_UIO_UdpMethod();
@@ -276,8 +284,12 @@ void SDV_BSL_UIO_NEW_API_TC001(void)
         ASSERT_TRUE(uio != NULL && BSL_UIO_GetTransportType(uio) == BSL_UIO_UDP);
         BSL_UIO_Free(uio);
     }
+#endif
 EXIT:
     return;
+#else
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */
 
@@ -726,6 +738,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_UIO_WRITE_API_TC001(void)
 {
+#ifdef HITLS_BSL_UIO_TCP
     BSL_UIO *uio = NULL;
     uint8_t data[MAX_BUF_SIZE] = {0};
     const uint32_t len = 1;
@@ -757,6 +770,9 @@ void SDV_BSL_UIO_WRITE_API_TC001(void)
     ASSERT_TRUE(ret == BSL_INTERNAL_EXCEPTION);
 EXIT:
     BSL_UIO_Free(uio);
+#else
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */
 
@@ -780,6 +796,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_UIO_READ_API_TC001(void)
 {
+#ifdef HITLS_BSL_UIO_TCP
     BSL_UIO *uio = NULL;
     uint8_t data[MAX_BUF_SIZE] = {0};
     const uint32_t len = 1;
@@ -811,6 +828,9 @@ void SDV_BSL_UIO_READ_API_TC001(void)
     ASSERT_TRUE(ret == BSL_INTERNAL_EXCEPTION);
 EXIT:
     BSL_UIO_Free(uio);
+#else
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */
 
@@ -868,6 +888,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_UIO_GET_METHOD_TC001(void)
 {
+#ifdef HITLS_BSL_UIO_TCP
     const BSL_UIO_Method *ori = BSL_UIO_TcpMethod();
     BSL_UIO *uio = BSL_UIO_New(ori);
     ASSERT_TRUE(uio != NULL);
@@ -877,6 +898,9 @@ void SDV_BSL_UIO_GET_METHOD_TC001(void)
     ASSERT_TRUE(ret == 0);
 EXIT:
     BSL_UIO_Free(uio);
+#else
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */
 
@@ -900,6 +924,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_UIO_GET_READANDWRITE_NUM_TC001(void)
 {
+#ifdef HITLS_BSL_UIO_TCP
     BSL_UIO *uio = NULL;
     uint8_t data[10] = {'0', '1', '2', '3', '4'};
     uint8_t readBuf[10] = {0};
@@ -928,6 +953,9 @@ void SDV_BSL_UIO_GET_READANDWRITE_NUM_TC001(void)
     ASSERT_EQ(readNum, readLen);
 EXIT:
     BSL_UIO_Free(uio);
+#else
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */
 
