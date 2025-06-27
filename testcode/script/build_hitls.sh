@@ -85,6 +85,7 @@ build_hitls_code()
     add_options="${add_options} -DHITLS_CRYPTO_ENTROPY -DHITLS_CRYPTO_ENTROPY_DEVRANDOM -DHITLS_CRYPTO_ENTROPY_GETENTROPY -DHITLS_CRYPTO_ENTROPY_SYS -DHITLS_CRYPTO_ENTROPY_HARDWARE" # add default entropy
     add_options="${add_options} -DHITLS_CRYPTO_DRBG_GM" # enable GM DRBG
     add_options="${add_options} -DHITLS_CRYPTO_ACVP_TESTS" # enable ACVP tests
+    add_options="${add_options} -DHITLS_CRYPTO_DSA_GEN_PARA" # enable DSA genPara tests
     add_options="${add_options} ${test_options}"
     if [[ $get_arch = "x86_64" ]]; then
         echo "Compile: env=x86_64, c, little endian, 64bits"

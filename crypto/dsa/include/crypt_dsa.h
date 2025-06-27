@@ -31,6 +31,10 @@ extern "C" {
 #ifndef CRYPT_DSA_TRY_MAX_CNT
 #define CRYPT_DSA_TRY_MAX_CNT 100 // Maximum number of attempts to generate keys and signatures
 #endif
+
+#define CRYPT_DSA_FFC_PARAM 1
+#define CRYPT_DH_FFC_PARAM 2
+
 /* DSA key parameters */
 typedef struct DSA_Para CRYPT_DSA_Para;
 

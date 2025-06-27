@@ -24,7 +24,8 @@
 #include "crypt_encode_internal.h"
 #include "dsa_local.h"
 #include "crypt_dsa.h"
-#include "eal_md_local.h"
+#include "crypt_eal_md.h"
+#include "crypt_eal_rand.h"
 #include "crypt_params_key.h"
 
 CRYPT_DSA_Ctx *CRYPT_DSA_NewCtx(void)
@@ -822,7 +823,7 @@ int32_t CRYPT_DSA_Sign(const CRYPT_DSA_Ctx *ctx, int32_t algId, const uint8_t *d
 {
     uint8_t hash[64]; // 64 is max hash len
     uint32_t hashLen = sizeof(hash) / sizeof(hash[0]);
-    int32_t ret = EAL_Md(algId, data, dataLen, hash, &hashLen);
+    int32_t ret = CRYPT_EAL_Md(algId, data, dataLen, hash, &hashLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -928,7 +929,7 @@ int32_t CRYPT_DSA_Verify(const CRYPT_DSA_Ctx *ctx, int32_t algId, const uint8_t 
 {
     uint8_t hash[64]; // 64 is max hash len
     uint32_t hashLen = sizeof(hash) / sizeof(hash[0]);
-    int32_t ret = EAL_Md(algId, data, dataLen, hash, &hashLen);
+    int32_t ret = CRYPT_EAL_Md(algId, data, dataLen, hash, &hashLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -971,6 +972,503 @@ static uint32_t CRYPT_DSA_GetPubKeyLen(const CRYPT_DSA_Ctx *ctx)
     return 0;
 }
 
+int32_t CRYPT_DSA_GetSecBits(const CRYPT_DSA_Ctx *ctx)
+{
+    if (ctx == NULL || ctx->para == NULL || ctx->para->p == NULL || ctx->para->q == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return 0;
+    }
+    return BN_SecBits(BN_Bits(ctx->para->p), BN_Bits(ctx->para->q));
+}
+
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+/* Security length from NIST.FIPS.186-4 4.2 */
+static uint32_t DSA_Fips186_4_validate_LN(uint32_t L, uint32_t N, int isGen, int type)
+{
+    if (type == CRYPT_DSA_FFC_PARAM) {
+        if (L == 3072 && N == 256) { // If Pbits = 3072 and Qbits = 256.
+            return 128; // Secure length is 128.
+        }
+        if (L == 2048 && (N == 224 || N == 256)) { // If Pbits = 2048 and Qbits = 224 or 256.
+            return 112; // Secure length is 112.
+        }
+        /* Security strength of 80 bits is no longer considered adequate, and is retained only for compatibility. */
+        if (isGen == 1) {
+            return 0;
+        }
+        if (L == 1024 && N == 160) { // If Pbits = 1024 and Qbits = 160.
+            return 80; // Secure length is 80.
+        }
+    } else if (type == CRYPT_DH_FFC_PARAM) {
+        if (L == 2048 && (N == 224 || N == 256)) { // If Pbits = 2048 and Qbits = 224 or 256.
+            return 112; // Secure length is 112.
+        }
+    }
+    return 0;
+}
+
+static int32_t DSA_Fips186_4_genQ(int32_t algId, uint32_t N, const uint8_t *seed, uint32_t seedLen, BN_BigNum *q)
+{
+    uint8_t hash[64] = {0}; // 64 is max hash len
+    uint32_t hashLen = sizeof(hash) / sizeof(hash[0]);
+    int32_t ret = CRYPT_EAL_Md(algId, seed, seedLen, hash, &hashLen);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    uint8_t *md = hash;
+    uint32_t qLen = N >> 3;
+    if (hashLen > qLen) {
+        md = hash + (hashLen - qLen);
+    }
+    md[0] |= 0x80;
+    md[qLen - 1] |= 0x01;
+    ret = BN_Bin2Bn(q, md, qLen);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+    }
+    return ret;
+}
+
+static int32_t DSA_Fips186_4_genP(DSA_FIPS186_4_Para *fipsPara, const BN_BigNum *pow,
+    BN_Optimizer *opt, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara)
+{
+    uint8_t hash[64]; // 64 is max hash len
+    uint32_t hashLen;
+    uint32_t outLen = CRYPT_EAL_MdGetDigestSize(fipsPara->algId) * 8; // bytes * 8 = bits
+    RETURN_RET_IF(outLen == 0, CRYPT_EAL_ERR_ALGID);
+    uint32_t n = (fipsPara->L - 1) / outLen; // ((L + outLen - 1) / outLen) - 1
+    int32_t ret = OptimizerStart(opt);
+    RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
+    BN_BigNum *V = OptimizerGetBn(opt, BITS_TO_BN_UNIT(outLen));
+    if (V == NULL) {
+        OptimizerEnd(opt);
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    for (uint32_t j = 0; j <= n; j++) {
+        for (uint32_t k = 0; k < seed->dataLen; k++) {
+            seed->data[seed->dataLen - k - 1]++;
+            if (seed->data[seed->dataLen - k - 1] != 0) { // no carry
+                break;
+            }
+        }
+        hashLen = sizeof(hash) / sizeof(hash[0]);
+        (void)memset_s(hash, hashLen, 0, hashLen);
+        ret = CRYPT_EAL_Md(fipsPara->algId, seed->data, seed->dataLen, hash, &hashLen);
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+        ret = BN_Bin2Bn(V, hash, hashLen);
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+        ret = BN_Lshift(V, V, outLen * j);
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+        ret = BN_Add(dsaPara->p, dsaPara->p, V);
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    }
+    ret = BN_MaskBit(dsaPara->p, fipsPara->L - 1);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    ret = BN_Add(V, pow, dsaPara->p);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    ret = BN_Lshift(dsaPara->p, dsaPara->q, 1);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    ret = BN_Mod(dsaPara->p, V, dsaPara->p, opt);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    ret = BN_SubLimb(dsaPara->p, dsaPara->p, 1);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    ret = BN_Sub(dsaPara->p, V, dsaPara->p);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    OptimizerEnd(opt);
+    return CRYPT_SUCCESS;
+ERR:
+    (void)BN_Zeroize(dsaPara->p);
+    OptimizerEnd(opt);
+    return ret;
+}
+
+static int32_t SetPQ2Para(CRYPT_DSA_Para *destPara, const CRYPT_DSA_Para *srcPara)
+{
+    uint32_t L = BN_Bits(srcPara->p);
+    uint32_t N = BN_Bits(srcPara->q);
+    BN_BigNum *pOut = BN_Create(L);
+    if (pOut == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    BN_BigNum *qOut = BN_Create(N);
+    if (qOut == NULL) {
+        BN_Destroy(pOut);
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    int32_t ret = BN_Copy(pOut, srcPara->p);
+    if (ret != CRYPT_SUCCESS) {
+        BN_Destroy(pOut);
+        BN_Destroy(qOut);
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    ret = BN_Copy(qOut, srcPara->q);
+    if (ret != CRYPT_SUCCESS) {
+        BN_Destroy(pOut);
+        BN_Destroy(qOut);
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    destPara->p = pOut;
+    destPara->q = qOut;
+    return CRYPT_SUCCESS;
+}
+
+int32_t CRYPT_DSA_Fips186_4_Gen_PQ(DSA_FIPS186_4_Para *fipsPara, uint32_t type,
+    BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t *counter)
+{
+    RETURN_RET_IF(DSA_Fips186_4_validate_LN(fipsPara->L, fipsPara->N, 1, type) == 0, CRYPT_DSA_PARA_ERROR);
+    uint32_t outLen = CRYPT_EAL_MdGetDigestSize(fipsPara->algId);
+    RETURN_RET_IF(seed->dataLen * 8 < fipsPara->N || outLen * 8 < fipsPara->N, CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
+    BN_Optimizer *opt = BN_OptimizerCreate();
+    RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
+    (void)OptimizerStart(opt);
+    BN_BigNum *pow = OptimizerGetBn(opt, BITS_TO_BN_UNIT(fipsPara->L));
+    BN_BigNum *pTmp = OptimizerGetBn(opt, BITS_TO_BN_UNIT(fipsPara->L));
+    BN_BigNum *qTmp = OptimizerGetBn(opt, BITS_TO_BN_UNIT(fipsPara->N));
+    uint8_t *msgData = (uint8_t *)BSL_SAL_Calloc(seed->dataLen, 1);
+    int32_t ret = CRYPT_MEM_ALLOC_FAIL;
+    GOTO_ERR_IF_TRUE(pow == NULL || pTmp == NULL || qTmp == NULL || msgData == NULL, ret);
+    BSL_Buffer msg = {msgData, seed->dataLen};
+    CRYPT_DSA_Para dsaParaTmp = {pTmp, qTmp, NULL};
+    GOTO_ERR_IF(BN_SetLimb(pow, 1), ret);
+    GOTO_ERR_IF(BN_Lshift(pow, pow, fipsPara->L - 1), ret);
+    while (true) { // until valid p,q or error occurs.
+        /* Generate Q */
+        GOTO_ERR_IF(CRYPT_EAL_RandbytesEx(NULL, seed->data, seed->dataLen), ret);
+        (void)memcpy_s(msg.data, seed->dataLen, seed->data, seed->dataLen);
+        GOTO_ERR_IF(DSA_Fips186_4_genQ(fipsPara->algId, fipsPara->N, seed->data, seed->dataLen, qTmp), ret);
+        ret = BN_PrimeCheck(qTmp, 0, opt, NULL);
+        if (ret == CRYPT_BN_NOR_CHECK_PRIME) {
+            continue;
+        }
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+        /* Generate P */
+        uint32_t cntMax = 4 * fipsPara->L - 1; // 4 * fipsPara->L - 1 from FIPS.186-4.
+        for (uint32_t cnt = 0; cnt <= cntMax; cnt++) {
+            GOTO_ERR_IF(BN_Zeroize(pTmp), ret);
+            GOTO_ERR_IF(DSA_Fips186_4_genP(fipsPara, pow, opt, &msg, &dsaParaTmp), ret);
+            if (BN_Cmp(pTmp, pow) < 0) {
+                continue;
+            }
+            ret = BN_PrimeCheck(pTmp, 0, opt, NULL);
+            if (ret == CRYPT_BN_NOR_CHECK_PRIME) {
+                continue;
+            }
+            GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+            SetPQ2Para(dsaPara, &dsaParaTmp);
+            *counter = cnt;
+            goto ERR;
+        }
+    }
+ERR:
+    BSL_SAL_ClearFree(msg.data, msg.dataLen);
+    BN_OptimizerDestroy(opt);
+    return ret;
+}
+
+int32_t CRYPT_DSA_Fips186_4_Validate_PQ(int32_t algId, uint32_t type,
+    BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t counter)
+{
+    uint32_t L = BN_Bits(dsaPara->p);
+    uint32_t N = BN_Bits(dsaPara->q);
+    RETURN_RET_IF(DSA_Fips186_4_validate_LN(L, N, 0, type) == 0, CRYPT_DSA_PARA_ERROR);
+    RETURN_RET_IF(seed->dataLen * 8 < N || counter > 4 * L - 1, CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
+    BN_Optimizer *opt = BN_OptimizerCreate();
+    RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
+    (void)OptimizerStart(opt);
+    BN_BigNum *pow = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    BN_BigNum *pTmp = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    BN_BigNum *qTmp = OptimizerGetBn(opt, BITS_TO_BN_UNIT(N));
+    uint8_t *msgData = (uint8_t *)BSL_SAL_Dump(seed->data, seed->dataLen);
+    int32_t ret = CRYPT_MEM_ALLOC_FAIL;
+    GOTO_ERR_IF_TRUE(pow == NULL || pTmp == NULL || qTmp == NULL || msgData == NULL, ret);
+    BSL_Buffer msg = {msgData, seed->dataLen};
+    CRYPT_DSA_Para dsaParaTmp = {pTmp, qTmp, NULL};
+    GOTO_ERR_IF(BN_SetLimb(pow, 1), ret);
+    GOTO_ERR_IF(BN_Lshift(pow, pow, L - 1), ret);
+    /* Validate Q */
+    GOTO_ERR_IF(DSA_Fips186_4_genQ(algId, N, seed->data, seed->dataLen, qTmp), ret);
+    GOTO_ERR_IF(BN_PrimeCheck(qTmp, 0, opt, NULL), ret);
+    ret = CRYPT_DSA_PARA_NOT_EQUAL;
+    GOTO_ERR_IF_TRUE(BN_Cmp(qTmp, dsaPara->q), ret);
+    /* Validate P */
+    DSA_FIPS186_4_Para fipsPara = {algId, 0, L, N};
+    for (uint32_t i = 0; i <= counter; i++) {
+        GOTO_ERR_IF(BN_Zeroize(pTmp), ret);
+        GOTO_ERR_IF(DSA_Fips186_4_genP(&fipsPara, pow, opt, &msg, &dsaParaTmp), ret);
+        if (BN_Cmp(pTmp, pow) < 0) {
+            continue;
+        }
+        ret = BN_PrimeCheck(pTmp, 0, opt, NULL);
+        if (ret == CRYPT_BN_NOR_CHECK_PRIME) {
+            continue;
+        }
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+        if (BN_Cmp(pTmp, dsaPara->p) != 0) {
+            BSL_ERR_PUSH_ERROR(CRYPT_DSA_PARA_NOT_EQUAL);
+            ret = CRYPT_DSA_PARA_NOT_EQUAL;
+        }
+        goto ERR;
+    }
+ERR:
+    BN_OptimizerDestroy(opt);
+    BSL_SAL_ClearFree(msg.data, msg.dataLen);
+    return ret;
+}
+
+int32_t CRYPT_DSA_Fips186_4_GenVerifiable_G(DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara)
+{
+    RETURN_RET_IF(fipsPara->index < 0, CRYPT_INVALID_ARG);
+    int32_t ret;
+    uint8_t hash[64]; // 64 is max hash len
+    uint32_t hashLen;
+    uint32_t L = BN_Bits(dsaPara->p);
+    BN_Optimizer *opt = BN_OptimizerCreate();
+    RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
+    (void)OptimizerStart(opt);
+    BN_BigNum *e = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    BN_BigNum *gTmp = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    BN_BigNum *gOut = BN_Create(L);
+    uint32_t msgLen = seed->dataLen + 7; // "ggen" + index + counter = 7
+    uint8_t *msg = (uint8_t *)BSL_SAL_Calloc(msgLen, 1);
+    if (e == NULL || gTmp == NULL || gOut == NULL || msg == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        ret = CRYPT_MEM_ALLOC_FAIL;
+        goto ERR;
+    }
+    GOTO_ERR_IF(BN_SubLimb(e, dsaPara->p, 1), ret);
+    GOTO_ERR_IF(BN_Div(e, NULL, e, dsaPara->q, opt), ret);
+    (void)memcpy_s(msg, msgLen, seed->data, seed->dataLen);
+    (void)memcpy_s(msg + seed->dataLen, msgLen - seed->dataLen, "ggen", 4); // 4 is the length of "ggen".
+    msg[seed->dataLen + 4] = (uint8_t)(fipsPara->index & 0xff); // skip 4 bytes.
+    for (int32_t cnt = 1; cnt <= 0xFFFF; cnt++) {
+        msg[seed->dataLen + 5] = (uint8_t)((cnt >> 8) & 0xff); // skip 5 bytes, get high 8 bits in cnt.
+        msg[seed->dataLen + 6] = (uint8_t)(cnt & 0xff); // skip 6 bytes.
+        hashLen = sizeof(hash) / sizeof(hash[0]);
+        (void)memset_s(hash, hashLen, 0, hashLen);
+        GOTO_ERR_IF(CRYPT_EAL_Md(fipsPara->algId, msg, msgLen, hash, &hashLen), ret);
+        GOTO_ERR_IF(BN_Bin2Bn(gTmp, hash, hashLen), ret);
+        GOTO_ERR_IF(BN_ModExp(gTmp, gTmp, e, dsaPara->p, opt), ret);
+        if (BN_IsNegative(gTmp) == true || BN_IsZero(gTmp) == true || BN_IsOne(gTmp) == true) { // gTmp < 2
+            continue;
+        }
+        GOTO_ERR_IF(BN_Copy(gOut, gTmp), ret);
+        dsaPara->g = gOut;
+        goto ERR;
+    }
+    BSL_ERR_PUSH_ERROR(CRYPT_DSA_ERR_TRY_CNT);
+    ret = CRYPT_DSA_ERR_TRY_CNT;
+ERR:
+    if (ret != CRYPT_SUCCESS) {
+        BN_Destroy(gOut);
+        dsaPara->g = NULL;
+    }
+    BN_OptimizerDestroy(opt);
+    BSL_SAL_ClearFree(msg, msgLen);
+    return ret;
+}
+
+int32_t CRYPT_DSA_Fips186_4_GenUnverifiable_G(CRYPT_DSA_Para *dsaPara)
+{
+    int32_t ret;
+    uint32_t L = BN_Bits(dsaPara->p);
+    BN_Optimizer *opt = BN_OptimizerCreate();
+    RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
+    (void)OptimizerStart(opt);
+    BN_BigNum *e = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    BN_BigNum *p_1 = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    BN_BigNum *h = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    BN_BigNum *gTmp = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    BN_BigNum *gOut = BN_Create(L);
+    if (e == NULL || p_1 == NULL || h == NULL || gTmp == NULL || gOut == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        ret = CRYPT_MEM_ALLOC_FAIL;
+        goto ERR;
+    }
+    ret = BN_SubLimb(p_1, dsaPara->p, 1);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    ret = BN_Div(e, NULL, p_1, dsaPara->q, opt);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    ret = BN_SetLimb(h, 1);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    while (true) {
+        ret = BN_AddLimb(h, h, 1);
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+        if (BN_Cmp(h, p_1) >= 0) {
+            BSL_ERR_PUSH_ERROR(CRYPT_BN_BITS_INVALID);
+            ret = CRYPT_BN_BITS_INVALID;
+            goto ERR;
+        }
+        ret = BN_ModExp(gTmp, h, e, dsaPara->p, opt);
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+        if (BN_IsOne(gTmp) == true) { // 4. If (gTmp = 1), then go to step 2.
+            continue;
+        }
+        ret = BN_Copy(gOut, gTmp);
+        GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+        dsaPara->g = gOut;
+        goto ERR;
+    }
+ERR:
+    if (ret != CRYPT_SUCCESS) {
+        BN_Destroy(gOut);
+        dsaPara->g = NULL;
+    }
+    BN_OptimizerDestroy(opt);
+    return ret;
+}
+
+int32_t CRYPT_DSA_Fips186_4_PartialValidate_G(const CRYPT_DSA_Para *dsaPara)
+{
+    if (BN_IsNegative(dsaPara->g) == true || BN_IsZero(dsaPara->g) == true || BN_IsOne(dsaPara->g) == true) { // g < 2
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        return CRYPT_DSA_VERIFY_FAIL;
+    }
+    int32_t ret;
+    BN_Optimizer *opt = BN_OptimizerCreate();
+    RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
+    (void)OptimizerStart(opt);
+    uint32_t L = BN_Bits(dsaPara->p);
+    BN_BigNum *p_1 = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    if (p_1 == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        ret = CRYPT_MEM_ALLOC_FAIL;
+        goto ERR;
+    }
+    ret = BN_SubLimb(p_1, dsaPara->p, 1);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    if (BN_Cmp(dsaPara->g, p_1) > 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        ret = CRYPT_DSA_VERIFY_FAIL;
+        goto ERR;
+    }
+    ret = BN_ModExp(p_1, dsaPara->g, dsaPara->q, dsaPara->p, opt);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    if (BN_IsOne(p_1) != true) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        ret = CRYPT_DSA_VERIFY_FAIL;
+    }
+ERR:
+    BN_OptimizerDestroy(opt);
+    return ret;
+}
+
+int32_t CRYPT_DSA_Fips186_4_Validate_G(DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara)
+{
+    int32_t ret = CRYPT_DSA_Fips186_4_PartialValidate_G(dsaPara);
+    if (ret != CRYPT_SUCCESS) {
+        return ret;
+    }
+    CRYPT_DSA_Para dsaVerify = {dsaPara->p, dsaPara->q, NULL};
+    ret = CRYPT_DSA_Fips186_4_GenVerifiable_G(fipsPara, seed, &dsaVerify);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    if (BN_Cmp(dsaVerify.g, dsaPara->g) == 0) {
+        ret = CRYPT_SUCCESS;
+    } else {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        ret = CRYPT_DSA_VERIFY_FAIL;
+    }
+    BN_Destroy(dsaVerify.g);
+    return ret;
+}
+
+static int32_t DSA_GetFipsPara(BSL_Param *params, uint32_t *type, DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed)
+{
+    const uint8_t *t = NULL;
+    const uint8_t *algId = NULL;
+    const uint8_t *L = NULL;
+    const uint8_t *N = NULL;
+    const uint8_t *index = NULL;
+    const uint8_t *seedLen = NULL;
+    uint32_t len = 0;
+    int32_t ret = GetDsaParamValue(params, CRYPT_PARAM_DSA_TYPE, sizeof(uint32_t), &t, &len);
+    if (ret != CRYPT_SUCCESS || len != sizeof(uint32_t)) {
+        return CRYPT_DSA_ERR_KEY_PARA;
+    }
+    ret = GetDsaParamValue(params, CRYPT_PARAM_DSA_ALGID, sizeof(int32_t), &algId, &len);
+    if (ret != CRYPT_SUCCESS || len != sizeof(int32_t)) {
+        return CRYPT_DSA_ERR_KEY_PARA;
+    }
+    ret = GetDsaParamValue(params, CRYPT_PARAM_DSA_PBITS, sizeof(uint32_t), &L, &len);
+    if (ret != CRYPT_SUCCESS || len != sizeof(uint32_t)) {
+        return CRYPT_DSA_ERR_KEY_PARA;
+    }
+    ret = GetDsaParamValue(params, CRYPT_PARAM_DSA_QBITS, sizeof(uint32_t), &N, &len);
+    if (ret != CRYPT_SUCCESS || len != sizeof(uint32_t)) {
+        return CRYPT_DSA_ERR_KEY_PARA;
+    }
+    ret = GetDsaParamValue(params, CRYPT_PARAM_DSA_GINDEX, sizeof(int32_t), &index, &len);
+    if (ret != CRYPT_SUCCESS || len != sizeof(int32_t)) {
+        return CRYPT_DSA_ERR_KEY_PARA;
+    }
+    ret = GetDsaParamValue(params, CRYPT_PARAM_DSA_SEEDLEN, sizeof(uint32_t), &seedLen, &len);
+    if (ret != CRYPT_SUCCESS || len != sizeof(uint32_t)) {
+        return CRYPT_DSA_ERR_KEY_PARA;
+    }
+    fipsPara->algId = *(const int32_t *)algId;
+    fipsPara->L = *(const uint32_t *)L;
+    fipsPara->N = *(const uint32_t *)N;
+    fipsPara->index = *(const int32_t *)index;
+    *type = *(const uint32_t *)t;
+    seed->dataLen = *(const uint32_t *)seedLen;
+    seed->data = (uint8_t *)BSL_SAL_Calloc(seed->dataLen, 1);
+    if (seed->data == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    return CRYPT_SUCCESS;
+}
+
+/* generate PQ NIST.FIPS.186-4 A.1.1.2 */
+/* generate G NIST.FIPS.186-4 A.2.3 */
+int32_t CRYPT_DSA_Fips186_4_GenParam(CRYPT_DSA_Ctx *ctx, void *val)
+{
+    BSL_Param *params = (BSL_Param *)val;
+    if (params == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    uint32_t type;
+    DSA_FIPS186_4_Para fipsPara;
+    BSL_Buffer seed;
+    int32_t ret = DSA_GetFipsPara(params, &type, &fipsPara, &seed);
+    if (ret != CRYPT_SUCCESS) {
+        return ret;
+    }
+    CRYPT_DSA_Para *dsaPara = (CRYPT_DSA_Para *)BSL_SAL_Calloc(sizeof(CRYPT_DSA_Para), 1);
+    if (dsaPara == NULL) {
+        BSL_SAL_Free(seed.data);
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    uint32_t counter = 0;
+    ret = CRYPT_DSA_Fips186_4_Gen_PQ(&fipsPara, type, &seed, dsaPara, &counter);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_SAL_ClearFree(seed.data, seed.dataLen);
+        BSL_SAL_Free(dsaPara);
+        return ret;
+    }
+    ret = CRYPT_DSA_Fips186_4_GenVerifiable_G(&fipsPara, &seed, dsaPara);
+    BSL_SAL_ClearFree(seed.data, seed.dataLen);
+    if (ret != CRYPT_SUCCESS) {
+        CRYPT_DSA_FreePara(dsaPara);
+        return ret;
+    }
+    CRYPT_DSA_FreePara(ctx->para);
+    ctx->para = dsaPara;
+    return CRYPT_SUCCESS;
+}
+
+#endif /* HITLS_CRYPTO_DSA_GEN_PARA */
+
 int32_t CRYPT_DSA_Ctrl(CRYPT_DSA_Ctx *ctx, int32_t opt, void *val, uint32_t len)
 {
     if (ctx == NULL) {
@@ -994,6 +1492,10 @@ int32_t CRYPT_DSA_Ctrl(CRYPT_DSA_Ctx *ctx, int32_t opt, void *val, uint32_t len)
                 return CRYPT_INVALID_ARG;
             }
             return BSL_SAL_AtomicUpReferences(&(ctx->references), (int *)val);
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+        case CRYPT_CTRL_GEN_PARA:
+            return CRYPT_DSA_Fips186_4_GenParam(ctx, val);
+#endif /* HITLS_CRYPTO_DSA_GEN_PARA */
         default:
             break;
     }
@@ -1001,12 +1503,4 @@ int32_t CRYPT_DSA_Ctrl(CRYPT_DSA_Ctx *ctx, int32_t opt, void *val, uint32_t len)
     return CRYPT_DSA_UNSUPPORTED_CTRL_OPTION;
 }
 
-int32_t CRYPT_DSA_GetSecBits(const CRYPT_DSA_Ctx *ctx)
-{
-    if (ctx == NULL || ctx->para == NULL || ctx->para->p == NULL || ctx->para->q == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return 0;
-    }
-    return BN_SecBits(BN_Bits(ctx->para->p), BN_Bits(ctx->para->q));
-}
 #endif /* HITLS_CRYPTO_DSA */

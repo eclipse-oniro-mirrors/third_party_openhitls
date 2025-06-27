@@ -24,6 +24,7 @@
 #include "bsl_sal.h"
 #include "crypt_errno.h"
 #include "crypt_dsa.h"
+#include "dsa_local.h"
 #include "crypt_eal_pkey.h"
 #include "crypt_eal_rand.h"
 #include "crypt_bn.h"
@@ -41,6 +42,13 @@
 #define CRYPT_EAL_PKEY_KEYMGMT_OPERATE 0
 static uint8_t g_kRandBuf[64];
 static uint32_t g_kRandBufLen = 0;
+
+int32_t CRYPT_DSA_Fips186_4_Gen_PQ(DSA_FIPS186_4_Para *fipsPara, uint64_t type, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t *counter);
+int32_t CRYPT_DSA_Fips186_4_Validate_PQ(int32_t algId, uint64_t type, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t counter);
+int32_t CRYPT_DSA_Fips186_4_GenUnverifiable_G(CRYPT_DSA_Para *dsaPara);
+int32_t CRYPT_DSA_Fips186_4_GenVerifiable_G(DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara);
+int32_t CRYPT_DSA_Fips186_4_PartialValidate_G(const CRYPT_DSA_Para *dsaPara);
+int32_t CRYPT_DSA_Fips186_4_Validate_G(DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara);
 
 int32_t STUB_RandRangeK(void *libCtx, BN_BigNum *r, const BN_BigNum *p)
 {
@@ -801,5 +809,201 @@ void SDV_CRYPTO_DSA_GET_SEC_BITS_FUNC_TC001(int id, int secBits, Hex *P, Hex *Q,
     ASSERT_EQ(CRYPT_EAL_PkeyGetSecurityBits(pkey), secBits);
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
+}
+/* END_CASE */
+
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+static uint8_t *g_dsa_seed = NULL;
+static int32_t ref = 0;
+
+int32_t STUB_CRYPT_EAL_Randbytes(uint8_t *byte, uint32_t len)
+{
+    if (ref == 0) {
+        (void)memcpy_s(byte, len, g_dsa_seed, len);
+        ref = 1;
+    } else {
+        for (uint32_t i = 0; i < len; i++) {
+            byte[i] = (uint8_t)(rand() % 255); // mod 255 get 8bit number.
+        }
+    }
+    return CRYPT_SUCCESS;
+}
+
+int32_t STUB_CRYPT_EAL_RandbytesEx(CRYPT_EAL_LibCtx *libCtx, uint8_t *byte, uint32_t len)
+{
+    (void)libCtx;
+    return STUB_CRYPT_EAL_Randbytes(byte, len);
+}
+
+#endif /* HITLS_CRYPTO_DSA */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_DSA_VERIFY_PQ_FUNC_TC001(int algId, Hex *seed, char *pHex, char *qHex)
+{
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+    BSL_Buffer seedTmp = {seed->x, seed->len};
+    BN_BigNum *p = NULL;
+    BN_BigNum *q = NULL;
+    ASSERT_EQ(BN_Hex2Bn(&p, pHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&q, qHex), CRYPT_SUCCESS);
+    CRYPT_DSA_Para dsaPara = {p, q, NULL};
+    uint32_t counter = 5;
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_DSA_Fips186_4_Validate_PQ(algId, CRYPT_DSA_FFC_PARAM, &seedTmp, &dsaPara, counter), CRYPT_SUCCESS);
+EXIT:
+    TestRandDeInit();
+    BN_Destroy(p);
+    BN_Destroy(q);
+#endif /* HITLS_CRYPTO_DSA */
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_DSA_GEN_PQ_FUNC_TC001(int algId, int L, int N, Hex *seed, char *pHex, char *qHex)
+{
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+    BN_BigNum *pReq = NULL;
+    BN_BigNum *qReq = NULL;
+    uint32_t counter = 0;
+    g_dsa_seed = seed->x;
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    FuncStubInfo tmpRpInfo;
+    STUB_Init();
+    STUB_Replace(&tmpRpInfo, CRYPT_EAL_RandbytesEx, STUB_CRYPT_EAL_RandbytesEx);
+    CRYPT_RandRegist(STUB_CRYPT_EAL_Randbytes);
+    ref = 0;
+    DSA_FIPS186_4_Para fipsPara = {algId, 0, L, N};
+    BSL_Buffer seedTmp = {seed->x, seed->len};
+    CRYPT_DSA_Para dsaPara = {0};
+    ASSERT_EQ(CRYPT_DSA_Fips186_4_Gen_PQ(&fipsPara, CRYPT_DSA_FFC_PARAM, &seedTmp, &dsaPara, &counter), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_DSA_Fips186_4_Validate_PQ(algId, CRYPT_DSA_FFC_PARAM, &seedTmp, &dsaPara, counter), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&pReq, pHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&qReq, qHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Cmp(dsaPara.p, pReq), 0);
+    ASSERT_EQ(BN_Cmp(dsaPara.q, qReq), 0);
+EXIT:
+    CRYPT_EAL_RandDeinit();
+    STUB_Reset(&tmpRpInfo);
+    TestRandDeInit();
+    g_dsa_seed = NULL;
+    BN_Destroy(dsaPara.p);
+    BN_Destroy(dsaPara.q);
+    BN_Destroy(pReq);
+    BN_Destroy(qReq);
+#endif /* HITLS_CRYPTO_DSA */
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_DSA_GEN_G_FUNC_TC001(char *pHex, char *qHex, char *gHex)
+{
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+    BN_BigNum *p = NULL;
+    BN_BigNum *q = NULL;
+    BN_BigNum *gReq = NULL;
+    ASSERT_EQ(BN_Hex2Bn(&p, pHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&q, qHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&gReq, gHex), CRYPT_SUCCESS);
+    CRYPT_DSA_Para dsaPara = {p, q, NULL};
+    ASSERT_EQ(CRYPT_DSA_Fips186_4_GenUnverifiable_G(&dsaPara), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_DSA_Fips186_4_PartialValidate_G(&dsaPara), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Cmp(dsaPara.g, gReq), 0);
+EXIT:
+    BN_Destroy(p);
+    BN_Destroy(q);
+    BN_Destroy(dsaPara.g);
+    BN_Destroy(gReq);
+#endif /* HITLS_CRYPTO_DSA */
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_DSA_GEN_G_FUNC_TC002(int algId, int index, Hex *seed, char *pHex, char *qHex)
+{
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+    BN_BigNum *p = NULL;
+    BN_BigNum *q = NULL;
+    ASSERT_EQ(BN_Hex2Bn(&p, pHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&q, qHex), CRYPT_SUCCESS);
+    DSA_FIPS186_4_Para fipsPara = {algId, index, 0, 0};
+    BSL_Buffer seedTmp = {seed->x, seed->len};
+    CRYPT_DSA_Para dsaPara = {p, q, NULL};
+    ASSERT_EQ(CRYPT_DSA_Fips186_4_GenVerifiable_G(&fipsPara, &seedTmp, &dsaPara), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_DSA_Fips186_4_Validate_G(&fipsPara, &seedTmp, &dsaPara), CRYPT_SUCCESS);
+EXIT:
+    BN_Destroy(p);
+    BN_Destroy(q);
+    BN_Destroy(dsaPara.g);
+#endif /* HITLS_CRYPTO_DSA */
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_DSA_GEN_G_FUNC_TC003(int algId, int index, Hex *seed, char *pHex, char *qHex)
+{
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+    BN_BigNum *p = NULL;
+    BN_BigNum *q = NULL;
+    ASSERT_EQ(BN_Hex2Bn(&p, pHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&q, qHex), CRYPT_SUCCESS);
+    DSA_FIPS186_4_Para fipsPara = {algId, index, 0, 0};
+    BSL_Buffer seedTmp = {seed->x, seed->len};
+    CRYPT_DSA_Para dsaPara = {p, q, NULL};
+    ASSERT_EQ(CRYPT_DSA_Fips186_4_GenVerifiable_G(&fipsPara, &seedTmp, &dsaPara), CRYPT_DSA_ERR_TRY_CNT);
+EXIT:
+    BN_Destroy(p);
+    BN_Destroy(q);
+    BN_Destroy(dsaPara.g);
+#endif /* HITLS_CRYPTO_DSA */
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_DSA_KEY_PAIR_GEN_BY_PARAM_FUNC_TC001()
+{
+#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+    uint32_t type = CRYPT_DSA_FFC_PARAM;
+    int32_t algId = CRYPT_MD_SHA256;
+    uint32_t L = 2048;
+    uint32_t N = 256;
+    uint32_t seedLen = 256;
+    int32_t index = 0;
+    BSL_Param params[7] = {
+        {CRYPT_PARAM_DSA_TYPE, BSL_PARAM_TYPE_UINT32, &type, sizeof(uint32_t), 0},
+        {CRYPT_PARAM_DSA_ALGID, BSL_PARAM_TYPE_INT32, &algId, sizeof(int32_t), 0},
+        {CRYPT_PARAM_DSA_PBITS, BSL_PARAM_TYPE_UINT32, &L, sizeof(uint32_t), 0},
+        {CRYPT_PARAM_DSA_QBITS, BSL_PARAM_TYPE_UINT32, &N, sizeof(uint32_t), 0},
+        {CRYPT_PARAM_DSA_SEEDLEN, BSL_PARAM_TYPE_UINT32, &seedLen, sizeof(uint32_t), 0},
+        {CRYPT_PARAM_DSA_GINDEX, BSL_PARAM_TYPE_INT32, &index, sizeof(int32_t), 0},
+        BSL_PARAM_END
+    };
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
+    uint8_t *sign = NULL;
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+#ifdef HITLS_CRYPTO_PROVIDER
+    ASSERT_EQ(CRYPT_EAL_RandInit(CRYPT_RAND_SHA256, NULL, NULL, NULL, 0), CRYPT_SUCCESS);
+#endif
+    pkey = CRYPT_EAL_PkeyNewCtx(CRYPT_PKEY_DSA);
+    ASSERT_TRUE(pkey != NULL);
+
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_DSA_ERR_KEY_PARA);
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_GEN_PARA, params, 0), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
+
+    uint32_t signLen = CRYPT_EAL_PkeyGetSignLen(pkey);
+    ASSERT_NE(signLen, 0);
+    sign = (uint8_t *)BSL_SAL_Calloc(signLen, 1);
+    ASSERT_TRUE(sign != NULL);
+
+    uint8_t data[] = "testdata";
+    uint32_t dataLen = 8;
+    ASSERT_EQ(CRYPT_EAL_PkeySign(pkey, CRYPT_MD_SHA256, data, dataLen, sign, &signLen), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyVerify(pkey, CRYPT_MD_SHA256, data, dataLen, sign, signLen), CRYPT_SUCCESS);
+EXIT:
+    CRYPT_EAL_RandDeinit();
+    CRYPT_EAL_PkeyFreeCtx(pkey);
+    BSL_SAL_Free(sign);
+#endif /* HITLS_CRYPTO_DSA */
 }
 /* END_CASE */
