@@ -840,7 +840,13 @@ int32_t STUB_CRYPT_EAL_RandbytesEx(CRYPT_EAL_LibCtx *libCtx, uint8_t *byte, uint
 /* BEGIN_CASE */
 void SDV_CRYPTO_DSA_VERIFY_PQ_FUNC_TC001(int algId, Hex *seed, char *pHex, char *qHex)
 {
-#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)algId;
+    (void)seed;
+    (void)pHex;
+    (void)qHex;
+    SKIP_TEST();
+#else
     BSL_Buffer seedTmp = {seed->x, seed->len};
     BN_BigNum *p = NULL;
     BN_BigNum *q = NULL;
@@ -854,14 +860,22 @@ EXIT:
     TestRandDeInit();
     BN_Destroy(p);
     BN_Destroy(q);
-#endif /* HITLS_CRYPTO_DSA */
+#endif
 }
 /* END_CASE */
 
 /* BEGIN_CASE */
 void SDV_CRYPTO_DSA_GEN_PQ_FUNC_TC001(int algId, int L, int N, Hex *seed, char *pHex, char *qHex)
 {
-#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)algId;
+    (void)L;
+    (void)N;
+    (void)seed;
+    (void)pHex;
+    (void)qHex;
+    SKIP_TEST();
+#else
     BN_BigNum *pReq = NULL;
     BN_BigNum *qReq = NULL;
     uint32_t counter = 0;
@@ -890,14 +904,19 @@ EXIT:
     BN_Destroy(dsaPara.q);
     BN_Destroy(pReq);
     BN_Destroy(qReq);
-#endif /* HITLS_CRYPTO_DSA */
+#endif
 }
 /* END_CASE */
 
 /* BEGIN_CASE */
 void SDV_CRYPTO_DSA_GEN_G_FUNC_TC001(char *pHex, char *qHex, char *gHex)
 {
-#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)pHex;
+    (void)qHex;
+    (void)gHex;
+    SKIP_TEST();
+#else
     BN_BigNum *p = NULL;
     BN_BigNum *q = NULL;
     BN_BigNum *gReq = NULL;
@@ -913,14 +932,21 @@ EXIT:
     BN_Destroy(q);
     BN_Destroy(dsaPara.g);
     BN_Destroy(gReq);
-#endif /* HITLS_CRYPTO_DSA */
+#endif
 }
 /* END_CASE */
 
 /* BEGIN_CASE */
 void SDV_CRYPTO_DSA_GEN_G_FUNC_TC002(int algId, int index, Hex *seed, char *pHex, char *qHex)
 {
-#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)algId;
+    (void)index;
+    (void)seed;
+    (void)pHex;
+    (void)qHex;
+    SKIP_TEST();
+#else
     BN_BigNum *p = NULL;
     BN_BigNum *q = NULL;
     ASSERT_EQ(BN_Hex2Bn(&p, pHex), CRYPT_SUCCESS);
@@ -934,14 +960,21 @@ EXIT:
     BN_Destroy(p);
     BN_Destroy(q);
     BN_Destroy(dsaPara.g);
-#endif /* HITLS_CRYPTO_DSA */
+#endif
 }
 /* END_CASE */
 
 /* BEGIN_CASE */
 void SDV_CRYPTO_DSA_GEN_G_FUNC_TC003(int algId, int index, Hex *seed, char *pHex, char *qHex)
 {
-#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)algId;
+    (void)index;
+    (void)seed;
+    (void)pHex;
+    (void)qHex;
+    SKIP_TEST();
+#else
     BN_BigNum *p = NULL;
     BN_BigNum *q = NULL;
     ASSERT_EQ(BN_Hex2Bn(&p, pHex), CRYPT_SUCCESS);
@@ -954,14 +987,16 @@ EXIT:
     BN_Destroy(p);
     BN_Destroy(q);
     BN_Destroy(dsaPara.g);
-#endif /* HITLS_CRYPTO_DSA */
+#endif
 }
 /* END_CASE */
 
 /* BEGIN_CASE */
 void SDV_CRYPTO_DSA_KEY_PAIR_GEN_BY_PARAM_FUNC_TC001()
 {
-#ifdef HITLS_CRYPTO_DSA_GEN_PARA
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    SKIP_TEST();
+#else
     uint32_t type = CRYPT_DSA_FFC_PARAM;
     int32_t algId = CRYPT_MD_SHA256;
     uint32_t L = 2048;
@@ -1004,6 +1039,6 @@ EXIT:
     CRYPT_EAL_RandDeinit();
     CRYPT_EAL_PkeyFreeCtx(pkey);
     BSL_SAL_Free(sign);
-#endif /* HITLS_CRYPTO_DSA */
+#endif
 }
 /* END_CASE */
