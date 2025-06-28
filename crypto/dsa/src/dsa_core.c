@@ -1121,6 +1121,7 @@ static int32_t SetPQ2Para(CRYPT_DSA_Para *destPara, const CRYPT_DSA_Para *srcPar
 int32_t CRYPT_DSA_Fips186_4_Gen_PQ(DSA_FIPS186_4_Para *fipsPara, uint32_t type,
     BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t *counter)
 {
+    BSL_Buffer msg = {NULL, 0};
     RETURN_RET_IF(DSA_Fips186_4_validate_LN(fipsPara->L, fipsPara->N, 1, type) == 0, CRYPT_DSA_PARA_ERROR);
     uint32_t outLen = CRYPT_EAL_MdGetDigestSize(fipsPara->algId);
     RETURN_RET_IF(seed->dataLen * 8 < fipsPara->N || outLen * 8 < fipsPara->N, CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
@@ -1133,7 +1134,8 @@ int32_t CRYPT_DSA_Fips186_4_Gen_PQ(DSA_FIPS186_4_Para *fipsPara, uint32_t type,
     uint8_t *msgData = (uint8_t *)BSL_SAL_Calloc(seed->dataLen, 1);
     int32_t ret = CRYPT_MEM_ALLOC_FAIL;
     GOTO_ERR_IF_TRUE(pow == NULL || pTmp == NULL || qTmp == NULL || msgData == NULL, ret);
-    BSL_Buffer msg = {msgData, seed->dataLen};
+    msg.data = msgData;
+    msg.dataLen = seed->dataLen;
     CRYPT_DSA_Para dsaParaTmp = {pTmp, qTmp, NULL};
     GOTO_ERR_IF(BN_SetLimb(pow, 1), ret);
     GOTO_ERR_IF(BN_Lshift(pow, pow, fipsPara->L - 1), ret);
@@ -1174,6 +1176,7 @@ ERR:
 int32_t CRYPT_DSA_Fips186_4_Validate_PQ(int32_t algId, uint32_t type,
     BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t counter)
 {
+    BSL_Buffer msg = {NULL, 0};
     uint32_t L = BN_Bits(dsaPara->p);
     uint32_t N = BN_Bits(dsaPara->q);
     RETURN_RET_IF(DSA_Fips186_4_validate_LN(L, N, 0, type) == 0, CRYPT_DSA_PARA_ERROR);
@@ -1187,7 +1190,8 @@ int32_t CRYPT_DSA_Fips186_4_Validate_PQ(int32_t algId, uint32_t type,
     uint8_t *msgData = (uint8_t *)BSL_SAL_Dump(seed->data, seed->dataLen);
     int32_t ret = CRYPT_MEM_ALLOC_FAIL;
     GOTO_ERR_IF_TRUE(pow == NULL || pTmp == NULL || qTmp == NULL || msgData == NULL, ret);
-    BSL_Buffer msg = {msgData, seed->dataLen};
+    msg.data = msgData;
+    msg.dataLen = seed->dataLen;
     CRYPT_DSA_Para dsaParaTmp = {pTmp, qTmp, NULL};
     GOTO_ERR_IF(BN_SetLimb(pow, 1), ret);
     GOTO_ERR_IF(BN_Lshift(pow, pow, L - 1), ret);
