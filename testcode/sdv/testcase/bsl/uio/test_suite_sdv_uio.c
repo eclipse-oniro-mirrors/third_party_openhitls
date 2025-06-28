@@ -115,12 +115,12 @@ static int32_t STUB_Ctrl(BSL_UIO *uio, int32_t cmd, int32_t larg, void *param)
 const BSL_UIO_Method * GetUioMethodByType(int uioType)
 {
     switch (uioType) {
-        case BSL_UIO_TCP:
 #ifdef HITLS_BSL_UIO_TCP
+        case BSL_UIO_TCP:
             return BSL_UIO_TcpMethod();
 #endif
-        case BSL_UIO_UDP:
 #ifdef HITLS_BSL_UIO_UDP
+        case BSL_UIO_UDP:
             return BSL_UIO_UdpMethod();
 #endif
         case BSL_UIO_BUFFER:
