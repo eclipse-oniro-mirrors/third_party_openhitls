@@ -267,6 +267,7 @@ ohos_shared_library("openhitls_bsl") {
     part_name = "openhitls"
     sources = []
     deps = [":bsl_source"]
+    innerapi_tags = [ "ndk" ]
 }
 
 config("crypto_config") {
@@ -753,6 +754,7 @@ ohos_shared_library("openhitls_crypto") {
     deps = [
         ":crypto_source"
     ]
+    innerapi_tags = [ "ndk" ]
 }
 
 config("pki_config") {
@@ -826,6 +828,7 @@ ohos_shared_library("openhitls_pki") {
     deps = [
         ":pki_source"
     ]
+    innerapi_tags = [ "ndk" ]
 }
 
 
@@ -1042,6 +1045,7 @@ ohos_shared_library("openhitls_tls") {
     deps = [
         ":tls_source"
     ]
+    innerapi_tags = [ "ndk" ]
 }
 
 
@@ -1093,6 +1097,5 @@ ohos_shared_library("openhitls_auth") {
     deps = [
         ":auth_source"
     ]
+    innerapi_tags = [ "ndk" ]
 }
-
-
