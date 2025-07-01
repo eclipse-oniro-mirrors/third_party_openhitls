@@ -44,6 +44,7 @@ int32_t BSL_PARAM_InitValue(BSL_Param *param, int32_t key, uint32_t type, void *
         case BSL_PARAM_TYPE_UINT8:
         case BSL_PARAM_TYPE_UINT16:
         case BSL_PARAM_TYPE_UINT32:
+        case BSL_PARAM_TYPE_UINT64:
         case BSL_PARAM_TYPE_OCTETS:
         case BSL_PARAM_TYPE_BOOL:
         case BSL_PARAM_TYPE_UINT32_PTR:
@@ -97,6 +98,10 @@ static int32_t SetOtherValues(BSL_Param *param, uint32_t type, void *val, uint32
             return BSL_SUCCESS;
         case BSL_PARAM_TYPE_UINT32:
             *(uint32_t *)param->value = *(uint32_t *)val;
+            param->useLen = len;
+            return BSL_SUCCESS;
+        case BSL_PARAM_TYPE_UINT64:
+            *(uint64_t *)param->value = *(uint64_t *)val;
             param->useLen = len;
             return BSL_SUCCESS;
         case BSL_PARAM_TYPE_BOOL:
@@ -180,6 +185,7 @@ int32_t BSL_PARAM_GetValue(const BSL_Param *param, int32_t key, uint32_t type, v
     switch (type) {
         case BSL_PARAM_TYPE_UINT16:
         case BSL_PARAM_TYPE_UINT32:
+        case BSL_PARAM_TYPE_UINT64:
         case BSL_PARAM_TYPE_OCTETS:
         case BSL_PARAM_TYPE_BOOL:
         case BSL_PARAM_TYPE_INT32:

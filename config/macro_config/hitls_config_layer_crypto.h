@@ -340,6 +340,9 @@
     #ifndef HITLS_CRYPTO_SLH_DSA
         #define HITLS_CRYPTO_SLH_DSA
     #endif
+    #ifndef HITLS_CRYPTO_XMSS
+        #define HITLS_CRYPTO_XMSS
+    #endif
 #endif
 
 #ifdef HITLS_CRYPTO_RSA
@@ -503,6 +506,12 @@
     #endif
 #endif
 
+#ifdef HITLS_CRYPTO_XMSS
+    #ifndef HITLS_CRYPTO_SLH_DSA
+        #define HITLS_CRYPTO_SLH_DSA
+    #endif
+#endif
+
 #ifdef HITLS_CRYPTO_SLH_DSA
     #ifndef HITLS_CRYPTO_SHA2
         #define HITLS_CRYPTO_SHA2
@@ -657,7 +666,7 @@
     defined(HITLS_CRYPTO_DH) || defined(HITLS_CRYPTO_ECDSA) || defined(HITLS_CRYPTO_ECDH) ||      \
     defined(HITLS_CRYPTO_SM2) || defined(HITLS_CRYPTO_PAILLIER)|| defined(HITLS_CRYPTO_ELGAMAL) || \
     defined(HITLS_CRYPTO_MLDSA) || defined(HITLS_CRYPTO_MLKEM) || defined(HITLS_CRYPTO_HYBRIDKEM) || \
-    defined(HITLS_CRYPTO_SLH_DSA)
+    defined(HITLS_CRYPTO_SLH_DSA) || defined(HITLS_CRYPTO_XMSS)
     #ifndef HITLS_CRYPTO_PKEY
         #define HITLS_CRYPTO_PKEY
     #endif

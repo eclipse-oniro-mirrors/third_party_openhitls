@@ -78,6 +78,12 @@ union Adrs {
         uint8_t type;
         uint8_t padding[12];
     } c;
+    struct {
+        uint8_t layerAddr[4];
+        uint8_t treeAddr[8];
+        uint8_t type[4];
+        uint8_t padding[16];
+    } x;
     uint8_t bytes[SLH_DSA_ADRS_LEN];
 };
 
@@ -90,6 +96,7 @@ typedef void (*AdrsSetChainAddr)(SlhDsaAdrs *adrs, uint32_t chain);
 typedef void (*AdrsSetTreeHeight)(SlhDsaAdrs *adrs, uint32_t height);
 typedef void (*AdrsSetHashAddr)(SlhDsaAdrs *adrs, uint32_t hash);
 typedef void (*AdrsSetTreeIndex)(SlhDsaAdrs *adrs, uint32_t index);
+typedef void (*AdrsSetKeyAndMask)(SlhDsaAdrs *adrs, uint32_t index); // for XMSS only
 typedef uint32_t (*AdrsGetTreeHeight)(const SlhDsaAdrs *adrs);
 typedef uint32_t (*AdrsGetTreeIndex)(const SlhDsaAdrs *adrs);
 typedef void (*AdrsCopyKeyPairAddr)(SlhDsaAdrs *adrs, const SlhDsaAdrs *adrs2);
@@ -104,6 +111,7 @@ typedef struct {
     AdrsSetTreeHeight setTreeHeight;
     AdrsSetHashAddr setHashAddr;
     AdrsSetTreeIndex setTreeIndex;
+    AdrsSetKeyAndMask setKeyAndMask; // for XMSS only
     AdrsGetTreeHeight getTreeHeight;
     AdrsGetTreeIndex getTreeIndex;
     AdrsCopyKeyPairAddr copyKeyPairAddr;
@@ -115,7 +123,7 @@ typedef struct {
 void BaseB(const uint8_t *x, uint32_t xLen, uint32_t b, uint32_t *out, uint32_t outLen);
 
 typedef struct {
-    int algId; // CRYPT_PKEY_ParaId (SLH_DSA_AlgId or XMSS_AlgId)
+    int algId; // CRYPT_SLH_DSA_AlgId or CRYPT_XMSS_AlgId
     bool isCompressed;
     uint32_t n;
     uint32_t h;
@@ -130,15 +138,16 @@ typedef struct {
 } SlhDsaPara;
 
 typedef struct {
-    uint8_t seed[SLH_DSA_MAX_N]; // pubkey seed for generating keys
-    uint8_t root[SLH_DSA_MAX_N]; // pubkey root for generating keys
+    uint8_t seed[MAX_MDSIZE]; // pubkey seed for generating keys
+    uint8_t root[MAX_MDSIZE]; // pubkey root for generating keys
 } SlhDsaPubKey;
 /**
  * @brief SLH-DSA private key structure
  */
 typedef struct {
-    uint8_t seed[SLH_DSA_MAX_N]; // prvkey seed for generating keys
-    uint8_t prf[SLH_DSA_MAX_N]; // prvkey prf for generating keys
+    uint8_t seed[MAX_MDSIZE]; // prvkey seed for generating keys
+    uint8_t prf[MAX_MDSIZE]; // prvkey prf for generating keys
+    uint64_t index; // the next unused WOTS+ key index, for XMSS only
     SlhDsaPubKey pub;
 } SlhDsaPrvKey;
 
@@ -150,6 +159,8 @@ struct SlhDsaCtx {
     uint8_t *addrand; // optional random bytes, can be set through CTRL interface, or comes from RNG
     uint32_t addrandLen; // length of the optional random bytes
     bool isPrehash;
+    bool isXmss; /* XMSS and SLH-DSA share common structure, 
+                  * true : XMSS, false : SLH-DSA */
     SlhDsaPrvKey prvKey;
     SlhDsaHashFuncs hashFuncs;
     AdrsOps adrsOps;

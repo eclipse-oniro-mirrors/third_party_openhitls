@@ -565,6 +565,11 @@ enum CRYPT_ERROR {
     CRYPT_CMVP_ERR_ALGO_SELFTEST,       /**< Algorithm selftest error in CMVP selftest. */
     CRYPT_CMVP_ERR_PAIRWISETEST,        /**< Pairwise test error in CMVP selftest. */
     CRYPT_CMVP_ERR_PARAM_CHECK,         /**< Parameter check error in CMVP selftest. */
+    
+    CRYPT_XMSS_ERR_INVALID_ALGID = 0x013B0001,         /**< The algorithm id is invalid. */
+    CRYPT_XMSS_ERR_INVALID_SIG_LEN,                    /**< The signature length is invalid. */
+    CRYPT_XMSS_ERR_INVALID_KEYLEN,                     /**< The key length is invalid. */
+    CRYPT_XMSS_ERR_KEY_EXPIRED,                        /**< The key has expired. */
 };
 #ifdef __cplusplus
 }

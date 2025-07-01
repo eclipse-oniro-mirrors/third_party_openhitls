@@ -59,6 +59,9 @@
 #ifdef HITLS_CRYPTO_HYBRIDKEM
 #include "crypt_hybridkem.h"
 #endif
+#ifdef HITLS_CRYPTO_XMSS
+#include "crypt_xmss.h"
+#endif
 #include "bsl_err_internal.h"
 #include "crypt_types.h"
 #include "crypt_errno.h"
@@ -574,6 +577,37 @@ static const EAL_PkeyMethod METHODS[] = {
         NULL, // pkeyDecaps
         NULL, // blind
         NULL  // unBlind
+    ),
+#endif
+#ifdef HITLS_CRYPTO_XMSS
+    EAL_PKEY_METHOD_DEFINE(
+        CRYPT_PKEY_XMSS,
+        CRYPT_XMSS_NewCtx,
+        NULL, // dupCtx
+        CRYPT_XMSS_FreeCtx,
+        NULL, // setPara
+        NULL, // getPara
+        CRYPT_XMSS_Gen,
+        CRYPT_XMSS_Ctrl,
+        CRYPT_XMSS_SetPubKey,
+        CRYPT_XMSS_SetPrvKey,
+        CRYPT_XMSS_GetPubKey,
+        CRYPT_XMSS_GetPrvKey,
+        CRYPT_XMSS_Sign,
+        NULL,
+        CRYPT_XMSS_Verify,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL
     ),
 #endif
 #ifdef HITLS_CRYPTO_HYBRIDKEM

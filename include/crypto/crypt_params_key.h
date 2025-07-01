@@ -144,6 +144,13 @@ extern "C" {
 #define CRYPT_PARAM_SLH_DSA_PUB_SEED                        (CRYPT_PARAM_SLH_DSA_BASE + 3)
 #define CRYPT_PARAM_SLH_DSA_PUB_ROOT                        (CRYPT_PARAM_SLH_DSA_BASE + 4)
 
+#define CRYPT_PARAM_XMSS_BASE                               1800
+#define CRYPT_PARAM_XMSS_PRV_INDEX                          (CRYPT_PARAM_XMSS_BASE + 1)
+#define CRYPT_PARAM_XMSS_PRV_SEED                           (CRYPT_PARAM_XMSS_BASE + 2)
+#define CRYPT_PARAM_XMSS_PRV_PRF                            (CRYPT_PARAM_XMSS_BASE + 3)
+#define CRYPT_PARAM_XMSS_PUB_SEED                           (CRYPT_PARAM_XMSS_BASE + 4)
+#define CRYPT_PARAM_XMSS_PUB_ROOT                           (CRYPT_PARAM_XMSS_BASE + 5)
+
 #define CRYPT_PARAM_DECODE_BASE                             4000
 #define CRYPT_PARAM_DECODE_OUTPUT_FORMAT                    (CRYPT_PARAM_DECODE_BASE + 1)
 #define CRYPT_PARAM_DECODE_OUTPUT_TYPE                      (CRYPT_PARAM_DECODE_BASE + 2)

@@ -328,7 +328,7 @@ int32_t CRYPT_SLH_DSA_Gen(CryptSlhDsaCtx *ctx)
     SlhDsaAdrs adrs = {0};
     ctx->adrsOps.setLayerAddr(&adrs, d - 1);
     uint8_t node[SLH_DSA_MAX_N] = {0};
-    ret = XmssNode(node, 0, hp, &adrs, ctx);
+    ret = XmssNode(node, 0, hp, &adrs, ctx, NULL, 0);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -415,7 +415,7 @@ static int32_t CRYPT_SLH_DSA_SignInternal(CryptSlhDsaCtx *ctx, const uint8_t *ms
     }
     offset += n;
     uint8_t digest[SLH_DSA_MAX_M] = {0};
-    ret = ctx->hashFuncs.hmsg(ctx, sig, msg, msgLen, digest);
+    ret = ctx->hashFuncs.hmsg(ctx, sig, msg, msgLen, NULL, digest);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -468,7 +468,7 @@ static int32_t CRYPT_SLH_DSA_VerifyInternal(const CryptSlhDsaCtx *ctx, const uin
     uint32_t offset = 0;
 
     uint8_t digest[SLH_DSA_MAX_M] = {0};
-    ret = ctx->hashFuncs.hmsg(ctx, sig, msg, msgLen, digest);
+    ret = ctx->hashFuncs.hmsg(ctx, sig, msg, msgLen, NULL, digest);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;

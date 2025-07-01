@@ -27,7 +27,6 @@
 #include "slh_dsa_local.h"
 #include "slh_dsa_hash.h"
 
-#define MAX_MDSIZE         64
 #define SHA256_PADDING_LEN 64
 #define SHA512_PADDING_LEN 128
 
@@ -54,8 +53,9 @@ static int32_t PrfmsgShake256(const CryptSlhDsaCtx *ctx, const uint8_t *rand, co
 }
 
 static int32_t HmsgShake256(const CryptSlhDsaCtx *ctx, const uint8_t *r, const uint8_t *msg, uint32_t msgLen,
-                            uint8_t *out)
+                            const uint8_t *idx, uint8_t *out)
 {
+    (void)idx;
     uint32_t n = ctx->para.n;
     uint32_t m = ctx->para.m;
     const CRYPT_ConstData hashData[] = {{r, n}, {ctx->prvKey.pub.seed, n}, {ctx->prvKey.pub.root, n}, {msg, msgLen}};
@@ -150,14 +150,16 @@ static int32_t HmsgSha(const CryptSlhDsaCtx *ctx, const uint8_t *r, const uint8_
 }
 
 static int32_t HmsgSha256(const CryptSlhDsaCtx *ctx, const uint8_t *r, const uint8_t *msg, uint32_t msgLen,
-                          uint8_t *out)
+                          const uint8_t *idx, uint8_t *out)
 {
+    (void)idx;
     return HmsgSha(ctx, r, ctx->prvKey.pub.seed, ctx->prvKey.pub.root, msg, msgLen, out, CRYPT_MD_SHA256);
 }
 
 static int32_t HmsgSha512(const CryptSlhDsaCtx *ctx, const uint8_t *r, const uint8_t *msg, uint32_t msgLen,
-                          uint8_t *out)
+                          const uint8_t *idx, uint8_t *out)
 {
+    (void)idx;
     return HmsgSha(ctx, r, ctx->prvKey.pub.seed, ctx->prvKey.pub.root, msg, msgLen, out, CRYPT_MD_SHA512);
 }
 

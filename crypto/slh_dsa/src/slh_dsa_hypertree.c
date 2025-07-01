@@ -44,7 +44,7 @@ int32_t HypertreeSign(const uint8_t *msg, uint32_t msgLen, uint64_t treeIdx, uin
 
     uint32_t offset = 0;
     uint32_t tmpLen = *sigLen;
-    uint8_t root[SLH_DSA_MAX_N] = {0};
+    uint8_t root[MAX_MDSIZE] = {0};
     // the msgLen is actually n.
     (void)memcpy_s(root, sizeof(root), msg, msgLen);
 
@@ -56,11 +56,7 @@ int32_t HypertreeSign(const uint8_t *msg, uint32_t msgLen, uint64_t treeIdx, uin
         }
         ctx->adrsOps.setTreeAddr(&adrs, treeIdxTmp);
         tmpLen = retLen - offset;
-        ret = XmssSign(root, n, leafIdxTmp, &adrs, ctx, sig + offset, &tmpLen);
-        if (ret != CRYPT_SUCCESS) {
-            return ret;
-        }
-        ret = XmssPkFromSig(leafIdxTmp, sig + offset, tmpLen, root, n, &adrs, ctx, root);
+        ret = XmssSign(root, n, leafIdxTmp, &adrs, ctx, sig + offset, &tmpLen, root);
         if (ret != CRYPT_SUCCESS) {
             return ret;
         }
@@ -89,7 +85,7 @@ int32_t HypertreeVerify(const uint8_t *msg, uint32_t msgLen, const uint8_t *sig,
     SlhDsaAdrs adrs = {0};
     uint32_t offset = 0;
 
-    uint8_t node[SLH_DSA_MAX_N] = {0};
+    uint8_t node[MAX_MDSIZE] = {0};
     // the msgLen is actually n.
     (void)memcpy_s(node, sizeof(node), msg, msgLen);
     for (uint32_t j = 0; j < d; j++) {

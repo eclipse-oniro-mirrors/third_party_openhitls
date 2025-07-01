@@ -168,6 +168,7 @@
                         "paillier": {"deps":["bn_rand", "bn_prime"]},
                         "elgamal": {"deps":["bn_rand", "bn_prime"]},
                         "slh_dsa": { "deps": ["sha3", "sha2", "obj", "eal", "hmac", "sha256", "sha512"]},
+                        "xmss": { "deps": ["sha3", "sha2", "obj", "eal", "sha256", "sha512"]},
                         "deps": ["params"]
                     },
                     "provider": {"deps": ["params"]},
@@ -696,7 +697,8 @@
                     "crypto/mldsa/include",
                     "crypto/hybridkem/include",
                     "crypto/provider/include",
-                    "crypto/slh_dsa/include"
+                    "crypto/slh_dsa/include",
+                    "crypto/xmss/include"
                 ]
             },
             "ealinit": {
@@ -1048,6 +1050,7 @@
                     "crypto/elgamal/include",
                     "crypto/mldsa/include",
                     "crypto/slh_dsa/include",
+                    "crypto/xmss/include",
                     "crypto/drbg/include",
                     "crypto/modes/include",
                     "crypto/entropy/include",
@@ -1242,6 +1245,12 @@
                 ".srcs": "crypto/slh_dsa/src/*.c",
                 ".deps": ["crypto::sha3", "crypto::sha2", "bsl::obj"],
                 ".include": ["crypto/eal/src", "bsl/asn1/include"]
+            },
+            "xmss": {
+                ".features": ["xmss"],
+                ".srcs": "crypto/xmss/src/*.c",
+                ".deps": ["crypto::sha3", "crypto::sha2", "bsl::obj"],
+                ".include": ["crypto/eal/src", "bsl/asn1/include", "crypto/slh_dsa/include", "crypto/slh_dsa/src"]
             }
         },
         "bsl":{
