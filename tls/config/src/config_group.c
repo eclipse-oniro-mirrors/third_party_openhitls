@@ -55,6 +55,7 @@ static const TLS_GroupInfo GROUP_INFO[] = {
         TLS_VERSION_MASK | DTLS_VERSION_MASK,  // versionBits
         false,
     },
+#ifdef HITLS_TLS_FEATURE_KEM
     {
         "X25519MLKEM768",
         CRYPT_HYBRID_X25519_MLKEM768,
@@ -85,6 +86,7 @@ static const TLS_GroupInfo GROUP_INFO[] = {
         TLS13_VERSION_BIT,                     // versionBits
         true,
     },
+#endif /* HITLS_TLS_FEATURE_KEM */
     {
         "secp256r1",
         CRYPT_ECC_NISTP256, // CRYPT_ECC_NISTP256

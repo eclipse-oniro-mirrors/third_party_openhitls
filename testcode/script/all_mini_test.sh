@@ -335,7 +335,8 @@ test_pkey()
 test_tls()
 {
     NO_LIB=""
-    bash mini_build_test.sh $COMMON_PARAM $NO_LIB feature-config=tlcp_feature.json test=asn1,base64,buffer,err,hash,init,list,log,obj,params,pem,tlv,usrdata,sal,sal_mem,sal_lock,sal_str,sal_file,sal_thread,sal_net,sal_time,aes,bn,chacha20,cmac_aes,drbg_ctr,drbg_hash,ecc,ecdh,ecdsa,entropy,gcm,hkdf,hpke,mlkem,mldsa,sha256,sha384,sha512,slh_dsa,sm2,sm3,sm4,x25519,curve_nistp256,curve_nistp384,curve_nistp521,x509_crl_gen,x509_crl_parse,x509_csr_gen,x509_csr_parse,x509_crt_gen,x509_crt_parse,x509_vfy,tlcp linux
+    bash mini_build_test.sh $COMMON_PARAM $NO_LIB feature-config=tlcp_feature.json test=base,asn1,base64,buffer,err,hash,init,list,log,obj,params,pem,tlv,usrdata,sal,sal_mem,sal_lock,sal_str,sal_file,sal_thread,sal_net,sal_time,aes,bn,chacha20,cmac_aes,drbg_ctr,drbg_hash,ecc,ecdh,ecdsa,entropy,gcm,hkdf,hpke,mlkem,mldsa,sha256,sha384,sha512,slh_dsa,sm2,sm3,sm4,x25519,curve_nistp256,curve_nistp384,curve_nistp521,x509_crl_gen,x509_crl_parse,x509_csr_gen,x509_csr_parse,x509_crt_gen,x509_crt_parse,x509_vfy,tlcp linux
+    bash mini_build_test.sh $COMMON_PARAM $NO_LIB feature-config=nokem_feature.json test=base linux
 }
 
 test_pki()
