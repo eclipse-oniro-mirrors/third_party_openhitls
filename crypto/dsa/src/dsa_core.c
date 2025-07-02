@@ -222,6 +222,7 @@ static int32_t ParaPQGCheck(const BN_BigNum *p, const BN_BigNum *q, const BN_Big
     }
 EXIT:
     BN_Destroy(r);
+    OptimizerEnd(opt);
     BN_OptimizerDestroy(opt);
     return ret;
 }
@@ -610,13 +611,108 @@ static void RefreshCtx(CRYPT_DSA_Ctx *ctx, BN_BigNum *x, BN_BigNum *y, int32_t r
     }
 }
 
+/* Security length from NIST.FIPS.186-4 4.2 */
+static uint32_t DSA_Fips186_4_validate_LN(uint32_t L, uint32_t N, int isGen, int type)
+{
+    if (type == CRYPT_DSA_FFC_PARAM) {
+        if (L == 3072 && N == 256) { // If Pbits = 3072 and Qbits = 256.
+            return 128; // Secure length is 128.
+        }
+        if (L == 2048 && (N == 224 || N == 256)) { // If Pbits = 2048 and Qbits = 224 or 256.
+            return 112; // Secure length is 112.
+        }
+        /* Security strength of 80 bits is no longer considered adequate, and is retained only for compatibility. */
+        if (isGen == 1) {
+            return 0;
+        }
+        if (L == 1024 && N == 160) { // If Pbits = 1024 and Qbits = 160.
+            return 80; // Secure length is 80.
+        }
+    } else if (type == CRYPT_DH_FFC_PARAM) {
+        if (L == 2048 && (N == 224 || N == 256)) { // If Pbits = 2048 and Qbits = 224 or 256.
+            return 112; // Secure length is 112.
+        }
+    }
+    return 0;
+}
+
+// fips186-4 A.2.2
+int32_t CRYPT_DSA_Fips186_4_PartialValidate_G(const CRYPT_DSA_Para *dsaPara)
+{
+    if (BN_IsNegative(dsaPara->g) == true || BN_IsZero(dsaPara->g) == true || BN_IsOne(dsaPara->g) == true) { // g < 2
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        return CRYPT_DSA_VERIFY_FAIL;
+    }
+    int32_t ret;
+    BN_Optimizer *opt = BN_OptimizerCreate();
+    RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
+    (void)OptimizerStart(opt);
+    uint32_t L = BN_Bits(dsaPara->p);
+    BN_BigNum *p_1 = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
+    if (p_1 == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        ret = CRYPT_MEM_ALLOC_FAIL;
+        goto ERR;
+    }
+    ret = BN_SubLimb(p_1, dsaPara->p, 1);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    if (BN_Cmp(dsaPara->g, p_1) > 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        ret = CRYPT_DSA_VERIFY_FAIL;
+        goto ERR;
+    }
+    ret = BN_ModExp(p_1, dsaPara->g, dsaPara->q, dsaPara->p, opt);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
+    if (BN_IsOne(p_1) != true) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        ret = CRYPT_DSA_VERIFY_FAIL;
+    }
+ERR:
+    OptimizerEnd(opt);
+    BN_OptimizerDestroy(opt);
+    return ret;
+}
+
+// Generate private key, from SP800-56Ar3 5_6_1_1_4
+static int32_t DSA_GenPrivateKey(void *libCtx, const CRYPT_DSA_Para *para, BN_BigNum *privKey)
+{
+    uint32_t L = BN_Bits(para->p);
+    uint32_t N = BN_Bits(para->q);
+    RETURN_RET_IF(DSA_Fips186_4_validate_LN(L, N, 1, CRYPT_DSA_FFC_PARAM) == 0, CRYPT_DSA_PARA_ERROR);
+    int32_t ret = CRYPT_DSA_Fips186_4_PartialValidate_G(para);
+    RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
+    
+    ret = CRYPT_MEM_ALLOC_FAIL;
+    BN_BigNum *pow = BN_Create(N + 1);
+    GOTO_ERR_IF_TRUE(pow == NULL, ret);
+    GOTO_ERR_IF(BN_SetLimb(pow, 1), ret);
+    GOTO_ERR_IF(BN_Lshift(pow, pow, N), ret);
+    BN_BigNum *M = pow;
+    if (BN_Cmp(M, para->q) > 0) {
+        M = para->q;
+    }
+    while (true) {
+        GOTO_ERR_IF(RandRangeQ(libCtx, privKey, pow), ret); // c
+        GOTO_ERR_IF(BN_AddLimb(privKey, privKey, 1), ret); // c + 1
+        if (BN_Cmp(privKey, M) < 0) { // c <= M - 2 equal to c + 1 < M.
+            break;
+        }
+    }
+ERR:
+    if (ret != CRYPT_SUCCESS) {
+        (void)BN_Zeroize(privKey);
+    }
+    BN_Destroy(pow);
+    return ret;
+}
+
 int32_t CRYPT_DSA_Gen(CRYPT_DSA_Ctx *ctx)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    if (ctx->para == NULL) {
+    if (ctx->para == NULL || ctx->para->p == NULL || ctx->para->q == NULL || ctx->para->g == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_DSA_ERR_KEY_PARA);
         return CRYPT_DSA_ERR_KEY_PARA;
     }
@@ -633,7 +729,11 @@ int32_t CRYPT_DSA_Gen(CRYPT_DSA_Ctx *ctx)
     }
     for (cnt = 0; cnt < CRYPT_DSA_TRY_MAX_CNT; cnt++) {
         /* Generate the private key x of [1, q-1], see RFC6979-2.2. */
-        ret = RandRangeQ(ctx->libCtx, x, ctx->para->q);
+        if (ctx->flag == 1) {
+            ret = DSA_GenPrivateKey(ctx->libCtx, ctx->para, x);
+        } else {
+            ret = RandRangeQ(ctx->libCtx, x, ctx->para->q);
+        }
         if (ret != CRYPT_SUCCESS) {
             // Internal API, the BSL_ERR_PUSH_ERROR info is already exists when failed.
             goto ERR;
@@ -656,6 +756,7 @@ int32_t CRYPT_DSA_Gen(CRYPT_DSA_Ctx *ctx)
 ERR:
     RefreshCtx(ctx, x, y, ret);
     BN_MontDestroy(mont);
+    OptimizerEnd(opt);
     BN_OptimizerDestroy(opt);
     return ret;
 }
@@ -677,26 +778,37 @@ static BN_BigNum *DSA_Bits2Int(BN_BigNum *q, const uint8_t *data, uint32_t dataL
     return d;
 }
 
-// s = (h+x*sign->r)/k mod q
+// s = (h + x*r)*k^-1 mod q
+// s' = (h*blind + x*r*blind)*k^-1*blind^-1 mod q
+// s == s'
 static int32_t CalcSValue(const CRYPT_DSA_Ctx *ctx, BN_BigNum *r, BN_BigNum *s, BN_BigNum *k,
     BN_BigNum *d, BN_Optimizer *opt)
 {
-    int32_t ret = BN_ModMul(s, ctx->x, r, ctx->para->q, opt);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
+    BN_BigNum *blind = BN_Create(BN_Bits(ctx->para->q));
+    if (blind == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
     }
-    ret = BN_ModAdd(s, d, s, ctx->para->q, opt);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
+    BN_BigNum *blindm = BN_Create(BN_Bits(ctx->para->q));
+    if (blindm == NULL) {
+        BN_Destroy(blind);
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
     }
-    ret = BN_ModInv(k, k, ctx->para->q, opt);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
-    }
-    return BN_ModMul(s, s, k, ctx->para->q, opt);
+    int32_t ret;
+    GOTO_ERR_IF(RandRangeQ(ctx->libCtx, blind, ctx->para->q), ret);
+    GOTO_ERR_IF(BN_ModMul(s, blind, ctx->x, ctx->para->q, opt), ret);
+    GOTO_ERR_IF(BN_ModMul(s, s, r, ctx->para->q, opt), ret);
+    GOTO_ERR_IF(BN_ModMul(blindm, blind, d, ctx->para->q, opt), ret);
+    GOTO_ERR_IF(BN_ModAdd(s, s, blindm, ctx->para->q, opt), ret);
+    GOTO_ERR_IF(BN_ModInv(k, k, ctx->para->q, opt), ret);
+    GOTO_ERR_IF(BN_ModMul(s, s, k, ctx->para->q, opt), ret);
+    GOTO_ERR_IF(BN_ModInv(blind, blind, ctx->para->q, opt), ret);
+    GOTO_ERR_IF(BN_ModMul(s, s, blind, ctx->para->q, opt), ret);
+ERR:
+    BN_Destroy(blind);
+    BN_Destroy(blindm);
+    return ret;
 }
 
 static int32_t SignCore(const CRYPT_DSA_Ctx *ctx, BN_BigNum *d, BN_BigNum *r,
@@ -748,6 +860,7 @@ static int32_t SignCore(const CRYPT_DSA_Ctx *ctx, BN_BigNum *d, BN_BigNum *r,
 EXIT:
     BN_Destroy(k);
     BN_MontDestroy(montP);
+    OptimizerEnd(opt);
     BN_OptimizerDestroy(opt);
     return ret;
 }
@@ -887,6 +1000,7 @@ EXIT:
     BN_Destroy(u2);
     BN_Destroy(w);
     BN_MontDestroy(montP);
+    OptimizerEnd(opt);
     BN_OptimizerDestroy(opt);
     return ret;
 }
@@ -982,31 +1096,6 @@ int32_t CRYPT_DSA_GetSecBits(const CRYPT_DSA_Ctx *ctx)
 }
 
 #ifdef HITLS_CRYPTO_DSA_GEN_PARA
-/* Security length from NIST.FIPS.186-4 4.2 */
-static uint32_t DSA_Fips186_4_validate_LN(uint32_t L, uint32_t N, int isGen, int type)
-{
-    if (type == CRYPT_DSA_FFC_PARAM) {
-        if (L == 3072 && N == 256) { // If Pbits = 3072 and Qbits = 256.
-            return 128; // Secure length is 128.
-        }
-        if (L == 2048 && (N == 224 || N == 256)) { // If Pbits = 2048 and Qbits = 224 or 256.
-            return 112; // Secure length is 112.
-        }
-        /* Security strength of 80 bits is no longer considered adequate, and is retained only for compatibility. */
-        if (isGen == 1) {
-            return 0;
-        }
-        if (L == 1024 && N == 160) { // If Pbits = 1024 and Qbits = 160.
-            return 80; // Secure length is 80.
-        }
-    } else if (type == CRYPT_DH_FFC_PARAM) {
-        if (L == 2048 && (N == 224 || N == 256)) { // If Pbits = 2048 and Qbits = 224 or 256.
-            return 112; // Secure length is 112.
-        }
-    }
-    return 0;
-}
-
 static int32_t DSA_Fips186_4_genQ(int32_t algId, uint32_t N, const uint8_t *seed, uint32_t seedLen, BN_BigNum *q)
 {
     uint8_t hash[64] = {0}; // 64 is max hash len
@@ -1118,6 +1207,7 @@ static int32_t SetPQ2Para(CRYPT_DSA_Para *destPara, const CRYPT_DSA_Para *srcPar
     return CRYPT_SUCCESS;
 }
 
+// fips186-4 A.1.1.2
 int32_t CRYPT_DSA_Fips186_4_Gen_PQ(DSA_FIPS186_4_Para *fipsPara, uint32_t type,
     BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t *counter)
 {
@@ -1169,10 +1259,12 @@ int32_t CRYPT_DSA_Fips186_4_Gen_PQ(DSA_FIPS186_4_Para *fipsPara, uint32_t type,
     }
 ERR:
     BSL_SAL_ClearFree(msg.data, msg.dataLen);
+    OptimizerEnd(opt);
     BN_OptimizerDestroy(opt);
     return ret;
 }
 
+// fips186-4 A.1.1.3
 int32_t CRYPT_DSA_Fips186_4_Validate_PQ(int32_t algId, uint32_t type,
     BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t counter)
 {
@@ -1220,11 +1312,13 @@ int32_t CRYPT_DSA_Fips186_4_Validate_PQ(int32_t algId, uint32_t type,
         goto ERR;
     }
 ERR:
+    OptimizerEnd(opt);
     BN_OptimizerDestroy(opt);
     BSL_SAL_ClearFree(msg.data, msg.dataLen);
     return ret;
 }
 
+// fips186-4 A.2.3
 int32_t CRYPT_DSA_Fips186_4_GenVerifiable_G(DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara)
 {
     RETURN_RET_IF(fipsPara->index < 0, CRYPT_INVALID_ARG);
@@ -1272,11 +1366,13 @@ ERR:
         BN_Destroy(gOut);
         dsaPara->g = NULL;
     }
+    OptimizerEnd(opt);
     BN_OptimizerDestroy(opt);
     BSL_SAL_ClearFree(msg, msgLen);
     return ret;
 }
 
+// fips186-4 A.2.1
 int32_t CRYPT_DSA_Fips186_4_GenUnverifiable_G(CRYPT_DSA_Para *dsaPara)
 {
     int32_t ret;
@@ -1323,45 +1419,12 @@ ERR:
         BN_Destroy(gOut);
         dsaPara->g = NULL;
     }
+    OptimizerEnd(opt);
     BN_OptimizerDestroy(opt);
     return ret;
 }
 
-int32_t CRYPT_DSA_Fips186_4_PartialValidate_G(const CRYPT_DSA_Para *dsaPara)
-{
-    if (BN_IsNegative(dsaPara->g) == true || BN_IsZero(dsaPara->g) == true || BN_IsOne(dsaPara->g) == true) { // g < 2
-        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
-        return CRYPT_DSA_VERIFY_FAIL;
-    }
-    int32_t ret;
-    BN_Optimizer *opt = BN_OptimizerCreate();
-    RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
-    (void)OptimizerStart(opt);
-    uint32_t L = BN_Bits(dsaPara->p);
-    BN_BigNum *p_1 = OptimizerGetBn(opt, BITS_TO_BN_UNIT(L));
-    if (p_1 == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-        ret = CRYPT_MEM_ALLOC_FAIL;
-        goto ERR;
-    }
-    ret = BN_SubLimb(p_1, dsaPara->p, 1);
-    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
-    if (BN_Cmp(dsaPara->g, p_1) > 0) {
-        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
-        ret = CRYPT_DSA_VERIFY_FAIL;
-        goto ERR;
-    }
-    ret = BN_ModExp(p_1, dsaPara->g, dsaPara->q, dsaPara->p, opt);
-    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
-    if (BN_IsOne(p_1) != true) {
-        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
-        ret = CRYPT_DSA_VERIFY_FAIL;
-    }
-ERR:
-    BN_OptimizerDestroy(opt);
-    return ret;
-}
-
+// fips186-4 A.2.4
 int32_t CRYPT_DSA_Fips186_4_Validate_G(DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara)
 {
     int32_t ret = CRYPT_DSA_Fips186_4_PartialValidate_G(dsaPara);
@@ -1473,6 +1536,17 @@ int32_t CRYPT_DSA_Fips186_4_GenParam(CRYPT_DSA_Ctx *ctx, void *val)
 
 #endif /* HITLS_CRYPTO_DSA_GEN_PARA */
 
+// Set flag == 1, enable generate private key SP800-56Ar3 5_6_1_1_4.
+static int32_t CRYPT_SetFipsFlag(CRYPT_DSA_Ctx *ctx, void *val, uint32_t len)
+{
+    if (len != sizeof(int32_t)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_PARA_ERROR);
+        return CRYPT_DSA_PARA_ERROR;
+    }
+    ctx->flag = *(int32_t *)val;
+    return CRYPT_SUCCESS;
+}
+
 int32_t CRYPT_DSA_Ctrl(CRYPT_DSA_Ctx *ctx, int32_t opt, void *val, uint32_t len)
 {
     if (ctx == NULL) {
@@ -1496,6 +1570,8 @@ int32_t CRYPT_DSA_Ctrl(CRYPT_DSA_Ctx *ctx, int32_t opt, void *val, uint32_t len)
                 return CRYPT_INVALID_ARG;
             }
             return BSL_SAL_AtomicUpReferences(&(ctx->references), (int *)val);
+        case CRYPT_CTRL_SET_FIPS_FLAG:
+            return CRYPT_SetFipsFlag(ctx, val, len);
 #ifdef HITLS_CRYPTO_DSA_GEN_PARA
         case CRYPT_CTRL_GEN_PARA:
             return CRYPT_DSA_Fips186_4_GenParam(ctx, val);

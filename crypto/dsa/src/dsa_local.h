@@ -40,6 +40,7 @@ struct DSA_Para {
 
 /* DSA key ctx */
 struct DSA_Ctx {
+    int32_t flag;
     BN_BigNum *x; // private key
     BN_BigNum *y; // public key
     CRYPT_DSA_Para *para; // key parameter

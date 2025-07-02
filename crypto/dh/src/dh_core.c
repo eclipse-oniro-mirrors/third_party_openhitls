@@ -511,7 +511,7 @@ static void RefreshCtx(CRYPT_DH_Ctx *dhCtx, BN_BigNum *x, BN_BigNum *y, int32_t 
     }
 }
 
-/* SP800-56Ar3 5.6.1.1.4 Key-Pair Generation by Testing Candidates */
+/* SP800-56Ar3 5_6_1_1_4 Key-Pair Generation by Testing Candidates */
 static int32_t DH_GenSp80056ATestCandidates(CRYPT_DH_Ctx *ctx)
 {
     int32_t ret;
