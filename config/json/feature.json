@@ -260,6 +260,9 @@
                             "feature_session_ticket": null,
                             "feature_session_id": null
                         },
+                        "feature_mode": {
+                            "feature_mode_fall_back_scsv": null
+                        },
                         "feature_key_update": null,
                         "feature_flight": null,
                         "feature_cert_mode": null,
@@ -552,6 +555,12 @@
                         },
                         "suite_ecc_sm4_cbc_sm3": {
                             "deps": ["sm3", "cbc", "sm4", "sm2"]
+                        },
+                        "suite_ecdhe_sm4_gcm_sm3": {
+                            "deps": ["sm3", "gcm", "sm4", "sm2", "ecdh"]
+                        },
+                        "suite_ecc_sm4_gcm_sm3": {
+                            "deps": ["sm3", "gcm", "sm4", "sm2"]
                         }
                     },
                     "suite_cipher": {

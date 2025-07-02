@@ -387,14 +387,13 @@ int32_t CRYPT_HKDF_Deinit(CRYPT_HKDF_Ctx *ctx)
 
 void CRYPT_HKDF_FreeCtx(CRYPT_HKDF_Ctx *ctx)
 {
-    CRYPT_HKDF_Ctx *kdfCtx = ctx;
-    if (kdfCtx == NULL) {
+    if (ctx == NULL) {
         return;
     }
     BSL_SAL_ClearFree((void *)ctx->key, ctx->keyLen);
     BSL_SAL_FREE(ctx->salt);
     BSL_SAL_ClearFree((void *)ctx->prk, ctx->prkLen);
     BSL_SAL_ClearFree((void *)ctx->info, ctx->infoLen);
-    BSL_SAL_FREE(kdfCtx);
+    BSL_SAL_Free(ctx);
 }
 #endif // HITLS_CRYPTO_HKDF

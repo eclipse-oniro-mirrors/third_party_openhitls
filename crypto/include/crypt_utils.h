@@ -384,7 +384,7 @@ static inline void Uint64ToBeBytes(uint64_t v, uint8_t *bytes)
     bytes[7] = (uint8_t)(v & 0xffu);
 }
 
-#ifdef HITLS_CRYPTO_RSA
+#if defined(HITLS_CRYPTO_RSA_SIGN) || defined(HITLS_CRYPTO_RSA_VERIFY)
 uint32_t CRYPT_GetMdSizeById(CRYPT_MD_AlgId id);
 #endif
 

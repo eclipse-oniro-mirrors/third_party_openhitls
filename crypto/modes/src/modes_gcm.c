@@ -405,7 +405,6 @@ int32_t MODES_GCM_Ctrl(MODES_GCM_Ctx *modeCtx, int32_t opt, void *val, uint32_t 
     }
     switch (opt) {
         case CRYPT_CTRL_SET_IV:
-            return MODES_GCM_SetIv(&modeCtx->gcmCtx, val, len);
         case CRYPT_CTRL_REINIT_STATUS:
             return MODES_GCM_SetIv(&modeCtx->gcmCtx, val, len);
         case CRYPT_CTRL_SET_TAGLEN:

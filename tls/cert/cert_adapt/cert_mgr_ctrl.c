@@ -256,7 +256,7 @@ HITLS_CERT_Key *SAL_CERT_GetCurrentPrivateKey(CERT_MgrCtx *mgrCtx, bool isTlcpEn
     CERT_Pair *certPair = NULL;
     int32_t ret = BSL_HASH_At(mgrCtx->certPairs, (uintptr_t)keyType, (uintptr_t *)&certPair);
     if (ret != HITLS_SUCCESS || certPair == NULL) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16292, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "certPair nll", 0, 0, 0, 0);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16292, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "certPair null", 0, 0, 0, 0);
         return NULL;
     }
 #ifdef HITLS_TLS_PROTO_TLCP11

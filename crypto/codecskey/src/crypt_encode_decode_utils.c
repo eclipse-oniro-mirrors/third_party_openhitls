@@ -674,6 +674,10 @@ int32_t CRYPT_DECODE_ParseEncDataAsn1(CRYPT_EAL_LibCtx *libctx, const char *attr
 
     uint32_t symKeyLen;
     ret = CRYPT_EAL_CipherGetInfo((CRYPT_CIPHER_AlgId)symAlg, CRYPT_INFO_KEY_LEN, &symKeyLen);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
     if (keylen != 0 && symKeyLen != keylen) {
         BSL_ERR_PUSH_ERROR(CRYPT_DECODE_PKCS8_INVALID_KEYLEN);
         return CRYPT_DECODE_PKCS8_INVALID_KEYLEN;

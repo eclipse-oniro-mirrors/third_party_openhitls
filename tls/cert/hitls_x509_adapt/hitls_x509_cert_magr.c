@@ -167,45 +167,64 @@ static int32_t CertCtrlGetSignAlgo(HITLS_Config *config, HITLS_CERT_X509 *cert, 
     return HITLS_SUCCESS;
 }
 
+static int32_t CertCheckKeyUsage(HITLS_Config *config, HITLS_CERT_X509 *cert, uint32_t inKeyUsage, bool *res)
+{
+    uint32_t keyUsage = 0;
+    int32_t ret = HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_GET_KUSAGE, &keyUsage, sizeof(uint32_t));
+    if (ret != HITLS_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    if (keyUsage == HITLS_X509_EXT_KU_NONE) {
+#ifdef HITLS_TLS_PROTO_TLCP11
+        // Key usage must be present, otherwise the chain is broken.
+        if (config == NULL) {
+            return HITLS_INVALID_INPUT;
+        }
+        if (config->maxVersion == HITLS_VERSION_TLCP_DTLCP11) {
+            BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_NO_KEYUSAGE);
+            return HITLS_CERT_ERR_NO_KEYUSAGE;
+        }
+#endif
+        *res = true;
+        return HITLS_SUCCESS;
+    }
+    *res = (keyUsage & inKeyUsage) != 0;
+    return HITLS_SUCCESS;
+}
+
 int32_t HITLS_X509_Adapt_CertCtrl(HITLS_Config *config, HITLS_CERT_X509 *cert, HITLS_CERT_CtrlCmd cmd,
     void *input, void *output)
 {
     (void)input;
-    uint32_t valLen = (uint32_t)sizeof(int32_t);
-    int32_t x509Cmd = 0;
+    int32_t ret = HITLS_SUCCESS;
     switch (cmd) {
         case CERT_CTRL_GET_ENCODE_LEN:
-            x509Cmd = HITLS_X509_GET_ENCODELEN;
+            ret = HITLS_X509_CertCtrl(cert, HITLS_X509_GET_ENCODELEN, output, (uint32_t)sizeof(int32_t));
             break;
         case CERT_CTRL_GET_PUB_KEY:
-            valLen = (uint32_t)sizeof(CRYPT_EAL_PkeyPub *);
-            x509Cmd = HITLS_X509_GET_PUBKEY;
+            ret = HITLS_X509_CertCtrl(cert, HITLS_X509_GET_PUBKEY, output, (uint32_t)sizeof(CRYPT_EAL_PkeyPub *));
             break;
         case CERT_CTRL_GET_SIGN_ALGO:
             return CertCtrlGetSignAlgo(config, cert, (HITLS_SignHashAlgo *)output);
 #ifdef HITLS_TLS_CONFIG_KEY_USAGE
         case CERT_KEY_CTRL_IS_KEYENC_USAGE:
-            valLen = (uint32_t)sizeof(uint8_t);
-            x509Cmd = HITLS_X509_EXT_KU_KEYENC;
-            break;
+            return CertCheckKeyUsage(config, cert, HITLS_X509_EXT_KU_KEY_ENCIPHERMENT, (bool *)output);
         case CERT_KEY_CTRL_IS_DIGITAL_SIGN_USAGE:
-            valLen = (uint32_t)sizeof(uint8_t);
-            x509Cmd = HITLS_X509_EXT_KU_DIGITALSIGN;
-            break;
+            return CertCheckKeyUsage(config, cert, HITLS_X509_EXT_KU_DIGITAL_SIGN, (bool *)output);
         case CERT_KEY_CTRL_IS_KEY_CERT_SIGN_USAGE:
-            valLen = (uint32_t)sizeof(uint8_t);
-            x509Cmd = HITLS_X509_EXT_KU_CERTSIGN;
-            break;
+            return CertCheckKeyUsage(config, cert, HITLS_X509_EXT_KU_KEY_CERT_SIGN, (bool *)output);
         case CERT_KEY_CTRL_IS_KEY_AGREEMENT_USAGE:
-            valLen = (uint32_t)sizeof(uint8_t);
-            x509Cmd = HITLS_X509_EXT_KU_KEYAGREEMENT;
-            break;
+            return CertCheckKeyUsage(config, cert, HITLS_X509_EXT_KU_KEY_AGREEMENT, (bool *)output);
+        case CERT_KEY_CTRL_IS_DATA_ENC_USAGE:
+            return CertCheckKeyUsage(config, cert, HITLS_X509_EXT_KU_DATA_ENCIPHERMENT, (bool *)output);
+        case CERT_KEY_CTRL_IS_NON_REPUDIATION_USAGE:
+            return CertCheckKeyUsage(config, cert, HITLS_X509_EXT_KU_NON_REPUDIATION, (bool *)output);
 #endif
         default:
             BSL_ERR_PUSH_ERROR(HITLS_CERT_SELF_ADAPT_ERR);
             return HITLS_CERT_SELF_ADAPT_ERR;
     }
-    int32_t ret = HITLS_X509_CertCtrl(cert, x509Cmd, output, valLen);
     if (ret != HITLS_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
     }

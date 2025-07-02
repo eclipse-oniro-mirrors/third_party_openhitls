@@ -162,11 +162,11 @@ int32_t RecConnStateSetCipherInfo(RecConnState *state, RecConnSuitInfo *suitInfo
 /**
  * @brief   Encrypt the record payload
  *
+ * @param   ctx [IN] tls Context
  * @param   state  RecState context
  * @param   plainMsg [IN] Input data before encryption
  * @param   cipherText [OUT] Encrypted content
  * @param   cipherTextLen [IN] Length after encryption
- * @param   isEncryptThenMac [IN] Indicates whether the Encrypt-Then-Mac mode is used
  *
  * @retval  HITLS_SUCCESS
  * @retval  HITLS_MEMCPY_FAIL Memory copy failed
@@ -267,6 +267,10 @@ int32_t RecConnGenerateMac(HITLS_Lib_Ctx *libCtx, const char *attrName,
  */
 void RecConnInitGenerateMacInput(const REC_TextInput *in, const uint8_t *text, uint32_t textLen,
     REC_TextInput *out);
+
+#ifdef HITLS_TLS_SUITE_CIPHER_CBC
+uint32_t RecGetHashAlgoFromMACAlgo(HITLS_MacAlgo macAlgo);
+#endif
 #ifdef __cplusplus
 }
 #endif

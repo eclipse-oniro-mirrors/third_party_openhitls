@@ -373,6 +373,8 @@ class CMakeGenerator:
         cmake = '\n'
         cmake += self._gen_cmd_cmake('add_library', '{} SHARED'.format(tgt_name), tgt_obj_list)
         cmake += self._gen_cmd_cmake('target_link_options', '{} PRIVATE'.format(tgt_name), '${SHARED_LNK_FLAGS}')
+        if os.path.exists('{}/platform/Secure_C/lib'.format(srcdir)):
+            cmake += self._gen_cmd_cmake('target_link_directories', '{} PRIVATE'.format(tgt_name), '{}/platform/Secure_C/lib'.format(srcdir))
         cmake += self._gen_cmd_cmake('set_target_properties', '{} PROPERTIES'.format(tgt_name), properties)
         cmake += 'install(TARGETS %s DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)\n' % tgt_name
 

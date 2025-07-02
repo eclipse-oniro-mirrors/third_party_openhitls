@@ -4,6 +4,9 @@ SDV_TLS13_PROVIDER_NEW_GROUP_SIGNALG_TC001:"../testdata/provider/path1":"provide
 SDV_TLS13_PROVIDER_NEW_GROUP_SIGNALG_TC001 the supported key type, new group，new signalg for kem
 SDV_TLS13_PROVIDER_NEW_GROUP_SIGNALG_TC001:"../testdata/provider/path1":"provider_get_cap_test1":2:"test_new_group_kem":"test_new_sign_alg_name":"new_signAlg/ca.der":"new_signAlg/inter.der":"new_signAlg/server.der":"new_signAlg/server.key.der":"new_signAlg/client.der":"new_signAlg/client.key.der"
 
+SDV_TLS13_PROVIDER_NEW_GROUP_SIGNALG_TC001 new key type, new group, new signalg for kex
+SDV_TLS13_PROVIDER_NEW_GROUP_SIGNALG_TC001:"../testdata/provider/path1":"provider_new_alg_test":2:"test_new_group_with_new_key_type":"test_new_sign_alg_name_with_new_key_type":"new_keyAlg/ca.der":"new_keyAlg/inter.der":"new_keyAlg/server.der":"new_keyAlg/server.key.der":"new_keyAlg/client.der":"new_keyAlg/client.key.der"
+
 SDV_TLS13_PROVIDER_KEM_TC001
 SDV_TLS13_PROVIDER_KEM_TC001:"X25519MLKEM768"
 

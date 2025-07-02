@@ -489,7 +489,6 @@ AARCH64_AUTIASP
 .balign 64
 .type   Poly1305BlockNeon, %function
 Poly1305BlockNeon:
-AARCH64_PACIASP
     stp     x29, x30, [sp, #-16]!
     stp     d8, d9, [sp, #-16]!
     stp     d10, d11, [sp, #-16]!

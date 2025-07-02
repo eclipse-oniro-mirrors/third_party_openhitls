@@ -21,7 +21,6 @@
 #include "hitls_build.h"
 #include "bsl_sal.h"
 #include "bsl_errno.h"
-#include "bsl_errno.h"
 #include "crypt_errno.h"
 #include "crypt_types.h"
 #include "crypt_eal_md.h"

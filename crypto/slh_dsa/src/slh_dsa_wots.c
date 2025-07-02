@@ -147,13 +147,13 @@ int32_t WotsSign(uint8_t *sig, uint32_t *sigLen, const uint8_t *msg, uint32_t ms
 ERR:
     BSL_SAL_Free(msgw);
     *sigLen = len * n;
-    return 0;
+    return ret;
 }
 
 int WotsPubKeyFromSig(const uint8_t *msg, uint32_t msgLen, const uint8_t *sig, uint32_t sigLen, SlhDsaAdrs *adrs,
                       const CryptSlhDsaCtx *ctx, uint8_t *pub)
 {
-    int32_t ret = CRYPT_SUCCESS;
+    int32_t ret;
     uint32_t n = ctx->para.n;
     uint32_t len = 2 * n + 3;
     uint32_t *msgw = NULL;
@@ -191,7 +191,9 @@ int WotsPubKeyFromSig(const uint8_t *msg, uint32_t msgLen, const uint8_t *sig, u
 
 ERR:
     BSL_SAL_Free(msgw);
-    BSL_SAL_Free(tmp);
+    if (tmp != NULL) {
+        BSL_SAL_Free(tmp);
+    }
     return ret;
 }
 

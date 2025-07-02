@@ -214,7 +214,6 @@ options()
                 ;;
             no-sctp)
                 ENABLE_UIO_SCTP=OFF
-                ENABLE_TLS=OFF
                 ;;
             no-demos)
                 ENABLE_DEMOS=OFF

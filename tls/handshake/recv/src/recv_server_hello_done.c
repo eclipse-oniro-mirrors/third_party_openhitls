@@ -25,7 +25,7 @@ int32_t ClientRecvServerHelloDoneProcess(TLS_Ctx *ctx)
     /** get client infomation */
     HS_Ctx *hsCtx = (HS_Ctx *)ctx->hsCtx;
 
-#if defined(HITLS_BSL_UIO_UDP)
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
     /* clear the retransmission queue */
     REC_RetransmitListClean(ctx->recCtx);
 #endif

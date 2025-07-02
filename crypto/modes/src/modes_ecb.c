@@ -102,10 +102,6 @@ int32_t MODES_ECB_Final(MODES_CipherCtx *modeCtx, uint8_t *out, uint32_t *outLen
 
 int32_t MODES_ECB_DeinitCtx(MODES_CipherCtx *modeCtx)
 {
-    if (modeCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return CRYPT_NULL_INPUT;
-    }
     return MODES_CipherDeInitCtx(modeCtx);
 }
 
@@ -123,6 +119,10 @@ int32_t MODES_ECB_Ctrl(MODES_CipherCtx *modeCtx, int32_t cmd, void *val, uint32_
             modeCtx->pad = CRYPT_PADDING_NONE;
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_SET_PADDING:
+            if (val == NULL || valLen != sizeof(int32_t)) {
+                BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+                return CRYPT_INVALID_ARG;
+            }
             if (modeCtx->commonCtx.blockSize == 1) {
                 BSL_ERR_PUSH_ERROR(CRYPT_EAL_PADDING_NOT_SUPPORT);
                 return CRYPT_EAL_PADDING_NOT_SUPPORT;
@@ -134,6 +134,10 @@ int32_t MODES_ECB_Ctrl(MODES_CipherCtx *modeCtx, int32_t cmd, void *val, uint32_
             modeCtx->pad = *(int32_t *)val;
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_GET_PADDING:
+            if (val == NULL || valLen != sizeof(int32_t)) {
+                BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+                return CRYPT_INVALID_ARG;
+            }
             *(int32_t *)val = modeCtx->pad;
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_GET_BLOCKSIZE:
@@ -149,9 +153,6 @@ int32_t MODES_ECB_Ctrl(MODES_CipherCtx *modeCtx, int32_t cmd, void *val, uint32_
 
 void MODES_ECB_FreeCtx(MODES_CipherCtx *modeCtx)
 {
-    if (modeCtx == NULL) {
-        return;
-    }
     MODES_CipherFreeCtx(modeCtx);
 }
 

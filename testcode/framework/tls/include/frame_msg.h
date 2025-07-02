@@ -134,6 +134,14 @@ typedef struct {
 } FRAME_HsExtOfferedPsks;
 
 typedef struct {
+    FieldState exState;   /* extension Field state */
+    FRAME_Integer exType; /* extension type */
+    FRAME_Integer exLen;  /* Full length of extension */
+    FRAME_Array8 list;  /* CA list */
+    FRAME_Integer listSize; /* CA list length */
+} FRAME_HsExtCaList;
+
+typedef struct {
     FRAME_Integer version;               /* Version number */
     FRAME_Array8 randomValue;            /* Random number */
     FRAME_Integer sessionIdSize;         /* session ID length */
@@ -161,6 +169,7 @@ typedef struct {
     FRAME_HsExtArray8 pskModes;             /* tls1.3 psk exchange mode */
     FRAME_HsExtArray16 supportedVersion;     /* tls1.3 support version */
     FRAME_HsExtOfferedPsks psks;            /* tls1.3 psk */
+    FRAME_HsExtCaList caList;
 } FRAME_ClientHelloMsg;
 
 typedef struct {

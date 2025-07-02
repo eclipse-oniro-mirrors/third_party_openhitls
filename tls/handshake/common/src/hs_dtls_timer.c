@@ -35,10 +35,9 @@
 
 static int32_t SetDtlsTimerDeadLine(TLS_Ctx *ctx, uint32_t timeoutValue)
 {
-    int32_t ret = BSL_SUCCESS;
     HS_Ctx *hsCtx = ctx->hsCtx;
     BSL_TIME curTime = {0};
-    ret = (int32_t)BSL_SAL_SysTimeGet(&curTime);
+    int32_t ret = (int32_t)BSL_SAL_SysTimeGet(&curTime);
     if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_SYS_TIME_FAIL);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15774, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,

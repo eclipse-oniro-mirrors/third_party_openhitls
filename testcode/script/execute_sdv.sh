@@ -54,7 +54,7 @@ generate_asan_log() {
 # Run the specified test suites or test cases in the output directory.
 run_test() {
     cd ${HITLS_ROOT_DIR}/testcode/output
-    export ASAN_OPTIONS=detect_stack_use_after_return=1:strict_string_checks=1:detect_leaks=1:halt_on_error=0:log_path=asan.log
+    export ASAN_OPTIONS=detect_stack_use_after_return=1:strict_string_checks=1:detect_leaks=1:halt_on_error=0:detect_odr_violation=0:log_path=asan.log
 
     echo ""
     echo "Begin Test"
@@ -126,7 +126,7 @@ run_all() {
 
     cd ${HITLS_ROOT_DIR}/testcode/output
     SUITES=$(ls ./ | grep .datax | sed -e "s/.datax//")
-    export ASAN_OPTIONS=detect_stack_use_after_return=1:strict_string_checks=1:detect_leaks=1:halt_on_error=0:log_path=asan.log
+    export ASAN_OPTIONS=detect_stack_use_after_return=1:strict_string_checks=1:detect_leaks=1:halt_on_error=0:detect_odr_violation=0:log_path=asan.log
 
     echo ""
     echo "Begin Test"

@@ -3972,10 +3972,14 @@ int32_t TlsCtxNew(BSL_UIO_TransportType type)
     const BSL_UIO_Method *ori = NULL;
     switch (type) {
         case BSL_UIO_TCP:
+#ifdef HITLS_BSL_UIO_TCP
             ori = BSL_UIO_TcpMethod();
+#endif
             break;
         default:
+#ifdef HITLS_BSL_UIO_SCTP
             ori = BSL_UIO_SctpMethod();
+#endif
             break;
     }
 

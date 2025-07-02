@@ -488,7 +488,7 @@ static CRYPT_EAL_RndCtx *EAL_RandNewDrbg(CRYPT_RAND_AlgId id, CRYPT_RandSeedMeth
         (void)seedMethTmp;
         (void)seedTmp;
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return NULL;
+        goto ERR;
 #endif
     }
     meth = EAL_RandGetMethod();

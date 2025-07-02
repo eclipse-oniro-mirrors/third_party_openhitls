@@ -330,7 +330,7 @@ typedef struct {
     CERT_CertEncodeCallBack certEncode;             /**< REQUIRED, certificate encode. */
     CERT_CertParseCallBack certParse;               /**< REQUIRED, certificate decoding. */
     CERT_CertDupCallBack certDup;                   /**< REQUIRED, duplicate the certificate. */
-    CERT_CertRefCallBack certRef;                   /**< REQUIRED, Certificate reference counting plus one. */
+    CERT_CertRefCallBack certRef;                   /**< OPTIONAL, Certificate reference counting plus one. */
     CERT_CertFreeCallBack certFree;                 /**< REQUIRED, release certificate. */
     CERT_CertCtrlCallBack certCtrl;                 /**< REQUIRED, certificate interface ctrl. */
 

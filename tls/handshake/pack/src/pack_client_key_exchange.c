@@ -153,19 +153,11 @@ int32_t PackClientKxMsgRsa(TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t
     HITLS_Config *config = &ctx->config.tlsConfig;
     CERT_MgrCtx *mgrCtx = config->certMgrCtx;
     HITLS_CERT_X509 *cert = SAL_CERT_PairGetX509(hsCtx->peerCert);
-#ifdef HITLS_TLS_CONFIG_KEY_USAGE
-    if ((cert == NULL) || (ctx->config.tlsConfig.needCheckKeyUsage == true &&
-        SAL_CERT_CheckCertKeyUsage(ctx, cert, CERT_KEY_CTRL_IS_KEYENC_USAGE) != true)) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16928, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "CheckCertKeyUsage fail", 0, 0, 0, 0);
-        return HITLS_CERT_ERR_KEYUSAGE;
-    }
-#endif
     HITLS_CERT_Key *pubkey = NULL;
     ret = SAL_CERT_X509Ctrl(config, cert, CERT_CTRL_GET_PUB_KEY, NULL, (void *)&pubkey);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16929, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "ParseChain fail", 0, 0, 0, 0);
+            "CERT_CTRL_GET_PUB_KEY fail", 0, 0, 0, 0);
         return ret;
     }
     ret = SAL_CERT_KeyEncrypt(ctx, pubkey, preMasterSecret, MASTER_SECRET_LEN, &buf[offset], &encLen);
@@ -201,14 +193,6 @@ static int32_t PackClientKxMsgEcc(TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, u
     HITLS_Config *config = &ctx->config.tlsConfig;
     CERT_MgrCtx *certMgrCtx = config->certMgrCtx;
     HITLS_CERT_X509 *certEnc = SAL_CERT_GetTlcpEncCert(hsCtx->peerCert);
-#ifdef HITLS_TLS_CONFIG_KEY_USAGE
-    if (ctx->config.tlsConfig.needCheckKeyUsage == true &&
-        SAL_CERT_CheckCertKeyUsage(ctx, certEnc, CERT_KEY_CTRL_IS_KEYENC_USAGE) != true) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16931, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "CheckCertKeyUsage fail", 0, 0, 0, 0);
-        return HITLS_CERT_ERR_KEYUSAGE;
-    }
-#endif
     HITLS_CERT_Key *pubkey = NULL;
     ret = SAL_CERT_X509Ctrl(config, certEnc, CERT_CTRL_GET_PUB_KEY, NULL, (void *)&pubkey);
     if (ret != HITLS_SUCCESS) {

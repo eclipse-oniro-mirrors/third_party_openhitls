@@ -210,11 +210,10 @@ int32_t CRYPT_ELGAMAL_GetPrvKey(const CRYPT_ELGAMAL_Ctx *ctx, BSL_Param *para)
         prv.g->useLen = prv.g->valueLen;
         GOTO_ERR_IF(BN_Bn2Bin(ctx->prvKey->g, prv.g->value, &(prv.g->useLen)), ret);
     }
-    if (!PARAMISNULL(prv.x)) {
-        prv.x->useLen = prv.x->valueLen;
-        GOTO_ERR_IF(BN_Bn2Bin(ctx->prvKey->x, prv.x->value, &(prv.x->useLen)), ret);
-    }
-    
+
+    prv.x->useLen = prv.x->valueLen;
+    GOTO_ERR_IF(BN_Bn2Bin(ctx->prvKey->x, prv.x->value, &(prv.x->useLen)), ret);
+
     return CRYPT_SUCCESS;
 ERR:
     if (!PARAMISNULL(prv.p) && prv.p->useLen != 0) {
@@ -225,7 +224,7 @@ ERR:
         BSL_SAL_CleanseData(prv.g->value, prv.g->useLen);
         prv.g->useLen = 0;
     }
-    if (!PARAMISNULL(prv.x) && prv.x->useLen != 0) {
+    if (prv.x->useLen != 0) {
         BSL_SAL_CleanseData(prv.x->value, prv.x->useLen);
         prv.x->useLen = 0;
     }
@@ -280,12 +279,10 @@ int32_t CRYPT_ELGAMAL_GetPubKey(const CRYPT_ELGAMAL_Ctx *ctx, BSL_Param *para)
         return ret;
     }
 
-    if (pub.y != NULL) {
-        pub.y->useLen = pub.y->valueLen;
-        ret = BN_Bn2Bin(ctx->pubKey->y, pub.y->value, &pub.y->useLen);
-        if (ret != CRYPT_SUCCESS) {
-            BSL_ERR_PUSH_ERROR(ret);
-        }
+    pub.y->useLen = pub.y->valueLen;
+    ret = BN_Bn2Bin(ctx->pubKey->y, pub.y->value, &pub.y->useLen);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
     }
 
     return ret;

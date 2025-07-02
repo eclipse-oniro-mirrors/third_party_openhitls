@@ -25,7 +25,7 @@ del_options=""
 dis_options=""
 get_arch=`arch`
 
-LIB_TYPE="static"
+LIB_TYPE="static shared"
 enable_sctp="--enable-sctp"
 BITS=64
 
@@ -61,7 +61,7 @@ down_depend_code()
         mkdir platform
     fi
 
-    if [ ! -d "${HITLS_ROOT_DIR}/platform/Secure_C" ]; then
+    if [ ! -d "${HITLS_ROOT_DIR}/platform/Secure_C/src" ]; then
         cd ${HITLS_ROOT_DIR}/platform
         git clone https://gitee.com/openeuler/libboundscheck.git  Secure_C
     fi
@@ -144,6 +144,9 @@ parse_option()
                 ;;
             "bits")
                 BITS="$value"
+                ;;
+            "static")
+                LIB_TYPE="static"
                 ;;
             "shared")
                 LIB_TYPE="shared"

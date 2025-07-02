@@ -1,0 +1,9 @@
+{
+    "testDir":"testcode/sdv/testcase/",
+    "testFeatures": {
+        "tlcp": ["test_suite_sdv_hlt_tlcp_ciphersuite"]
+    },
+    "testSuiteCases": {
+        "test_suite_sdv_hlt_tlcp_ciphersuite": []
+    }
+}

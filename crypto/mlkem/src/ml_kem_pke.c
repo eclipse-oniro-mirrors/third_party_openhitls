@@ -556,8 +556,7 @@ static int32_t PkeKeyGen(const CRYPT_ML_KEM_Ctx *ctx, uint8_t *pk, uint8_t *dk, 
     }
     // The buffer of pk is sufficient, check it before calling this function.
     (void)memcpy_s(pk + MLKEM_SEED_LEN * MLKEM_BITS_OF_Q * k, MLKEM_SEED_LEN, p, MLKEM_SEED_LEN);
-    MatrixBufFree(k, &st);
-    return CRYPT_SUCCESS;
+
 ERR:
     MatrixBufFree(k, &st);
     return ret;
@@ -624,7 +623,6 @@ static int32_t PkeEncrypt(const CRYPT_ML_KEM_Ctx *ctx, uint8_t *ct, const uint8_
     }
     // Step 23
     ByteEncode(ct + MLKEM_ENCODE_BLOCKSIZE * ctx->info->du * k, polyVectorC2, ctx->info->dv);
-    ret = CRYPT_SUCCESS;
 ERR:
     MatrixBufFree(k, &st);
     return ret;

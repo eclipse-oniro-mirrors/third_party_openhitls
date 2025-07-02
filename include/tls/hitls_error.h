@@ -171,6 +171,8 @@ typedef enum {
     HITLS_MSG_HANDLE_INVALID_COMPRESSION_METHOD,    /**< Receives an incorrect compression algorithm. */
     HITLS_MSG_HANDLE_INVALID_EXTENDED_MASTER_SECRET, /**< The peer Unsupported the extended master key. */
     HITLS_MSG_HANDLE_ERR_CLIENT_HELLO_FRAGMENT,
+    HITLS_MSG_HANDLE_ERR_INAPPROPRIATE_FALLBACK,    /**< The downgrade negotiation failed, and the client supports
+                                                        a higher version. */
 
     HITLS_PACK_FAIL_START = 0x02050001,             /**< Start bit of the pack error code. */
     HITLS_PACK_UNSUPPORT_VERSION,                   /**< Unsupported version. */
@@ -304,6 +306,10 @@ typedef enum {
     HITLS_CERT_ERR_INVALID_STORE_TYPE,              /**< Invalid store type */
     HITLS_CERT_ERR_X509_REF,                        /**< Certificate reference counting error. */
     HITLS_CERT_ERR_INSERT_CERTPAIR,                 /**< Certificate insert certPair error. */
+    HITLS_CERT_ERR_NO_KEYUSAGE,                     /**< No keyusage. */
+    HITLS_CERT_KEY_CTRL_ERR_IS_DATA_ENC_USAGE,      /**< Determine whether the certificate fails to be data enc. */
+    HITLS_CERT_KEY_CTRL_ERR_IS_NON_REPUDIATION_USAGE, /**< Determine whether the certificate fails to be
+                                                           non-repudiation. */
 
     HITLS_CRYPT_FAIL_START = 0x020D0001,           /**< Crypt adaptation module error code start bit. */
     HITLS_CRYPT_ERR_GENERATE_RANDOM,               /**< Failed to generate a random number. */
@@ -318,6 +324,7 @@ typedef enum {
     HITLS_CRYPT_ERR_HKDF_EXPAND,                   /**< HKDF-Expand calculation error. */
     HITLS_CRYPT_ERR_KEM_ENCAPSULATE,               /**< KEM-Encapsulate calculation error. */
     HITLS_CRYPT_ERR_KEM_DECAPSULATE,               /**< KEM-Decapsulate calculation error. */
+    HITLS_CRYPT_ERR_DH,                            /**< DH failure. */
 
     HITLS_APP_FAIL_START = 0x020E0001,             /**< APP module error code start bit. */
     HITLS_APP_ERR_TOO_LONG_TO_WRITE,               /**< APP Data written is too long. */

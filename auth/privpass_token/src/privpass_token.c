@@ -57,17 +57,17 @@ static int32_t SetIssuerName(const BSL_Param *param, PrivPass_TokenChallenge *to
         return HITLS_AUTH_PRIVPASS_NO_TOKEN_CHALLENGE_ISSUERNAME;
     }
 
-    if (temp->useLen == 0 || temp->useLen > PRIVPASS_MAX_ISSUER_NAME_LEN) {
+    if (temp->valueLen == 0 || temp->valueLen > PRIVPASS_MAX_ISSUER_NAME_LEN) {
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_ISSUER_NAME);
         return HITLS_AUTH_PRIVPASS_INVALID_ISSUER_NAME;
     }
 
-    tokenChallenge->issuerName.data = BSL_SAL_Dump(temp->value, temp->useLen);
+    tokenChallenge->issuerName.data = BSL_SAL_Dump(temp->value, temp->valueLen);
     if (tokenChallenge->issuerName.data == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_DUMP_FAIL);
         return BSL_DUMP_FAIL;
     }
-    tokenChallenge->issuerName.dataLen = temp->useLen;
+    tokenChallenge->issuerName.dataLen = temp->valueLen;
     return HITLS_AUTH_SUCCESS;
 }
 
@@ -79,32 +79,32 @@ static int32_t SetOptionalFields(const BSL_Param *param, PrivPass_TokenChallenge
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_NO_TOKEN_CHALLENGE_REDEMPTION);
         return HITLS_AUTH_PRIVPASS_NO_TOKEN_CHALLENGE_REDEMPTION;
     }
-    if (temp->useLen != 0) {
-        if (temp->useLen != PRIVPASS_REDEMPTION_LEN) {
+    if (temp->valueLen != 0) {
+        if (temp->valueLen != PRIVPASS_REDEMPTION_LEN) {
             BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_REDEMPTION);
             return HITLS_AUTH_PRIVPASS_INVALID_REDEMPTION;
         }
-        tokenChallenge->redemption.data = BSL_SAL_Dump(temp->value, temp->useLen);
+        tokenChallenge->redemption.data = BSL_SAL_Dump(temp->value, temp->valueLen);
         if (tokenChallenge->redemption.data == NULL) {
             BSL_ERR_PUSH_ERROR(BSL_DUMP_FAIL);
             return BSL_DUMP_FAIL;
         }
-        tokenChallenge->redemption.dataLen = temp->useLen;
+        tokenChallenge->redemption.dataLen = temp->valueLen;
     }
 
     // Set originInfo (optional)
     temp = BSL_PARAM_FindConstParam(param, AUTH_PARAM_PRIVPASS_TOKENCHALLENGE_ORIGININFO);
-    if (temp != NULL && temp->useLen > 0) {
-        if (temp->useLen > PRIVPASS_MAX_ORIGIN_INFO_LEN) {
+    if (temp != NULL && temp->valueLen > 0) {
+        if (temp->valueLen > PRIVPASS_MAX_ORIGIN_INFO_LEN) {
             BSL_ERR_PUSH_ERROR(HITLS_AUTH_PRIVPASS_INVALID_ORIGIN_INFO);
             return HITLS_AUTH_PRIVPASS_INVALID_ORIGIN_INFO;
         }
-        tokenChallenge->originInfo.data = BSL_SAL_Dump(temp->value, temp->useLen);
+        tokenChallenge->originInfo.data = BSL_SAL_Dump(temp->value, temp->valueLen);
         if (tokenChallenge->originInfo.data == NULL) {
             BSL_ERR_PUSH_ERROR(BSL_DUMP_FAIL);
             return BSL_DUMP_FAIL;
         }
-        tokenChallenge->originInfo.dataLen = temp->useLen;
+        tokenChallenge->originInfo.dataLen = temp->valueLen;
     }
     return HITLS_AUTH_SUCCESS;
 }

@@ -521,13 +521,12 @@ int32_t CRYPT_SCRYPT_Deinit(CRYPT_SCRYPT_Ctx *ctx)
 
 void CRYPT_SCRYPT_FreeCtx(CRYPT_SCRYPT_Ctx *ctx)
 {
-    CRYPT_SCRYPT_Ctx *kdfCtx = ctx;
-    if (kdfCtx == NULL) {
+    if (ctx == NULL) {
         return;
     }
     BSL_SAL_ClearFree(ctx->password, ctx->passLen);
-    BSL_SAL_FREE(kdfCtx->salt);
-    BSL_SAL_FREE(kdfCtx);
+    BSL_SAL_FREE(ctx->salt);
+    BSL_SAL_Free(ctx);
 }
 
 #endif /* HITLS_CRYPTO_SCRYPT */

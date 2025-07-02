@@ -189,9 +189,6 @@ static bool CheckCertKeyUsage(TLS_Ctx *ctx, CERT_Pair *peerCert)
 {
     bool checkUsageRec = false;
     HITLS_CERT_X509 *cert = SAL_CERT_PairGetX509(peerCert);
-#ifdef HITLS_TLS_PROTO_TLCP11
-    HITLS_CERT_X509 *encCert = SAL_CERT_GetTlcpEncCert(peerCert);
-#endif
     if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
         return SAL_CERT_CheckCertKeyUsage(ctx, cert, CERT_KEY_CTRL_IS_DIGITAL_SIGN_USAGE);
     }
@@ -208,13 +205,6 @@ static bool CheckCertKeyUsage(TLS_Ctx *ctx, CERT_Pair *peerCert)
             case HITLS_KEY_EXCH_RSA:
             case HITLS_KEY_EXCH_ECC:
             case HITLS_KEY_EXCH_RSA_PSK:
-#ifdef HITLS_TLS_PROTO_TLCP11
-                if (ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11) {
-                    checkUsageRec = SAL_CERT_CheckCertKeyUsage(ctx, cert, CERT_KEY_CTRL_IS_DIGITAL_SIGN_USAGE) &&
-                                    SAL_CERT_CheckCertKeyUsage(ctx, encCert, CERT_KEY_CTRL_IS_KEYENC_USAGE);
-                    break;
-                }
-#endif
                 checkUsageRec = SAL_CERT_CheckCertKeyUsage(ctx, cert, CERT_KEY_CTRL_IS_KEYENC_USAGE);
                 break;
             case HITLS_KEY_EXCH_ECDH:
@@ -260,7 +250,8 @@ static int32_t ProcessPeerCertificate(TLS_Ctx *ctx, const CertificateMsg *certs)
         return ret;
     }
 #ifdef HITLS_TLS_CONFIG_KEY_USAGE
-    if (ctx->config.tlsConfig.needCheckKeyUsage == true && !CheckCertKeyUsage(ctx, peerCert)) {
+    if (ctx->negotiatedInfo.version != HITLS_VERSION_TLCP_DTLCP11 && ctx->config.tlsConfig.needCheckKeyUsage == true &&
+        !CheckCertKeyUsage(ctx, peerCert)) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17043, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "CheckCertKeyUsage fail", 0, 0, 0, 0);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNSUPPORTED_CERTIFICATE);

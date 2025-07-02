@@ -1466,6 +1466,39 @@ int32_t HITLS_CFG_SetReadAhead(HITLS_Config *config, int32_t onOff);
  */
 int32_t HITLS_CFG_GetReadAhead(HITLS_Config *config, int32_t *onOff);
 
+/**
+ * @ingroup hitls_config
+ * @brief   Set the function to support the specified feature.
+ *
+ * @param   config [OUT] Config context
+ * @param   mode [IN] Mode features to enabled.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_SetModeSupport(HITLS_Config *config, uint32_t mode);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Disable the specified feature.
+ *
+ * @param   config [OUT] Config context
+ * @param   mode [IN] Mode features to disabled.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_ClearModeSupport(HITLS_Config *config, uint32_t mode);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Obtain the mode of the function feature in the config file.
+ *
+ * @param   config [OUT] Config context
+ * @param   mode [OUT] Mode obtain the output parameters of the mode.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_GetModeSupport(HITLS_Config *config, uint32_t *mode);
+
 #ifdef __cplusplus
 }
 #endif

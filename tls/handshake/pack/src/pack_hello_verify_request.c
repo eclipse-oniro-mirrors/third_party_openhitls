@@ -35,6 +35,16 @@
 static int32_t PackHelloVerifyReqMandatoryField(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
 {
     const TLS_NegotiatedInfo *negotiatedInfo = &ctx->negotiatedInfo;
+    /* According to rfc6347 4.2.1, message with the cookie length of 0 can be sent,
+        but it is meaningless and will be trapped in an infinite loop.
+        Therefore, cannot sent cookies with the length of 0 here. */
+    if (negotiatedInfo->cookieSize == 0) {
+        BSL_ERR_PUSH_ERROR(HITLS_PACK_COOKIE_ERR);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15828, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "cookieSize is 0.", 0, 0, 0, 0);
+        return HITLS_PACK_COOKIE_ERR;
+    }
+
     /* The bufLen must be able to pack at least the version number (2 bytes) + cookiesize (1 byte) + cookie (xx bytes) */
     if (bufLen < (sizeof(uint16_t) + sizeof(uint8_t) + negotiatedInfo->cookieSize)) {
         BSL_ERR_PUSH_ERROR(HITLS_PACK_NOT_ENOUGH_BUF_LENGTH);
@@ -54,15 +64,6 @@ static int32_t PackHelloVerifyReqMandatoryField(const TLS_Ctx *ctx, uint8_t *buf
 
     buf[offset] = (uint8_t)negotiatedInfo->cookieSize;
     offset++;
-        /* According to rfc6347 4.2.1, message with the cookie length of 0 can be sent,
-       but it is meaningless and will be trapped in an infinite loop.
-       Therefore, cannot sent cookies with the length of 0 here. */
-    if (negotiatedInfo->cookieSize == 0) {
-        BSL_ERR_PUSH_ERROR(HITLS_PACK_COOKIE_ERR);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15828, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "cookieSize is 0.", 0, 0, 0, 0);
-        return HITLS_PACK_COOKIE_ERR;
-    }
     /* assemble the cookie */
     (void)memcpy_s(&buf[offset], bufLen - offset, negotiatedInfo->cookie, negotiatedInfo->cookieSize);
     offset += negotiatedInfo->cookieSize;
@@ -73,11 +74,10 @@ static int32_t PackHelloVerifyReqMandatoryField(const TLS_Ctx *ctx, uint8_t *buf
 // Pack the HelloVerifyRequest message.
 int32_t PackHelloVerifyRequest(TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
 {
-    int32_t ret = HITLS_SUCCESS;
     uint32_t offset = 0u;
     uint32_t msgLen = 0u;
 
-    ret = PackHelloVerifyReqMandatoryField(ctx, buf, bufLen, &msgLen);
+    int32_t ret = PackHelloVerifyReqMandatoryField(ctx, buf, bufLen, &msgLen);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17330, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "pack hello verify request mandatory content fail.", 0, 0, 0, 0);

@@ -348,7 +348,7 @@ static void KdfUpdate(uint8_t *I, uint8_t *A, uint8_t *B, uint32_t k, const Pkcs
             uint8_t temp = tempI[r] + carry;
             carry = temp < tempI[r] ? 1 : 0;
             temp += B[r];
-            carry = temp < B[r] ? 1 : 0;
+            carry += temp < B[r] ? 1 : 0;
             tempI[r] = temp;
         }
     }
@@ -568,8 +568,7 @@ static int32_t ParamCheckAndInit(HITLS_PKCS12_MacData *macData, BSL_Buffer *pwd,
             BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
             return BSL_MALLOC_FAIL;
         }
-        int32_t ret;
-        ret = CRYPT_EAL_RandbytesEx(NULL, salt, macData->macSalt->dataLen);
+        int32_t ret = CRYPT_EAL_RandbytesEx(NULL, salt, macData->macSalt->dataLen);
         if (ret != CRYPT_SUCCESS) {
             BSL_SAL_Free(salt);
             BSL_ERR_PUSH_ERROR(ret);

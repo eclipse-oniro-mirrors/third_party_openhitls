@@ -56,11 +56,13 @@ int32_t GenClientHelloMandatoryCtx(TLS_Ctx *tlsCtx, FRAME_Msg *msg)
     }
 
     if (clientHello->sessionIdSize > 0) {
+#if defined(HITLS_TLS_FEATURE_SESSION) || defined(HITLS_TLS_PROTO_TLS13)
         tlsCtx->hsCtx->sessionId = (uint8_t *)BSL_SAL_Dump(clientHello->sessionId, clientHello->sessionIdSize);
         if (tlsCtx->hsCtx->sessionId == NULL) {
             return HITLS_MEMALLOC_FAIL;
         }
         tlsCtx->hsCtx->sessionIdSize = clientHello->sessionIdSize;
+#endif
     }
 
 #ifdef HITLS_TLS_PROTO_DTLS12
@@ -165,12 +167,14 @@ int32_t PackServerHelloMsg(FRAME_Msg *msg)
     }
 
     if (serverHello->sessionIdSize > 0) {    // SessionId
+#if defined(HITLS_TLS_FEATURE_SESSION) || defined(HITLS_TLS_PROTO_TLS13)
         tlsCtx->hsCtx->sessionId = (uint8_t *)BSL_SAL_Dump(serverHello->sessionId, serverHello->sessionIdSize);
         if (tlsCtx->hsCtx->sessionId == NULL) {
             ret = HITLS_MEMALLOC_FAIL;
             goto EXIT;
         }
         tlsCtx->hsCtx->sessionIdSize = serverHello->sessionIdSize;
+#endif
     }
 
     tlsCtx->negotiatedInfo.cipherSuiteInfo.cipherSuite = serverHello->cipherSuite;

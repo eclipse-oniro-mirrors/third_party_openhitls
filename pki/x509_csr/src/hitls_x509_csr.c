@@ -650,7 +650,7 @@ int32_t HITLS_X509_CsrCtrl(HITLS_X509_Csr *csr, int32_t cmd, void *val, uint32_t
     }
 
     if (((csr->flag & HITLS_X509_CSR_PARSE_FLAG) != 0) && cmd >= HITLS_X509_SET_VERSION &&
-        cmd < HITLS_X509_EXT_KU_KEYENC) {
+        cmd < HITLS_X509_EXT_SET_SKI) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_SET_AFTER_PARSE);
         return HITLS_X509_ERR_SET_AFTER_PARSE;
     }

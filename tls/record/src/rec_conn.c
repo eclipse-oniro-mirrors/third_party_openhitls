@@ -113,7 +113,7 @@ int32_t RecConnStateSetCipherInfo(RecConnState *state, RecConnSuitInfo *suitInfo
 }
 
 #ifdef HITLS_TLS_SUITE_CIPHER_CBC
-static uint32_t GetHashOfMACAlgorithm(HITLS_MacAlgo macAlgo)
+uint32_t RecGetHashAlgoFromMACAlgo(HITLS_MacAlgo macAlgo)
 {
     switch (macAlgo) {
         case HITLS_MAC_1:
@@ -156,9 +156,10 @@ int32_t RecConnGenerateMac(HITLS_Lib_Ctx *libCtx, const char *attrName,
     offset += sizeof(uint16_t);
     BSL_Uint16ToByte((uint16_t)plainMsg->textLen, &header[offset]);       // The 11th and 12th bytes are the data length
 
-    HITLS_HashAlgo hashAlgo = GetHashOfMACAlgorithm(suiteInfo->macAlg);
+    HITLS_HashAlgo hashAlgo = RecGetHashAlgoFromMACAlgo(suiteInfo->macAlg);
     if (hashAlgo == HITLS_HASH_BUTT) {
-        return RETURN_ERROR_NUMBER_PROCESS(HITLS_REC_ERR_GENERATE_MAC, BINLOG_ID17229, "GetHashOfMACAlgorithm fail");
+        return RETURN_ERROR_NUMBER_PROCESS(HITLS_REC_ERR_GENERATE_MAC, BINLOG_ID17229,
+            "RecGetHashAlgoFromMACAlgo fail");
     }
 
     if (suiteInfo->macCtx == NULL) {

@@ -439,7 +439,8 @@ static int32_t ServerSelectNegoVersion(TLS_Ctx *ctx, const ClientHelloMsg *clien
         legacyVersion = HITLS_VERSION_TLS12;
     }
     /* Check whether DTLS is used */
-    if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
+    if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask) &&
+        !IS_SUPPORT_TLCP(ctx->config.tlsConfig.originVersionMask)) {
         if (legacyVersion > ctx->config.tlsConfig.minVersion) {
             /** The DTLS version supported by the client is too early and the negotiation cannot be continued */
             BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
@@ -949,7 +950,7 @@ static int32_t ServerCheckResume(TLS_Ctx *ctx, const ClientHelloMsg *clientHello
 static int32_t ServerCheckRenegoInfoDuringFirstHandshake(TLS_Ctx *ctx, const ClientHelloMsg *clientHello)
 {
     /* If the peer does not support security renegotiation, the system returns */
-    if (!clientHello->haveScsvCipher && !clientHello->extension.flag.haveSecRenego) {
+    if (!clientHello->haveEmptyRenegoScsvCipher && !clientHello->extension.flag.haveSecRenego) {
         return HITLS_SUCCESS;
     }
 
@@ -971,7 +972,7 @@ static int32_t ServerCheckRenegoInfoDuringFirstHandshake(TLS_Ctx *ctx, const Cli
 static int32_t ServerCheckRenegoInfoDuringRenegotiation(TLS_Ctx *ctx, const ClientHelloMsg *clientHello)
 {
     /* If the renegotiation status contains the SCSV cipher suite, a failure message is returned */
-    if (clientHello->haveScsvCipher) {
+    if (clientHello->haveEmptyRenegoScsvCipher) {
         BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_RENEGOTIATION_FAIL);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15890, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "SCSV cipher should not be in server secure renegotiation.", 0, 0, 0, 0);
@@ -1084,6 +1085,32 @@ static int32_t ServerProcessClientHelloExt(TLS_Ctx *ctx, const ClientHelloMsg *c
     return ProcessClientHelloExt(ctx, clientHello, false);
 }
 
+static int32_t ServerCheckVersionDowngrade(TLS_Ctx *ctx, const ClientHelloMsg *clientHello)
+{
+    if (!clientHello->haveFallBackScsvCipher) {
+        return HITLS_SUCCESS;
+    }
+    if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask) &&
+        !IS_SUPPORT_TLCP(ctx->config.tlsConfig.originVersionMask)) {
+        if (ctx->negotiatedInfo.version > ctx->config.tlsConfig.maxVersion) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15339, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "dtls server supports a higher protocol version.", 0, 0, 0, 0);
+            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INAPPROPRIATE_FALLBACK);
+            return HITLS_MSG_HANDLE_ERR_INAPPROPRIATE_FALLBACK;
+        }
+        return HITLS_SUCCESS;
+    }
+    
+    if (ctx->negotiatedInfo.version < ctx->config.tlsConfig.maxVersion) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15335, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "server supports a higher protocol version.", 0, 0, 0, 0);
+        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INAPPROPRIATE_FALLBACK);
+        return HITLS_MSG_HANDLE_ERR_INAPPROPRIATE_FALLBACK;
+    }
+    
+    return HITLS_SUCCESS;
+}
+
 // Check client Hello messages
 static int32_t ServerCheckAndProcessClientHello(TLS_Ctx *ctx, const ClientHelloMsg *clientHello)
 {
@@ -1095,6 +1122,11 @@ static int32_t ServerCheckAndProcessClientHello(TLS_Ctx *ctx, const ClientHelloM
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15238, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "server select negotiated version fail.", 0, 0, 0, 0);
+        return ret;
+    }
+
+    ret = ServerCheckVersionDowngrade(ctx, clientHello);
+    if (ret != HITLS_SUCCESS) {
         return ret;
     }
 

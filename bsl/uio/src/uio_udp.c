@@ -73,16 +73,16 @@ static int32_t UdpSocketDestroy(BSL_UIO *uio)
         if (BSL_UIO_GetIsUnderlyingClosedByUio(uio) && ctx->fd != -1) {
             (void)BSL_SAL_SockClose(ctx->fd);
         }
-        BSL_SAL_FREE(ctx);
+        BSL_SAL_Free(ctx);
         BSL_UIO_SetCtx(uio, NULL);
     }
     uio->init = false;
     return BSL_SUCCESS;
 }
 
-static int32_t UdpGetPeerIpAddr(UdpParameters *parameters, int32_t larg,  uint8_t *parg)
+static int32_t UdpGetPeerIpAddr(UdpParameters *parameters, int32_t larg, uint8_t *parg)
 {
-    if (parameters == NULL || parg == NULL || larg < (int32_t)sizeof(BSL_UIO_Addr)) {
+    if (parg == NULL || larg < (int32_t)sizeof(BSL_UIO_Addr)) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID05074, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "Uio: Get peer ip address input error.", 0, 0, 0, 0);
         return BSL_NULL_INPUT;
@@ -96,22 +96,18 @@ static int32_t UdpGetPeerIpAddr(UdpParameters *parameters, int32_t larg,  uint8_
 
 static int32_t UdpSetPeerIpAddr(UdpParameters *parameters, const uint8_t *addr, uint32_t size)
 {
-    if (parameters == NULL || addr == NULL || size < (int32_t)sizeof(struct sockaddr)) {
+    if (addr == NULL || size < (int32_t)sizeof(struct sockaddr)) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID05073, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "Uio: NULL error.", 0, 0, 0, 0);
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
-    int32_t ret = BSL_UIO_AddrMake(&parameters->peer, (const struct sockaddr *)addr);
-    if (ret != BSL_SUCCESS) {
-        return ret;
-    }
-    return BSL_SUCCESS;
+    return BSL_UIO_AddrMake(&parameters->peer, (const struct sockaddr *)addr);
 }
 
 static int32_t UdpSetFd(BSL_UIO *uio, int32_t size, const int32_t *fd)
 {
-    if (fd == NULL || uio == NULL) {
+    if (fd == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
@@ -119,11 +115,7 @@ static int32_t UdpSetFd(BSL_UIO *uio, int32_t size, const int32_t *fd)
         BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
         return BSL_INVALID_ARG;
     }
-    UdpParameters *udpCtx = BSL_UIO_GetCtx(uio);
-    if (udpCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
-        return BSL_NULL_INPUT;
-    }
+    UdpParameters *udpCtx = BSL_UIO_GetCtx(uio); // ctx is not NULL
     if (udpCtx->fd != -1) {
         if (BSL_UIO_GetIsUnderlyingClosedByUio(uio)) {
             (void)BSL_SAL_SockClose(udpCtx->fd);
@@ -136,29 +128,26 @@ static int32_t UdpSetFd(BSL_UIO *uio, int32_t size, const int32_t *fd)
 
 static int32_t UdpGetFd(BSL_UIO *uio, int32_t size, int32_t *fd)
 {
-    if (uio == NULL || fd == NULL) {
+    if (fd == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
-    if (size != (int32_t)sizeof(*fd)) {
+    if (size != (int32_t)sizeof(int32_t)) {
         BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
         return BSL_INVALID_ARG;
     }
-    UdpParameters *ctx = BSL_UIO_GetCtx(uio);
-    if (ctx == NULL) {
-        BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
-        return BSL_NULL_INPUT;
-    }
+    UdpParameters *ctx = BSL_UIO_GetCtx(uio); // ctx is not NULL
     *fd = ctx->fd;
     return BSL_SUCCESS;
 }
 
 int32_t UdpSocketCtrl(BSL_UIO *uio, int32_t cmd, int32_t larg, void *parg)
 {
-    if (uio == NULL || uio->ctx == NULL) {
+    UdpParameters *parameters = BSL_UIO_GetCtx(uio);
+    if (parameters == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
-    UdpParameters *parameters = BSL_UIO_GetCtx(uio);
     switch (cmd) {
         case BSL_UIO_SET_FD:
             return UdpSetFd(uio, larg, parg);
@@ -188,23 +177,17 @@ int32_t UdpSocketCtrl(BSL_UIO *uio, int32_t cmd, int32_t larg, void *parg)
 static int32_t UdpWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *writeLen)
 {
     UdpParameters *parameters = (UdpParameters *)BSL_UIO_GetCtx(uio);
-    int32_t ret = 0, err = 0;
-    BSL_UIO_Addr peerAddr = {0};
-    int32_t fd = BSL_UIO_GetFd(uio);
-    if (fd < 0 || parameters == NULL) {
+    if (parameters == NULL || parameters->fd < 0) {
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
         return BSL_UIO_IO_EXCEPTION;
     }
+    int32_t ret = 0, err = 0;
     errno = 0;
     if (parameters->connected) {
-        ret = BSL_SAL_Write(fd, buf, len, &err);
+        ret = BSL_SAL_Write(parameters->fd, buf, len, &err);
     } else {
-        ret = BSL_UIO_Ctrl(uio, BSL_UIO_GET_PEER_IP_ADDR, sizeof(peerAddr), &peerAddr);
-        if (ret != BSL_SUCCESS) {
-            BSL_ERR_PUSH_ERROR(BSL_UIO_FAIL);
-            return BSL_UIO_FAIL;
-        }
-        ret = sendto(fd, buf, len, 0, (struct sockaddr *)&peerAddr.addrIn, sizeof(peerAddr.addrIn));
+        ret = sendto(parameters->fd, buf, len, 0, (struct sockaddr *)&(parameters->peer.addrIn),
+            sizeof(parameters->peer.addrIn));
     }
     err = errno;
     (void)BSL_UIO_ClearFlags(uio, BSL_UIO_FLAGS_RWS | BSL_UIO_FLAGS_SHOULD_RETRY);
@@ -227,16 +210,15 @@ static int32_t UdpRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *readLen)
     socklen_t addrlen = sizeof(struct sockaddr_in);
     struct sockaddr_in sockAddr;
     int32_t ret = 0, err = 0;
-    int32_t fd = BSL_UIO_GetFd(uio);
     UdpParameters *parameters = BSL_UIO_GetCtx(uio);
-    if (fd < 0 || parameters == NULL) {
+    if (parameters == NULL || parameters->fd < 0) {
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
         return BSL_UIO_IO_EXCEPTION;
     }
 
     errno = 0;
     (void)BSL_UIO_ClearFlags(uio, BSL_UIO_FLAGS_RWS | BSL_UIO_FLAGS_SHOULD_RETRY);
-    ret = recvfrom(fd, buf, len, 0, (struct sockaddr *)&sockAddr, &addrlen);
+    ret = recvfrom(parameters->fd, buf, len, 0, (struct sockaddr *)&sockAddr, &addrlen);
     err = errno;
     if (ret < 0) {
         if (UioIsNonFatalErr(err) == true) {

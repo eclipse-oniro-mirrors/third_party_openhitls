@@ -387,7 +387,7 @@ int32_t DRBG_HashReseed(DRBG_Ctx *drbg, const CRYPT_Data *entropy, const CRYPT_D
     int32_t ret;
     DRBG_HashCtx *ctx = (DRBG_HashCtx*)drbg->ctx;
     CRYPT_Data v = {ctx->v, ctx->seedLen};
-    uint8_t c;
+    uint8_t c = 0x1;
     CRYPT_Data temp = {&c, 1};
 
     /**
@@ -396,7 +396,6 @@ int32_t DRBG_HashReseed(DRBG_Ctx *drbg, const CRYPT_Data *entropy, const CRYPT_D
     V = seed
     C = Hash_Df(0x00 || V)
     */
-    c = 0x1;
     if (drbg->isGm) {
         ret = DRBG_HashDf(ctx, ctx->c, ctx->seedLen, &temp, entropy, &v, adin);
     } else {

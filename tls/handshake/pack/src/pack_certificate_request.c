@@ -52,10 +52,7 @@ static int32_t PackCertificateTypes(const TLS_Ctx *ctx, uint8_t *buf, uint32_t b
     PackCertTypesInfo certTypeLists[] = {
         {CERT_TYPE_RSA_SIGN, false},
         {CERT_TYPE_ECDSA_SIGN, false},
-        {CERT_TYPE_DSS_SIGN, false},
-#ifdef HITLS_TLS_PROTO_TLCP11
-        {CERT_TYPE_SM2_SIGN, false},
-#endif
+        {CERT_TYPE_DSS_SIGN, false}
     };
 
     uint8_t certTypeListsSize = (uint8_t)(sizeof(certTypeLists) / sizeof(certTypeLists[0]));

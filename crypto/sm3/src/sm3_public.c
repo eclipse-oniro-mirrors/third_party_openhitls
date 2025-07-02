@@ -42,10 +42,6 @@ CRYPT_SM3_Ctx *CRYPT_SM3_NewCtx(void)
 
 void CRYPT_SM3_FreeCtx(CRYPT_SM3_Ctx *ctx)
 {
-    CRYPT_SM3_Ctx *mdCtx = ctx;
-    if (mdCtx == NULL) {
-        return;
-    }
     BSL_SAL_ClearFree(ctx, sizeof(CRYPT_SM3_Ctx));
 }
 

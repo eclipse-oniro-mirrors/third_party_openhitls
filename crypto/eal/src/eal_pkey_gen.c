@@ -570,7 +570,7 @@ int32_t CRYPT_EAL_PkeySetPub(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPub *k
         case CRYPT_PKEY_ECDH:
         case CRYPT_PKEY_ECDSA:
         case CRYPT_PKEY_SM2: {
-            BSL_Param ecParam[2] = {{CRYPT_PARAM_EC_POINT_UNCOMPRESSED, BSL_PARAM_TYPE_OCTETS, key->key.eccPub.data,
+            BSL_Param ecParam[2] = {{CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, key->key.eccPub.data,
                 key->key.eccPub.len, 0}, BSL_PARAM_END};
             ret = pkey->method->setPub(pkey->key, &ecParam);
             break;
@@ -976,7 +976,7 @@ int32_t CRYPT_EAL_PkeyGetPub(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPub *k
         case CRYPT_PKEY_ECDH:
         case CRYPT_PKEY_ECDSA:
         case CRYPT_PKEY_SM2:
-            ret = GetCommonPub(pkey, CRYPT_PARAM_EC_POINT_UNCOMPRESSED, &key->key.eccPub);
+            ret = GetCommonPub(pkey, CRYPT_PARAM_EC_PUBKEY, &key->key.eccPub);
             break;
         case CRYPT_PKEY_PAILLIER:
             ret = GetPaillierPub(pkey, &key->key.paillierPub);

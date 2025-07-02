@@ -27,7 +27,7 @@ parse_option()
     for i in $PARAM_LIST
     do
         case "${i}" in
-            "bsl"|"md"|"mac"|"kdf"|"cipher"|"bn"|"ecc"|"pkey"|"pki"|"all")
+            "bsl"|"md"|"mac"|"kdf"|"cipher"|"bn"|"ecc"|"pkey"|"pki"|"all"|"tls")
                 TEST=$i
                 ;;
             "x8664"|"armv8")
@@ -332,6 +332,12 @@ test_pkey()
     bash mini_build_test.sh $COMMON_PARAM $NO_LIB enable=eal,slh_dsa,drbg_hash,sha2 test=slh_dsa
 }
 
+test_tls()
+{
+    NO_LIB=""
+    bash mini_build_test.sh $COMMON_PARAM $NO_LIB feature-config=tlcp_feature.json test=asn1,base64,buffer,err,hash,init,list,log,obj,params,pem,tlv,usrdata,sal,sal_mem,sal_lock,sal_str,sal_file,sal_thread,sal_net,sal_time,aes,bn,chacha20,cmac_aes,drbg_ctr,drbg_hash,ecc,ecdh,ecdsa,entropy,gcm,hkdf,hpke,mlkem,mldsa,sha256,sha384,sha512,slh_dsa,sm2,sm3,sm4,x25519,curve_nistp256,curve_nistp384,curve_nistp521,x509_crl_gen,x509_crl_parse,x509_csr_gen,x509_csr_parse,x509_crt_gen,x509_crt_parse,x509_vfy,tlcp linux
+}
+
 test_pki()
 {
     if [ "$ASM_TYPE" != "" ]; then
@@ -425,6 +431,7 @@ case $TEST in
         test_bn
         test_ecc
         test_pkey
+        test_tls
         ;;
     "bsl")
         test_bsl
@@ -452,6 +459,9 @@ case $TEST in
         ;;
     "pki")
         test_pki
+        ;;
+    "tls")
+        test_tls
         ;;
     *)
         ;;

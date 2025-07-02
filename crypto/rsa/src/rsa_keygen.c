@@ -940,13 +940,13 @@ int32_t CRYPT_RSA_Gen(CRYPT_RSA_Ctx *ctx)
     BN_OptimizerSetLibCtx(ctx->libCtx, optimizer);
     ret = GenPQBasedOnProbPrimes(ctx->para, newCtx->prvKey, optimizer);
     if (ret != CRYPT_SUCCESS) {
+        BN_OptimizerDestroy(optimizer);
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
     }
 
     ret = RSA_CalcPrvKey(ctx->para, newCtx, optimizer);
     BN_OptimizerDestroy(optimizer);
-    optimizer = NULL;
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
@@ -969,7 +969,6 @@ int32_t CRYPT_RSA_Gen(CRYPT_RSA_Ctx *ctx)
     BSL_SAL_FREE(newCtx);
     return ret;
 ERR:
-    BN_OptimizerDestroy(optimizer);
     CRYPT_RSA_FreeCtx(newCtx);
     return ret;
 }

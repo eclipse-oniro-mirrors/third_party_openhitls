@@ -285,7 +285,7 @@ int32_t HS_ProcessClientKxMsgRsa(TLS_Ctx *ctx, const ClientKeyExchangeMsg *clien
                             Uint32ConstTimeEqual(version, HITLS_VERSION_TLS12) |
                             Uint32ConstTimeEqual(version, HITLS_VERSION_DTLS12) |
                             ~Uint32ConstTimeIsZero((uint32_t)ctx->config.tlsConfig.needCheckPmsVersion);
-    valid = (~versionCheck) | Uint32ConstTimeEqual(version, BSL_ByteToUint16(premasterSecret));
+    valid &= (~versionCheck) | Uint32ConstTimeEqual(version, BSL_ByteToUint16(premasterSecret));
 
     for (uint32_t i = 0; i < MASTER_SECRET_LEN; i++) {
         uint32_t mask = valid & Uint32ConstTimeLt(i, secretLen);
@@ -482,7 +482,7 @@ int32_t DeriveMasterSecret(TLS_Ctx *ctx, const uint8_t *preMasterSecret, uint32_
 #ifdef HITLS_TLS_MAINTAIN_KEYLOG
     if (HITLS_LogSecret(ctx, MASTER_SECRET_LABEL, ctx->hsCtx->masterKey,
         MASTER_SECRET_LEN) != HITLS_SUCCESS) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16196, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15336, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "failed to LogSecret, MASTER_SECRET_LABEL.", 0, 0, 0, 0);
     }
 #endif /* HITLS_TLS_MAINTAIN_KEYLOG */

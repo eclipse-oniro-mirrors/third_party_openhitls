@@ -126,6 +126,36 @@ static int32_t PackCipherSuites(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLe
     return HITLS_SUCCESS;
 }
 
+static int32_t PackScsvCipherSuites(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *offset)
+{
+    uint32_t tmpOffset = *offset;
+    /* If the local is not in the renegotiation state, the SCSV algorithm set needs to be packed. */
+    if (!ctx->negotiatedInfo.isRenegotiation) {
+        if (tmpOffset + sizeof(uint16_t) > bufLen) {
+            BSL_ERR_PUSH_ERROR(HITLS_PACK_CLIENT_CIPHER_SUITE_ERR);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15338, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "pack cipher suite error, the buffer length is not enough.", 0, 0, 0, 0);
+            return HITLS_PACK_CLIENT_CIPHER_SUITE_ERR;
+        }
+        BSL_Uint16ToByte(TLS_EMPTY_RENEGOTIATION_INFO_SCSV, &buf[tmpOffset]);
+        tmpOffset += sizeof(uint16_t);
+    }
+#ifdef HITLS_TLS_FEATURE_MODE_FALL_BACK_SCSV
+    if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_SEND_FALLBACK_SCSV) != 0) {
+        if (tmpOffset + sizeof(uint16_t) > bufLen) {
+            BSL_ERR_PUSH_ERROR(HITLS_PACK_CLIENT_CIPHER_SUITE_ERR);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15337, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "pack cipher suite error, the buffer length is not enough.", 0, 0, 0, 0);
+            return HITLS_PACK_CLIENT_CIPHER_SUITE_ERR;
+        }
+        BSL_Uint16ToByte(TLS_FALLBACK_SCSV, &buf[tmpOffset]);
+        tmpOffset += sizeof(uint16_t);
+    }
+#endif
+    *offset = tmpOffset;
+    return HITLS_SUCCESS;
+}
+
 // Pack the cipher suites content of the client hello message.
 static int32_t PackClientCipherSuites(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
 {
@@ -159,22 +189,13 @@ static int32_t PackClientCipherSuites(const TLS_Ctx *ctx, uint8_t *buf, uint32_t
         return HITLS_PACK_CLIENT_CIPHER_SUITE_ERR;
     }
 
+    ret = PackScsvCipherSuites(ctx, buf, bufLen, &offset);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
     /* The cipher suite has been filled. Each cipher suite takes two bytes, so the length of the filled cipher suite can
      * be calculated according to offset */
     cipherSuitesLen = (uint16_t)(offset - CIPHER_SUITES_LEN_SIZE);
-    /* If the local is not in the renegotiation state,
-     * the SCSV algorithm set needs to be packed. */
-    if (!ctx->negotiatedInfo.isRenegotiation) {
-        if (offset + sizeof(uint16_t) > bufLen) {
-            BSL_ERR_PUSH_ERROR(HITLS_PACK_CLIENT_CIPHER_SUITE_ERR);
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15733, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "pack cipher suite error, the buffer length is not enough.", 0, 0, 0, 0);
-            return HITLS_PACK_CLIENT_CIPHER_SUITE_ERR;
-        }
-        cipherSuitesLen += sizeof(uint16_t);
-        BSL_Uint16ToByte(TLS_EMPTY_RENEGOTIATION_INFO_SCSV, &buf[offset]);
-        offset += sizeof(uint16_t);
-    }
     BSL_Uint16ToByte(cipherSuitesLen, &buf[0]);
     *usedLen = offset;
     return HITLS_SUCCESS;
