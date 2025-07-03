@@ -131,7 +131,7 @@ static const char *g_stateMachineStr[] = {
 const char *HS_GetStateStr(uint32_t state)
 {
     /** The handshake status is abnormal. */
-    if (state > TRY_RECV_HELLO_REQUEST) {
+    if ((state >= (sizeof(g_stateMachineStr) / sizeof(char *))) || (g_stateMachineStr[state] == NULL)) {
         return "unknown";
     }
 

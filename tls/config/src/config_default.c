@@ -191,7 +191,7 @@ static void InitConfig(HITLS_Config *config)
     config->needCheckKeyUsage = true;
 #endif
 #ifdef HITLS_TLS_CONFIG_MANUAL_DH
-    config->isSupportDhAuto = (config->maxVersion == HITLS_VERSION_TLCP_DTLCP11) ? false : true;
+    config->isSupportDhAuto = false;
 #endif
     if (config->maxVersion == HITLS_VERSION_TLCP_DTLCP11) {
         config->isSupportExtendMasterSecret = false;

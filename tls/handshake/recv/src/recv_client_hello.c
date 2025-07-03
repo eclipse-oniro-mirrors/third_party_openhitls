@@ -443,6 +443,9 @@ static int32_t ServerSelectNegoVersion(TLS_Ctx *ctx, const ClientHelloMsg *clien
         !IS_SUPPORT_TLCP(ctx->config.tlsConfig.originVersionMask)) {
         if (legacyVersion > ctx->config.tlsConfig.minVersion) {
             /** The DTLS version supported by the client is too early and the negotiation cannot be continued */
+            if (TLS_IS_FIRST_HANDSHAKE(ctx)) {
+                ctx->negotiatedInfo.version = legacyVersion;
+            }
             BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15223, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "client want a unsupported protocol version 0x%02x.", legacyVersion, 0, 0, 0);
@@ -460,6 +463,9 @@ static int32_t ServerSelectNegoVersion(TLS_Ctx *ctx, const ClientHelloMsg *clien
         }
     } else {
         if (legacyVersion < ctx->config.tlsConfig.minVersion) {
+            if (TLS_IS_FIRST_HANDSHAKE(ctx)) {
+                ctx->negotiatedInfo.version = legacyVersion;
+            }
             /* The TLS version supported by the client is too early and cannot be negotiated */
             BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15225, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,

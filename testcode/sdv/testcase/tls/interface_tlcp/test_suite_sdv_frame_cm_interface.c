@@ -1918,12 +1918,14 @@ void UT_TLS_CM_HITLS_GetSharedGroup_FUNC_TC004(int version)
     uint16_t signAlgs_c[] = {signWrtVersion, CERT_SIG_SCHEME_ECDSA_SECP384R1_SHA384};
     HITLS_CFG_SetGroups(config_c, groups_c, sizeof(groups_c) / sizeof(uint16_t));
     HITLS_CFG_SetSignature(config_c, signAlgs_c, sizeof(signAlgs_c) / sizeof(uint16_t));
+    HITLS_CFG_SetDhAutoSupport(config_c, true);
 
     uint16_t groups_s[] = {HITLS_EC_GROUP_SECP256R1, HITLS_EC_GROUP_SECP521R1};
     uint16_t signAlgs_s[] = {
         signWrtVersion, CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256, CERT_SIG_SCHEME_ECDSA_SECP521R1_SHA512};
     HITLS_CFG_SetGroups(config_s, groups_s, sizeof(groups_s) / sizeof(uint16_t));
     HITLS_CFG_SetSignature(config_s, signAlgs_s, sizeof(signAlgs_s) / sizeof(uint16_t));
+    HITLS_CFG_SetDhAutoSupport(config_s, true);
 
     FRAME_CertInfo certInfo = {
         "rsa_pss_sha256/rsa_pss_root.crt",
