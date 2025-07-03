@@ -1399,6 +1399,9 @@ void UT_HITLS_CFG_ADD_EXTRA_CHAINCERT_API_TC001(int version, char *certFile1, ch
     HITLS_CERT_Chain *extraChainCert1 = HITLS_CFG_GetExtraChainCerts(tlsConfig);
     ASSERT_TRUE(extraChainCert1->count == 2);
     ASSERT_TRUE(HITLS_CFG_GetExtraChainCerts(tlsConfig) != NULL);
+    ASSERT_TRUE(HITLS_CFG_ClearExtraChainCerts(NULL) == HITLS_NULL_INPUT);
+    ASSERT_TRUE(HITLS_CFG_ClearExtraChainCerts(tlsConfig) == HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_GetExtraChainCerts(tlsConfig) == NULL);
 
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);

@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#define TLS_DEFAULT_VERIFY_DEPTH 20u
+
 #define MAX_PASS_LEN 256
 
 /* tls.handshake.certificate_length Length of a label */

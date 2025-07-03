@@ -71,6 +71,7 @@ typedef enum {
     HITLS_X509_GET_AFTER_TIME,         /** Get the validity end time */
     HITLS_X509_GET_SIGN_MDALG,         /** Get the hash algorithm of signature algorithm used to sign the cert/ */
     HITLS_X509_GET_ENCODE_SUBJECT_DN,  /** Get the ASN.1 DER encoded subject distinguished name */
+    HITLS_X509_IS_SELF_SIGNED,         /** Determine whether the certificate is a self-signed certificate */
 
     HITLS_X509_SET_VERSION = 0x0200,   /** Set the version for the cert. */
     HITLS_X509_SET_SERIALNUM,          /** Set the serial number for the cert, the length range is 1 to 20. */
@@ -314,7 +315,7 @@ typedef enum {
     HITLS_X509_STORECTX_CLEAR_CRL,
     HITLS_X509_STORECTX_REF_UP,
     HITLS_X509_STORECTX_SET_VFY_SM2_USERID,
-    HITLS_X509_STORECTX_ADD_CA_PATH,       /**< Add additional CA path for on-demand loading */
+    HITLS_X509_STORECTX_GET_PARAM_DEPTH,
     HITLS_X509_STORECTX_MAX
 } HITLS_X509_StoreCtxCmd;
 

@@ -108,7 +108,8 @@ typedef enum {
     CERT_KEY_CTRL_GET_PARAM_ID,               /**< Obtain the parameter ID. */
     CERT_KEY_CTRL_IS_DATA_ENC_USAGE,          /**< Is it the data encryption permission. */
     CERT_KEY_CTRL_IS_NON_REPUDIATION_USAGE,   /**< Is it the non-repudiation permission. */
-    CERT_KEY_CTRL_GET_PSS_MD,                 /**< Obtain PSS hash */
+    CERT_STORE_CTRL_GET_VERIFY_DEPTH,   /**< Get the certificate verification depth. */
+    CERT_CTRL_IS_SELF_SIGNED,           /** Determine whether the certificate is a self-signed certificate */
 
     CERT_CTRL_BUTT,
 } HITLS_CERT_CtrlCmd;
@@ -159,6 +160,12 @@ typedef enum {
     TLS_CERT_KEY_TYPE_ED25519 = BSL_CID_ED25519,
     TLS_CERT_KEY_TYPE_SM2 = BSL_CID_SM2DSA
 } HITLS_CERT_KeyType;
+
+typedef enum {
+    HITLS_BUILD_CHAIN_FLAG_NO_ROOT = 0x2,
+    HITLS_BUILD_CHAIN_FLAG_CHECK = 0x4,
+    HITLS_BUILD_CHAIN_FLAG_IGNORE_ERROR = 0x8,
+} HITLS_BUILD_CHAIN_FLAG;
 
 /**
  * @ingroup hitls_cert_type

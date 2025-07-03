@@ -183,6 +183,16 @@ static int32_t X509_SetMaxDepth(HITLS_X509_StoreCtx *storeCtx, int32_t *val, uin
     return HITLS_PKI_SUCCESS;
 }
 
+static int32_t X509_GetMaxDepth(HITLS_X509_StoreCtx *storeCtx, int32_t *val, uint32_t valLen)
+{
+    if (valLen != sizeof(int32_t)) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
+        return HITLS_X509_ERR_INVALID_PARAM;
+    }
+    *val = storeCtx->verifyParam.maxDepth;
+    return HITLS_PKI_SUCCESS;
+}
+
 static int32_t X509_SetParamFlag(HITLS_X509_StoreCtx *storeCtx, uint64_t *val, uint32_t valLen)
 {
     if (valLen != sizeof(uint64_t)) {
@@ -397,8 +407,8 @@ int32_t HITLS_X509_StoreCtxCtrl(HITLS_X509_StoreCtx *storeCtx, int32_t cmd, void
         case HITLS_X509_STORECTX_SET_VFY_SM2_USERID:
             return HITLS_X509_SetSm2UserId(&storeCtx->verifyParam.sm2UserId, val, valLen);
 #endif
-        case HITLS_X509_STORECTX_ADD_CA_PATH:
-            return X509_AddCAPath(storeCtx, val, valLen);
+        case HITLS_X509_STORECTX_GET_PARAM_DEPTH:
+            return X509_GetMaxDepth(storeCtx, val, valLen);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;

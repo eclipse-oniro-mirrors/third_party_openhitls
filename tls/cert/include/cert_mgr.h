@@ -280,7 +280,7 @@ void SAL_CERT_ClearCertAndKey(CERT_MgrCtx *mgrCtx);
 
 int32_t SAL_CERT_AddExtraChainCert(CERT_MgrCtx *mgrCtx, HITLS_CERT_X509 *cert);
 
-HITLS_CERT_Chain *SAL_CERT_GetExtraChainCerts(CERT_MgrCtx *mgrCtx);
+HITLS_CERT_Chain *SAL_CERT_GetExtraChainCerts(CERT_MgrCtx *mgrCtx, bool isExtraChainCertsOnly);
 
 void SAL_CERT_ClearExtraChainCerts(CERT_MgrCtx *mgrCtx);
 
@@ -296,26 +296,6 @@ void SAL_CERT_ClearExtraChainCerts(CERT_MgrCtx *mgrCtx);
  * @retval  HITLS_SUCCESS           succeeded.
  */
 int32_t SAL_CERT_CtrlVerifyParams(HITLS_Config *config, HITLS_CERT_Store *store, uint32_t cmd, void *in, void *out);
-
-/**
- * @brief   Set the verification depth
- *
- * @param   mgrCtx [IN] Certificate management struct
- * @param   depth  [IN] Verification depth
- *
- * @retval  HITLS_SUCCESS           succeeded.
- */
-int32_t SAL_CERT_SetVerifyDepth(CERT_MgrCtx *mgrCtx, uint32_t depth);
-
-/**
- * @brief   Obtain the verification depth
- *
- * @param   mgrCtx [IN] Certificate management struct
- * @param   depth  [IN] Verification depth
- *
- * @retval  HITLS_SUCCESS           succeeded.
- */
-int32_t SAL_CERT_GetVerifyDepth(CERT_MgrCtx *mgrCtx, uint32_t *depth);
 
 /**
  * @brief   Set the default passwd callback.

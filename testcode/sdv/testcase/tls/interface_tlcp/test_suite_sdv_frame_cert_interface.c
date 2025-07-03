@@ -116,7 +116,7 @@ void UT_TLS_CERT_CM_SetVerifyDepth_API_TC001(int version)
     HITLS_Config *tlsConfig = NULL;
     HITLS_Ctx *ctx = NULL;
     uint32_t depth = 5;
-    uint32_t dep = 0;
+    int32_t dep = 0;
 
     tlsConfig = HitlsNewCtx(version);
     ASSERT_TRUE(tlsConfig != NULL);

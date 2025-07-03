@@ -48,7 +48,6 @@ typedef struct TlsCipherSuiteInfo HITLS_Cipher;
 
 typedef struct TlsSessCtx HITLS_Session;
 
-typedef struct CertVerifyParamInner HITLS_CertVerifyParam;
 /**
 * @ingroup hitls_type
 * @brief   DTLS SCTP authkey length, which is specified in the protocol and can be used to determine the length

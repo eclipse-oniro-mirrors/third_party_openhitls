@@ -755,3 +755,32 @@ int32_t HITLS_SetCertCb(HITLS_Ctx *ctx, HITLS_CertCb certCb, void *arg)
     return HITLS_CFG_SetCertCb(&(ctx->config.tlsConfig), certCb, arg);
 }
 #endif /* HITLS_TLS_FEATURE_CERT_CB */
+
+#ifdef HITLS_TLS_CONFIG_CERT_BUILD_CHAIN
+int32_t HITLS_BuildCertChain(HITLS_Ctx *ctx, HITLS_BUILD_CHAIN_FLAG flag)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_BuildCertChain(&(ctx->config.tlsConfig), flag);
+}
+#endif
+
+int32_t HITLS_CtrlSetVerifyParams(HITLS_Ctx *ctx, HITLS_CERT_Store *store, uint32_t cmd, int64_t in, void *inArg)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_CtrlSetVerifyParams(&(ctx->config.tlsConfig), store, cmd, in, inArg);
+}
+
+int32_t HITLS_CtrlGetVerifyParams(HITLS_Ctx *ctx, HITLS_CERT_Store *store, uint32_t cmd, void *out)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_CtrlGetVerifyParams(&(ctx->config.tlsConfig), store, cmd, out);
+}

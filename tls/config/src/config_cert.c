@@ -190,24 +190,6 @@ HITLS_CERT_Store *HITLS_CFG_GetCertStore(const HITLS_Config *config)
     return SAL_CERT_GetCertStore(config->certMgrCtx);
 }
 
-int32_t HITLS_CFG_SetVerifyDepth(HITLS_Config *config, uint32_t depth)
-{
-    if (config == NULL) {
-        return HITLS_NULL_INPUT;
-    }
-
-    return SAL_CERT_SetVerifyDepth(config->certMgrCtx, depth);
-}
-
-int32_t HITLS_CFG_GetVerifyDepth(const HITLS_Config *config, uint32_t *depth)
-{
-    if (config == NULL) {
-        return HITLS_NULL_INPUT;
-    }
-
-    return SAL_CERT_GetVerifyDepth(config->certMgrCtx, depth);
-}
-
 int32_t HITLS_CFG_SetDefaultPasswordCb(HITLS_Config *config, HITLS_PasswordCb cb)
 {
     if (config == NULL) {
@@ -661,7 +643,17 @@ HITLS_CERT_Chain *HITLS_CFG_GetExtraChainCerts(HITLS_Config *config)
         return NULL;
     }
 
-    return SAL_CERT_GetExtraChainCerts(config->certMgrCtx);
+    return SAL_CERT_GetExtraChainCerts(config->certMgrCtx, false);
+}
+
+int32_t HITLS_CFG_ClearExtraChainCerts(HITLS_Config *config)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    SAL_CERT_ClearExtraChainCerts(config->certMgrCtx);
+    return HITLS_SUCCESS;
 }
 
 int32_t HITLS_CFG_RemoveCertAndKey(HITLS_Config *config)
@@ -893,7 +885,7 @@ int32_t HITLS_CFG_ParseCAList(HITLS_Config *config, const char *input, uint32_t 
     if (ret != HITLS_SUCCESS) {
         goto ERR;
     }
-    
+
     newCaNode->caType = HITLS_TRUSTED_CA_X509_NAME;
     newCaNode->data = nodeBuffer.data;
     newCaNode->dataSize = nodeBuffer.dataLen;
@@ -919,3 +911,141 @@ ERR:
     return ret;
 }
 #endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+
+#ifdef HITLS_TLS_CONFIG_CERT_BUILD_CHAIN
+static void FreeCertList(HITLS_CERT_X509 **certList, uint32_t certNum)
+{
+    if (certList == NULL) {
+        return;
+    }
+    for (uint32_t i = 0; i < certNum; i++) {
+        SAL_CERT_X509Free(certList[i]);
+    }
+}
+
+static int32_t CFG_BuildCertChain(HITLS_Config *config, HITLS_CERT_Store *store, HITLS_CERT_X509 *cert,
+    HITLS_BUILD_CHAIN_FLAG flag)
+{
+    CERT_MgrCtx *mgrCtx = config->certMgrCtx;
+    HITLS_CERT_X509 *certList[TLS_DEFAULT_VERIFY_DEPTH] = {0};
+    uint32_t certNum = TLS_DEFAULT_VERIFY_DEPTH;
+    int32_t ret = SAL_CERT_BuildChain(config, store, cert, certList, &certNum);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    if (flag & HITLS_BUILD_CHAIN_FLAG_NO_ROOT) {
+        if (certNum > 0) {
+            bool isSelfSigned = false;
+            ret =
+                SAL_CERT_X509Ctrl(config, certList[certNum - 1], CERT_CTRL_IS_SELF_SIGNED, NULL, (void *)&isSelfSigned);
+            if (ret != HITLS_SUCCESS) {
+                FreeCertList(certList, certNum);
+                return ret;
+            }
+            if (isSelfSigned) {
+                SAL_CERT_X509Free(certList[certNum - 1]);
+                certNum--;
+            }
+        }
+    }
+
+#ifdef HITLS_TLS_FEATURE_SECURITY
+    ret = CheckCertSecuritylevel(config, cert, false);
+    if (ret != HITLS_SUCCESS) {
+        FreeCertList(certList, certNum);
+        return ret;
+    }
+#endif
+    SAL_CERT_ClearCurrentChainCerts(mgrCtx);
+    for (uint32_t i = 1; i < certNum; i++) {
+#ifdef HITLS_TLS_FEATURE_SECURITY
+        ret = CheckCertSecuritylevel(config, certList[i], true);
+        if (ret != HITLS_SUCCESS) {
+            FreeCertList(certList, certNum);
+            return ret;
+        }
+#endif
+        HITLS_CERT_X509 *tempCert = SAL_CERT_X509Ref(mgrCtx, certList[i]);
+        ret = SAL_CERT_AddChainCert(mgrCtx, tempCert);
+        if (ret != HITLS_SUCCESS) {
+            SAL_CERT_X509Free(tempCert);
+            FreeCertList(certList, certNum);
+            return ret;
+        }
+    }
+    FreeCertList(certList, certNum);
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_CFG_BuildCertChain(HITLS_Config *config, HITLS_BUILD_CHAIN_FLAG flag)
+{
+    if (config == NULL || config->certMgrCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    CERT_MgrCtx *mgrCtx = config->certMgrCtx;
+    int32_t ret = HITLS_SUCCESS;
+    HITLS_CERT_X509 *cert = SAL_CERT_GetCurrentCert(mgrCtx);
+    if (cert == NULL) {
+        /* no certificate is added */
+        return HITLS_CONFIG_NO_CERT;
+    }
+    HITLS_CERT_Store *store = NULL;
+    if (flag & HITLS_BUILD_CHAIN_FLAG_CHECK) {
+        HITLS_CERT_Chain *chainCertList = SAL_CERT_GetCurrentChainCerts(mgrCtx);
+        if (chainCertList == NULL) {
+            return HITLS_SUCCESS;
+        }
+        store = SAL_CERT_StoreNew(mgrCtx);
+        if (store == NULL) {
+            return HITLS_MEMALLOC_FAIL;
+        }
+        HITLS_CERT_X509 *tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_FIRST(chainCertList);
+        while (tempCert != NULL) {
+            HITLS_CERT_X509 *refCert = SAL_CERT_X509Ref(mgrCtx, tempCert);
+            ret = SAL_CERT_StoreCtrl(config, store, CERT_STORE_CTRL_ADD_CERT_LIST, refCert, NULL);
+            if (ret != HITLS_SUCCESS) {
+                SAL_CERT_X509Free(refCert);
+                SAL_CERT_StoreFree(mgrCtx, store);
+                return ret;
+            }
+            tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_NEXT(chainCertList);
+        }
+    } else {
+        HITLS_CERT_Store *chainStore = SAL_CERT_GetChainStore(mgrCtx);
+        HITLS_CERT_Store *certStore = SAL_CERT_GetCertStore(mgrCtx);
+        store = (chainStore != NULL) ? chainStore : certStore;
+        if (store == NULL) {
+            SAL_CERT_ClearCurrentChainCerts(mgrCtx);
+            return HITLS_SUCCESS;
+        }
+    }
+
+    ret = CFG_BuildCertChain(config, store, cert, flag);
+    if (flag & HITLS_BUILD_CHAIN_FLAG_CHECK) {
+        SAL_CERT_StoreFree(mgrCtx, store);
+    }
+    return ret;
+}
+#endif
+
+int32_t HITLS_CFG_CtrlSetVerifyParams(
+    HITLS_Config *config, HITLS_CERT_Store *store, uint32_t cmd, int64_t in, void *inArg)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    if (inArg == NULL) {
+        return SAL_CERT_CtrlVerifyParams(config, store, cmd, &in, NULL);
+    }
+    return SAL_CERT_CtrlVerifyParams(config, store, cmd, inArg, NULL);
+}
+
+int32_t HITLS_CFG_CtrlGetVerifyParams(HITLS_Config *config, HITLS_CERT_Store *store, uint32_t cmd, void *out)
+{
+    if (config == NULL || out == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return SAL_CERT_CtrlVerifyParams(config, store, cmd, NULL, out);
+}

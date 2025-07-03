@@ -25,14 +25,7 @@
 extern "C" {
 #endif
 
-#define TLS_DEFAULT_VERIFY_DEPTH 20u
 #define CERT_DEFAULT_HASH_BKT_SIZE 64u
-
-struct CertVerifyParamInner {
-    uint32_t verifyDepth;   /* depth of verify */
-    uint32_t purpose;       /* purpose to check untrusted certificates */
-    uint32_t trust;         /* trust setting to check */
-};
 
 struct CertPairInner {
     HITLS_CERT_X509 *cert;      /* device certificate */
@@ -53,7 +46,6 @@ struct CertMgrCtxInner {
     HITLS_CERT_Store *verifyStore;              /* Verifies the store, which is used to verify the certificate chain. */
     HITLS_CERT_Store *chainStore;               /* Certificate chain store, used to assemble the certificate chain */
     HITLS_CERT_Store *certStore;                /* Default CA store */
-    HITLS_CertVerifyParam verifyParam;          /* Verification Parameters */
 #ifndef HITLS_TLS_FEATURE_PROVIDER
     HITLS_CERT_MgrMethod method;                /* callback function */
 #endif

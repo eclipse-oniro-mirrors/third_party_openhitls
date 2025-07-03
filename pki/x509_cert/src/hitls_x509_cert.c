@@ -645,6 +645,8 @@ static int32_t X509_CertGetCtrl(HITLS_X509_Cert *cert, int32_t cmd, void *val, u
 #endif // HITLS_PKI_INFO
         case HITLS_X509_GET_ENCODE_SUBJECT_DN:
             return HITLS_X509_GetListBuff(cert->tbs.subjectName, val, valLen);
+        case HITLS_X509_IS_SELF_SIGNED:
+            return HITLS_X509_CheckIssued(cert, cert, val);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;

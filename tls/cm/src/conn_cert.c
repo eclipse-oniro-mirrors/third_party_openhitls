@@ -76,24 +76,6 @@ HITLS_CERT_Store *HITLS_GetCertStore(const HITLS_Ctx *ctx)
     return HITLS_CFG_GetCertStore(&(ctx->config.tlsConfig));
 }
 
-int32_t HITLS_SetVerifyDepth(HITLS_Ctx *ctx, uint32_t depth)
-{
-    if (ctx == NULL) {
-        return HITLS_NULL_INPUT;
-    }
-
-    return HITLS_CFG_SetVerifyDepth(&(ctx->config.tlsConfig), depth);
-}
-
-int32_t HITLS_GetVerifyDepth(const HITLS_Ctx *ctx, uint32_t *depth)
-{
-    if (ctx == NULL) {
-        return HITLS_NULL_INPUT;
-    }
-
-    return HITLS_CFG_GetVerifyDepth(&(ctx->config.tlsConfig), depth);
-}
-
 int32_t HITLS_SetDefaultPasswordCb(HITLS_Ctx *ctx, HITLS_PasswordCb cb)
 {
     if (ctx == NULL) {

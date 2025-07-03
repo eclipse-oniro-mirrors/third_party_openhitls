@@ -54,9 +54,16 @@ int32_t HITLS_X509_Adapt_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store
 {
     (void)config;
     (void)output;
+    int32_t value1 = 0;
     switch (cmd) {
         case CERT_STORE_CTRL_SET_VERIFY_DEPTH:
-            return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_PARAM_DEPTH, input, sizeof(int32_t));
+            if (*(int64_t *)input > INT32_MAX) {
+                return HITLS_CERT_SELF_ADAPT_ERR;
+            }
+            value1 = *(int64_t *)input;
+            return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_PARAM_DEPTH, &value1, sizeof(int32_t));
+        case CERT_STORE_CTRL_GET_VERIFY_DEPTH:
+            return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_PARAM_DEPTH, output, sizeof(int32_t));
         case CERT_STORE_CTRL_ADD_CERT_LIST:
             return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SHALLOW_COPY_SET_CA, input,
                 sizeof(HITLS_X509_Cert));

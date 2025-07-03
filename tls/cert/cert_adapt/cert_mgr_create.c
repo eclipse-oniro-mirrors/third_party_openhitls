@@ -59,7 +59,6 @@ CERT_MgrCtx *SAL_CERT_MgrCtxProviderNew(HITLS_Lib_Ctx *libCtx, const char *attrN
         return NULL;
     }
 
-    newCtx->verifyParam.verifyDepth = TLS_DEFAULT_VERIFY_DEPTH;
 #ifndef HITLS_TLS_FEATURE_PROVIDER
     HITLS_CERT_MgrMethod *method = SAL_CERT_GetMgrMethod();
     (void)memcpy_s(&newCtx->method, sizeof(HITLS_CERT_MgrMethod), method, sizeof(HITLS_CERT_MgrMethod));
@@ -151,8 +150,6 @@ CERT_MgrCtx *SAL_CERT_MgrCtxDup(CERT_MgrCtx *mgrCtx)
     }
 
     newCtx->currentCertKeyType = mgrCtx->currentCertKeyType;
-    (void)memcpy_s(&newCtx->verifyParam, sizeof(HITLS_CertVerifyParam),
-        &mgrCtx->verifyParam, sizeof(HITLS_CertVerifyParam));
     newCtx->defaultPasswdCb = mgrCtx->defaultPasswdCb;
     newCtx->defaultPasswdCbUserData = mgrCtx->defaultPasswdCbUserData;
     newCtx->verifyCb = mgrCtx->verifyCb;

@@ -172,44 +172,48 @@ HITLS_CERT_Store *HITLS_GetCertStore(const HITLS_Ctx *ctx);
  * @brief   Set the certificate verification depth.
  *
  * @param   config [OUT] TLS link configuration
- * @param   depth   [IN] Verification depth
+ * @param   depth   [IN] Verification depth, type: uint32_t
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-int32_t HITLS_CFG_SetVerifyDepth(HITLS_Config *config, uint32_t depth);
+#define HITLS_CFG_SetVerifyDepth(config, depth) \
+    HITLS_CFG_CtrlSetVerifyParams(config, NULL, CERT_STORE_CTRL_SET_VERIFY_DEPTH, depth, NULL)
 
 /**
  * @ingroup hitls_cert
  * @brief   Obtain the certificate verification depth.
  *
  * @param   config [IN] TLS link configuration
- * @param   depth  [OUT] Certificate verification depth
+ * @param   depth  [OUT] Certificate verification depth, type: int32_t *
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-int32_t HITLS_CFG_GetVerifyDepth(const HITLS_Config *config, uint32_t *depth);
+#define HITLS_CFG_GetVerifyDepth(config, depth) \
+    HITLS_CFG_CtrlGetVerifyParams((HITLS_Config *)(uintptr_t)(config), NULL, CERT_STORE_CTRL_GET_VERIFY_DEPTH, depth)
 
 /**
  * @ingroup hitls_cert
  * @brief   Set the certificate verification depth.
  *
  * @param   ctx  [OUT] TLS link object
- * @param   depth [IN] Verification depth
+ * @param   depth [IN] Verification depth, type: uint32_t
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-int32_t HITLS_SetVerifyDepth(HITLS_Ctx *ctx, uint32_t depth);
+#define HITLS_SetVerifyDepth(ctx, depth) \
+    HITLS_CtrlSetVerifyParams(ctx, NULL, CERT_STORE_CTRL_SET_VERIFY_DEPTH, depth, NULL)
 
 /**
  * @ingroup hitls_cert
  * @brief   Obtain the certificate verification depth.
  *
  * @param   ctx   [IN] TLS link object
- * @param   depth [OUT] Certificate verification depth
+ * @param   depth [OUT] Certificate verification depth, type: int32_t *
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-int32_t HITLS_GetVerifyDepth(const HITLS_Ctx *ctx, uint32_t *depth);
+#define HITLS_GetVerifyDepth(ctx, depth) \
+    HITLS_CtrlGetVerifyParams(ctx, NULL, CERT_STORE_CTRL_GET_VERIFY_DEPTH, depth)
 
 /**
  * @ingroup hitls_cert
@@ -872,6 +876,16 @@ int32_t HITLS_CFG_AddExtraChainCert(HITLS_Config *config, HITLS_CERT_X509 *cert)
  */
 HITLS_CERT_Chain *HITLS_CFG_GetExtraChainCerts(HITLS_Config *config);
 
+/**
+ * @ingroup hitls_cert
+ * @brief   Release the attached certificate chain.
+ *
+ * @param   config  [IN] TLS link configuration
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_ClearExtraChainCerts(HITLS_Config *config);
+
 /* If the ClientHello callback is successfully executed, the handshake continues */
 #define HITLS_CERT_CALLBACK_SUCCESS 1
 /* The  ClientHello callback fails. Send an alert message and terminate the handshake */
@@ -976,6 +990,79 @@ int32_t HITLS_LogSecret(HITLS_Ctx *ctx, const char *label, const uint8_t *secret
  */
 int32_t HITLS_CFG_ParseCAList(HITLS_Config *config, const char *input, uint32_t inputLen, HITLS_ParseType inputType,
                               HITLS_ParseFormat format, HITLS_TrustedCAList **caList);
+
+/**
+ * @ingroup hitls_cert
+ * @brief  Before establishing a TLS connection, try to form a certificate chain as much as possible according to
+ * the flag.
+ * @param   config [OUT] TLS link configuration
+ * @param   flag [IN] Control how to group certificate chains based on flags, see HITLS_BUILD_CHAIN_FLAG.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_BuildCertChain(HITLS_Config *config, HITLS_BUILD_CHAIN_FLAG flag);
+
+/**
+ * @ingroup hitls_cert
+ * @brief  Before establishing a TLS connection, try to form a certificate chain as much as possible according to
+ * the flag.
+ * @param   ctx [OUT] TLS link configuration
+ * @param   flag [IN] Control how to group certificate chains based on flags, see HITLS_BUILD_CHAIN_FLAG.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_BuildCertChain(HITLS_Ctx *ctx, HITLS_BUILD_CHAIN_FLAG flag);
+
+/**
+ * @ingroup hitls_cert
+ * @brief  Set certificate verification parameters.
+ * @param   config [OUT] TLS link configuration
+ * @param   store  [IN] Certificate store
+ * @param   cmd    [IN] Operation command, HITLS_CERT_CtrlCmd enum
+ * @param   in     [IN] Input parameter, integer type
+ * @param   inArg  [IN] Input parameter, pointer type
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_CtrlSetVerifyParams(
+    HITLS_Config *config, HITLS_CERT_Store *store, uint32_t cmd, int64_t in, void *inArg);
+
+/**
+ * @ingroup hitls_cert
+ * @brief  Get certificate verification parameters.
+ * @param   config [IN] TLS link configuration
+ * @param   store  [IN] Certificate store
+ * @param   cmd    [IN] Operation command, HITLS_CERT_CtrlCmd enum
+ * @param   out    [OUT] Output parameter
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_CtrlGetVerifyParams(HITLS_Config *config, HITLS_CERT_Store *store, uint32_t cmd, void *out);
+
+/**
+ * @ingroup hitls_cert
+ * @brief  Set certificate verification parameters.
+ * @param   ctx [OUT] TLS link configuration
+ * @param   store  [IN] Certificate store
+ * @param   cmd    [IN] Operation command, HITLS_CERT_CtrlCmd enum
+ * @param   in     [IN] Input parameter, integer type
+ * @param   inArg  [IN] Input parameter, pointer type
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CtrlSetVerifyParams(HITLS_Ctx *ctx, HITLS_CERT_Store *store, uint32_t cmd, int64_t in, void *inArg);
+
+/**
+ * @ingroup hitls_cert
+ * @brief  Get certificate verification parameters.
+ * @param   ctx [IN] TLS link configuration
+ * @param   store  [IN] Certificate store
+ * @param   cmd    [IN] Operation command, HITLS_CERT_CtrlCmd enum
+ * @param   out    [OUT] Output parameter
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CtrlGetVerifyParams(HITLS_Ctx *ctx, HITLS_CERT_Store *store, uint32_t cmd, void *out);
 
 #ifdef __cplusplus
 }

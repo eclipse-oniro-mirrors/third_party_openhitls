@@ -298,7 +298,7 @@
                             "config_cert_verify_param": null,
                             "config_cert_load_file": null,
                             "config_cert_callback": null,
-                            "config_cert_verify_location": null
+                            "config_cert_build_chain": null
                         },
                         "config_key_usage": null,
                         "config_state": null,

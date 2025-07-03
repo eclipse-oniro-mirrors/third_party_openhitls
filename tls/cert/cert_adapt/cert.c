@@ -693,7 +693,13 @@ static int32_t EncodeCertificateChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t buf
         *usedLen = offset;
         return HITLS_SUCCESS;
     }
-    tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_FIRST(currentCertPair->chain);
+    HITLS_CERT_Chain *chain = NULL;
+    if (BSL_LIST_COUNT(currentCertPair->chain) > 0) {
+        chain = currentCertPair->chain;
+    } else {
+        chain = mgrCtx->extraChain;
+    }
+    tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_FIRST(chain);
     uint32_t tempOffset = offset;
     uint32_t certIndex = 1;
     while (tempCert != NULL) {
@@ -709,7 +715,7 @@ static int32_t EncodeCertificateChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t buf
         }
         tempOffset += *usedLen;
         certIndex++;
-        tempCert = BSL_LIST_GET_NEXT(currentCertPair->chain);
+        tempCert = BSL_LIST_GET_NEXT(chain);
     }
     *usedLen = tempOffset;
     return HITLS_SUCCESS;
@@ -785,9 +791,8 @@ int32_t SAL_CERT_EncodeCertChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, 
         return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15046, "encode device cert err");
     }
     offset += *usedLen;
-    uint32_t listSize = (uint32_t)BSL_LIST_COUNT(currentCertPair->chain);
     // Check the size. If a certificate exists in the chain, directly put the data in the chain into the buf and return.
-    if (listSize > 0) {
+    if (BSL_LIST_COUNT(currentCertPair->chain) > 0 || BSL_LIST_COUNT(mgrCtx->extraChain) > 0) {
         return EncodeCertificateChain(ctx, buf, bufLen, usedLen, offset);
     }
     *usedLen = offset;
@@ -991,9 +996,7 @@ int32_t SAL_CERT_VerifyCertChain(HITLS_Ctx *ctx, CERT_Pair *certPair, bool isTlc
 
     /* Verify the certificate chain. */
     HITLS_CERT_Store *store = (mgrCtx->verifyStore != NULL) ? mgrCtx->verifyStore : mgrCtx->certStore;
-    uint32_t depth = mgrCtx->verifyParam.verifyDepth;
-    if (store == NULL ||
-        (SAL_CERT_StoreCtrl(config, store, CERT_STORE_CTRL_SET_VERIFY_DEPTH, &depth, NULL) != HITLS_SUCCESS)) {
+    if (store == NULL) {
         BSL_SAL_FREE(certList);
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_CERT_ERR_VERIFY_CERT_CHAIN, BINLOG_ID16333, "Calloc fail");
     }
