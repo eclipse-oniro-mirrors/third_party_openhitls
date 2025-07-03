@@ -41,9 +41,9 @@
                 "chacha20poly1305",
                 "aes",
                 "gcm",
-                "sha256",
-                "sha384",
-                "sha512",
+                "sha1",
+                "sha2",
+                "sha3",
                 "bn_rand",
                 "x25519",
                 "curve_nistp256",
@@ -59,12 +59,16 @@
                 "ealinit",
                 "entropy",
                 "drbg_hash",
-                "sha256",
-                "sha384",
-                "sha512",
+                "drbg_hmac",
+                "drbg_ctr",
+                "sha1",
+                "sha2",
+                "sha3",
                 "hkdf",
                 "aes",
                 "gcm",
+                "ccm",
+                "cbc",
                 "chacha20",
                 "hpke",
                 "bn",
@@ -73,15 +77,16 @@
                 "curve_nistp256",
                 "curve_nistp384",
                 "curve_nistp521",
-                "drbg_ctr",
+                "sm2",
                 "cmac_aes",
                 "ecdsa",
                 "ecdh",
                 "ecc",
+                "rsa",
                 "mlkem",
                 "mldsa",
                 "slh_dsa",
-                "cbc"
+                "codecskey"
             ]
         },
         "hitls_tls": {
@@ -91,7 +96,6 @@
                 "callback_crypt",
                 "config",
                 "host",
-                "maintain",
                 "proto",
                 "proto_tlcp11",
                 "suite_ecdhe_sm4_cbc_sm3",
@@ -106,10 +110,15 @@
                 "pkcs12",
                 "x509"
             ]
+        },
+        "hitls_auth": {
+            "c": [
+                "privpass_token"
+            ]
         }
     },
     "endian": "little",
     "bits": 64,
-    "asmType": "no_asm",
+    "asmType": "armv8",
     "system": "linux"
 }
