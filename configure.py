@@ -106,8 +106,8 @@ def get_cfg_args():
         parser.add_argument('--asm_type', type=str, help='Assembly Type, default is "no_asm".')
         parser.add_argument('--asm', metavar='feature', default=[], nargs='+', help='config asm, such as --asm sha2')
         # System Configuration
-        parser.add_argument('--system', default='linux', metavar='linux', type=str,
-                            help='To enable feature "sal_xxx", should specify the system, default is "linux".')
+        parser.add_argument('--system', type=str,
+                            help='To enable feature "sal_xxx", should specify the system.')
         parser.add_argument('--endian', metavar='little|big', type=str, choices=['little', 'big'],
                             help='Specify the platform endianness as little or big, default is "little".')
         parser.add_argument('--bits', metavar='32|64', type=int, choices=[32, 64],
@@ -222,6 +222,7 @@ class Configure:
         # Set parameters by referring to "FeatureConfigParser.key_value".
         conf_custom_feature.set_param('libType', self._args.lib_type)
         conf_custom_feature.set_param('endian', self._args.endian)
+        conf_custom_feature.set_param('system', self._args.system, False)
         conf_custom_feature.set_param('bits', self._args.bits, False)
         if self._args.bundle_libs:
             conf_custom_feature.set_param('bundleLibs', self._args.bundle_libs)
