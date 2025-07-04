@@ -68,7 +68,7 @@ int32_t ENTROPY_GetFullEntropyInput(void *ctx, ENTROPY_SeedPool *pool, bool isNp
     }
     uint32_t remEnt = needEntropy;
     uint32_t remLen = len;
-    do {
+    while (remEnt > 0) {
         uint32_t tmpLen = tmpDataLen;
         uint32_t oneEnt = (remEnt < conEnt) ? remEnt : conEnt;
         uint32_t entropy = ENTROPY_SeedPoolCollect(pool, isNpesUsed, oneEnt, tmpData, &tmpLen);
@@ -94,7 +94,7 @@ int32_t ENTROPY_GetFullEntropyInput(void *ctx, ENTROPY_SeedPool *pool, bool isNp
         }
         ptr += cpLen;
         remLen -= cpLen;
-    } while (remEnt > 0);
+    }
     if (remLen > 0) {
         uint32_t leftLen = remLen;
         uint32_t entropy = ENTROPY_SeedPoolCollect(pool, true, 0, ptr, &leftLen);

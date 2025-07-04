@@ -83,7 +83,7 @@ typedef struct DrbgCtx DRBG_Ctx;
 #ifdef HITLS_CRYPTO_ENTROPY
     #ifndef HITLS_SEED_DRBG_INIT_RAND_ALG
         #ifdef HITLS_CRYPTO_AES
-            #define  HITLS_SEED_DRBG_INIT_RAND_ALG   CRYPT_RAND_AES256_CTR_DF
+            #define  HITLS_SEED_DRBG_INIT_RAND_ALG   CRYPT_RAND_AES256_CTR
         #else
             #error "HITLS_SEED_DRBG_INIT_RAND_ALG configuration error."
         #endif

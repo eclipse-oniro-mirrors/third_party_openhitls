@@ -40,7 +40,7 @@ static uint32_t GetMinLen(void *pool, uint32_t entropy, uint32_t minLen)
 EAL_EntropyCtx *EAL_EntropyNewCtx(CRYPT_EAL_SeedPoolCtx *seedPool, uint8_t isNpesUsed, uint32_t minLen,
     uint32_t maxLen, uint32_t entropy)
 {
-    if (minLen > maxLen) {
+    if (minLen > maxLen || maxLen == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return NULL;
     }
