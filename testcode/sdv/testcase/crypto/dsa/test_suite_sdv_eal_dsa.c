@@ -995,6 +995,8 @@ EXIT:
 void SDV_CRYPTO_DSA_KEY_PAIR_GEN_BY_PARAM_FUNC_TC001()
 {
 #ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)flag;
+    (void)gIndex;
     SKIP_TEST();
 #else
     uint32_t type = CRYPT_DSA_FFC_PARAM;
