@@ -25,7 +25,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>
-
+#include "securec.h"
 #include "bsl_sal.h"
 #include "bsl_errno.h"
 #include "sal_net.h"
@@ -123,7 +123,7 @@ uint32_t SAL_NET_SockAddrSize(const BSL_SAL_SockAddr sockAddr)
 
 void SAL_NET_SockAddrCopy(BSL_SAL_SockAddr dst, BSL_SAL_SockAddr src)
 {
-    memcpy(dst, src, sizeof(LinuxSockAddr));
+    memcpy_s(dst, sizeof(LinuxSockAddr), src, sizeof(LinuxSockAddr));
 }
 
 int32_t SAL_Socket(int32_t af, int32_t type, int32_t protocol)
