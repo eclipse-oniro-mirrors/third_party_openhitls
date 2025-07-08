@@ -414,6 +414,9 @@ static int32_t ParseClientHelloMsg(FRAME_Type *frameType, const uint8_t *buffer,
                 offset = tmpOffset;
                 break;
         }
+        if (tmpOffset == offset) {
+            break;
+        }
     }
     *parseLen += offset;
     return HITLS_SUCCESS;
@@ -581,6 +584,7 @@ static int32_t ParseCertificateMsg(
 
     FrameCertItem *certItem = NULL;
     while (offset < bufLen) {
+        uint32_t tmpOffset = offset;
         FrameCertItem *item = BSL_SAL_Calloc(1u, sizeof(FrameCertItem));
         if (item == NULL) {
             return HITLS_MEMALLOC_FAIL;
@@ -598,6 +602,9 @@ static int32_t ParseCertificateMsg(
             certItem->next = item;
         }
         certItem = item;
+        if (tmpOffset == offset) {
+            break;
+        }
     }
     *parseLen += offset;
 
