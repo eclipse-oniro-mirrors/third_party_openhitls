@@ -15,7 +15,6 @@
                 "hash",
                 "sal_str",
                 "sal_file",
-                "uio_addr",
                 "uio_buffer",
                 "uio_mem",
                 "uio_plt",

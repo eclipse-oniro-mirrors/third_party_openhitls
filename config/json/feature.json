@@ -24,11 +24,10 @@
                     "tlv": null,
                     "uio": {
                         "uio_plt": null,
-                        "uio_addr" : {"deps": ["uio_plt"]},
                         "uio_buffer": {"deps": ["uio_plt"]},
                         "uio_sctp": {"deps": ["uio_plt", "sal_net"]},
-                        "uio_tcp": {"deps": ["uio_plt", "sal_net", "uio_addr"]},
-                        "uio_udp": {"deps": ["uio_plt", "sal_net", "uio_addr"]},
+                        "uio_tcp": {"deps": ["uio_plt", "sal_net"]},
+                        "uio_udp": {"deps": ["uio_plt", "sal_net"]},
                         "uio_mem": {"deps": ["uio_plt", "sal_mem", "buffer"]}
                     },
                     "usrdata": null,
