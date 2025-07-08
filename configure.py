@@ -391,7 +391,7 @@ class CMakeGenerator:
             cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_tls':
             cmake += self._gen_cmd_cmake("target_link_directories", "hitls_tls-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
-            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_tls-shared hitls_bsl-shared " + str(self._args.securec_lib))
+            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_tls-shared hitls_pki-shared hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_pki':
             cmake += self._gen_cmd_cmake("target_link_directories", "hitls_pki-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake(
