@@ -44,12 +44,12 @@ static void UpdateSize(BN_BigNum *r, uint32_t modSize)
 }
 
 #define P521SIZE SIZE_OF_BNUINT(521)
-#define P256SIZE SIZE_OF_BNUINT(256)
 #define SIZE_OF_BNUINT(bits) (((bits) + BN_UINT_BITS - 1) / BN_UINT_BITS) // 1byte = 8bit
 
 
 #if defined(HITLS_SIXTY_FOUR_BITS)
 #define P224SIZE SIZE_OF_BNUINT(224)
+#define P256SIZE SIZE_OF_BNUINT(256)
 #define P384SIZE SIZE_OF_BNUINT(384)
 
 BN_UINT g_modDataP224[][P224SIZE] = {
@@ -1034,6 +1034,9 @@ int32_t BN_ModNistEccSqr(BN_BigNum *r, const BN_BigNum *a, void *data, BN_Optimi
 }
 
 #ifdef HITLS_CRYPTO_CURVE_SM2
+
+#define SM2SIZE SIZE_OF_BNUINT(256)
+
 // The user must ensure that a < m, and a->room & b->room are not less than mod->size.
 // All the data must be not negative number, otherwise the API may be not functional.
 int32_t BN_ModSm2EccMul(BN_BigNum *r, const BN_BigNum *a, const BN_BigNum *b, void *data, BN_Optimizer *opt)
@@ -1047,12 +1050,12 @@ int32_t BN_ModSm2EccMul(BN_BigNum *r, const BN_BigNum *a, const BN_BigNum *b, vo
     if (a->size == 0 || b->size == 0) {
         return BN_Zeroize(r);
     }
-    BN_UINT tData[P256SIZE << 1] = { 0 };
+    BN_UINT tData[SM2SIZE << 1] = { 0 };
     BN_BigNum rMul = {
         .data = tData,
         .size = 0,
         .sign = false,
-        .room = P256SIZE << 1
+        .room = SM2SIZE << 1
     };
     uint32_t size = mod->size << 1;
     rMul.size = MulNistP256P224(rMul.data, size, a->data, mod->size, b->data, mod->size);
@@ -1073,12 +1076,12 @@ int32_t BN_ModSm2EccSqr(BN_BigNum *r, const BN_BigNum *a, void *data, BN_Optimiz
     if (a->size == 0) {
         return BN_Zeroize(r);
     }
-    BN_UINT tData[P256SIZE << 1] = { 0 };
+    BN_UINT tData[SM2SIZE << 1] = { 0 };
     BN_BigNum rSqr = {
         .data = tData,
         .size = 0,
         .sign = false,
-        .room = P256SIZE << 1
+        .room = SM2SIZE << 1
     };
     uint32_t size = mod->size << 1;
     rSqr.size = SqrNistP256P224(rSqr.data, size, a->data, mod->size);
