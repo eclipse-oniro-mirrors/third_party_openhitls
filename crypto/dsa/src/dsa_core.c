@@ -1583,4 +1583,58 @@ int32_t CRYPT_DSA_Ctrl(CRYPT_DSA_Ctx *ctx, int32_t opt, void *val, uint32_t len)
     return CRYPT_DSA_UNSUPPORTED_CTRL_OPTION;
 }
 
+#ifdef HITLS_CRYPTO_DSA_CHECK
+
+static int32_t DsaKeyPairCheck(const CRYPT_DSA_Ctx *pub, const CRYPT_DSA_Ctx *prv)
+{
+    int32_t ret;
+    if (prv == NULL || pub == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (prv->para == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DH_PARA_ERROR);
+        return CRYPT_DH_PARA_ERROR;
+    }
+    ret = CRYPT_FFC_KeyPairCheck(prv->x, pub->y, prv->para->p, prv->para->g);
+    if (ret == CRYPT_PAIRWISE_CHECK_FAIL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_PAIRWISE_CHECK_FAIL);
+        ret = CRYPT_DSA_PAIRWISE_CHECK_FAIL;
+    }
+    return ret;
+}
+
+/*
+ * SP800-56a 5.6.2.1.2
+ * for check an FFC key pair.
+*/
+static int32_t DsaPrvKeyCheck(const CRYPT_DSA_Ctx *pkey)
+{
+    if (pkey == NULL || pkey->para == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    int32_t ret = CRYPT_FFC_PrvCheck(pkey->x, pkey->para->p, pkey->para->q);
+    if (ret == CRYPT_INVALID_KEY) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_INVALID_PRVKEY);
+        ret = CRYPT_DSA_INVALID_PRVKEY;
+    }
+    return ret;
+}
+
+int32_t CRYPT_DSA_Check(uint32_t checkType, const CRYPT_DSA_Ctx *pkey1, const CRYPT_DSA_Ctx *pkey2)
+{
+    switch (checkType) {
+        case CRYPT_PKEY_CHECK_KEYPAIR:
+            return DsaKeyPairCheck(pkey1, pkey2);
+        case CRYPT_PKEY_CHECK_PRVKEY:
+            return DsaPrvKeyCheck(pkey1);
+        default:
+            BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+            return CRYPT_INVALID_ARG;
+    }
+}
+
+#endif // HITLS_CRYPTO_DSA_CHECK
+
 #endif /* HITLS_CRYPTO_DSA */

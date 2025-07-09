@@ -382,6 +382,23 @@ int32_t CRYPT_ECDSA_Import(CRYPT_ECDSA_Ctx *ctx, const BSL_Param *params);
 int32_t CRYPT_ECDSA_Export(const CRYPT_ECDSA_Ctx *ctx, BSL_Param *params);
 
 #endif // HITLS_CRYPTO_PROVIDER
+
+#ifdef HITLS_CRYPTO_ECDSA_CHECK
+/**
+ * @ingroup ecdsa
+ * @brief ecdsa check public key
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] ecdsa context structure
+ * @param pkey2 [IN] ecdsa context structure
+ *
+ * @retval CRYPT_SUCCESS    is the same
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_ECDSA_Check(uint32_t checkType, const CRYPT_ECDSA_Ctx *pkey1, const CRYPT_ECDSA_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_ECDSA_CHECK
+
 #ifdef __cplusplus
 }
 #endif

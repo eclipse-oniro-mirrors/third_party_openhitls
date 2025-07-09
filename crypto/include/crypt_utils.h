@@ -282,6 +282,34 @@ int32_t CRYPT_Mgf1(const EAL_MdMethod *hashMethod, const uint8_t *seed, const ui
  */
 int32_t CRYPT_GetPkeyProcessParams(BSL_Param *params, CRYPT_EAL_ProcessFuncCb *processCb, void **args);
 
+#if (defined(HITLS_CRYPTO_DH_CHECK) || defined(HITLS_CRYPTO_DSA_CHECK))
+/**
+ * @brief check the key pair consistency
+ *
+ * @param x [IN] FFC private key
+ * @param y [IN] FFC public key
+ * @param p [IN] FFC prime
+ * @param g [IN] FFC generator
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_FFC_KeyPairCheck(const void *x, const void *y, const void *p, const void *g);
+
+/**
+ * @brief check the private key
+ *
+ * @param x [IN] FFC private key
+ * @param p [IN] FFC prime
+ * @param q [IN] FFC subprime
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_FFC_PrvCheck(const void *x, const void *p, const void *q);
+
+#endif // HITLS_CRYPTO_DH_CHECK || HITLS_CRYPTO_DSA_CHECK
+
 /* Assumes that x is uint32_t and 0 < n < 32 */
 #define ROTL32(x, n) (((x) << (n)) | ((x) >> (32 - (n))))
 

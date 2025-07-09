@@ -140,7 +140,7 @@ typedef int32_t (*PkeyRecover)(const void *key, const uint8_t *sign, uint32_t si
     uint8_t *data, uint32_t *dataLen);
 typedef int32_t (*PkeyComputeShareKey)(const void *key, const void *pub, uint8_t *share, uint32_t *shareLen);
 typedef int32_t (*PkeyCrypt)(const void *key, const uint8_t *data, uint32_t dataLen, uint8_t *out, uint32_t *outLen);
-typedef int32_t (*PkeyCheck)(const void *prv, const void *pub);
+typedef int32_t (*PkeyCheck)(uint32_t checkType, const void *key1, const void *key2);
 typedef int32_t (*PkeyCmp)(const void *key1, const void *key2);
 typedef int32_t (*PkeyCopyParam)(const void *src, void *dest);
 typedef int32_t (*PkeyGetSecBits)(const void *key);
@@ -455,6 +455,12 @@ typedef enum {
     CRYPT_CTRL_GET_ITER,            /* kdf get iter . */
     CRYPT_CTRL_GET_KEYLEN           /* kdf get keyLen . */
 } CRYPT_KdfCtrl;
+
+typedef enum {
+    CRYPT_PKEY_CHECK_KEYPAIR = 1, /**< Check the key pair. */
+    CRYPT_PKEY_CHECK_PRVKEY = 2,  /**< Check the private key. */
+    CRYPT_PKEY_CHECK_MAX,
+} CRYPT_KeyCheckType;
 
 #ifdef __cplusplus
 }

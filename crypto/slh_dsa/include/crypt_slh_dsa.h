@@ -125,5 +125,21 @@ int32_t CRYPT_SLH_DSA_SetPubKey(CryptSlhDsaCtx *ctx, const BSL_Param *para);
  */
 int32_t CRYPT_SLH_DSA_SetPrvKey(CryptSlhDsaCtx *ctx, const BSL_Param *para);
 
+#ifdef HITLS_CRYPTO_SLH_DSA_CHECK
+
+/**
+ * @brief Check the key pair of SLH-DSA
+ *
+ * @param checkType Check type
+ * @param pkey1 Pointer to the first SLH-DSA context
+ * @param pkey2 Pointer to the second SLH-DSA context
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_SLH_DSA_Check(uint32_t checkType, const CryptSlhDsaCtx *pkey1, const CryptSlhDsaCtx *pkey2);
+
+#endif // HITLS_CRYPTO_SLH_DSA_CHECK
+
 #endif // HITLS_CRYPTO_SLH_DSA
 #endif // CRYPT_SLH_DSA_H

@@ -51,4 +51,21 @@ int32_t CRYPT_ML_KEM_Encaps(const CRYPT_ML_KEM_Ctx *ctx, uint8_t *cipher, uint32
 int32_t CRYPT_ML_KEM_Decaps(const CRYPT_ML_KEM_Ctx *ctx, uint8_t *cipher, uint32_t cipherLen,
     uint8_t *share, uint32_t *shareLen);
 
+#ifdef HITLS_CRYPTO_MLKEM_CHECK
+
+/**
+ * @ingroup mlkem
+ * @brief check the key pair consistency
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] mlkem key context structure
+ * @param pkey2 [IN] mlkem key context structure
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_ML_KEM_Check(uint32_t checkType, const CRYPT_ML_KEM_Ctx *pkey1, const CRYPT_ML_KEM_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_MLKEM_CHECK
+
 #endif    // CRYPT_ML_KEM_H

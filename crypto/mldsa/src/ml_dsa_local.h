@@ -89,4 +89,10 @@ int32_t MLDSA_SignInternal(const CRYPT_ML_DSA_Ctx *ctx, CRYPT_Data *msg, uint8_t
 
 int32_t MLDSA_VerifyInternal(const CRYPT_ML_DSA_Ctx *ctx, CRYPT_Data *msg, const uint8_t *sign, uint32_t signLen);
 
+#ifdef HITLS_CRYPTO_MLDSA_CHECK
+// calculate public key from private key
+int32_t MLDSA_CalPub(const CRYPT_ML_DSA_Ctx *ctx, uint8_t *pub, uint32_t pubLen);
+
+#endif // HITLS_CRYPTO_MLDSA_CHECK
+
 #endif    // ML_DSA_LOCAL_H

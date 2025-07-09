@@ -358,6 +358,22 @@ int32_t CRYPT_SM2_Import(CRYPT_SM2_Ctx *ctx, const BSL_Param *params);
 int32_t CRYPT_SM2_Export(const CRYPT_SM2_Ctx *ctx, BSL_Param *params);
 #endif
 
+#ifdef HITLS_CRYPTO_SM2_CHECK
+/**
+ * @ingroup sm2
+ * @brief sm2 check public key
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] sm2 context structure
+ * @param pkey2 [IN] sm2 context structure
+ *
+ * @retval CRYPT_SUCCESS    is the same
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_SM2_Check(uint32_t checkType, const CRYPT_SM2_Ctx *pkey1, const CRYPT_SM2_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_SM2_CHECK
+
 #ifdef __cplusplus
 }
 #endif

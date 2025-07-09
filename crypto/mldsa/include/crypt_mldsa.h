@@ -49,4 +49,21 @@ int32_t CRYPT_ML_DSA_GetPubKey(const CRYPT_ML_DSA_Ctx *ctx, BSL_Param *param);
 
 int32_t CRYPT_ML_DSA_Cmp(const CRYPT_ML_DSA_Ctx *a, const CRYPT_ML_DSA_Ctx *b);
 
+#ifdef HITLS_CRYPTO_MLDSA_CHECK
+
+/**
+ * @ingroup mldsa
+ * @brief check the key pair consistency
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] mldsa key context structure
+ * @param pkey2 [IN] mldsa key context structure
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_ML_DSA_Check(uint32_t checkType, const CRYPT_ML_DSA_Ctx *pkey1, const CRYPT_ML_DSA_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_MLDSA_CHECK
+
 #endif    // CRYPT_ML_DSA_H

@@ -581,6 +581,23 @@ int32_t CRYPT_RSA_VerifyPkcsV15Type2TLS(const uint8_t *in, uint32_t inLen, uint8
  */
 int32_t CRYPT_RSA_GetSecBits(const CRYPT_RSA_Ctx *ctx);
 
+#ifdef HITLS_CRYPTO_RSA_CHECK
+
+/**
+ * @ingroup rsa
+ * @brief check the key pair consistency
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] rsa key context structure
+ * @param pkey2 [IN] rsa key context structure
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_RSA_Check(uint32_t checkType, const CRYPT_RSA_Ctx *pkey1, const CRYPT_RSA_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_RSA_CHECK
+
 #ifdef HITLS_CRYPTO_PROVIDER
 /**
  * @ingroup RSA

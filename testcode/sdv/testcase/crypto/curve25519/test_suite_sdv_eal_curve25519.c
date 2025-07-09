@@ -29,6 +29,8 @@
 #include "eal_pkey_local.h"
 #include "crypt_eal_rand.h"
 #include "securec.h"
+#include "curve25519_local.h"
+#include "crypt_curve25519.h"
 
 #define CRYPT_EAL_PKEY_KEYMGMT_OPERATE  0
 #define CRYPT_EAL_PKEY_CIPHER_OPERATE   1
@@ -916,13 +918,20 @@ EXIT:
  *    4. Return CRYPT_SUCCESS when expect is 1, CRYPT_CURVE25519_VERIFY_FAIL otherwise.
  */
 /* BEGIN_CASE */
-void SDV_CRYPTO_ED25519_KEY_PAIR_CHECK_FUNC_TC001(Hex *pubkey, Hex *prvkey,  int expect, int isProvider)
+void SDV_CRYPTO_ED25519_KEY_PAIR_CHECK_FUNC_TC001(Hex *pubkey, Hex *prvkey, int expect, int isProvider)
 {
+#if !defined(HITLS_CRYPTO_ED25519_CHECK)
+    (void)prvkey;
+    (void)pubkey;
+    (void)expect;
+    (void)isProvider;
+    SKIP_TEST();
+#else
     CRYPT_EAL_PkeyCtx *pubCtx = NULL;
     CRYPT_EAL_PkeyCtx *prvCtx = NULL;
     CRYPT_EAL_PkeyPub pub = {0};
     CRYPT_EAL_PkeyPrv prv = {0};
-    int expectRet = expect == 1 ? CRYPT_SUCCESS : CRYPT_CURVE25519_VERIFY_FAIL;
+    int expectRet = expect == 1 ? CRYPT_SUCCESS : CRYPT_CURVE25519_PAIRWISE_CHECK_FAIL;
 
     Set_Curve25519_Prv(&prv, CRYPT_PKEY_ED25519, prvkey->x, prvkey->len);
     Set_Curve25519_Pub(&pub, CRYPT_PKEY_ED25519, pubkey->x, pubkey->len);
@@ -943,6 +952,7 @@ void SDV_CRYPTO_ED25519_KEY_PAIR_CHECK_FUNC_TC001(Hex *pubkey, Hex *prvkey,  int
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pubCtx);
     CRYPT_EAL_PkeyFreeCtx(prvCtx);
+#endif
 }
 /* END_CASE */
 
@@ -989,57 +999,78 @@ EXIT:
 }
 /* END_CASE */
 
-#ifdef HITLS_CRYPTO_PROVIDER
-static int32_t ImportCurve25519Pkey(const BSL_Param *param, void *args)
-{
-    CRYPT_CURVE25519_Ctx *importEd25519Ctx = CRYPT_ED25519_NewCtx();
-    if (importEd25519Ctx == NULL) {
-        return CRYPT_MEM_ALLOC_FAIL;
-    }
-    int32_t ret = CRYPT_CURVE25519_Import(importEd25519Ctx, param);
-    if (ret != CRYPT_SUCCESS) {
-        CRYPT_CURVE25519_FreeCtx(importEd25519Ctx);
-        return ret;
-    }
-    *((CRYPT_CURVE25519_Ctx **)args) = importEd25519Ctx;
-    return CRYPT_SUCCESS;
-}
-#endif
-
 /**
- * @test   SDV_CRYPTO_CURVE25519_Import_Export_FUNC_TC001
- * @title  CRYPT_CURVE25519_Import and CRYPT_CURVE25519_Export test.
+ * @test   SDV_CRYPTO_CURVE25519_KEY_PAIR_CHECK_FUNC_TC001
+ * @brief  CURVE25519: key pair check.
  */
 /* BEGIN_CASE */
-void SDV_CRYPTO_CURVE25519_Import_Export_FUNC_TC001(void)
+void SDV_CRYPTO_CURVE25519_KEY_PAIR_CHECK_FUNC_TC001(int id, int isProvider)
 {
-#ifndef HITLS_CRYPTO_PROVIDER
+#if !defined(HITLS_CRYPTO_ED25519_CHECK) && !defined(HITLS_CRYPTO_X25519_CHECK)
+    (void)id;
+    (void)isProvider;
     SKIP_TEST();
 #else
-    CRYPT_CURVE25519_Ctx *srcCurve25519Ctx = NULL;
-    CRYPT_CURVE25519_Ctx *dstCurve25519Ctx = NULL;
-    BSL_Param param[3] = {
-        {CRYPT_PARAM_PKEY_PROCESS_FUNC, BSL_PARAM_TYPE_FUNC_PTR, ImportCurve25519Pkey, 0, 0},
-        {CRYPT_PARAM_PKEY_PROCESS_ARGS, BSL_PARAM_TYPE_CTX_PTR, &dstCurve25519Ctx, 0, 0},
-        BSL_PARAM_END
-    };
-    uint8_t data[2] = {1};
-    uint32_t dataLen = sizeof(data);
-    uint8_t signBuf[CRYPT_CURVE25519_SIGNLEN] = {0};
-    uint32_t signBufLen = sizeof(signBuf);
-    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
-    srcCurve25519Ctx = CRYPT_ED25519_NewCtx();
-    ASSERT_TRUE(srcCurve25519Ctx != NULL);
-    ASSERT_EQ(CRYPT_ED25519_GenKey(srcCurve25519Ctx), CRYPT_SUCCESS);
-    ASSERT_EQ(CRYPT_CURVE25519_Export(srcCurve25519Ctx, param), CRYPT_SUCCESS);
+    CRYPT_EAL_PkeyCtx *pubCtx = NULL;
+    CRYPT_EAL_PkeyCtx *prvCtx = NULL;
 
-    ASSERT_EQ(CRYPT_CURVE25519_Sign(srcCurve25519Ctx, CRYPT_MD_SHA512, data, dataLen, signBuf, &signBufLen),
-        CRYPT_SUCCESS);
-    ASSERT_EQ(CRYPT_CURVE25519_Verify(dstCurve25519Ctx, CRYPT_MD_SHA512, data, dataLen, signBuf, signBufLen),
-        CRYPT_SUCCESS);
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+
+    pubCtx = TestPkeyNewCtx(NULL, id, CRYPT_EAL_PKEY_KEYMGMT_OPERATE,
+        "provider=default", isProvider);
+    prvCtx = TestPkeyNewCtx(NULL, id, CRYPT_EAL_PKEY_KEYMGMT_OPERATE,
+        "provider=default", isProvider);
+    ASSERT_TRUE(pubCtx != NULL && prvCtx != NULL);
+
+    ASSERT_EQ(CRYPT_EAL_PkeyPairCheck(NULL, NULL), CRYPT_NULL_INPUT);
+    ASSERT_EQ(CRYPT_EAL_PkeyPairCheck(pubCtx, prvCtx), CRYPT_CURVE25519_NO_PRVKEY); // no prv key and pub key.
+
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(prvCtx), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyPairCheck(pubCtx, prvCtx), CRYPT_CURVE25519_NO_PUBKEY); // no pub key
+
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pubCtx), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyPairCheck(pubCtx, prvCtx), CRYPT_CURVE25519_PAIRWISE_CHECK_FAIL);
+
+    ASSERT_EQ(CRYPT_EAL_PkeyPairCheck(prvCtx, prvCtx), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyPairCheck(pubCtx, pubCtx), CRYPT_SUCCESS);
 EXIT:
-    CRYPT_CURVE25519_FreeCtx(srcCurve25519Ctx);
-    CRYPT_CURVE25519_FreeCtx(dstCurve25519Ctx);
+    TestRandDeInit();
+    CRYPT_EAL_PkeyFreeCtx(pubCtx);
+    CRYPT_EAL_PkeyFreeCtx(prvCtx);
+#endif
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_CRYPTO_CURVE25519_PRV_KEY_CHECK_FUNC_TC001
+ * @brief CURE25519: private key check.
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_CURVE25519_PRV_KEY_CHECK_FUNC_TC001(int id, int isProvider)
+{
+#if !defined(HITLS_CRYPTO_ED25519_CHECK) && !defined(HITLS_CRYPTO_X25519_CHECK)
+    (void)id;
+    (void)isProvider;
+    SKIP_TEST();
+#else
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    CRYPT_CURVE25519_Ctx *ctx = NULL;
+    CRYPT_EAL_PkeyCtx *pkey = TestPkeyNewCtx(NULL, id, CRYPT_EAL_PKEY_KEYMGMT_OPERATE, "provider=default", isProvider);
+    ASSERT_TRUE(pkey != NULL);
+
+    ASSERT_EQ(CRYPT_EAL_PkeyPrvCheck(NULL), CRYPT_NULL_INPUT);
+    ASSERT_EQ(CRYPT_EAL_PkeyPrvCheck(pkey), CRYPT_CURVE25519_NO_PRVKEY);
+
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyPrvCheck(pkey), CRYPT_SUCCESS);
+    ctx = (CRYPT_CURVE25519_Ctx *)pkey->key;
+    (void)memset_s(ctx->prvKey, CRYPT_CURVE25519_KEYLEN, 0, CRYPT_CURVE25519_KEYLEN);
+    ASSERT_EQ(CRYPT_EAL_PkeyPrvCheck(pkey), CRYPT_CURVE25519_INVALID_PRVKEY);
+EXIT:
+    TestRandDeInit();
+    CRYPT_EAL_PkeyFreeCtx(pkey);
 #endif
 }
 /* END_CASE */

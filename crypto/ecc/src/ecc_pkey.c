@@ -343,6 +343,84 @@ ERR:
     return ret;
 }
 
+#ifdef HITLS_CRYPTO_ECC_CHECK
+
+static int32_t EccKeyPairCheck(const ECC_Pkey *pub, const ECC_Pkey *prv)
+{
+    int32_t ret;
+    if (prv == NULL || pub == NULL || pub->para == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (pub->pubkey == NULL || prv->prvkey == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_ECC_PKEY_ERR_EMPTY_KEY);
+        return CRYPT_ECC_PKEY_ERR_EMPTY_KEY;
+    }
+    ECC_Point *point = ECC_NewPoint(pub->para);
+    if (point == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    ret = ECC_PointMul(pub->para, point, prv->prvkey, NULL);
+    if (ret != CRYPT_SUCCESS) {
+        ECC_FreePoint(point);
+        return ret;
+    }
+    if (ECC_PointCmp(pub->para, point, pub->pubkey) != 0) {
+        ret = CRYPT_ECC_PAIRWISE_CHECK_FAIL;
+        BSL_ERR_PUSH_ERROR(ret);
+    }
+    ECC_FreePoint(point);
+    return ret;
+}
+
+static int32_t EccPrvKeyCheck(const ECC_Pkey *pkey)
+{
+    if (pkey == NULL || pkey->para == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (pkey->prvkey == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_ECC_PKEY_ERR_EMPTY_KEY);
+        return CRYPT_ECC_PKEY_ERR_EMPTY_KEY;
+    }
+    int32_t ret = CRYPT_SUCCESS;
+    BN_BigNum *paraN = ECC_GetParaN(pkey->para);
+    if (pkey->para->id == CRYPT_ECC_SM2) {
+        (void)BN_SubLimb(paraN, paraN, 1);
+        /* GB/T 32918.2-2016 for check sm2 prv key, 0 < key < n - 1 is valid */
+        if (BN_IsZero(pkey->prvkey) == true || BN_IsNegative(pkey->prvkey) == true ||
+            (BN_Cmp(pkey->prvkey, paraN) >= 0)) {
+            ret = CRYPT_ECC_INVALID_PRVKEY;
+            BSL_ERR_PUSH_ERROR(CRYPT_ECC_INVALID_PRVKEY);
+        }
+    } else {
+        /* SP800-56a 5.6.2.1.2 for check an ecc private key. 0 < key <= n - 1 is valid. */
+        if (BN_IsZero(pkey->prvkey) == true || BN_IsNegative(pkey->prvkey) == true ||
+            (BN_Cmp(pkey->prvkey, paraN) >= 0)) {
+            ret = CRYPT_ECC_INVALID_PRVKEY;
+            BSL_ERR_PUSH_ERROR(CRYPT_ECC_INVALID_PRVKEY);
+        }
+    }
+    BN_Destroy(paraN);
+    return ret;
+}
+
+int32_t ECC_PkeyCheck(const ECC_Pkey *pkey1, const ECC_Pkey *pkey2, uint32_t checkType)
+{
+    switch (checkType) {
+        case CRYPT_PKEY_CHECK_KEYPAIR:
+            return EccKeyPairCheck(pkey1, pkey2);
+        case CRYPT_PKEY_CHECK_PRVKEY:
+            return EccPrvKeyCheck(pkey1);
+        default:
+            BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+            return CRYPT_INVALID_ARG;
+    }
+}
+
+#endif // HITLS_CRYPTO_ECC_CHECK
+
 static const char *EcCurveId2nist(CRYPT_PKEY_ParaId id)
 {
     static EC_NAME nistCurves[] = {

@@ -283,4 +283,23 @@ int32_t CRYPT_ECDH_GetSecBits(const CRYPT_ECDH_Ctx *ctx)
     }
     return ECC_GetSecBits(ctx->para);
 }
+
+#ifdef HITLS_CRYPTO_ECDH_CHECK
+
+int32_t CRYPT_ECDH_Check(uint32_t checkType, const CRYPT_ECDH_Ctx *pkey1, const CRYPT_ECDH_Ctx *pkey2)
+{
+    int32_t ret = ECC_PkeyCheck(pkey1, pkey2, checkType);
+    if (ret == CRYPT_ECC_PAIRWISE_CHECK_FAIL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_ECDH_PAIRWISE_CHECK_FAIL);
+        return CRYPT_ECDH_PAIRWISE_CHECK_FAIL;
+    }
+    if (ret == CRYPT_ECC_INVALID_PRVKEY) {
+        BSL_ERR_PUSH_ERROR(CRYPT_ECDH_INVALID_PRVKEY);
+        return CRYPT_ECDH_INVALID_PRVKEY;
+    }
+    return ret; // may be other error occurred.
+}
+
+#endif // HITLS_CRYPTO_ECDH_CHECK
+
 #endif /* HITLS_CRYPTO_ECDH */

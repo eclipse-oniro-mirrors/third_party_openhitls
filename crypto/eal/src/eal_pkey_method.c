@@ -99,7 +99,11 @@ static const EAL_PkeyMethod METHODS[] = {
         NULL, // computeShareKey
         NULL, // encrypt
         NULL, // decrypt
+#ifdef HITLS_CRYPTO_DSA_CHECK
+        CRYPT_DSA_Check,
+#else
         NULL, // check
+#endif
         CRYPT_DSA_Cmp,
         NULL, // copyPara
         NULL, // pkeyEncaps
@@ -130,7 +134,11 @@ static const EAL_PkeyMethod METHODS[] = {
         NULL, // computeShareKey
         NULL, // encrypt
         NULL, // decrypt
+#ifdef HITLS_CRYPTO_ED25519_CHECK
+        CRYPT_ED25519_Check,
+#else
         NULL, // check
+#endif
         CRYPT_CURVE25519_Cmp,
         NULL, // copyPara
         NULL, // pkeyEncaps
@@ -161,7 +169,11 @@ static const EAL_PkeyMethod METHODS[] = {
         CRYPT_CURVE25519_ComputeSharedKey,
         NULL, // encrypt
         NULL, // decrypt
+#ifdef HITLS_CRYPTO_X25519_CHECK
+        CRYPT_X25519_Check,
+#else
         NULL, // check
+#endif
         CRYPT_CURVE25519_Cmp,
         NULL, // copyPara
         NULL, // pkeyEncaps
@@ -215,7 +227,11 @@ static const EAL_PkeyMethod METHODS[] = {
 #else
         NULL, // decrypt
 #endif
+#ifdef HITLS_CRYPTO_RSA_CHECK
+        CRYPT_RSA_Check,
+#else
         NULL, // check
+#endif
         CRYPT_RSA_Cmp,
         NULL, // copyPara
         NULL, // pkeyEncaps
@@ -259,7 +275,11 @@ static const EAL_PkeyMethod METHODS[] = {
         CRYPT_DH_ComputeShareKey,
         NULL, // encrypt
         NULL, // decrypt
+#ifdef HITLS_CRYPTO_DH_CHECK
         CRYPT_DH_Check,
+#else
+        NULL, // check
+#endif
         CRYPT_DH_Cmp,
         NULL,
         NULL, // pkeyEncaps
@@ -290,7 +310,11 @@ static const EAL_PkeyMethod METHODS[] = {
         NULL, // computeShareKey
         NULL, // encrypt
         NULL, // decrypt
+#ifdef HITLS_CRYPTO_ECDSA_CHECK
+        CRYPT_ECDSA_Check,
+#else
         NULL, // check
+#endif
         CRYPT_ECDSA_Cmp,
         NULL, // copyPara
         NULL, // pkeyEncaps
@@ -321,7 +345,11 @@ static const EAL_PkeyMethod METHODS[] = {
         CRYPT_ECDH_ComputeShareKey,
         NULL, // encrypt
         NULL, // decrypt
+#ifdef HITLS_CRYPTO_ECDH_CHECK
+        CRYPT_ECDH_Check,
+#else
         NULL, // check
+#endif
         CRYPT_ECDH_Cmp,
         NULL, // copyPara
         NULL, // pkeyEncaps
@@ -368,7 +396,11 @@ static const EAL_PkeyMethod METHODS[] = {
         NULL, // encrypt
         NULL, // decrypt
 #endif
-        NULL,
+#ifdef HITLS_CRYPTO_SM2_CHECK
+        CRYPT_SM2_Check,
+#else
+        NULL, // check
+#endif
         CRYPT_SM2_Cmp,
         NULL, // copyPara
         NULL, // pkeyEncaps
@@ -461,7 +493,11 @@ static const EAL_PkeyMethod METHODS[] = {
         NULL, // computeShareKey
         NULL, // encrypt
         NULL, // decrypt
+#ifdef HITLS_CRYPTO_MLKEM_CHECK
+        CRYPT_ML_KEM_Check,
+#else
         NULL, // check
+#endif
         CRYPT_ML_KEM_Cmp,
         NULL, // copyPara
         CRYPT_ML_KEM_Encaps,
@@ -487,12 +523,16 @@ static const EAL_PkeyMethod METHODS[] = {
         CRYPT_ML_DSA_Sign, // sign
         NULL, // signData
         CRYPT_ML_DSA_Verify, // verify
-		NULL, // verifyData
+        NULL, // verifyData
         NULL, // recover
         NULL, // computeShareKey
         NULL, // encrypt
         NULL, // decrypt
+#ifdef HITLS_CRYPTO_MLDSA_CHECK
+        CRYPT_ML_DSA_Check,
+#else
         NULL, // check
+#endif
         CRYPT_ML_DSA_Cmp,
         NULL, // copyPara
         NULL, // pkeyEncaps
@@ -518,18 +558,22 @@ static const EAL_PkeyMethod METHODS[] = {
         CRYPT_SLH_DSA_Sign,
         NULL,
         CRYPT_SLH_DSA_Verify,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL
+        NULL, // verifyData
+        NULL, // recover
+        NULL, // computeShareKey
+        NULL, // encrypt
+        NULL, // decrypt
+#ifdef HITLS_CRYPTO_SLH_DSA_CHECK
+        CRYPT_SLH_DSA_Check,
+#else
+        NULL, // check
+#endif
+        NULL, // cmp
+        NULL, // copyPara
+        NULL, // pkeyEncaps
+        NULL, // pkeyDecaps
+        NULL, // blind
+        NULL  // unBlind
     ),
 #endif
 #ifdef HITLS_CRYPTO_HYBRIDKEM

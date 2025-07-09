@@ -147,6 +147,7 @@ CRYPT_EAL_PkeyCtx *CRYPT_EAL_ProviderPkeyNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_
 /**
  * @ingroup crypt_eal_pkey
  * @brief   Copy the pkey context.
+ * @note    to and from must has identical key management.
  *
  * @param   to [IN/OUT] Target pkey context
  * @param   from [IN] Source pkey context
@@ -453,8 +454,8 @@ int32_t CRYPT_EAL_PkeyDecrypt(const CRYPT_EAL_PkeyCtx *pkey, const uint8_t *data
 
 /**
  * @ingroup crypt_eal_pkey
- * @brief Check whether the public and private keys match.
- *  Currently not supported in the provider, supported in the future
+ * @brief   Check whether the public and private keys match.
+ * @note    pubKey and prvKey must has identical key management.
  *
  * @param   pubKey      [IN] Public key
  * @param   prvKey      [IN] private key
@@ -463,6 +464,17 @@ int32_t CRYPT_EAL_PkeyDecrypt(const CRYPT_EAL_PkeyCtx *pkey, const uint8_t *data
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyPairCheck(CRYPT_EAL_PkeyCtx *pubKey, CRYPT_EAL_PkeyCtx *prvKey);
+
+/**
+ * @ingroup crypt_eal_pkey
+ * @brief   Check the private key is valid.
+ *
+ * @param   prvKey [IN] Private key
+ *
+ * @retval  #CRYPT_SUCCESS, if successful.
+ *          For other error codes, see crypt_errno.h.
+ */
+int32_t CRYPT_EAL_PkeyPrvCheck(CRYPT_EAL_PkeyCtx *prvKey);
 
 /**
  * @ingroup crypt_eal_pkey

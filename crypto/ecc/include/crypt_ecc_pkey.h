@@ -225,6 +225,23 @@ int32_t ECC_PkeyCmp(const ECC_Pkey *a, const ECC_Pkey *b);
  */
 int32_t ECC_SetPara(ECC_Pkey *ctx, ECC_Para *para);
 
+#ifdef HITLS_CRYPTO_ECC_CHECK
+
+/**
+ * @ingroup ecc
+ * @brief check the key pair consistency
+ *
+ * @param pkey1 [IN] ecc key context structure
+ * @param pkey2 [IN] ecc key context structure
+ * @param checkType [IN] check type
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t ECC_PkeyCheck(const ECC_Pkey *pkey1, const ECC_Pkey *pkey2, uint32_t checkType);
+
+#endif // HITLS_CRYPTO_ECC_CHECK
+
 #ifdef __cplusplus
 }
 #endif

@@ -1136,7 +1136,10 @@
                     "rsa", "ed25519", "x25519", "slh_dsa"
                 ],
                 ".srcs": "crypto/util/*.c",
-                ".deps": ["platform::Secure_C"]
+                ".deps": ["platform::Secure_C"],
+                ".include": [
+                    "crypto/bn/include"
+                ]
             },
             "ecc": {
                 ".features": [

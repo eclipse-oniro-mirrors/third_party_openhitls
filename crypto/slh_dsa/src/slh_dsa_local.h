@@ -34,6 +34,9 @@
 #define SLH_DSA_LGW                 4
 #define SLH_DSA_W                   16 // 2^SLH_DSA_LGW
 
+#define SLH_DSA_PRVKEY 0x1
+#define SLH_DSA_PUBKEY 0x10
+
 typedef enum {
     WOTS_HASH,
     WOTS_PK,
@@ -150,6 +153,7 @@ struct SlhDsaCtx {
     SlhDsaPrvKey prvKey;
     SlhDsaHashFuncs hashFuncs;
     AdrsOps adrsOps;
+    uint8_t keyType; /* specify the key type */
     void *libCtx;
 };
 

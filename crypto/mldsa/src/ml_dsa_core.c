@@ -655,18 +655,29 @@ static void SkDecode(const CRYPT_ML_DSA_Ctx *ctx, uint8_t *pubSeed, uint8_t *sig
 
     for (i = 0; i < ctx->info->l; i++) {
         BitUnPake(ctx->prvKey + index, (uint32_t *)st->s1[i], bitLen, ctx->info->eta);
-        MLDSA_ComputesNTT(st->s1[i]);
         index += MLDSA_N_BYTE * bitLen;
     }
     for (i = 0; i < ctx->info->k; i++) {
         BitUnPake(ctx->prvKey + index, (uint32_t *)st->s2[i], bitLen, ctx->info->eta);
-        MLDSA_ComputesNTT(st->s2[i]);
         index += MLDSA_N_BYTE * bitLen;
     }
     for (i = 0; i < ctx->info->k; i++) {
         BitUnPake(ctx->prvKey + index, (uint32_t *)st->t0[i], MLDSA_D, 4096);  // 2^(𝑑−1) == 4096
-        MLDSA_ComputesNTT(st->t0[i]);
         index += MLDSA_N_BYTE * MLDSA_D;
+    }
+}
+
+static void SignCalNtt(const CRYPT_ML_DSA_Ctx *ctx, MLDSA_SignMatrixSt *st)
+{
+    uint32_t i;
+    for (i = 0; i < ctx->info->l; i++) {
+        MLDSA_ComputesNTT(st->s1[i]);
+    }
+    for (i = 0; i < ctx->info->k; i++) {
+        MLDSA_ComputesNTT(st->s2[i]);
+    }
+    for (i = 0; i < ctx->info->k; i++) {
+        MLDSA_ComputesNTT(st->t0[i]);
     }
 }
 
@@ -1051,6 +1062,8 @@ int32_t MLDSA_SignInternal(const CRYPT_ML_DSA_Ctx *ctx, CRYPT_Data *msg, uint8_t
 
     // (ρ, K, tr, 𝐬1, 𝐬2, t0) ← skDecode(sk)
     SkDecode(ctx, pubSeed, signSeed, tr, &st);
+    // NTT(s1), NTT(s2), NTT(t0)
+    SignCalNtt(ctx, &st);
     // A ← ExpandA(ρ)
     GOTO_ERR_IF(ExpandA(ctx, pubSeed, st.matrix), ret);
     if (ctx->isMuMsg) {
@@ -1184,5 +1197,66 @@ ERR:
     BSL_SAL_Free(w1Buf);
     return ret;
 }
+
+#ifdef HITLS_CRYPTO_MLDSA_CHECK
+
+// calculate public key from private key
+int32_t MLDSA_CalPub(const CRYPT_ML_DSA_Ctx *ctx, uint8_t *pub, uint32_t pubLen)
+{
+    int32_t ret;
+    MLDSA_SignMatrixSt st = { 0 };
+    uint8_t pubSeed[MLDSA_PUBLIC_SEED_LEN];
+    uint8_t kValue[MLDSA_SIGNING_SEED_LEN + MLDSA_SEED_BYTES_LEN];
+    int32_t tmp0[MLDSA_K_MAX][MLDSA_N];
+    int32_t tmp1[MLDSA_K_MAX][MLDSA_N];
+    int32_t tmp2[MLDSA_L_MAX][MLDSA_N];
+    uint8_t tr[MLDSA_TR_MSG_LEN];
+
+    int32_t *s1Ntt[MLDSA_L_MAX];
+    int32_t *t0[MLDSA_K_MAX];
+    int32_t *t1[MLDSA_K_MAX];
+
+    for (int32_t i = 0; i < ctx->info->k; i++) {
+        t0[i] = tmp0[i];
+        t1[i] = tmp1[i];
+    }
+    for (int32_t i = 0; i < ctx->info->l; i++) {
+        s1Ntt[i] = tmp2[i];
+    }
+
+    GOTO_ERR_IF(MLDSASignCreateMatrix(ctx->info->k, ctx->info->l, &st), ret);
+    SkDecode(ctx, pubSeed, kValue, tr, &st); // get ρ, K, tr, s1, s2, t0
+    // A <- ExpandA(ρ)
+    GOTO_ERR_IF(ExpandA(ctx, pubSeed, st.matrix), ret);
+    // t <- NTT^−1(A ∘ NTT(s1)) + s2
+    ComputesNTT(ctx, st.s1, s1Ntt);
+    ComputesT(ctx, t1, st.matrix, s1Ntt, st.s2);  // t = As1 + s2
+    // (t1, t0) <- Power2Round(t)
+    ComputesPower2Round(ctx, t0, t1);
+    for (int32_t i = 0; i < ctx->info->k; i++) {
+        if (memcmp(t0[i], st.t0[i], MLDSA_N) != 0) {
+            BSL_ERR_PUSH_ERROR(CRYPT_MLDSA_PAIRWISE_CHECK_FAIL);
+            ret = CRYPT_MLDSA_PAIRWISE_CHECK_FAIL;
+            goto ERR;
+        }
+    }
+    // pk <- pkEncode(ρ, t1)
+    if (memcpy_s(pub, pubLen, pubSeed, MLDSA_PUBLIC_SEED_LEN) != EOK) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MLDSA_LEN_NOT_ENOUGH);
+        ret = CRYPT_MLDSA_LEN_NOT_ENOUGH;
+        goto ERR;
+    }
+    for (int32_t i = 0; i < ctx->info->k; i++) {
+        // 10 is bitlen(q − 1) − d
+        ByteEncode(pub + MLDSA_PUBLIC_SEED_LEN + i * MLDSA_PUBKEY_POLYT_PACKEDBYTES, (uint32_t *)t1[i], 10);
+    }
+ERR:
+    BSL_SAL_ClearFree(st.bufAddr, st.bufSize);
+    BSL_SAL_CleanseData(kValue, sizeof(kValue));
+    BSL_SAL_CleanseData(pubSeed, sizeof(pubSeed));
+    return ret;
+}
+
+#endif // HITLS_CRYPTO_MLDSA_CHECK
 
 #endif

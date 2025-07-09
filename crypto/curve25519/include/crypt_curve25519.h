@@ -321,6 +321,38 @@ int32_t CRYPT_CURVE25519_Import(CRYPT_CURVE25519_Ctx *ctx, const BSL_Param *para
 int32_t CRYPT_CURVE25519_Export(const CRYPT_CURVE25519_Ctx *ctx, BSL_Param *params);
 #endif // HITLS_CRYPTO_PROVIDER
 
+#ifdef HITLS_CRYPTO_ED25519_CHECK
+
+/**
+ * @ingroup ed25519
+ * @brief ed25519 check key pair
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] ed25519 context structure
+ * @param pkey2 [IN] ed25519 context structure
+ *
+ * @retval CRYPT_SUCCESS                        successfully.
+ * @retval other                                error.
+ */
+int32_t CRYPT_ED25519_Check(uint32_t checkType, const CRYPT_CURVE25519_Ctx *pkey1, const CRYPT_CURVE25519_Ctx *pkey2);
+#endif // HITLS_CRYPTO_ED25519_CHECK
+
+#ifdef HITLS_CRYPTO_X25519_CHECK
+/**
+ * @ingroup x25519
+ * @brief x25519 check key pair
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] x25519 context structure
+ * @param pkey2 [IN] x25519 context structure
+ *
+ * @retval CRYPT_SUCCESS                        successfully.
+ * @retval other                                error.
+ */
+int32_t CRYPT_X25519_Check(uint32_t checkType, const CRYPT_CURVE25519_Ctx *pkey1, const CRYPT_CURVE25519_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_X25519_CHECK
+
 #ifdef __cplusplus
 }
 #endif

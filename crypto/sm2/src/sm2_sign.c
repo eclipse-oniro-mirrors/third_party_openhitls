@@ -1022,4 +1022,41 @@ int32_t CRYPT_SM2_GetSecBits(const CRYPT_SM2_Ctx *ctx)
     return ECC_GetSecBits(ctx->pkey->para);
 }
 
-#endif // HITLS_CRYPTO_SM2_SIGN
+#ifdef HITLS_CRYPTO_SM2_CHECK
+
+int32_t CRYPT_SM2_Check(uint32_t checkType, const CRYPT_SM2_Ctx *pkey1, const CRYPT_SM2_Ctx *pkey2)
+{
+    int32_t ret;
+    switch (checkType) {
+        case CRYPT_PKEY_CHECK_KEYPAIR:
+            if (pkey1 == NULL || pkey2 == NULL) {
+                BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+                return CRYPT_NULL_INPUT;
+            }
+            ret = ECC_PkeyCheck(pkey1->pkey, pkey2->pkey, checkType);
+            break;
+        case CRYPT_PKEY_CHECK_PRVKEY:
+            if (pkey1 == NULL) {
+                BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+                return CRYPT_NULL_INPUT;
+            }
+            ret = ECC_PkeyCheck(pkey1->pkey, NULL, checkType);
+            break;
+        default:
+            BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+            return CRYPT_INVALID_ARG;
+    }
+    if (ret == CRYPT_ECC_PAIRWISE_CHECK_FAIL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SM2_PAIRWISE_CHECK_FAIL);
+        return CRYPT_SM2_PAIRWISE_CHECK_FAIL;
+    }
+    if (ret == CRYPT_ECC_INVALID_PRVKEY) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SM2_INVALID_PRVKEY);
+        return CRYPT_SM2_INVALID_PRVKEY;
+    }
+    return ret; // may be other error occurred.
+}
+
+#endif // HITLS_CRYPTO_SM2_CHECK
+
+#endif

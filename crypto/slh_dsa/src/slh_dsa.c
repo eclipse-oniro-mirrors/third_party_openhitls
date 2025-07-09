@@ -334,6 +334,7 @@ int32_t CRYPT_SLH_DSA_Gen(CryptSlhDsaCtx *ctx)
         return ret;
     }
     (void)memcpy_s(ctx->prvKey.pub.root, n, node, n);
+    ctx->keyType = SLH_DSA_PRVKEY | SLH_DSA_PUBKEY;
     return CRYPT_SUCCESS;
 }
 
@@ -690,9 +691,7 @@ int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t
                 BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
                 return CRYPT_INVALID_ARG;
             }
-            if (ctx->addrand != NULL) {
-                BSL_SAL_Free(ctx->addrand);
-            }
+            BSL_SAL_FREE(ctx->addrand);
             uint8_t *rand = (uint8_t *)BSL_SAL_Malloc(len);
             if (rand == NULL) {
                 BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
@@ -758,6 +757,10 @@ int32_t CRYPT_SLH_DSA_GetPubKey(const CryptSlhDsaCtx *ctx, BSL_Param *para)
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
+    if ((ctx->keyType & SLH_DSA_PUBKEY) == 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_NO_PUBKEY);
+        return CRYPT_SLHDSA_ERR_NO_PUBKEY;
+    }
     pub.pubSeed->useLen = pub.pubRoot->useLen = ctx->para.n;
     (void)memcpy_s(pub.pubSeed->value, pub.pubSeed->valueLen, ctx->prvKey.pub.seed, ctx->para.n);
     (void)memcpy_s(pub.pubRoot->value, pub.pubRoot->valueLen, ctx->prvKey.pub.root, ctx->para.n);
@@ -773,7 +776,10 @@ int32_t CRYPT_SLH_DSA_GetPrvKey(const CryptSlhDsaCtx *ctx, BSL_Param *para)
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-
+    if ((ctx->keyType & SLH_DSA_PRVKEY) == 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_NO_PRVKEY);
+        return CRYPT_SLHDSA_ERR_NO_PRVKEY;
+    }
     prv.prvSeed->useLen = ctx->para.n;
     prv.prvPrf->useLen = ctx->para.n;
     prv.pubSeed->useLen = ctx->para.n;
@@ -796,7 +802,7 @@ int32_t CRYPT_SLH_DSA_SetPubKey(CryptSlhDsaCtx *ctx, const BSL_Param *para)
     }
     (void)memcpy_s(ctx->prvKey.pub.seed, ctx->para.n, pub.pubSeed->value, ctx->para.n);
     (void)memcpy_s(ctx->prvKey.pub.root, ctx->para.n, pub.pubRoot->value, ctx->para.n);
-
+    ctx->keyType |= SLH_DSA_PUBKEY;
     return CRYPT_SUCCESS;
 }
 
@@ -813,8 +819,79 @@ int32_t CRYPT_SLH_DSA_SetPrvKey(CryptSlhDsaCtx *ctx, const BSL_Param *para)
     (void)memcpy_s(ctx->prvKey.prf, sizeof(ctx->prvKey.prf), prv.prvPrf->value, ctx->para.n);
     (void)memcpy_s(ctx->prvKey.pub.seed, sizeof(ctx->prvKey.pub.seed), prv.pubSeed->value, ctx->para.n);
     (void)memcpy_s(ctx->prvKey.pub.root, sizeof(ctx->prvKey.pub.root), prv.pubRoot->value, ctx->para.n);
-
+    ctx->keyType |= SLH_DSA_PRVKEY;
     return CRYPT_SUCCESS;
 }
+
+#ifdef HITLS_CRYPTO_SLH_DSA_CHECK
+
+static int32_t SlhDsaKeyPairCheck(const CryptSlhDsaCtx *pubKey, const CryptSlhDsaCtx *prvKey)
+{
+    if (pubKey == NULL || prvKey == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (pubKey->para.algId >= CRYPT_SLH_DSA_ALG_ID_MAX || prvKey->para.algId >= CRYPT_SLH_DSA_ALG_ID_MAX) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
+        return CRYPT_SLHDSA_ERR_INVALID_ALGID;
+    }
+    if (pubKey->para.algId != prvKey->para.algId) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_PAIRWISE_CHECK_FAIL);
+        return CRYPT_SLHDSA_PAIRWISE_CHECK_FAIL;
+    }
+    if ((pubKey->keyType & SLH_DSA_PUBKEY) == 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_NO_PUBKEY);
+        return CRYPT_SLHDSA_ERR_NO_PUBKEY;
+    }
+    if ((prvKey->keyType & SLH_DSA_PRVKEY) == 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_NO_PRVKEY);
+        return CRYPT_SLHDSA_ERR_NO_PRVKEY;
+    }
+    SlhDsaAdrs adrs = {0};
+    prvKey->adrsOps.setLayerAddr(&adrs, prvKey->para.d - 1);
+    uint8_t node[SLH_DSA_MAX_N] = {0};
+    int32_t ret = XmssNode(node, 0, prvKey->para.hp, &adrs, prvKey);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    if (memcmp(node, pubKey->prvKey.pub.root, SLH_DSA_MAX_N) != 0) {
+        ret = CRYPT_SLHDSA_PAIRWISE_CHECK_FAIL;
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_PAIRWISE_CHECK_FAIL);
+    }
+    return ret;
+}
+
+static int32_t SlhDsaPrvKeyCheck(const CryptSlhDsaCtx *prvKey)
+{
+    if (prvKey == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (prvKey->para.algId >= CRYPT_SLH_DSA_ALG_ID_MAX) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
+        return CRYPT_SLHDSA_ERR_INVALID_ALGID;
+    }
+    if ((prvKey->keyType & SLH_DSA_PRVKEY) == 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_NO_PRVKEY);
+        return CRYPT_SLHDSA_ERR_NO_PRVKEY;
+    }
+    return CRYPT_SUCCESS;
+}
+
+int32_t CRYPT_SLH_DSA_Check(uint32_t checkType, const CryptSlhDsaCtx *pkey1, const CryptSlhDsaCtx *pkey2)
+{
+    switch (checkType) {
+        case CRYPT_PKEY_CHECK_KEYPAIR:
+            return SlhDsaKeyPairCheck(pkey1, pkey2);
+        case CRYPT_PKEY_CHECK_PRVKEY:
+            return SlhDsaPrvKeyCheck(pkey1);
+        default:
+            BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+            return CRYPT_INVALID_ARG;
+    }
+}
+
+#endif // HITLS_CRYPTO_SLH_DSA_CHECK
 
 #endif // HITLS_CRYPTO_SLH_DSA

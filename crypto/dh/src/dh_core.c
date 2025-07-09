@@ -977,43 +977,59 @@ static uint32_t CRYPT_DH_GetSharedKeyLen(const CRYPT_DH_Ctx *ctx)
     return 0;
 }
 
-int32_t CRYPT_DH_Check(const CRYPT_DH_Ctx *prv, const CRYPT_DH_Ctx *pub)
+#ifdef HITLS_CRYPTO_DH_CHECK
+
+static int32_t DhKeyPairCheck(const CRYPT_DH_Ctx *pub, const CRYPT_DH_Ctx *prv)
 {
     int32_t ret;
     if (prv == NULL || pub == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    if (prv->x == NULL || pub->y == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_DH_KEYINFO_ERROR);
-        return CRYPT_DH_KEYINFO_ERROR;
-    }
     if (prv->para == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_DH_PARA_ERROR);
         return CRYPT_DH_PARA_ERROR;
     }
-    BN_Mont *mont = BN_MontCreate(prv->para->p);
-    BN_BigNum *y = BN_Create(BN_Bits(prv->para->p));
-    if (y == NULL || mont == NULL) {
-        ret = CRYPT_MEM_ALLOC_FAIL;
-        BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
-    }
-    ret = BN_MontExpConsttime(y, prv->para->g, prv->x, mont, NULL);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
-    }
-    if (BN_Cmp(y, pub->y) != 0) {
+    ret = CRYPT_FFC_KeyPairCheck(prv->x, pub->y, prv->para->p, prv->para->g);
+    if (ret == CRYPT_PAIRWISE_CHECK_FAIL) {
         ret = CRYPT_DH_PAIRWISE_CHECK_FAIL;
         BSL_ERR_PUSH_ERROR(ret);
     }
-
-ERR:
-    BN_Destroy(y);
-    BN_MontDestroy(mont);
     return ret;
 }
+
+/*
+ * SP800-56a 5.6.2.1.2
+ * for check an FFC key pair.
+*/
+static int32_t DhPrvKeyCheck(const CRYPT_DH_Ctx *pkey)
+{
+    if (pkey == NULL || pkey->para == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    int32_t ret = CRYPT_FFC_PrvCheck(pkey->x, pkey->para->p, pkey->para->q);
+    if (ret == CRYPT_INVALID_KEY) {
+        ret = CRYPT_DH_INVALID_PRVKEY;
+        BSL_ERR_PUSH_ERROR(ret);
+    }
+    return ret;
+}
+
+int32_t CRYPT_DH_Check(uint32_t checkType, const CRYPT_DH_Ctx *pkey1, const CRYPT_DH_Ctx *pkey2)
+{
+    switch (checkType) {
+        case CRYPT_PKEY_CHECK_KEYPAIR:
+            return DhKeyPairCheck(pkey1, pkey2);
+        case CRYPT_PKEY_CHECK_PRVKEY:
+            return DhPrvKeyCheck(pkey1);
+        default:
+            BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+            return CRYPT_INVALID_ARG;
+    }
+}
+
+#endif // HITLS_CRYPTO_DH_CHECK
 
 int32_t CRYPT_DH_Cmp(const CRYPT_DH_Ctx *a, const CRYPT_DH_Ctx *b)
 {

@@ -672,4 +672,22 @@ int32_t CRYPT_ECDSA_Export(const CRYPT_ECDSA_Ctx *ctx, BSL_Param *params)
 }
 #endif // HITLS_CRYPTO_PROVIDER
 
+#ifdef HITLS_CRYPTO_ECDSA_CHECK
+
+int32_t CRYPT_ECDSA_Check(uint32_t checkType, const CRYPT_ECDSA_Ctx *pkey1, const CRYPT_ECDSA_Ctx *pkey2)
+{
+    int32_t ret = ECC_PkeyCheck(pkey1, pkey2, checkType);
+    if (ret == CRYPT_ECC_PAIRWISE_CHECK_FAIL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_ECDSA_PAIRWISE_CHECK_FAIL);
+        return CRYPT_ECDSA_PAIRWISE_CHECK_FAIL;
+    }
+    if (ret == CRYPT_ECC_INVALID_PRVKEY) {
+        BSL_ERR_PUSH_ERROR(CRYPT_ECDSA_INVALID_PRVKEY);
+        return CRYPT_ECDSA_INVALID_PRVKEY;
+    }
+    return ret; // may be other error occurred.
+}
+
+#endif // HITLS_CRYPTO_ECDSA_CHECK
+
 #endif /* HITLS_CRYPTO_ECDSA */

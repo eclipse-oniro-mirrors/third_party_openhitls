@@ -462,8 +462,6 @@ void SDV_AUTH_PRIVPASS_TOKEN_VECTOR_TEST_TC001(Hex *ski, Hex *pki, Hex *challeng
     BSL_Param param[2] = {
         {AUTH_PARAM_PRIVPASS_TOKEN_NONCE, BSL_PARAM_TYPE_OCTETS_PTR, nonceBuff, nonceLen, 0}, BSL_PARAM_END};
 
-    CRYPT_RandRegist(STUB_ReplaceRandom);
-    CRYPT_RandRegistEx(STUB_ReplaceRandomWEx);
     // Create context
     ctx = HITLS_AUTH_PrivPassNewCtx(HITLS_AUTH_PRIVPASS_PUB_VERIFY_TOKENS);
     ctx->method.random = STUB_ReplaceRandom;
@@ -472,6 +470,8 @@ void SDV_AUTH_PRIVPASS_TOKEN_VECTOR_TEST_TC001(Hex *ski, Hex *pki, Hex *challeng
     ASSERT_EQ(HITLS_AUTH_PrivPassSetPubkey(ctx, pki->x, pki->len), HITLS_AUTH_SUCCESS);
     ASSERT_EQ(HITLS_AUTH_PrivPassSetPrvkey(ctx, NULL, ski->x, ski->len), HITLS_AUTH_SUCCESS);
 
+    CRYPT_RandRegist(STUB_ReplaceRandom);
+    CRYPT_RandRegistEx(STUB_ReplaceRandomWEx);
     ASSERT_EQ(HITLS_AUTH_PrivPassDeserialization(ctx, HITLS_AUTH_PRIVPASS_TOKEN_CHALLENGE, challenge->x, challenge->len,
         &tokenChallenge), HITLS_AUTH_SUCCESS);
     ASSERT_EQ(HITLS_AUTH_PrivPassSerialization(ctx, tokenChallenge, tokenChallengeBuffer, &tokenChallengeBufferLen),
@@ -647,6 +647,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_AUTH_PRIVPASS_SET_KEY_TC001(Hex *ski, Hex *pki)
 {
+    TestRandInit();
     HITLS_AUTH_PrivPassCtx *ctx = HITLS_AUTH_PrivPassNewCtx(HITLS_AUTH_PRIVPASS_PUB_VERIFY_TOKENS);
     ASSERT_NE(ctx, NULL);
     // Test NULL pointer parameters
@@ -667,6 +668,7 @@ void SDV_AUTH_PRIVPASS_SET_KEY_TC001(Hex *ski, Hex *pki)
 
 EXIT:
     HITLS_AUTH_PrivPassFreeCtx(ctx);
+    TestRandDeInit();
 }
 /* END_CASE */
 

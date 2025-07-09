@@ -282,6 +282,23 @@ int32_t CRYPT_ECDH_Cmp(const CRYPT_ECDH_Ctx *a, const CRYPT_ECDH_Ctx *b);
  */
 int32_t CRYPT_ECDH_GetSecBits(const CRYPT_ECDH_Ctx *ctx);
 
+#ifdef HITLS_CRYPTO_ECDH_CHECK
+
+/**
+ * @ingroup ecdh
+ * @brief ecdh check public key
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] ecdh context structure
+ * @param pkey2 [IN] ecdh context structure
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_ECDH_Check(uint32_t checkType, const CRYPT_ECDH_Ctx *pkey1, const CRYPT_ECDH_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_ECDH_CHECK
+
 #ifdef __cplusplus
 }
 #endif
