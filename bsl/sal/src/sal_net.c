@@ -33,33 +33,111 @@ int32_t SAL_NetCallback_Ctrl(BSL_SAL_CB_FUNC_TYPE type, void *funcCb)
     return BSL_SUCCESS;
 }
 
-int32_t BSL_SAL_Write(int32_t fd, const void *buf, uint32_t len, int32_t *err)
+int32_t SAL_Write(int32_t fd, const void *buf, uint32_t len, int32_t *err)
 {
     if (buf == NULL || len == 0 || err == NULL) {
         return BSL_SAL_ERR_BAD_PARAM;
     }
-    if (g_netCallback.pfWrite != NULL && g_netCallback.pfWrite != BSL_SAL_Write) {
+    if (g_netCallback.pfWrite != NULL && g_netCallback.pfWrite != SAL_Write) {
         return g_netCallback.pfWrite(fd, buf, len, err);
     }
 #ifdef HITLS_BSL_SAL_LINUX
-    return SAL_Write(fd, buf, len, err);
+    return SAL_NET_Write(fd, buf, len, err);
 #else
     return BSL_SAL_NET_NO_REG_FUNC;
 #endif
 }
 
-int32_t BSL_SAL_Read(int32_t fd, void *buf, uint32_t len, int32_t *err)
+int32_t SAL_Read(int32_t fd, void *buf, uint32_t len, int32_t *err)
 {
     if (buf == NULL || len == 0 || err == NULL) {
         return BSL_SAL_ERR_BAD_PARAM;
     }
-    if (g_netCallback.pfRead != NULL && g_netCallback.pfRead != BSL_SAL_Read) {
+    if (g_netCallback.pfRead != NULL && g_netCallback.pfRead != SAL_Read) {
         return g_netCallback.pfRead(fd, buf, len, err);
     }
 #ifdef HITLS_BSL_SAL_LINUX
-    return SAL_Read(fd, buf, len, err);
+    return SAL_NET_Read(fd, buf, len, err);
 #else
     return BSL_SAL_NET_NO_REG_FUNC;
+#endif
+}
+
+int32_t SAL_Sendto(int32_t sock, const void *buf, size_t len, int32_t flags, BSL_SAL_SockAddr address,
+                   int32_t addrLen, int32_t *err)
+{
+    if (buf == NULL || len == 0 || address == NULL || addrLen == 0 || err == NULL) {
+        return BSL_SAL_ERR_BAD_PARAM;
+    }
+    if (g_netCallback.pfSendTo != NULL && g_netCallback.pfSendTo != SAL_Sendto) {
+        return g_netCallback.pfSendTo(sock, buf, len, flags, address, addrLen, err);
+    }
+#ifdef HITLS_BSL_SAL_LINUX
+    return SAL_NET_Sendto(sock, buf, len, flags, address, addrLen, err);
+#else
+    return BSL_SAL_NET_NO_REG_FUNC;
+#endif
+}
+
+int32_t SAL_RecvFrom(int32_t sock, void *buf, size_t len, int32_t flags, BSL_SAL_SockAddr address,
+                     int32_t *addrLen, int32_t *err)
+{
+    if (buf == NULL || len == 0 || err == NULL) {
+        return BSL_SAL_ERR_BAD_PARAM;
+    }
+    if (g_netCallback.pfRecvFrom != NULL && g_netCallback.pfRecvFrom != SAL_RecvFrom) {
+        return g_netCallback.pfRecvFrom(sock, buf, len, flags, address, addrLen, err);
+    }
+#ifdef HITLS_BSL_SAL_LINUX
+    return SAL_NET_RecvFrom(sock, buf, len, flags, address, addrLen, err);
+#else
+    return BSL_SAL_NET_NO_REG_FUNC;
+#endif
+}
+
+int32_t SAL_SockAddrNew(BSL_SAL_SockAddr *sockAddr)
+{
+    if (g_netCallback.pfSockAddrNew != NULL && g_netCallback.pfSockAddrNew != SAL_SockAddrNew) {
+        return g_netCallback.pfSockAddrNew(sockAddr);
+    }
+#ifdef HITLS_BSL_SAL_LINUX
+    return SAL_NET_SockAddrNew(sockAddr);
+#else
+    return BSL_SAL_NET_NO_REG_FUNC;
+#endif
+}
+
+void SAL_SockAddrFree(BSL_SAL_SockAddr sockAddr)
+{
+    if (g_netCallback.pfSockAddrFree != NULL && g_netCallback.pfSockAddrFree != SAL_SockAddrFree) {
+        return g_netCallback.pfSockAddrFree(sockAddr);
+    }
+#ifdef HITLS_BSL_SAL_LINUX
+    SAL_NET_SockAddrFree(sockAddr);
+    return;
+#endif
+}
+
+uint32_t SAL_SockAddrSize(const BSL_SAL_SockAddr sockAddr)
+{
+    if (g_netCallback.pfSockAddrSize != NULL && g_netCallback.pfSockAddrSize != SAL_SockAddrSize) {
+        return g_netCallback.pfSockAddrSize(sockAddr);
+    }
+#ifdef HITLS_BSL_SAL_LINUX
+    return SAL_NET_SockAddrSize(sockAddr);
+#else
+    return BSL_SAL_NET_NO_REG_FUNC;
+#endif
+}
+
+void SAL_SockAddrCopy(BSL_SAL_SockAddr dst, BSL_SAL_SockAddr src)
+{
+    if (g_netCallback.pfSockAddrCopy != NULL && g_netCallback.pfSockAddrCopy != SAL_SockAddrCopy) {
+        return g_netCallback.pfSockAddrCopy(src, dst);
+    }
+#ifdef HITLS_BSL_SAL_LINUX
+    SAL_NET_SockAddrCopy(src, dst);
+    return;
 #endif
 }
 

@@ -560,6 +560,9 @@ int32_t HITLS_CFG_AddCertToStore(HITLS_Config *config, HITLS_CERT_X509 *cert, HI
     int32_t ret = SAL_CERT_StoreCtrl(config, store, CERT_STORE_CTRL_ADD_CERT_LIST, newCert, NULL);
     if (ret != HITLS_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
+        if (isClone) {
+            SAL_CERT_X509Free(newCert);
+        }
     }
 
     return ret;

@@ -131,10 +131,17 @@ typedef struct {
     } while (0)
 
 extern int *GetJmpAddress(void);
+#ifndef TEST_NO_SUBPROC
 #define SUB_PROC 1
 #define SUB_PROC_BEGIN(parentAction)   if (fork() > 0) parentAction
 #define SUB_PROC_END() *GetJmpAddress() = SUB_PROC; return
 #define SUB_PROC_WAIT(times) for (uint16_t i = 0; i < times; i++) wait(NULL)
+#else
+#define SUB_PROC 0
+#define SUB_PROC_BEGIN(parentAction)
+#define SUB_PROC_END()
+#define SUB_PROC_WAIT(times)
+#endif
 
 extern TestInfo g_testResult;
 

@@ -161,7 +161,7 @@ static int32_t STUB_Write(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t 
         g_flag = msgCnt;
     }
 
-    return BSL_UIO_TcpMethod()->write(uio, buf, len, writeLen);
+    return BSL_UIO_TcpMethod()->uioWrite(uio, buf, len, writeLen);
 }
 
 
@@ -591,7 +591,7 @@ void SDV_TLS_CFG_GET_FLIGHTTRANSMITSWITH_FUNC_TC001(int version)
         .expectReType = REC_TYPE_HANDSHAKE,
         .ioState = EXP_NONE,
         .pointType = POINT_SEND,
-        .method.write = STUB_Write,
+        .method.uioWrite = STUB_Write,
     };
     ASSERT_TRUE(HLT_SetFrameHandle(&frameHandle) == HITLS_SUCCESS);
     g_useFlight = 2;

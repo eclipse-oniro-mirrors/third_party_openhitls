@@ -24,11 +24,10 @@
                     "tlv": null,
                     "uio": {
                         "uio_plt": null,
-                        "uio_addr" : {"deps": ["uio_plt"]},
                         "uio_buffer": {"deps": ["uio_plt"]},
                         "uio_sctp": {"deps": ["uio_plt", "sal_net"]},
-                        "uio_tcp": {"deps": ["uio_plt", "sal_net", "uio_addr"]},
-                        "uio_udp": {"deps": ["uio_plt", "sal_net", "uio_addr"]},
+                        "uio_tcp": {"deps": ["uio_plt", "sal_net"]},
+                        "uio_udp": {"deps": ["uio_plt", "sal_net"]},
                         "uio_mem": {"deps": ["uio_plt", "sal_mem", "buffer"]}
                     },
                     "usrdata": null,
@@ -217,6 +216,9 @@
                     "sm4": null,
                     "x25519": null,
                     "ecc": null
+                },
+                "armv7": {
+                    "sm3": null
                 }
             }
         },
@@ -743,7 +745,8 @@
                     "public": "crypto/sm3/src/sm3_public.c",
                     "no_asm": ["crypto/sm3/src/noasm_sm3.c"],
                     "armv8": ["crypto/sm3/src/asm/*armv8.S", "crypto/sm3/src/asm_sm3.c"],
-                    "x8664": ["crypto/sm3/src/asm/*x86_64.s", "crypto/sm3/src/asm_sm3.c"]
+                    "x8664": ["crypto/sm3/src/asm/*x86_64.s", "crypto/sm3/src/asm_sm3.c"],
+                    "armv7": ["crypto/sm3/src/noasm_sm3.c"]
                 },
                 ".deps": ["platform::Secure_C"]
             },

@@ -20,6 +20,8 @@
 #include <arpa/inet.h>
 
 #include "uio_base.h"
+#include "bsl_sal.h"
+#include "sal_net.h"
 #include "hitls.h"
 #include "hitls_cert_type.h"
 #include "hitls_config.h"
@@ -760,16 +762,24 @@ int HitlsSetSsl(void *ssl, HLT_Ssl_Config *sslConfig)
     }
 
     if (BSL_UIO_GetTransportType(uio) == BSL_UIO_UDP) {
-        struct sockaddr_in serverAddr;
-        uint32_t addrlen = sizeof(serverAddr);
-        if (getpeername(sslConfig->sockFd, (struct sockaddr *)&serverAddr, &addrlen) == 0) {
-            ret = BSL_UIO_Ctrl(uio, BSL_UIO_UDP_SET_CONNECTED, (int32_t)sizeof(serverAddr), &serverAddr);
+        BSL_SAL_SockAddr serverAddr = NULL;
+        ret = SAL_SockAddrNew(&serverAddr);
+        if (ret != BSL_SUCCESS) {
+            LOG_ERROR("SAL_SockAddrNew failed\n");
+            BSL_UIO_Free(uio);
+            return ret;
+        }
+        int32_t addrlen = (int32_t)SAL_SockAddrSize(serverAddr);
+        if (getpeername(sslConfig->sockFd, (struct sockaddr *)serverAddr, (socklen_t *)&addrlen) == 0) {
+            ret = BSL_UIO_Ctrl(uio, BSL_UIO_UDP_SET_CONNECTED, addrlen, serverAddr);
             if (ret != HITLS_SUCCESS) {
-                LOG_ERROR("BSL_UIO_SET_PEER_IP_ADDR failed\n");
+                LOG_ERROR("BSL_UIO_SET_PEER_IP_ADDR failed %d\n", addrlen);
+                SAL_SockAddrFree(serverAddr);
                 BSL_UIO_Free(uio);
                 return ERROR;
             }
         }
+        SAL_SockAddrFree(serverAddr);
     }
 
     BSL_UIO_SetInit(uio, 1);

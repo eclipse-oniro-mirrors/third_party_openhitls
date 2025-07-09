@@ -131,9 +131,9 @@ int32_t SetFrameHandle(HLT_FrameHandle *frameHandle)
     g_frameHandle.expectReType = frameHandle->expectReType;
     g_frameHandle.ioState = frameHandle->ioState;
     g_frameHandle.pointType = frameHandle->pointType;
-    g_frameHandle.method.write = frameHandle->method.write;
-    g_frameHandle.method.read = frameHandle->method.read;
-    g_frameHandle.method.ctrl = frameHandle->method.ctrl;
+    g_frameHandle.method.uioWrite = frameHandle->method.uioWrite;
+    g_frameHandle.method.uioRead = frameHandle->method.uioRead;
+    g_frameHandle.method.uioCtrl = frameHandle->method.uioCtrl;
 
     return HITLS_SUCCESS;
 }
@@ -147,9 +147,9 @@ void CleanFrameHandle(void)
     g_frameHandle.expectReType = 0;
     g_frameHandle.ioState = 0;
     g_frameHandle.pointType = 0;
-    g_frameHandle.method.write = NULL;
-    g_frameHandle.method.read = NULL;
-    g_frameHandle.method.ctrl = NULL;
+    g_frameHandle.method.uioWrite = NULL;
+    g_frameHandle.method.uioRead = NULL;
+    g_frameHandle.method.uioCtrl = NULL;
 }
 
 HLT_FrameHandle *GetFrameHandle(void)

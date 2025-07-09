@@ -114,9 +114,16 @@ parse_option()
                 DEL_OPTIONS="$DEL_OPTIONS -fstack-protector-strong -fomit-frame-pointer -O2 -D_FORTIFY_SOURCE=2"
                 ;;
             "feature-config")
-                FEATURE_CONFIG_FILE=$(find $HITLS_ROOT_DIR -name "$value" -type f | head -n 1)
+                # First try to find file with ASM_TYPE suffix
+                if [ -n "$ASM_TYPE" ]; then
+                    FEATURE_CONFIG_FILE=$(find $HITLS_ROOT_DIR -name "${value}_${ASM_TYPE}.json" -type f | head -n 1)
+                fi
+                # If not found with suffix, try the original filename
                 if [ -z "$FEATURE_CONFIG_FILE" ]; then
-                    echo "Error: Cannot find feature config file '$value' under $HITLS_ROOT_DIR"
+                    FEATURE_CONFIG_FILE=$(find $HITLS_ROOT_DIR -name "${value}.json" -type f | head -n 1)
+                fi
+                if [ -z "$FEATURE_CONFIG_FILE" ]; then
+                    echo "Error: Cannot find feature config file '${value}.json' or '${value}.json' under $HITLS_ROOT_DIR"
                     exit 1
                 fi
                 ;;

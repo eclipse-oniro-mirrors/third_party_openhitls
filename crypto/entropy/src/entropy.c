@@ -29,13 +29,8 @@
 #define ECF_ADDITION_ENTROPY 64 // reference nist-800 90c-3pd section 3.3.2
 #define ECF_BYTE_TO_BIT 8
 
-static int32_t EntropyEcf(void *ctx, uint8_t *data, uint32_t dataLen, uint8_t *out, uint32_t *outLen)
+static int32_t EntropyEcf(ENTROPY_ECFCtx *enCtx, uint8_t *data, uint32_t dataLen, uint8_t *out, uint32_t *outLen)
 {
-    ENTROPY_ECFCtx *enCtx = (ENTROPY_ECFCtx *)ctx;
-    if (enCtx == NULL || enCtx->conFunc == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_ENTROPY_ECF_IS_ERROR);
-        return CRYPT_ENTROPY_ECF_IS_ERROR;
-    }
     uint8_t conData[ECF_MAX_OUTPUT_LEN] = {0};
     uint32_t conLen = ECF_MAX_OUTPUT_LEN;
     int32_t ret = enCtx->conFunc(enCtx->algId, data, dataLen, conData, &conLen);
@@ -50,81 +45,66 @@ static int32_t EntropyEcf(void *ctx, uint8_t *data, uint32_t dataLen, uint8_t *o
     return CRYPT_SUCCESS;
 }
 
-static uint32_t GetNeedEntropyLen(uint32_t currEnt, uint32_t needEnt)
-{
-    if (currEnt > needEnt) {
-        return ((currEnt - needEnt) >= ECF_ADDITION_ENTROPY) ? 0 :
-            (ECF_ADDITION_ENTROPY - (currEnt - needEnt));
-    }
-    return needEnt + ECF_ADDITION_ENTROPY - currEnt;
-}
-
-static int32_t CpEntropyToOut(ENTROPY_SeedPool *pool, uint8_t *in, uint32_t inLen, uint8_t *data, uint32_t len)
-{
-    uint32_t cpLen = (inLen < len) ? inLen : len;
-    (void)memcpy_s(data, len, in, cpLen);
-    (void)memset_s(in, inLen, 0, inLen);
-    if (cpLen < len) {
-        uint32_t tmpLen = len - cpLen;
-        uint32_t entropy = ENTROPY_SeedPoolCollect(pool, true, 0, data + cpLen, &tmpLen);
-        if (entropy == 0) {
-            BSL_ERR_PUSH_ERROR(CRYPT_SEED_POOL_NOT_MEET_REQUIREMENT);
-            return CRYPT_SEED_POOL_NOT_MEET_REQUIREMENT;
-        }
-    }
-    return CRYPT_SUCCESS;
-}
-
 int32_t ENTROPY_GetFullEntropyInput(void *ctx, ENTROPY_SeedPool *pool, bool isNpesUsed, uint32_t needEntropy,
     uint8_t *data, uint32_t len)
 {
-    int32_t ret;
+    int32_t ret = CRYPT_SUCCESS;
     uint8_t *ptr = data;
-    uint32_t remainLen = len;
     if (ENTROPY_SeedPoolGetMinEntropy(pool) == 0) {
         return CRYPT_INVALID_ARG;
     }
-    uint32_t needLen = (needEntropy + ECF_ADDITION_ENTROPY) / ENTROPY_SeedPoolGetMinEntropy(pool) + 1;
-    uint8_t *tmp = BSL_SAL_Malloc(needLen);
-    if (tmp == NULL) {
+    ENTROPY_ECFCtx *enCtx = (ENTROPY_ECFCtx *)ctx;
+    if (enCtx == NULL || enCtx->conFunc == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_ENTROPY_ECF_IS_ERROR);
+        return CRYPT_ENTROPY_ECF_IS_ERROR;
+    }
+    uint32_t conEnt = enCtx->outLen * ECF_BYTE_TO_BIT;
+    uint32_t tmpEntropy = conEnt + ECF_ADDITION_ENTROPY;
+    uint32_t tmpDataLen = (tmpEntropy + ECF_BYTE_TO_BIT - 1) / ENTROPY_SeedPoolGetMinEntropy(pool);
+    uint8_t *tmpData = BSL_SAL_Malloc(tmpDataLen);
+    if (tmpData == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return CRYPT_MEM_ALLOC_FAIL;
     }
-    /*
-     * If the length of the entropy data is less than the lower limit of the required length,
-     * the entropy data that meets the length requirement is read without considering the entropy.
-     */
-    uint32_t tmpLen = needLen;
-    uint32_t entropy = ENTROPY_SeedPoolCollect(pool, isNpesUsed, needEntropy, tmp, &tmpLen);
-    if (entropy < needEntropy) {
-        GOTO_ERR_IF(CRYPT_SEED_POOL_NOT_MEET_REQUIREMENT, ret);
-    }
-    /* If the data of the length specified by tmpLen can be provided, the value is the full entropy (tmpLen * 8). */
-    if (tmpLen * ECF_BYTE_TO_BIT == entropy) {
-        ret = CpEntropyToOut(pool, tmp, tmpLen, data, len);
-        BSL_SAL_FREE(tmp);
-        return ret;
-    }
-    do {
-        uint32_t leftEnt = GetNeedEntropyLen(entropy, needEntropy);
-        if (leftEnt != 0) {
-            uint32_t readLen = needLen - tmpLen;
-            uint32_t exEntropy = ENTROPY_SeedPoolCollect(pool, isNpesUsed, leftEnt, tmp + tmpLen, &readLen);
-            if (exEntropy < leftEnt) {
+    uint32_t remEnt = needEntropy;
+    uint32_t remLen = len;
+    while (remEnt > 0) {
+        uint32_t tmpLen = tmpDataLen;
+        uint32_t oneEnt = (remEnt < conEnt) ? remEnt : conEnt;
+        uint32_t entropy = ENTROPY_SeedPoolCollect(pool, isNpesUsed, oneEnt, tmpData, &tmpLen);
+        if (entropy < oneEnt) {
+            GOTO_ERR_IF(CRYPT_SEED_POOL_NOT_MEET_REQUIREMENT, ret);
+        }
+        uint32_t cpLen;
+        /* If the data of the length specified by tmpLen can be provided, the value is the full entropy (tmpLen * 8). */
+        if (tmpLen * ECF_BYTE_TO_BIT == entropy) {
+            cpLen = tmpLen < remLen ? tmpLen : remLen;
+            (void)memcpy_s(ptr, remLen, tmpData, cpLen);
+            remEnt -= ((entropy > remEnt) ? remEnt : entropy);
+        } else {
+            uint32_t leftLen = tmpDataLen - tmpLen;
+            uint32_t leftEnt = ENTROPY_SeedPoolCollect(pool, isNpesUsed, tmpEntropy - entropy, tmpData + tmpLen,
+                &leftLen);
+            if (leftEnt < tmpEntropy - entropy) {
                 GOTO_ERR_IF(CRYPT_SEED_POOL_NOT_MEET_REQUIREMENT, ret);
             }
-            tmpLen += readLen;
+            cpLen = remLen;
+            GOTO_ERR_IF(EntropyEcf(ctx, tmpData, tmpLen + leftLen, ptr, &cpLen), ret);
+            remEnt -= (remEnt < conEnt ? remEnt : conEnt);
         }
-        uint32_t cpLen = remainLen;
-        GOTO_ERR_IF(EntropyEcf(ctx, tmp, tmpLen, ptr, &cpLen), ret);
-        remainLen -= cpLen;
         ptr += cpLen;
-        entropy = 0;
-        tmpLen = 0;
-    } while (remainLen > 0);
+        remLen -= cpLen;
+    }
+    if (remLen > 0) {
+        uint32_t leftLen = remLen;
+        uint32_t entropy = ENTROPY_SeedPoolCollect(pool, true, 0, ptr, &leftLen);
+        if (entropy == 0 || leftLen < remLen) {
+            GOTO_ERR_IF(CRYPT_SEED_POOL_NOT_MEET_REQUIREMENT, ret);
+        }
+    }
 ERR:
-    (void)memset_s(tmp, needLen, 0, needLen);
-    BSL_SAL_FREE(tmp);
+    (void)memset_s(tmpData, tmpDataLen, 0, tmpDataLen);
+    BSL_SAL_FREE(tmpData);
     return ret;
 }
 

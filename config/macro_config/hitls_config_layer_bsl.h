@@ -37,9 +37,6 @@
 /* BSL_UIO */
 /* Derive the child-features of uio. */
 #ifdef HITLS_BSL_UIO
-    #ifndef HITLS_BSL_UIO_ADDR
-        #define HITLS_BSL_UIO_ADDR
-    #endif
     #ifndef HITLS_BSL_UIO_PLT
         #define HITLS_BSL_UIO_PLT
     #endif
@@ -74,12 +71,6 @@
 #if defined(HITLS_BSL_UIO_TCP) || defined(HITLS_BSL_UIO_SCTP)
     #ifndef HITLS_BSL_SAL_NET
         #define HITLS_BSL_SAL_NET
-    #endif
-#endif
-
-#if defined(HITLS_BSL_UIO_TCP) || defined(HITLS_BSL_UIO_UDP)
-    #ifndef HITLS_BSL_UIO_ADDR
-        #define HITLS_BSL_UIO_ADDR
     #endif
 #endif
 

@@ -139,11 +139,70 @@ bool IsOSSupportAVX512(void)
 
 /* ARM */
 #elif defined(__arm__) || defined (__arm) || defined(__aarch64__)
+#include "crypt_arm.h"
+uint32_t g_cryptArmCpuInfo = 0;
+
+#if defined(HITLS_CRYPTO_NO_AUXVAL)
+#include <setjmp.h>
+#include <signal.h>
+
+static jmp_buf g_jump_buffer;
+
+void signal_handler(int sig)
+{
+    (void)sig;
+    longjmp(g_jump_buffer, 1);
+}
+
+void getarmcap(void)
+{
+    struct sigaction sa, old_sa;
+    
+    sa.sa_handler = signal_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGILL, &sa, &old_sa);
+
+    // NEON
+    if (setjmp(g_jump_buffer) == 0) {
+#if defined(__ARM_NEON) || defined(__aarch64__)
+        __asm__ volatile ("ORR v0.16b, v0.16b, v0.16b" : : : "v0");
+        g_cryptArmCpuInfo |= CRYPT_ARM_NEON;
+#endif
+#if defined(__aarch64__)
+        // AES
+        if (setjmp(g_jump_buffer) == 0) {
+            __asm__ volatile ("aese v0.16b, v0.16b" : : : "v0");
+            g_cryptArmCpuInfo |= CRYPT_ARM_AES;
+        }
+        // PMULL
+        if (setjmp(g_jump_buffer) == 0) {
+            __asm__ volatile ("pmull v0.1q, v0.1d, v0.1d" : : : "v0");
+            g_cryptArmCpuInfo |= CRYPT_ARM_PMULL;
+        }
+        // SHA1
+        if (setjmp(g_jump_buffer) == 0) {
+            __asm__ volatile ("sha1h s0, s0" : : : "s0");
+            g_cryptArmCpuInfo |= CRYPT_ARM_SHA1;
+        }
+        // SHA256
+        if (setjmp(g_jump_buffer) == 0) {
+            __asm__ volatile ("sha256su0 v0.4s, v0.4s" : : : "v0");
+            g_cryptArmCpuInfo |= CRYPT_ARM_SHA256;
+        }
+        // SHA512
+        if (setjmp(g_jump_buffer) == 0) {
+            __asm__ volatile ("sha512su0 v0.2d, v0.2d" : : : "v0");
+            g_cryptArmCpuInfo |= CRYPT_ARM_SHA512;
+        }
+#endif
+    }
+
+    sigaction(SIGILL, &old_sa, NULL);
+}
+#else 
 
 #include <sys/auxv.h>
-#include "crypt_arm.h"
-
-uint32_t g_cryptArmCpuInfo = 0;
 
 static bool g_supportNEON = {0};
 
@@ -178,63 +237,6 @@ bool IsSupportSHA512(void)
     return g_cryptArmCpuInfo & CRYPT_ARM_SHA512;
 }
 #endif // __aarch64__
-
-#if defined(HITLS_CRYPTO_NO_AUXVAL)
-#include <setjmp.h>
-#include <signal.h>
-
-static jmp_buf g_jump_buffer;
-
-void signal_handler(int sig)
-{
-    (void)sig;
-    longjmp(g_jump_buffer, 1);
-}
-
-void getarmcap(void)
-{
-    struct sigaction sa, old_sa;
-    
-    sa.sa_handler = signal_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGILL, &sa, &old_sa);
-
-    // NEON
-    if (setjmp(g_jump_buffer) == 0) {
-        __asm__ volatile ("ORR v0.16b, v0.16b, v0.16b" : : : "v0");
-        g_cryptArmCpuInfo |= CRYPT_ARM_NEON;
-#if defined(__aarch64__)
-        // AES
-        if (setjmp(g_jump_buffer) == 0) {
-            __asm__ volatile ("aese v0.16b, v0.16b" : : : "v0");
-            g_cryptArmCpuInfo |= CRYPT_ARM_AES;
-        }
-        // PMULL
-        if (setjmp(g_jump_buffer) == 0) {
-            __asm__ volatile ("pmull v0.1q, v0.1d, v0.1d" : : : "v0");
-            g_cryptArmCpuInfo |= CRYPT_ARM_PMULL;
-        }
-        // SHA1
-        if (setjmp(g_jump_buffer) == 0) {
-            __asm__ volatile ("sha1h s0, s0" : : : "s0");
-            g_cryptArmCpuInfo |= CRYPT_ARM_SHA1;
-        }
-        // SHA256
-        if (setjmp(g_jump_buffer) == 0) {
-            __asm__ volatile ("sha256su0 v0.4s, v0.4s" : : : "v0");
-            g_cryptArmCpuInfo |= CRYPT_ARM_SHA256;
-        }
-        // SHA512
-        if (setjmp(g_jump_buffer) == 0) {
-            __asm__ volatile ("sha512su0 v0.2d, v0.2d" : : : "v0");
-            g_cryptArmCpuInfo |= CRYPT_ARM_SHA512;
-        }
-    }
-#endif
-
-    sigaction(SIGILL, &old_sa, NULL);
-}
 
 #endif // HITLS_CRYPTO_NO_AUXVAL
 #endif // x86_64 || __arm__ || __arm || __aarch64__

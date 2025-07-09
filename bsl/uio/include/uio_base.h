@@ -26,14 +26,14 @@ extern "C" {
 #endif
 
 struct BSL_UIO_MethodStruct {
-    int32_t type;
-    BslUioWriteCb write;
-    BslUioReadCb read;
-    BslUioCtrlCb ctrl;
-    BslUioPutsCb puts;
-    BslUioGetsCb gets;
-    BslUioCreateCb create;
-    BslUioDestroyCb destroy;
+    int32_t uioType;
+    BslUioWriteCb uioWrite;
+    BslUioReadCb uioRead;
+    BslUioCtrlCb uioCtrl;
+    BslUioPutsCb uioPuts;
+    BslUioGetsCb uioGets;
+    BslUioCreateCb uioCreate;
+    BslUioDestroyCb uioDestroy;
 };
 
 /**

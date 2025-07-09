@@ -184,6 +184,21 @@ static int32_t GetCipherKeyLen(int32_t id, uint32_t *keyLen)
 }
 #endif
 
+static int32_t DRBG_Restart(DRBG_Ctx *ctx)
+{
+    if (ctx->state == DRBG_STATE_ERROR) {
+        (void)DRBG_Uninstantiate(ctx);
+    }
+    if (ctx->state == DRBG_STATE_UNINITIALISED) {
+        int32_t ret = DRBG_Instantiate(ctx, NULL, 0, NULL);
+        if (ret != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(ret);
+            return ret;
+        }
+    }
+    return CRYPT_SUCCESS;
+}
+
 DRBG_Ctx *DRBG_New(int32_t algId, BSL_Param *param)
 {
     int32_t ret;
@@ -373,8 +388,9 @@ int32_t DRBG_Reseed(DRBG_Ctx *ctx, const uint8_t *adin, uint32_t adinLen, BSL_Pa
     }
 
     if (ctx->state != DRBG_STATE_READY) {
-        BSL_ERR_PUSH_ERROR(CRYPT_DRBG_ERR_STATE);
-        return CRYPT_DRBG_ERR_STATE;
+        if (DRBG_Restart(ctx) != CRYPT_SUCCESS) {
+            return CRYPT_DRBG_ERR_STATE;
+        }
     }
 
     ctx->state = DRBG_STATE_ERROR;
@@ -421,8 +437,9 @@ int32_t DRBG_Generate(DRBG_Ctx *ctx, uint8_t *out, uint32_t outLen,
     }
 
     if (ctx->state != DRBG_STATE_READY) {
-        BSL_ERR_PUSH_ERROR(CRYPT_DRBG_ERR_STATE);
-        return CRYPT_DRBG_ERR_STATE;
+        if (DRBG_Restart(ctx) != CRYPT_SUCCESS) {
+            return CRYPT_DRBG_ERR_STATE;
+        }
     }
 
     if (DRBG_IsNeedReseed(ctx, pr)) {

@@ -16,7 +16,6 @@
 #include "hitls_build.h"
 #ifdef HITLS_BSL_UIO_SCTP
 
-#include <unistd.h>
 #include "securec.h"
 #include "bsl_sal.h"
 #include "bsl_binlog_id.h"
@@ -62,7 +61,7 @@ static int32_t BslSctpNew(BSL_UIO *uio)
         return BSL_UIO_FAIL;
     }
     parameters->fd = -1;
-    parameters->method.type = BSL_UIO_SCTP;
+    parameters->method.uioType = BSL_UIO_SCTP;
     uio->ctx = parameters;
     uio->ctxLen = sizeof(SctpParameters);
     // The default value of init is 0. Set the value of init to 1 after the fd is set.
@@ -88,19 +87,19 @@ static int32_t BslSctpDestroy(BSL_UIO *uio)
 
 static int32_t BslSctpWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *writeLen)
 {
-    if (uio == NULL || uio->ctx == NULL || ((SctpParameters *)uio->ctx)->method.write == NULL) {
+    if (uio == NULL || uio->ctx == NULL || ((SctpParameters *)uio->ctx)->method.uioWrite == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID05081, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "Uio: Sctp write input error.", 0, 0, 0, 0);
         return BSL_INVALID_ARG;
     }
     *writeLen = 0;
-    return ((SctpParameters *)uio->ctx)->method.write(uio, buf, len, writeLen);
+    return ((SctpParameters *)uio->ctx)->method.uioWrite(uio, buf, len, writeLen);
 }
 
 static int32_t BslSctpRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *readLen)
 {
-    if (uio == NULL || uio->ctx == NULL || ((SctpParameters *)uio->ctx)->method.read == NULL) {
+    if (uio == NULL || uio->ctx == NULL || ((SctpParameters *)uio->ctx)->method.uioRead == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID05082, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "Uio: Sctp read input error.", 0, 0, 0, 0);
@@ -109,7 +108,7 @@ static int32_t BslSctpRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *read
     *readLen = 0;
     SctpParameters *parameters = (SctpParameters *)uio->ctx;
     if (!parameters->data.peerAuthed) {
-        if (parameters->method.ctrl == NULL || parameters->method.ctrl(uio, BSL_UIO_SCTP_CHECK_PEER_AUTH,
+        if (parameters->method.uioCtrl == NULL || parameters->method.uioCtrl(uio, BSL_UIO_SCTP_CHECK_PEER_AUTH,
             sizeof(parameters->data.peerAuthed), &parameters->data.peerAuthed) != BSL_SUCCESS) {
             BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID05083, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -118,7 +117,7 @@ static int32_t BslSctpRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *read
         }
         parameters->data.peerAuthed = true;
     }
-    return parameters->method.read(uio, buf, len, readLen);
+    return parameters->method.uioRead(uio, buf, len, readLen);
 }
 
 static int32_t BslSctpAddAuthKey(BSL_UIO *uio, const uint8_t *parg, uint16_t larg)
@@ -146,7 +145,7 @@ static int32_t BslSctpAddAuthKey(BSL_UIO *uio, const uint8_t *parg, uint16_t lar
     key.authKey = parg;
     key.authKeySize = larg;
 
-    int32_t ret = parameters->method.ctrl(uio, BSL_UIO_SCTP_ADD_AUTH_SHARED_KEY, (int32_t)sizeof(key), &key);
+    int32_t ret = parameters->method.uioCtrl(uio, BSL_UIO_SCTP_ADD_AUTH_SHARED_KEY, (int32_t)sizeof(key), &key);
     if (ret != BSL_SUCCESS) {
         parameters->data.shareKeyId = prevShareKeyId;
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
@@ -162,12 +161,12 @@ static int32_t BslSctpAddAuthKey(BSL_UIO *uio, const uint8_t *parg, uint16_t lar
 static int32_t BslSctpActiveAuthKey(BSL_UIO *uio)
 {
     SctpParameters *parameters = BSL_UIO_GetCtx(uio);
-    if (parameters == NULL || parameters->method.ctrl == NULL) {
+    if (parameters == NULL || parameters->method.uioCtrl == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
     uint16_t shareKeyId = parameters->data.shareKeyId;
-    int32_t ret = parameters->method.ctrl(uio, BSL_UIO_SCTP_ACTIVE_AUTH_SHARED_KEY,
+    int32_t ret = parameters->method.uioCtrl(uio, BSL_UIO_SCTP_ACTIVE_AUTH_SHARED_KEY,
         (int32_t)sizeof(shareKeyId), &shareKeyId);
     if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
@@ -182,12 +181,12 @@ static int32_t BslSctpActiveAuthKey(BSL_UIO *uio)
 static int32_t BslSctpDelPreAuthKey(BSL_UIO *uio)
 {
     SctpParameters *parameters = BSL_UIO_GetCtx(uio);
-    if (parameters == NULL || parameters->method.ctrl == NULL) {
+    if (parameters == NULL || parameters->method.uioCtrl == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
     uint16_t delShareKeyId = parameters->data.prevShareKeyId;
-    int32_t ret = parameters->method.ctrl(uio, BSL_UIO_SCTP_DEL_PRE_AUTH_SHARED_KEY,
+    int32_t ret = parameters->method.uioCtrl(uio, BSL_UIO_SCTP_DEL_PRE_AUTH_SHARED_KEY,
         (int32_t)sizeof(delShareKeyId), &delShareKeyId);
     if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
@@ -201,12 +200,12 @@ static int32_t BslSctpDelPreAuthKey(BSL_UIO *uio)
 static int32_t BslSctpIsSndBuffEmpty(BSL_UIO *uio, void *parg, int32_t larg)
 {
     SctpParameters *parameters = BSL_UIO_GetCtx(uio);
-    if (parameters == NULL || parameters->method.ctrl == NULL || parg == NULL || larg != sizeof(bool)) {
+    if (parameters == NULL || parameters->method.uioCtrl == NULL || parg == NULL || larg != sizeof(bool)) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
     uint8_t isEmpty = 0;
-    if (parameters->method.ctrl(uio, BSL_UIO_SCTP_SND_BUFF_IS_EMPTY,
+    if (parameters->method.uioCtrl(uio, BSL_UIO_SCTP_SND_BUFF_IS_EMPTY,
         (int32_t)sizeof(uint8_t), &isEmpty) != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID05068, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -352,13 +351,13 @@ static int32_t BslSctpSetCtxCb(SctpParameters *parameters, int32_t type, void *f
     }
     switch (type) {
         case BSL_UIO_WRITE_CB:
-            parameters->method.write = func;
+            parameters->method.uioWrite = func;
             break;
         case BSL_UIO_READ_CB:
-            parameters->method.read = func;
+            parameters->method.uioRead = func;
             break;
         case BSL_UIO_CTRL_CB:
-            parameters->method.ctrl = func;
+            parameters->method.uioCtrl = func;
             break;
         default:
             BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);

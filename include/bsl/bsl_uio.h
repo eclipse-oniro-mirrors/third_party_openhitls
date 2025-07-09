@@ -63,13 +63,6 @@ typedef struct BSL_UIO_MethodStruct BSL_UIO_Method;
 typedef void (*BSL_UIO_USERDATA_FREE_FUNC)(void *);
 
 /**
- * @ingroup bsl
- *
- * @brief   UIO_Addr structure
- */
-typedef union UIO_Address BSL_UIO_Addr;
-
-/**
  * @ingroup bsl_uio
  * @brief   Transmission protocol enumeration
  */

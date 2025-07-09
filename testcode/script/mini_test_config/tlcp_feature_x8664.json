@@ -42,7 +42,6 @@
                 "gcm",
                 "sha1",
                 "sha2",
-                "sha3",
                 "bn_rand",
                 "x25519",
                 "curve_nistp256",

@@ -817,6 +817,7 @@ int32_t ECP_PointMulMont(ECC_Para *para,  ECC_Point *r, const BN_BigNum *k, cons
     int32_t ret;
     BN_UINT mask1 = 0;
     BN_UINT mask2 = 0;
+    BN_UINT tmp;
     uint32_t bits;
     ECC_Point *base = (pt != NULL) ? ECC_DupPoint(pt) : ECC_GetGFromPara(para);
     ECC_Point *r1 = ECC_NewPoint(para);
@@ -833,7 +834,8 @@ int32_t ECP_PointMulMont(ECC_Para *para,  ECC_Point *r, const BN_BigNum *k, cons
     GOTO_ERR_IF(MontLadderDouble(para, r1, r, opt), ret);
     bits = BN_Bits(k);
     for (uint32_t i = bits - 1; i > 0; i--) {
-        mask2 = (-(BN_UINT)BN_GetBit(k, i - 1)) & BN_MASK;
+        tmp = BN_GetBit(k, i - 1);
+        mask2 = (-tmp) & BN_MASK;
         GOTO_ERR_IF(ECP_PointSwapWithMask(r, r1, mask2 ^ mask1), ret);
         GOTO_ERR_IF(MontLadderDoubleAndAdd(para, r, r1, base, opt), ret);
         mask1 ^= (mask2 ^ mask1);

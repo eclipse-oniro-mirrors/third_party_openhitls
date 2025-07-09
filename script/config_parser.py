@@ -18,7 +18,7 @@ import json
 import os
 import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
-from methods import trans2list, unique_list, save_json_file
+from methods import trans2list, save_json_file
 
 
 class Feature:
@@ -239,7 +239,7 @@ class FeatureConfigParser:
     """ Parses the user feature configuration file. """
     # Specifications of keys and values in the file.
     key_value = {
-        "system": {"require": False, "type": str, "choices": ["linux"], "default": "linux"},
+        "system": {"require": False, "type": str, "choices": ["linux", ""], "default": "linux"},
         "bits": {"require": False, "type": int, "choices": [32, 64], "default": 64},
         "endian": {"require": True, "type": str, "choices": ["little", "big"], "default": "little"},
         "libType": {
@@ -329,6 +329,9 @@ class FeatureConfigParser:
             value_type = type(value)
             if value_type == str or value_type == str:
                 if value not in self.key_value.get(key).get("choices"):
+                    if key == "system":
+                        print("Info: There is no {} implementation by default, you should set its SAL callbacks to make it work.".format(value))
+                        continue
                     raise ValueError("Error feature_config file: wrong value of '%s'" % key)
             elif value_type == list:
                 choices = set(self.key_value[key]["choices"])
@@ -598,7 +601,7 @@ class FeatureConfigParser:
 
         if self._cfg['endian'] == 'big':
             macros.add("-DHITLS_BIG_ENDIAN")
-        if self._cfg.get('system', ""):
+        if self._cfg.get('system', "") == "linux":
             macros.add("-DHITLS_BSL_SAL_LINUX")
 
         bits = self._cfg.get('bits', 0)
@@ -727,7 +730,7 @@ class CompleteOptionParser:
         "CC_WARN_FLAGS",  # Warning options
         "CC_LANGUAGE_FLAGS",  # Language Options
         "CC_CDG_FLAGS",  # Code Generation Options
-        "CC_MD_DEPENDENT_FLAGS",  # MD_Dependent Options
+        "CC_MD_DEPENDENT_FLAGS",  # Machine-Dependent Options
         "CC_OPT_FLAGS",  # Optimization Options
         "CC_SEC_FLAGS",  # Secure compilation options
         "CC_DEFINE_FLAGS",  # Custom Macro
@@ -798,12 +801,12 @@ class CompileConfigParser:
                 self._cfg['compileFlag'][option_type] = {}
 
             flags = self._cfg['compileFlag'][option_type]
-            flags[option_op] = unique_list(flags.get(option_op, []) + [option])
+            flags[option_op] = list(set(flags.get(option_op, []) + [option]))
 
     def change_link_flags(self, flags, is_add):
         link_op = 'LINK_FLAG_ADD' if is_add else 'LINK_FLAG_DEL'
         new_flags = self._cfg['linkFlag'].get(link_op, []) + flags
-        self._cfg['linkFlag'][link_op] = unique_list(new_flags)
+        self._cfg['linkFlag'][link_op] = list(set(new_flags))
 
     def add_debug_options(self):
         flags_add = {'CC_FLAGS_ADD': ['-g3', '-gdwarf-2']}

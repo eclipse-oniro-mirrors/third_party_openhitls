@@ -1,0 +1,30 @@
+{
+    "description": "It's created for STM32F4 series boards.",
+    "compileFlag": {
+        "CC_WARN_FLAGS": {
+            "CC_FLAGS_DEL": [
+                "-Werror"
+            ]
+        },
+        "CC_MD_DEPENDENT_FLAGS": {
+            "CC_FLAGS_ADD": [
+                "-mcpu=cortex-m4",
+                "-mthumb",
+                "-mfloat-abi=hard",
+                "-mfpu=fpv4-sp-d16"
+            ]
+        },
+        "CC_DEFINE_FLAGS": {
+            "CC_FLAGS_ADD": [
+                "-DHITLS_CRYPTO_NO_AUXVAL"
+            ]
+        }
+    },
+    "linkFlag": {
+        "PUBLIC": [
+            "-static"
+        ],
+        "SHARED": [],
+        "EXE": []
+    }
+}

@@ -162,6 +162,7 @@ set(TEST_INTF_INCLUDE_DIRS
     ${openHiTLS_SRC}/crypto/encode/include
     ${openHiTLS_SRC}/crypto/codecskey/include
     ${openHiTLS_SRC}/crypto/codecskey/src
+    ${openHiTLS_SRC}/crypto/entropy/src
     ${openHiTLS_SRC}/bsl/err/include
     ${openHiTLS_SRC}/bsl/err/src
     ${openHiTLS_SRC}/include/tls
@@ -257,6 +258,7 @@ set(TEST_SHARED_LIBS
 foreach(test_suite ${TEST_FILES})
     get_filename_component(sdv_exe ${test_suite} NAME_WE)
     add_executable(${sdv_exe} ${openHiTLS_SRC}/testcode/output/${sdv_exe}.c)
+    target_link_options(${sdv_exe} PRIVATE "LINKER:-z,noexecstack")
     add_dependencies(${sdv_exe} ${sdv_exe}_phony)
     set_target_properties(${sdv_exe} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${openHiTLS_SRC}/testcode/output"

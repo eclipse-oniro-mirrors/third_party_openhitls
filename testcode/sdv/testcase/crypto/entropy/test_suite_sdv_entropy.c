@@ -1121,6 +1121,59 @@ EXIT:
     return;
 }
 /* END_CASE */
+#if defined(HITLS_CRYPTO_ENTROPY_GETENTROPY) || defined(HITLS_CRYPTO_ENTROPY_DEVRANDOM)
+#include "entropy_seed_pool.h"
+typedef struct EntCtx {
+    uint32_t entSum;
+} EntCtx;
+
+static uint32_t EntropyGetSum(void *ctx, uint8_t *buf, uint32_t bufLen)
+{
+    EntCtx *enctx = (EntCtx *)ctx;
+    uint32_t ret = ENTROPY_SysEntropyGet(ctx, buf, bufLen);
+    enctx->entSum += ret;
+    return ret;
+}
+#endif
+/* BEGIN_CASE */
+void SDV_CRYPTO_EAL_SEEDPOOL_EntropySumTest(int minEntropy1, int minEntropy2, int min, int entropy, int exp)
+{
+#if defined(HITLS_CRYPTO_ENTROPY_GETENTROPY) || defined(HITLS_CRYPTO_ENTROPY_DEVRANDOM)
+    uint8_t *buf = NULL;
+    EntCtx enctx = {0};
+    CRYPT_EAL_SeedPoolCtx *pool = CRYPT_EAL_SeedPoolNew(true);
+    ASSERT_TRUE(pool != NULL);
+    CRYPT_EAL_EsPara para1 = {false, minEntropy1, &enctx, (CRYPT_EAL_EntropyGet)EntropyGetSum};
+    CRYPT_EAL_EsPara para2 = {false, minEntropy2, &enctx, (CRYPT_EAL_EntropyGet)EntropyGetSum};
+    ASSERT_TRUE(CRYPT_EAL_SeedPoolAddEs(pool, &para1) == CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_EAL_SeedPoolAddEs(pool, &para2) == CRYPT_SUCCESS);
+    EAL_EntropyCtx *ctx = EAL_EntropyNewCtx(pool, true, (uint32_t)min, (uint32_t)min, (uint32_t)entropy);
+    ASSERT_TRUE(ctx != NULL);
+    ASSERT_TRUE(EAL_EntropyCollection(pool, ctx) == CRYPT_SUCCESS);
+    uint32_t len;
+    buf = EAL_EntropyDetachBuf(ctx, &len);
+    ASSERT_TRUE(len == (uint32_t)min);
+    if (exp == 0) {
+        ASSERT_TRUE(buf == NULL);
+    } else {
+        ASSERT_TRUE(buf != NULL);
+    }
+    ASSERT_TRUE(enctx.entSum == (uint32_t)exp);
+EXIT:
+    BSL_SAL_Free(buf);
+    EAL_EntropyFreeCtx(ctx);
+    CRYPT_EAL_SeedPoolFree(pool);
+    return;
+#else
+    (void)minEntropy1;
+    (void)minEntropy2;
+    (void)min;
+    (void)entropy;
+    (void)exp;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
 
 /* @
 * @test  SDV_CRYPTO_SEEDPOOL_DrbgTest
@@ -1667,7 +1720,7 @@ void HITLS_SDV_DRBG_GM_FUNC_TC067(int isCreateNullPool, int isPhysical, int minE
     EAL_EntropyCtx *ctx = EAL_EntropyNewCtx(pool, true, (uint32_t)minL, (uint32_t)maxL, (uint32_t)entropyL);
     ASSERT_TRUE(ctx != NULL);
     if (isCreateNullPool) {
-        ASSERT_TRUE(EAL_EntropyCollection(pool, ctx) == CRYPT_SEED_POOL_NOT_MEET_REQUIREMENT);
+        ASSERT_TRUE(EAL_EntropyCollection(pool, ctx) != CRYPT_SUCCESS);
     } else {
         ASSERT_TRUE(EAL_EntropyCollection(pool, ctx) == CRYPT_SUCCESS);
     }

@@ -15,9 +15,6 @@
 
 #include "hitls_build.h"
 #ifdef HITLS_BSL_UIO_TCP
-
-#include <unistd.h>
-
 #include "bsl_binlog_id.h"
 #include "bsl_err_internal.h"
 #include "bsl_log_internal.h"
@@ -83,7 +80,7 @@ static int32_t TcpSocketWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint3
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
         return BSL_UIO_IO_EXCEPTION;
     }
-    ssize_t ret = BSL_SAL_Write(fd, buf, len, &err);
+    int32_t ret = SAL_Write(fd, buf, len, &err);
     (void)BSL_UIO_ClearFlags(uio, BSL_UIO_FLAGS_RWS | BSL_UIO_FLAGS_SHOULD_RETRY);
     if (ret > 0) {
         *writeLen = (uint32_t)ret;
@@ -109,7 +106,7 @@ static int32_t TcpSocketRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *re
         BSL_ERR_PUSH_ERROR(BSL_UIO_IO_EXCEPTION);
         return BSL_UIO_IO_EXCEPTION;
     }
-    ssize_t ret = BSL_SAL_Read(fd, buf, len, &err);
+    int32_t ret = SAL_Read(fd, buf, len, &err);
     if (ret > 0) { // Success
         *readLen = (uint32_t)ret;
         return BSL_SUCCESS;

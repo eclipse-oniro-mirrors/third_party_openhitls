@@ -167,7 +167,7 @@ int32_t UdpFrameWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *wri
             sendBuf = (void *)newBuf;
         }
     }
-    ret = BSL_UIO_UdpMethod()->write(uio, sendBuf, sendLen, writeLen);
+    ret = BSL_UIO_UdpMethod()->uioWrite(uio, sendBuf, sendLen, writeLen);
     if (sendLen != len && *writeLen != 0) {
         *writeLen = len;
     }
@@ -178,7 +178,7 @@ int32_t UdpFrameWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *wri
 int32_t UdpFrameRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *readLen)
 {
     int ret;
-    ret = BSL_UIO_UdpMethod()->read(uio, buf, len, readLen);
+    ret = BSL_UIO_UdpMethod()->uioRead(uio, buf, len, readLen);
     if (ret != BSL_SUCCESS) {
         return ret;
     }
@@ -207,8 +207,8 @@ int32_t UdpFrameRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *readLen)
 int32_t SelectUdpWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *writeLen)
 {
     HLT_FrameHandle *frameHandle = GetFrameHandle();
-    if (frameHandle->method.write != NULL) {
-        return frameHandle->method.write(uio, buf, len, writeLen);
+    if (frameHandle->method.uioWrite != NULL) {
+        return frameHandle->method.uioWrite(uio, buf, len, writeLen);
     }
     return UdpFrameWrite(uio, buf, len, writeLen);
 }
@@ -216,8 +216,8 @@ int32_t SelectUdpWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t *wr
 int32_t SelectUdpRead(BSL_UIO *uio, void *buf, uint32_t len, uint32_t *readLen)
 {
     HLT_FrameHandle *frameHandle = GetFrameHandle();
-    if (frameHandle->method.read != NULL) {
-        return frameHandle->method.read(uio, buf, len, readLen);
+    if (frameHandle->method.uioRead != NULL) {
+        return frameHandle->method.uioRead(uio, buf, len, readLen);
     }
     return UdpFrameRead(uio, buf, len, readLen);
 }
@@ -229,8 +229,8 @@ void *UdpGetDefaultMethod(void)
 {
     const BSL_UIO_Method *ori = BSL_UIO_UdpMethod();
     memcpy_s(&g_UdpUioMethodDefault, sizeof(g_UdpUioMethodDefault), ori, sizeof(g_UdpUioMethodDefault));
-    g_UdpUioMethodDefault.write = SelectUdpWrite;
-    g_UdpUioMethodDefault.read = SelectUdpRead;
+    g_UdpUioMethodDefault.uioWrite = SelectUdpWrite;
+    g_UdpUioMethodDefault.uioRead = SelectUdpRead;
     return &g_UdpUioMethodDefault;
 }
 #endif

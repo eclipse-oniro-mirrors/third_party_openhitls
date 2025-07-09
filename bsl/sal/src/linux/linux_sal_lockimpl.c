@@ -20,7 +20,6 @@
 #include "bsl_sal.h"
 
 #if defined(HITLS_BSL_SAL_LINUX) && defined(HITLS_BSL_SAL_LOCK)
-
 // Used for DEFAULT lock implementation
 typedef struct {
     pthread_rwlock_t rwlock;

@@ -40,10 +40,10 @@ struct FRAME_CertInfo_ {
 };
 #define INIT_IO_METHOD(method, tp, pfWrite, pfRead, pfCtrl)   \
     do {                                                      \
-        (method).type = tp;                                   \
-        (method).read = pfRead;                               \
-        (method).write = pfWrite;                             \
-        (method).ctrl = pfCtrl;                               \
+        (method).uioType = tp;                                   \
+        (method).uioRead = pfRead;                               \
+        (method).uioWrite = pfWrite;                             \
+        (method).uioCtrl = pfCtrl;                               \
     } while (0)
 
 #ifdef __cplusplus
