@@ -84,7 +84,6 @@ public_asm_defines = [
 ]
 
 public_all_defines = [
-    "HITLS_BSL_UIO_ADDR",
     "HITLS_BSL_UIO_BUFFER",
     "HITLS_BSL_UIO_MEM",
     "HITLS_BSL_UIO_PLT",
@@ -243,7 +242,6 @@ ohos_source_set("bsl_source") {
         "bsl/sal/src/sal_time.c",
         "bsl/tlv/src/tlv.c",
         "bsl/uio/src/uio_abstraction.c",
-        "bsl/uio/src/uio_addr.c",
         "bsl/uio/src/uio_buffer.c",
         "bsl/uio/src/uio_mem.c",
         "bsl/uio/src/uio_tcp.c",
