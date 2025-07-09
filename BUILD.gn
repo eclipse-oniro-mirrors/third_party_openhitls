@@ -47,8 +47,9 @@ public_armv8_defines = [
     "HITLS_CRYPTO_AES_ARMV8",
     "HITLS_CRYPTO_BN_ARMV8",
     "HITLS_CRYPTO_CHACHA20_ARMV8",
+    "HITLS_CRYPTO_CHACHA20POLY1305_ARMV8",
     "HITLS_CRYPTO_ECC_ARMV8",
-    "HITLS_CRYPTO_MODES_ARMV8",
+    "HITLS_CRYPTO_GCM_ARMV8",
     "HITLS_CRYPTO_SHA1_ARMV8",
     "HITLS_CRYPTO_SHA2_ARMV8",
     "HITLS_CRYPTO_SHA3",
@@ -62,9 +63,9 @@ public_x8664_defines = [
     "HITLS_CRYPTO_AES_X8664",
     "HITLS_CRYPTO_BN_X8664",
     "HITLS_CRYPTO_CHACHA20_X8664",
+    "HITLS_CRYPTO_CHACHA20POLY1305_X8664",
     "HITLS_CRYPTO_ECC_X8664",
-    "HITLS_CRYPTO_MD5_X8664",
-    "HITLS_CRYPTO_MODES_X8664",
+    "HITLS_CRYPTO_GCM_X8664",
     "HITLS_CRYPTO_SHA1_X8664",
     "HITLS_CRYPTO_SHA2_X8664",
     "HITLS_CRYPTO_SM3_X8664",
@@ -72,23 +73,11 @@ public_x8664_defines = [
     "HITLS_CRYPTO_X25519_X8664"
 ]
 
-public_asm_defines = [
-    "HITLS_CRYPTO_AES",
-    "HITLS_CRYPTO_CHACHA20",
-    "HITLS_CRYPTO_ECC",
-    "HITLS_CRYPTO_SHA1",
-    "HITLS_CRYPTO_SHA2",
-    "HITLS_CRYPTO_SM3",
-    "HITLS_CRYPTO_SM4",
-    "HITLS_CRYPTO_X25519"
-]
-
 public_all_defines = [
     "HITLS_BSL_UIO_BUFFER",
     "HITLS_BSL_UIO_MEM",
     "HITLS_BSL_UIO_PLT",
     "HITLS_BSL_UIO_TCP",
-    "HITLS_BSL_UIO_UDP",
     "HITLS_AARCH64_PACIASP",
     "HITLS_AUTH",
     "HITLS_AUTH_PRIVPASS_TOKEN",
@@ -105,7 +94,6 @@ public_all_defines = [
     "HITLS_BSL_PARAMS",
     "HITLS_BSL_PEM",
     "HITLS_BSL_SAL",
-    "HITLS_BSL_SAL_DL",
     "HITLS_BSL_SAL_FILE",
     "HITLS_BSL_SAL_LINUX",
     "HITLS_BSL_SAL_LOCK",
@@ -121,22 +109,39 @@ public_all_defines = [
     "HITLS_CRYPTO_BN",
     "HITLS_CRYPTO_BN_COMBA",
 
-    "HITLS_CRYPTO_CIPHER",
-    "HITLS_CRYPTO_CODECS",
+    "HITLS_CRYPTO_AES",
+    "HITLS_CRYPTO_SM4",
+    "HITLS_CRYPTO_CHACHA20",
+    "HITLS_CRYPTO_CHACHA20POLY1305",
     "HITLS_CRYPTO_CODECSKEY",
-    "HITLS_CRYPTO_DRBG",
+    "HITLS_CRYPTO_DRBG_HASH",
+    "HITLS_CRYPTO_DRBG_HMAC",
+    "HITLS_CRYPTO_DRBG_CTR",
     "HITLS_CRYPTO_EAL",
     "HITLS_CRYPTO_EALINIT",
     "HITLS_CRYPTO_ENTROPY",
     "HITLS_CRYPTO_HPKE",
-    "HITLS_CRYPTO_KDF",
-    "HITLS_CRYPTO_MAC",
-    "HITLS_CRYPTO_MD",
-    "HITLS_CRYPTO_MD5",
-    "HITLS_CRYPTO_MODES",
+    "HITLS_CRYPTO_PBKDF2",
+    "HITLS_CRYPTO_HKDF",
+    "HITLS_CRYPTO_HMAC",
+    "HITLS_CRYPTO_CMAC_AES",
+    "HITLS_CRYPTO_SHA1",
+    "HITLS_CRYPTO_SHA2",
+    "HITLS_CRYPTO_SHA3",
+    "HITLS_CRYPTO_SM3",
+    "HITLS_CRYPTO_CBC",
+    "HITLS_CRYPTO_CCM",
+    "HITLS_CRYPTO_GCM",
     "HITLS_CRYPTO_NIST_ECC_ACCELERATE",
-    "HITLS_CRYPTO_PKEY",
-    "HITLS_CRYPTO_PROVIDER",
+    "HITLS_CRYPTO_ECC",
+    "HITLS_CRYPTO_ECDSA",
+    "HITLS_CRYPTO_ECDH",
+    "HITLS_CRYPTO_X25519",
+    "HITLS_CRYPTO_SM2",
+    "HITLS_CRYPTO_RSA",
+    "HITLS_CRYPTO_MLKEM",
+    "HITLS_CRYPTO_MLDSA",
+    "HITLS_CRYPTO_SLH_DSA",
     "HITLS_CRYPTO_SM2_PRECOMPUTE_512K_TBL",
     "HITLS_PKI",
     "HITLS_PKI_INFO",
@@ -144,31 +149,31 @@ public_all_defines = [
     "HITLS_PKI_X509",
 
     "HITLS_TLS",
-    "HITLS_TLS_CALLBACK",
+    "HITLS_TLS_CALLBACK_SAL",
+    "HITLS_TLS_CALLBACK_CERT",
+    "HITLS_TLS_CALLBACK_CRYPT",
     "HITLS_TLS_CONFIG",
-    "HITLS_TLS_CONNECTION",
-    "HITLS_TLS_FEATURE",
     "HITLS_TLS_HOST",
-    "HITLS_TLS_MAINTAIN",
     "HITLS_TLS_PROTO",
-    "HITLS_TLS_PROTO_VERSION",
-    "HITLS_TLS_SUITE",
-    "HITLS_TLS_SUITE_AUTH",
-    "HITLS_TLS_SUITE_CIPHER",
-    "HITLS_TLS_SUITE_KX",
-
+    "HITLS_TLS_PROTO_TLCP11",
+    "HITLS_TLS_SUITE_ECDHE_SM4_CBC_SM3",
+    "HITLS_TLS_SUITE_ECC_SM4_CBC_SM3",
+    "HITLS_TLS_SUITE_ECDHE_SM4_GCM_SM3",
+    "HITLS_TLS_SUITE_ECC_SM4_GCM_SM3",
+    "HITLS_CRYPTO_ENTROPY_GETENTROPY",
+    "HITLS_CRYPTO_ENTROPY_DEVRANDOM",
+    "HITLS_EAL_INIT_OPTS=0xFF",
     "HITLS_SIXTY_FOUR_BITS",
+    "HITLS_SEED_DRBG_INIT_RAND_ALG=CRYPT_RAND_SHA256",
     "__FILENAME__=__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__"
 ]
 
 if (openhitls_selected_platform == "linux-armv8") {
     all_defines += public_armv8_defines
     all_defines += public_all_defines
-    all_defines += public_asm_defines
 } else if (openhitls_selected_platform == "linux-x86_64") {
     all_defines += public_x8664_defines
     all_defines += public_all_defines
-    all_defines += public_asm_defines
 } else {
     all_defines = public_all_defines
 } 
@@ -177,7 +182,6 @@ unused_variables = []
 unused_variables += unused_variables
 unused_variables += public_armv8_defines
 unused_variables += public_x8664_defines
-unused_variables += public_asm_defines 
 unused_variables += public_all_defines
 
 config("bsl_config") {
