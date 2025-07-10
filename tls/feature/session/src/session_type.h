@@ -84,6 +84,7 @@ struct TlsSessCtx {
     uint8_t *ticket;                                    /* Session ticket */
     uint32_t ticketLifetime;                            /* Timeout interval of the ticket */
     uint32_t ticketAgeAdd;                              /* A random number generated each time a ticket is issued */
+    void *userData;
 };
 
 #define LIBCTX_FROM_SESSION_CTX(sessCtx) (sessCtx == NULL) ? NULL : ((sessCtx)->certMgrCtx == NULL ? NULL : (sessCtx)->certMgrCtx->libCtx)

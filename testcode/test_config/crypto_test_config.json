@@ -15,7 +15,6 @@
         "pem": ["test_suite_sdv_pem"],
         "tlv": ["test_suite_sdv_tlv"],
         "uio": ["test_suite_sdv_uio"],
-        "usrdata": ["test_suite_sdv_usr"],
         "sal": ["test_suite_sdv_sal"],
         "sal_mem": ["test_suite_sdv_sal"],
         "sal_thread": ["test_suite_sdv_sal"],

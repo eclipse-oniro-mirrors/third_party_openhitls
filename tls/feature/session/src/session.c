@@ -695,4 +695,27 @@ uint32_t SESS_GetTicketAgeAdd(const HITLS_Session *sess)
     return ticketAgeAdd;
 }
 
+void *HITLS_SESS_GetUserData(const HITLS_Session *sess)
+{
+    if (sess == NULL) {
+        return NULL;
+    }
+    void *data = NULL;
+    BSL_SAL_ThreadReadLock(sess->lock);
+    data = sess->userData;
+    BSL_SAL_ThreadUnlock(sess->lock);
+    return data;
+}
+
+int32_t HITLS_SESS_SetUserData(HITLS_Session *sess, void *userData)
+{
+    if (sess == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    BSL_SAL_ThreadWriteLock(sess->lock);
+    sess->userData = userData;
+    BSL_SAL_ThreadUnlock(sess->lock);
+    return HITLS_SUCCESS;
+}
+
 #endif /* HITLS_TLS_FEATURE_SESSION */

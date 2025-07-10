@@ -30,7 +30,6 @@
                         "uio_udp": {"deps": ["uio_plt", "sal_net"]},
                         "uio_mem": {"deps": ["uio_plt", "sal_mem", "buffer"]}
                     },
-                    "usrdata": null,
                     "params": null,
                     "asn1": {"deps": ["sal_time", "uio_plt"]}
                 }
@@ -1296,10 +1295,6 @@
                 ".include": [
                     "bsl/buffer/include"
                 ]
-            },
-            "usrdata": {
-                ".features": ["usrdata"],
-                ".srcs": "bsl/usrdata/src/*.c"
             },
             "asn1": {
                 ".features": ["asn1"],

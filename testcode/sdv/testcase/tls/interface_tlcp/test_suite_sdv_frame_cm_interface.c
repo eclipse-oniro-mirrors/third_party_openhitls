@@ -375,6 +375,58 @@ EXIT:
 }
 /* END_CASE */
 
+
+/* @
+* @test  UT_TLS_CM_SET_GET_USR_DATA_TC001
+* @title  test HITLS_SESS_SetUserData, HITLS_SESS_GetUserData interfaces
+* @precon  nan
+* @brief   HITLS_SESS_GetUserData
+*          1. Input an empty connection context and a non-empty userData. Expected result 1 is obtained
+*          2. Input an empty connection context and an empty userData. Expected result 1 is obtained
+*          3. Input a non-empty connection context and an empty userData. Expected result 2 is obtained
+*          4. Input a non-empty connection context and a non-empty userData. Expected result 2 is obtained
+*          HITLS_SESS_GetUserData
+*          1. Input an empty connection context. Expected result 4 is obtained
+*          2. Input a non-empty connection context. Expected result 3 is obtained
+* @expect  1. Return HITLS_NULL_INPUT
+*          2. Return HITLS_SUCCESS
+*          3. Return userData
+*          4. Return a null pointer
+@*/
+/* BEGIN_CASE */
+void UT_TLS_CM_SESSION_SET_GET_USR_DATA_API_TC001(void)
+{
+    HitlsInit();
+    HITLS_Session *session = HITLS_SESS_New();
+    int32_t ret;
+    uint8_t userData[5] = {0};
+
+    void *ret2 = HITLS_SESS_GetUserData(NULL);
+    ASSERT_TRUE(ret2 == NULL);
+
+    ret = HITLS_SESS_SetUserData(NULL, &userData);
+    ASSERT_TRUE(ret == HITLS_NULL_INPUT);
+
+    ret = HITLS_SESS_SetUserData(NULL, NULL);
+    ASSERT_TRUE(ret == HITLS_NULL_INPUT);
+
+    ret = HITLS_SESS_SetUserData(session, NULL);
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+
+    ret = HITLS_SESS_SetUserData(session, &userData);
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+
+    ret = HITLS_SESS_SetUserData(session, "userdata");
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+
+    ret2 = HITLS_SESS_GetUserData(session);
+    ASSERT_TRUE(strcmp(ret2, "userdata") == 0);
+EXIT:
+    HITLS_SESS_Free(session);
+}
+/* END_CASE */
+
+
 /* @
 * @test  HITLS_SetShutdownState Set HITLS_SENT_SHUTDOWN to 1 and do not send the close_notify message.
 * @title  UT_TLS_CM_SET_SHUTDOWN_FUNC_TC001

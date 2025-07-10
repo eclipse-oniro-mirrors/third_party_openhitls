@@ -20,7 +20,6 @@
 #include "bsl_sal.h"
 #include "bsl_bytes.h"
 #include "bsl_list.h"
-#include "bsl_user_data.h"
 #include "hitls_error.h"
 #include "hitls_cert_reg.h"
 #include "hitls_security.h"

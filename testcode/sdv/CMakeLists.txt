@@ -104,7 +104,6 @@ set(TEST_INTF_INCLUDE_DIRS
     ${openHiTLS_SRC}/bsl/base64/include
     ${openHiTLS_SRC}/bsl/pem/include
     ${openHiTLS_SRC}/bsl/list/include
-    ${openHiTLS_SRC}/bsl/usrdata/include
     ${openHiTLS_SRC}/bsl/obj/include
     ${openHiTLS_SRC}/bsl/include
     ${openHiTLS_SRC}/bsl/sal/src

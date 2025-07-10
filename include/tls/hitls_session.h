@@ -615,7 +615,26 @@ bool HITLS_SESS_IsResumable(const HITLS_Session *sess);
  * @retval  Indicates whether a ticket exists.
  */
 bool HITLS_SESS_HasTicket(const HITLS_Session *sess);
+/**
+ * @ingroup hitls_session
+ * @brief   Set the user data of the session.
+ *
+ * @param   sess [OUT] Session information handle.
+ * @param   userData [IN] User data.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+void *HITLS_SESS_GetUserData(const HITLS_Session *sess);
 
+/** * @ingroup hitls_session
+ * @brief   Set the user data of the session.
+ *
+ * @param   sess [OUT] Session information handle.
+ * @param   userData [IN] User data.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_SESS_SetUserData(HITLS_Session *sess, void *userData);
 #ifdef __cplusplus
 }
 #endif
