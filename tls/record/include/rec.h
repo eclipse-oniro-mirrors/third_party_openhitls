@@ -295,6 +295,17 @@ bool REC_HaveReadSuiteInfo(const TLS_Ctx *ctx);
 uint32_t APP_GetReadPendingBytes(const TLS_Ctx *ctx);
 
 int32_t REC_RecBufReSet(TLS_Ctx *ctx);
+
+/**
+ * @ingroup record
+ * @brief Flush the buffer uio
+ *
+ * @param ctx [IN] TLS object
+ * @retval  HITLS_SUCCESS
+ * @retval  HITLS_REC_NORMAL_IO_BUSY uio busy
+ * @retval  HITLS_REC_ERR_IO_EXCEPTION uio error
+ */
+int32_t REC_FlightTransmit(TLS_Ctx *ctx);
 #ifdef __cplusplus
 }
 #endif

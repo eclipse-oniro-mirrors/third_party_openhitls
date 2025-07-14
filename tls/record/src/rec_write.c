@@ -433,3 +433,40 @@ int32_t TlsRecordWrite(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, u
     return SendRecord(ctx, ctx->recCtx, state, state->seq);
 }
 #endif /* HITLS_TLS_PROTO_TLS */
+
+#ifdef HITLS_TLS_FEATURE_FLIGHT
+int32_t REC_FlightTransmit(TLS_Ctx *ctx)
+{
+    int32_t ret = HITLS_SUCCESS;
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+    ret = REC_QueryMtu(ctx);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
+    ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
+    if (ret == BSL_UIO_IO_BUSY) {
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+        if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
+            return HITLS_REC_NORMAL_IO_BUSY;
+        }
+        bool exceeded = false;
+        (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_MTU_EXCEEDED, sizeof(bool), &exceeded);
+        if (exceeded) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17362, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "Record write: get EMSGSIZE error.", 0, 0, 0, 0);
+            ctx->needQueryMtu = true;
+        }
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
+        return HITLS_REC_NORMAL_IO_BUSY;
+    }
+    if (ret != BSL_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(HITLS_REC_ERR_IO_EXCEPTION);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16110, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "fail to send handshake message in bUio.", 0, 0, 0, 0);
+        return HITLS_REC_ERR_IO_EXCEPTION;
+    }
+
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_FEATURE_FLIGHT */

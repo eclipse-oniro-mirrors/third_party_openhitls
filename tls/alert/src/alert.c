@@ -131,17 +131,10 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
     /* if isFlightTransmitEnable is enabled, the stored handshake information needs to be sent */
     bool isFlightTransmitEnable = false;
     (void)HITLS_GetFlightTransmitSwitch(ctx, &isFlightTransmitEnable);
-    if (isFlightTransmitEnable) {
-        ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
-        if (ret == BSL_UIO_IO_BUSY) {
-            BSL_ERR_PUSH_ERROR(HITLS_REC_NORMAL_IO_BUSY);
-            return HITLS_REC_NORMAL_IO_BUSY;
-        }
-        if (ret != BSL_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16111, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "fail to send alert message in bUio.", 0, 0, 0, 0);
-            BSL_ERR_PUSH_ERROR(HITLS_REC_ERR_IO_EXCEPTION);
-            return HITLS_REC_ERR_IO_EXCEPTION;
+    if (isFlightTransmitEnable == 1) {
+        ret = REC_FlightTransmit(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
         }
     }
 #endif /* HITLS_TLS_FEATURE_FLIGHT */

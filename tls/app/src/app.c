@@ -126,14 +126,9 @@ int32_t APP_Write(TLS_Ctx *ctx, const uint8_t *data, uint32_t dataLen, uint32_t 
     }
 #ifdef HITLS_TLS_FEATURE_FLIGHT
     if (ctx->config.tlsConfig.isFlightTransmitEnable) {
-        ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
-        if (ret == BSL_UIO_IO_BUSY) {
-            return HITLS_REC_NORMAL_IO_BUSY;
-        }
-        if (ret != BSL_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16112, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "fail to send handshake message in bUio.", 0, 0, 0, 0);
-            return HITLS_REC_ERR_IO_EXCEPTION;
+        ret = REC_FlightTransmit(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
         }
     }
 #endif
