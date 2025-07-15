@@ -291,7 +291,7 @@ uint8_t *HS_PrepareSignData(const TLS_Ctx *ctx, const uint8_t *partSignData,
     return data;
 }
 
-#ifdef HITLS_TLS_PROTO_DTLS12
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_SCTP)
 /**
  * @brief   Calculate the sctp auth key
  * @details auth key: PRF(SecurityParameters.master_secret, label,
@@ -412,7 +412,7 @@ int32_t HS_DeletePreviousSctpAuthKey(TLS_Ctx *ctx)
     }
     return ret;
 }
-#endif /* end #ifdef HITLS_TLS_PROTO_DTLS12 */
+#endif /* defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_SCTP) */
 
 bool IsNeedServerKeyExchange(const TLS_Ctx *ctx)
 {

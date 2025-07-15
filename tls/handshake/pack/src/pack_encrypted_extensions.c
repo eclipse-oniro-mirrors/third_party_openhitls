@@ -105,6 +105,7 @@ static int32_t PackEncryptedExs(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLe
 #endif /* HITLS_TLS_FEATURE_ALPN */
     };
 
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
     exLen = 0u;
     if (IsPackNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), HITLS_EX_TYPE_ENCRYPTED_EXTENSIONS)) {
         ret = PackCustomExtensions(ctx, &buf[offset], bufLen - offset, &exLen, HITLS_EX_TYPE_ENCRYPTED_EXTENSIONS, NULL, 0);
@@ -113,6 +114,7 @@ static int32_t PackEncryptedExs(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLe
         }
         offset += exLen;
     }
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
 
     /* Calculate the number of extended types */
     listSize = sizeof(extMsgList) / sizeof(extMsgList[0]);

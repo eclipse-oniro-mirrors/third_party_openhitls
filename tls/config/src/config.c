@@ -111,6 +111,7 @@ void CFG_CleanConfig(HITLS_Config *config)
 #endif
 #ifdef HITLS_TLS_CONFIG_MANUAL_DH
     SAL_CRYPT_FreeDhKey(config->dhTmp);
+    config->dhTmp = NULL;
 #endif
 #ifdef HITLS_TLS_FEATURE_SESSION
     SESSMGR_Free(config->sessMgr);
@@ -118,8 +119,10 @@ void CFG_CleanConfig(HITLS_Config *config)
 #endif
     SAL_CERT_MgrCtxFree(config->certMgrCtx);
     config->certMgrCtx = NULL;
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
     FreeCustomExtensions(config->customExts);
     config->customExts = NULL;
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
     BSL_SAL_ReferencesFree(&(config->references));
     return;
 }
@@ -504,12 +507,12 @@ static int32_t BasicConfigDeepCopy(HITLS_Config *destConfig, const HITLS_Config 
         return ret;
     }
 #endif /* HITLS_TLS_CONFIG_MANUAL_DH */
-
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
     destConfig->customExts = DupCustomExtensions(srcConfig->customExts);
     if (srcConfig->customExts != NULL && destConfig->customExts == NULL) {
         return HITLS_MEMALLOC_FAIL;
     }
-
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
     return HITLS_SUCCESS;
 }
 

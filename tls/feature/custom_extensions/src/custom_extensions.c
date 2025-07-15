@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "hitls_build.h"
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
 #include "tls_binlog_id.h"
 #include "bsl_log_internal.h"
 #include "bsl_log.h"
@@ -296,3 +297,4 @@ CustomExt_Methods *DupCustomExtensions(CustomExt_Methods *exts)
     newExts->methsCount = exts->methsCount;
     return newExts;
 }
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */

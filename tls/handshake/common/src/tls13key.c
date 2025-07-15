@@ -596,6 +596,8 @@ int32_t HS_TLS13UpdateTrafficSecret(TLS_Ctx *ctx, bool isOut)
     deriveInfo.labelLen = sizeof(label) - 1;
     deriveInfo.seed = NULL;
     deriveInfo.seedLen = 0;
+    deriveInfo.libCtx = LIBCTX_FROM_CTX(ctx);
+    deriveInfo.attrName = ATTRIBUTE_FROM_CTX(ctx);
     int32_t ret = SAL_CRYPT_HkdfExpandLabel(&deriveInfo, trafficSecretPointer, trafficSecretLen);
     if (ret != HITLS_SUCCESS) {
         BSL_SAL_CleanseData(trafficSecret, MAX_DIGEST_SIZE);
