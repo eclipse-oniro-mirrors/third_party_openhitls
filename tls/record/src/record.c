@@ -594,7 +594,7 @@ int32_t REC_QueryMtu(TLS_Ctx *ctx)
     if (ctx->config.linkMtu > 0) {
         uint8_t overhead = 0;
         (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_GET_MTU_OVERHEAD, sizeof(uint8_t), &overhead);
-        ctx->config.pmtu = ctx->config.linkMtu - overhead;
+        ctx->config.pmtu = ctx->config.linkMtu - (uint16_t)overhead;
         ctx->config.linkMtu = 0;
     }
 
@@ -612,7 +612,7 @@ int32_t REC_QueryMtu(TLS_Ctx *ctx)
         (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_GET_MTU_OVERHEAD, sizeof(uint8_t), &overhead);
         uint16_t minMtu = (uint16_t)DTLS_MIN_MTU - (uint16_t)overhead;
         mtu = mtu > UINT16_MAX ? UINT16_MAX : mtu;
-        ctx->config.pmtu = (mtu < minMtu) ? minMtu : mtu;
+        ctx->config.pmtu = ((uint16_t)mtu < minMtu) ? minMtu : (uint16_t)mtu;
     }
     ctx->needQueryMtu = false;
 

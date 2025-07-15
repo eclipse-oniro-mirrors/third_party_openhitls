@@ -563,7 +563,7 @@ int32_t HITLS_DtlsGetTimeout(HITLS_Ctx *ctx, uint64_t *remainTimeOut)
         return HITLS_MSG_HANDLE_ERR_WITHOUT_TIMEOUT_ACTION;
     }
     BSL_TIME curTime;
-    int32_t ret = (uint64_t)BSL_SAL_SysTimeGet(&curTime);
+    int32_t ret = BSL_SAL_SysTimeGet(&curTime);
     if (ret != BSL_SUCCESS) {
         return ret;
     }
@@ -587,7 +587,7 @@ int32_t HITLS_DtlsGetTimeout(HITLS_Ctx *ctx, uint64_t *remainTimeOut)
         return ret;
     }
 
-    uint64_t remainSecTimeout = endUtcTime - curUtcTime;
+    uint64_t remainSecTimeout = (uint64_t)(endUtcTime - curUtcTime);
     if (remainSecTimeout >= DTLS_SPECIFY_MAX_TIMEOUT_VALUE) {
         *remainTimeOut = DTLS_SPECIFY_MAX_TIMEOUT_VALUE * BSL_SECOND_TRANSFER_RATIO * BSL_SECOND_TRANSFER_RATIO;
         return HITLS_SUCCESS;

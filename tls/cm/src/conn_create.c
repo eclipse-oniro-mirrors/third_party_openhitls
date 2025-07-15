@@ -212,7 +212,7 @@ static void ConfigPmtu(HITLS_Ctx *ctx, BSL_UIO *uio)
         if (BSL_UIO_GetUioChainTransportType(uio, BSL_UIO_UDP)) {
             uint8_t overhead = 0;
             (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_GET_MTU_OVERHEAD, sizeof(uint8_t), &overhead);
-            ctx->config.pmtu = DTLS_DEFAULT_PMTU - overhead;
+            ctx->config.pmtu = DTLS_DEFAULT_PMTU - (uint16_t)overhead;
         } else {
             ctx->config.pmtu = DTLS_SCTP_PMTU;
         }
