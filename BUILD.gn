@@ -19,6 +19,10 @@ print("current_cpu = ${current_cpu}")
 print("current_os = ${current_os}")
 print("host_os = ${host_os}")
 
+declare_args() {
+    openhitls_enabled = true
+}
+
 openhitls_selected_platform = ""
 
 if (current_cpu == "arm64" && current_os == "ohos" && host_os == "linux") {
