@@ -115,6 +115,9 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
         /** obtain the alert level */
         data[0] = alertCtx->level;
         data[1] = alertCtx->description;
+        if (ctx->negotiatedInfo.version == HITLS_VERSION_SSL30 && alertCtx->description == ALERT_PROTOCOL_VERSION) {
+            data[1] = ALERT_HANDSHAKE_FAILURE;
+        }
         /** write the record */
         ret = REC_Write(ctx, REC_TYPE_ALERT, data, ALERT_DATA_LEN);
         if (ret != HITLS_SUCCESS) {
