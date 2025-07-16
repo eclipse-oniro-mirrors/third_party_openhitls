@@ -504,7 +504,7 @@ class CMakeGenerator:
 
         if self._args.bundle_libs:
             # update projects
-            projects = self._gen_bundled_lib_cmake('openhitls', all_inc_dirs, projects, macros)
+            projects = self._gen_bundled_lib_cmake('hitls', all_inc_dirs, projects, macros)
         return projects
 
     def _gen_target_cmake(self, lib_tgts):
