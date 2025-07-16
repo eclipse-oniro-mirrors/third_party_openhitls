@@ -404,6 +404,8 @@ class CMakeGenerator:
             cmake += self._gen_cmd_cmake("target_link_directories", "hitls_auth-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake(
                 "target_link_libraries", "hitls_auth-shared hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
+        if lib_name == 'hitls_iso':
+            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_iso-shared m " + str(self._args.securec_lib))
         tgt_list.append(tgt_name)
         return cmake
 
