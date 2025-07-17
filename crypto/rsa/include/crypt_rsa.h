@@ -297,10 +297,9 @@ int32_t CRYPT_RSA_UnBlind(const CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32
  * @ingroup rsa
  * @brief Set the PSS for the original data.
  *
+ * @param ctx [IN] CRYPT_RSA_Ctx
  * @param hashMethod [IN] pss Required Hash Method
  * @param mgfMethod [IN] pss Internal hash method required by the mgf.
- * @param keyBits [IN] pss Key length
- * @param salt [IN] Input salt value
  * @param saltLen [IN] Length of the input salt.
  * @param data [IN] Original data
  * @param dataLen [IN] Length of the original data
@@ -315,8 +314,8 @@ int32_t CRYPT_RSA_UnBlind(const CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32
  * @retval CRYPT_MEM_ALLOC_FAIL             Memory allocation failure
  * @retval CRYPT_SUCCESS                    Succeeded in setting the PSS.
  */
-int32_t CRYPT_RSA_SetPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod, uint32_t keyBits,
-    const uint8_t *salt, uint32_t saltLen, const uint8_t *data, uint32_t dataLen, uint8_t *pad, uint32_t padLen);
+int32_t CRYPT_RSA_SetPss(CRYPT_RSA_Ctx *ctx, const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod,
+    uint32_t saltLen, const uint8_t *data, uint32_t dataLen, uint8_t *pad, uint32_t padLen);
 #endif // HITLS_CRYPTO_RSA_SIGN || HITLS_CRYPTO_RSA_BSSA
 
 #ifdef HITLS_CRYPTO_RSA_VERIFY
@@ -324,9 +323,9 @@ int32_t CRYPT_RSA_SetPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgf
  * @ingroup rsa
  * @brief Compare the original data from the PSS.
  *
+ * @param ctx [IN] CRYPT_RSA_Ctx
  * @param hashMethod [IN] pss Required the hash method
  * @param mgfMethod [IN] pss Internal hash method required by the mgf.
- * @param keyBits [IN] pss Key length
  * @param saltLen [IN] Salt value length
  * @param data [IN] Original data
  * @param dataLen [IN] Length of the original data
@@ -340,7 +339,7 @@ int32_t CRYPT_RSA_SetPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgf
  * @retval CRYPT_MEM_ALLOC_FAIL             Memory allocation failure
  * @retval CRYPT_SUCCESS                    pss comparison succeeded.
  */
-int32_t CRYPT_RSA_VerifyPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod, uint32_t keyBits,
+int32_t CRYPT_RSA_VerifyPss(CRYPT_RSA_Ctx *ctx, const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod,
     uint32_t saltLen, const uint8_t *data, uint32_t dataLen, const uint8_t *pad, uint32_t padLen);
 #endif // HITLS_CRYPTO_RSA_VERIFY
 #endif // HITLS_CRYPTO_RSA_EMSA_PSS

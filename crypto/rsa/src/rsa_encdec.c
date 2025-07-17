@@ -529,34 +529,21 @@ static int32_t CheckHashLen(uint32_t inputLen)
 #if defined(HITLS_CRYPTO_RSA_EMSA_PSS) && defined(HITLS_CRYPTO_RSA_SIGN)
 static int32_t PssPad(CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32_t inputLen, uint8_t *out, uint32_t outLen)
 {
-    CRYPT_Data salt = { 0 };
+    uint32_t saltLen = 0;
     bool kat = false; // mark
     if (ctx->pad.salt.data != NULL) {
         // If the salt contains data, that is the kat test.
         kat = true;
     }
-    if (kat) {
-        salt.data = ctx->pad.salt.data;
-        salt.len = ctx->pad.salt.len;
-        ctx->pad.salt.data = NULL;
-        ctx->pad.salt.len = 0;
+    if (kat == true) {
+        saltLen = ctx->pad.salt.len;
     } else if (ctx->pad.para.pss.saltLen != 0) {
-        // Generate a salt information to the salt.
-        int32_t ret = GenPssSalt(ctx->libCtx, &salt, ctx->pad.para.pss.mdMeth, ctx->pad.para.pss.saltLen, outLen);
-        if (ret != CRYPT_SUCCESS) {
-            BSL_ERR_PUSH_ERROR(CRYPT_RSA_ERR_GEN_SALT);
-            return CRYPT_RSA_ERR_GEN_SALT;
-        }
+        saltLen = ctx->pad.para.pss.saltLen;
     }
-    int32_t ret = CRYPT_RSA_SetPss(ctx->pad.para.pss.mdMeth, ctx->pad.para.pss.mgfMeth, CRYPT_RSA_GetBits(ctx),
-        salt.data, salt.len, input, inputLen, out, outLen);
+    int32_t ret = CRYPT_RSA_SetPss(ctx, ctx->pad.para.pss.mdMeth, ctx->pad.para.pss.mgfMeth,
+        saltLen, input, inputLen, out, outLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-    }
-    if (!kat && (ctx->pad.para.pss.saltLen != 0)) {
-        // The generated salt needs to be released.
-        BSL_SAL_CleanseData(salt.data, salt.len);
-        BSL_SAL_FREE(salt.data);
     }
     return ret;
 }
@@ -1065,13 +1052,8 @@ int32_t CRYPT_RSA_VerifyData(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t d
                 ret = CRYPT_NULL_INPUT;
                 goto EXIT;
             }
-            if (ctx->pad.para.pss.saltLen == CRYPT_RSA_SALTLEN_TYPE_HASHLEN) { // saltLen is -1
-                saltLen = (uint32_t)ctx->pad.para.pss.mdMeth->mdSize;
-            } else if (ctx->pad.para.pss.saltLen == CRYPT_RSA_SALTLEN_TYPE_MAXLEN) { // saltLen is -2
-                saltLen = (uint32_t)(padLen - ctx->pad.para.pss.mdMeth->mdSize - 2); // salt, obtains DRBG
-            }
-            ret = CRYPT_RSA_VerifyPss(ctx->pad.para.pss.mdMeth, ctx->pad.para.pss.mgfMeth,
-                bits, saltLen, data, dataLen, pad, padLen);
+            ret = CRYPT_RSA_VerifyPss(ctx, ctx->pad.para.pss.mdMeth, ctx->pad.para.pss.mgfMeth,
+                saltLen, data, dataLen, pad, padLen);
             break;
 #endif
         default: // This branch cannot be entered because it's been verified before.

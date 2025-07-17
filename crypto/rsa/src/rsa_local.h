@@ -155,7 +155,6 @@ CRYPT_RSA_PubKey *RSA_NewPubKey(uint32_t bits);
 void RSA_FreePrvKey(CRYPT_RSA_PrvKey *prvKey);
 void RSA_FreePubKey(CRYPT_RSA_PubKey *pubKey);
 int32_t RSA_CalcPrvKey(const CRYPT_RSA_Para *para, CRYPT_RSA_Ctx *ctx, BN_Optimizer *optimizer);
-int32_t GenPssSalt(void *libCtx, CRYPT_Data *salt, const EAL_MdMethod *mdMethod, int32_t saltLen, uint32_t padBuffLen);
 void ShallowCopyCtx(CRYPT_RSA_Ctx *ctx, CRYPT_RSA_Ctx *newCtx);
 CRYPT_RSA_Para *CRYPT_RSA_DupPara(const CRYPT_RSA_Para *para);
 #ifdef HITLS_CRYPTO_RSA_EMSA_PKCSV15

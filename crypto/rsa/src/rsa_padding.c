@@ -86,7 +86,8 @@ static int32_t PssEncodeLengthCheck(uint32_t modBits, uint32_t hLen,
 }
 
 #if defined(HITLS_CRYPTO_RSA_SIGN) || defined(HITLS_CRYPTO_RSA_BSSA)
-int32_t GenPssSalt(void *libCtx, CRYPT_Data *salt, const EAL_MdMethod *mdMethod, int32_t saltLen, uint32_t padBuffLen)
+static int32_t GenPssSalt(void *libCtx, CRYPT_Data *salt,
+    const EAL_MdMethod *mdMethod, int32_t saltLen, uint32_t padBuffLen)
 {
     uint32_t hashLen = mdMethod->mdSize;
     if (saltLen == CRYPT_RSA_SALTLEN_TYPE_HASHLEN) { // saltLen is -1
@@ -146,27 +147,39 @@ int32_t GenPssSalt(void *libCtx, CRYPT_Data *salt, const EAL_MdMethod *mdMethod,
  * DB = PS || 0x01 || salt; DB is an octet string of length emLen - hLen - 1
  * PS consisting of emLen - sLen - hLen - 2 zero octets, The length of PS may be 0.
  */
-int32_t CRYPT_RSA_SetPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod, uint32_t keyBits,
-    const uint8_t *salt, uint32_t saltLen, const uint8_t *data, uint32_t dataLen, uint8_t *pad, uint32_t padLen)
+int32_t CRYPT_RSA_SetPss(CRYPT_RSA_Ctx *ctx, const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod,
+    uint32_t saltLen, const uint8_t *data, uint32_t dataLen, uint8_t *pad, uint32_t padLen)
 {
     int32_t ret;
-    if (hashMethod == NULL || mgfMethod == NULL || pad == NULL || data == NULL) {
+    if (ctx == NULL || hashMethod == NULL || mgfMethod == NULL || pad == NULL || data == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    if (salt == NULL && saltLen != 0) {
-        BSL_ERR_PUSH_ERROR(CRYPT_RSA_ERR_PSS_SALT_DATA);
-        return CRYPT_RSA_ERR_PSS_SALT_DATA;
+    CRYPT_Data salt = {0};
+    bool kat = false; // mark
+    if (ctx->pad.salt.data != NULL) {
+        kat = true;
+        salt.data = ctx->pad.salt.data;
+        salt.len = ctx->pad.salt.len;
+        ctx->pad.salt.data = NULL;
+        ctx->pad.salt.len = 0;
+    } else if (saltLen != 0) {
+        // Generate a salt information to the salt.
+        ret = GenPssSalt(ctx->libCtx, &salt, hashMethod, saltLen, padLen);
+        RETURN_RET_IF((ret != CRYPT_SUCCESS), CRYPT_RSA_ERR_GEN_SALT);
     }
+    RETURN_RET_IF((salt.data == NULL && salt.len != 0), CRYPT_RSA_ERR_PSS_SALT_DATA);
+    uint32_t keyBits = CRYPT_RSA_GetBits(ctx);
     uint32_t hLen = hashMethod->mdSize;
-    ret = PssEncodeLengthCheck(keyBits, hLen, saltLen, dataLen, padLen);
+    ret = PssEncodeLengthCheck(keyBits, hLen, salt.len, dataLen, padLen);
     if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
+        if ((kat != true) && (saltLen != 0)) {
+            BSL_SAL_ClearFree(salt.data, salt.len);
+        }
         return ret;
     }
-    uint32_t keyBytes = BN_BITS_TO_BYTES(keyBits);
     uint8_t *em = pad;
-    uint32_t emLen = keyBytes;
+    uint32_t emLen = BN_BITS_TO_BYTES(keyBits);
     // the octet length of EM will be one less than k if modBits - 1 is divisible by 8 and equal to k otherwise
     uint32_t msBit = ((keyBits - 1) & 0x7);
     if (msBit == 0) {
@@ -178,28 +191,18 @@ int32_t CRYPT_RSA_SetPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgf
 
     // set H
     static const uint8_t zeros8[8] = {0};
-    const CRYPT_ConstData hashData[] = {
-        {zeros8, sizeof(zeros8)},
-        {data, dataLen}, // mHash
-        {salt, saltLen}  // salt
-    };
-
+    const CRYPT_ConstData hashData[] = {{zeros8, sizeof(zeros8)}, {data, dataLen}, {salt.data, salt.len}};
     const uint32_t maskedDBLen = emLen - hLen - 1;
     uint8_t *h = em + maskedDBLen;
-    ret = CRYPT_CalcHash(hashMethod, hashData, sizeof(hashData) / sizeof(hashData[0]), h, &hLen);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
-    }
-
+    GOTO_ERR_IF(CRYPT_CalcHash(hashMethod, hashData, sizeof(hashData) / sizeof(hashData[0]), h, &hLen), ret);
     // set maskedDB
-    ret = CRYPT_Mgf1(mgfMethod, h, hLen, em, maskedDBLen);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
+    GOTO_ERR_IF(CRYPT_Mgf1(mgfMethod, h, hLen, em, maskedDBLen), ret);
+    MaskDB(em, maskedDBLen, salt.data, salt.len, msBit);
+ERR:
+    if ((kat != true) && (saltLen != 0)) {
+        BSL_SAL_ClearFree(salt.data, salt.len);
     }
-    MaskDB(em, maskedDBLen, salt, saltLen, msBit);
-    return CRYPT_SUCCESS;
+    return ret;
 }
 #endif // HITLS_CRYPTO_RSA_SIGN || HITLS_CRYPTO_RSA_BSSA
 
@@ -288,25 +291,25 @@ static int32_t VerifyH(const EAL_MdMethod *hashMethod, const CRYPT_Data *mHash, 
 
 // Reverse verification process of EMSA-PSS Encoding Operation:
 // MGF(H,maskedDBLen) ^ MaskedDB => DB' (PS||0x01||salt'),  H' = Hash(padding1 || mHash || salt') == H ?
-int32_t CRYPT_RSA_VerifyPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod, uint32_t keyBits,
+int32_t CRYPT_RSA_VerifyPss(CRYPT_RSA_Ctx *ctx, const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod,
     uint32_t saltLen, const uint8_t *data, uint32_t dataLen, const uint8_t *pad, uint32_t padLen)
 {
-    if (hashMethod == NULL || mgfMethod == NULL || pad == NULL || data == NULL) {
+    if (ctx == NULL || hashMethod == NULL || mgfMethod == NULL || pad == NULL || data == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
+    int32_t ret;
+    uint32_t keyBits = CRYPT_RSA_GetBits(ctx);
     uint32_t hLen = hashMethod->mdSize;
-    int32_t ret = PssEncodeLengthCheck(keyBits, hLen, saltLen, dataLen, padLen);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
+    uint32_t saltLength = saltLen;
+    if (saltLength == (uint32_t)CRYPT_RSA_SALTLEN_TYPE_HASHLEN) { // saltLength is -1
+        saltLength = (uint32_t)ctx->pad.para.pss.mdMeth->mdSize;
+    } else if (saltLength == (uint32_t)CRYPT_RSA_SALTLEN_TYPE_MAXLEN) { // saltLength is -2
+        saltLength = (uint32_t)(padLen - ctx->pad.para.pss.mdMeth->mdSize - 2); // salt, obtains DRBG
     }
-
+    RETURN_RET_IF_ERR(PssEncodeLengthCheck(keyBits, hLen, saltLength, dataLen, padLen), ret);
     //  EM = maskedDB || H || 0xbc
-    if (pad[padLen - 1] != 0xbc) {
-        BSL_ERR_PUSH_ERROR(CRYPT_RSA_NOR_VERIFY_FAIL);
-        return CRYPT_RSA_NOR_VERIFY_FAIL;
-    }
+    RETURN_RET_IF((pad[padLen - 1] != 0xbc), CRYPT_RSA_NOR_VERIFY_FAIL);
 
     const uint8_t *em = pad;
     uint32_t emLen = BN_BITS_TO_BYTES(keyBits);
@@ -316,17 +319,11 @@ int32_t CRYPT_RSA_VerifyPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *
         emLen--;
         em++;
     }
-    if ((pad[0] >> msBit) != 0) {
-        // if msBit == 0, 8emLen == emBits, pad[0] should be 0
-        // the leftmost 8emLen - emBits bits of the leftmost octet in maskedDB should be 0
-        BSL_ERR_PUSH_ERROR(CRYPT_RSA_NOR_VERIFY_FAIL);
-        return CRYPT_RSA_NOR_VERIFY_FAIL;
-    }
+    // if msBit == 0, 8emLen == emBits, pad[0] should be 0
+    // the leftmost 8emLen - emBits bits of the leftmost octet in maskedDB should be 0
+    RETURN_RET_IF(((pad[0] >> msBit) != 0), CRYPT_RSA_NOR_VERIFY_FAIL);
     uint8_t *tmpBuff = BSL_SAL_Malloc(emLen); // for maskDB' / DB' and H'
-    if (tmpBuff == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-        return CRYPT_MEM_ALLOC_FAIL;
-    }
+    RETURN_RET_IF((tmpBuff == NULL), CRYPT_MEM_ALLOC_FAIL);
 
     const uint32_t maskedDBLen = emLen - hLen - 1;
     const CRYPT_Data dbBuff = {tmpBuff, maskedDBLen};
@@ -334,14 +331,14 @@ int32_t CRYPT_RSA_VerifyPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *
     const CRYPT_Data mHash = {(uint8_t *)(uintptr_t)data, dataLen};
     const CRYPT_Data h     = {(uint8_t *)(uintptr_t)&em[maskedDBLen], hLen};
     const CRYPT_Data hBuff = {&tmpBuff[maskedDBLen], hLen};
-    ret = GetAndVerifyDB(mgfMethod, &emData, &dbBuff, &saltLen, msBit);
+    ret = GetAndVerifyDB(mgfMethod, &emData, &dbBuff, &saltLength, msBit);
     if (ret != CRYPT_SUCCESS) {
         (void)memset_s(tmpBuff, emLen, 0, emLen);
         BSL_SAL_FREE(tmpBuff);
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    const CRYPT_Data salt  = {&tmpBuff[maskedDBLen - saltLen], saltLen};
+    const CRYPT_Data salt = {&tmpBuff[maskedDBLen - saltLength], saltLength};
     ret = VerifyH(hashMethod, &mHash, &salt, &h, &hBuff);
     (void)memset_s(tmpBuff, emLen, 0, emLen);
     BSL_SAL_FREE(tmpBuff);
