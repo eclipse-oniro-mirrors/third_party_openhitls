@@ -14,7 +14,7 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_GM) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_SM) || defined(HITLS_CRYPTO_CMVP_FIPS)
 
 #include <string.h>
 #include "crypt_cmvp_selftest.h"
@@ -29,6 +29,7 @@
 
 #define MAC_TYPE_HMAC_CMAC 1
 #define MAC_TYPE_GMAC 2
+#define MAC_TYPE_CBC_MAC 3
 
 typedef struct {
     uint32_t id;
@@ -180,6 +181,16 @@ static const CMVP_MAC_VECTOR MAC_VECTOR[] = {
         .iv = "d79cf22d504cc793c3fb6c8a",
         .type = MAC_TYPE_GMAC
     },
+    // CRYPT_MAC_CBC_MAC_SM4
+    // GB/T 15852.1-2020 B.2
+    {
+        .id = CRYPT_MAC_CBC_MAC_SM4,
+        .key = "0123456789ABCDEFFEDCBA9876543210",
+        .msg = "54686973206973207468652074657374206d65737361676520666f72206d6163", // "This is the test message for mac"
+        .mac = "16e02904efb765b706459c9edabdb519",
+        .iv = NULL,
+        .type = MAC_TYPE_CBC_MAC
+    },
     {
         .id = CRYPT_MAC_MAX,
         .key = NULL,
@@ -266,9 +277,14 @@ static bool CRYPT_CMVP_SelftestMacInternal(void *libCtx, const char *attrName, C
         GOTO_EXIT_IF(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &macLen, sizeof(uint32_t)) != CRYPT_SUCCESS,
             CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
-    GOTO_EXIT_IF(CRYPT_EAL_MacUpdate(ctx, msg.data, msg.len) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_MacFinal(ctx, mac, &macLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(mac, expectMac.data, expectMac.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    if (macVec->type == MAC_TYPE_CBC_MAC) {
+        CRYPT_PaddingType padType = CRYPT_PADDING_ZEROS;
+        GOTO_ERR_IF_TRUE(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_CBC_MAC_PADDING, &padType, sizeof(CRYPT_PaddingType)) !=
+            CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    }
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MacUpdate(ctx, msg.data, msg.len) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MacFinal(ctx, mac, &macLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(mac, expectMac.data, expectMac.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
 EXIT:
@@ -288,4 +304,4 @@ bool CRYPT_CMVP_SelftestProviderMac(void *libCtx, const char *attrName, CRYPT_MA
     return CRYPT_CMVP_SelftestMacInternal(libCtx, attrName, id);
 }
 
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_GM || HITLS_CRYPTO_CMVP_FIPS */
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_SM || HITLS_CRYPTO_CMVP_FIPS */

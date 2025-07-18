@@ -14,7 +14,7 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_GM) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_SM) || defined(HITLS_CRYPTO_CMVP_FIPS)
 
 #include <math.h>
 #include <float.h>
@@ -29,7 +29,7 @@
 #define MAXITERTIMES 1e5
 #define BITSPERBYTE 8
 
-uint8_t *Byte2Bits(const uint8_t *data, uint32_t len)
+static uint8_t *Byte2Bits(const uint8_t *data, uint32_t len)
 {
     if (data == NULL || len == 0) {
         return NULL;
@@ -56,7 +56,7 @@ static double IgammaFraction(double a, double x);
 static double IgammaSeries(double a, double x);
 
 // Upper Incomplete Gamma Function
-double Igamc(double a, double x)
+static double Igamc(double a, double x)
 {
     if (a <= 0 || x <= 0) {
         return 1.0;
@@ -135,7 +135,7 @@ static int32_t MonobitTest(const uint8_t *data, uint32_t len)
     return pValue >= ALPHA ? CRYPT_SUCCESS : CRYPT_CMVP_RANDOMNESS_ERR;
 }
 
-int32_t CMVP_MonobitTest(const uint8_t *data, uint32_t len)
+static int32_t CMVP_MonobitTest(const uint8_t *data, uint32_t len)
 {
     if (data == NULL) {
         return CRYPT_CMVP_RANDOMNESS_ERR;
@@ -175,7 +175,7 @@ static int32_t PokerTest(const uint8_t *data, uint32_t len, int32_t blocklen)
     return pValue >= ALPHA ? CRYPT_SUCCESS : CRYPT_CMVP_RANDOMNESS_ERR;
 }
 
-int32_t CMVP_PokerTest(const uint8_t *data, uint32_t len)
+static int32_t CMVP_PokerTest(const uint8_t *data, uint32_t len)
 {
     if (data == NULL || len == 0) {
         return CRYPT_CMVP_RANDOMNESS_ERR;
@@ -195,7 +195,7 @@ typedef struct {
     char *name;
 } DRBG_TEST;
 
-int32_t CMVP_RandomnessTest(const uint8_t *data, const uint32_t len)
+int32_t CRYPT_CMVP_RandomnessTest(const uint8_t *data, const uint32_t len)
 {
     int32_t ret = CRYPT_SUCCESS;
     if (len > UINT32_MAX / BITSPERBYTE) {
@@ -220,4 +220,4 @@ int32_t CMVP_RandomnessTest(const uint8_t *data, const uint32_t len)
     return ret;
 }
 
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_GM || HITLS_CRYPTO_CMVP_FIPS */
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_SM || HITLS_CRYPTO_CMVP_FIPS */

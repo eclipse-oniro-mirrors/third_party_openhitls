@@ -170,6 +170,18 @@ parse_option()
                 executes="ON"
                 add_options="${add_options} -fno-plt"
                 ;;
+            "iso")
+                add_options="${add_options} -DHITLS_CRYPTO_CMVP_ISO19790"
+                libname="libhitls_iso.so"
+                ;;
+            "fips")
+                add_options="${add_options} -DHITLS_CRYPTO_CMVP_FIPS"
+                libname="libhitls_fips.so"
+                ;;
+            "sm")
+                add_options="${add_options} -DHITLS_CRYPTO_CMVP_SM"
+                libname="libhitls_sm.so"
+                ;;
             "help")
                 usage
                 exit 0

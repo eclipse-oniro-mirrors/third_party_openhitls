@@ -37,6 +37,7 @@ extern "C" {
 typedef enum {
     CRYPT_CMVP_INTEGRITY_TEST = 0, /**< Integrity test */
     CRYPT_CMVP_KAT_TEST,           /**< Known Answer Test */
+    CRYPT_CMVP_RANDOMNESS_TEST,    /**< Randomness test */
     CRYPT_CMVP_MAX
 } CRYPT_CMVP_SELFTEST_TYPE;
 

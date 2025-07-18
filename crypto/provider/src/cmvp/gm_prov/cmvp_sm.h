@@ -13,25 +13,35 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#ifndef CMVP_INTEGRITY_HMAC_H
-#define CMVP_INTEGRITY_HMAC_H
+#ifndef CMVP_SM_H
+#define CMVP_SM_H
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_SM) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#ifdef HITLS_CRYPTO_CMVP_SM
 
+#include <stdint.h>
 #include <stdbool.h>
+#include "crypt_cmvp.h"
 #include "crypt_algid.h"
+#include "crypt_sm_provider.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
+#endif /* __cplusplus */
 
-// When the HMAC is used to perform integrity verification, a failure message is returned,
-// and the module does not enter the error state.
-bool CMVP_IntegrityHmac(void *libCtx, const char *attrName, const char *libPath, CRYPT_MAC_AlgId id);
+bool CMVP_SmPkeyC2(int32_t algId);
+
+bool CMVP_SmKdfC2(const CRYPT_EAL_KdfC2Data *data);
+
+int32_t CMVP_SmKat(void *libCtx, const char *attrName);
+
+int32_t CMVP_SmCheckIntegrity(void *libCtx, const char *attrName);
+
+bool CMVP_SmPkeyPct(void *ctx, int32_t algId);
 
 #ifdef __cplusplus
 }
-#endif // __cplusplus
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_SM || HITLS_CRYPTO_CMVP_FIPS */
-#endif /* CMVP_INTEGRITY_HMAC_H */
+#endif /* __cplusplus */
+
+#endif /* HITLS_CRYPTO_CMVP_SM */
+#endif /* CMVP_SM_H */

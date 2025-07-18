@@ -13,7 +13,29 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#ifndef CMVP_GMT_H
-#define CMVP_GMT_H
+/**
+ * @defgroup crypt_eal_provider
+ * @ingroup crypt
+ * @brief sm provider header
+ */
 
-#endif
+#ifndef CRYPT_EAL_SM_SELFTEST_H
+#define CRYPT_EAL_SM_SELFTEST_H
+
+#ifdef HITLS_CRYPTO_CMVP_SM
+
+#include <stdint.h>
+#include "bsl_params.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+int32_t CRYPT_Sm_Selftest(BSL_Param *param);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif /* HITLS_CRYPTO_CMVP_SM */
+#endif /* CRYPT_EAL_SM_SELFTEST_H */

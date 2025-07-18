@@ -16,13 +16,13 @@
 /**
  * @defgroup crypt_eal_provider
  * @ingroup crypt
- * @brief iso19790 provider header
+ * @brief sm provider header
  */
 
-#ifndef CRYPT_EAL_ISO_PROVIDER_H
-#define CRYPT_EAL_ISO_PROVIDER_H
+#ifndef CRYPT_EAL_SM_PROVIDER_H
+#define CRYPT_EAL_SM_PROVIDER_H
 
-#ifdef HITLS_CRYPTO_CMVP_ISO19790
+#ifdef HITLS_CRYPTO_CMVP_SM
 
 #include <stdint.h>
 #include "crypt_eal_entropy.h"
@@ -33,20 +33,14 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define CRYPT_PARAM_EVENT          1
-#define CRYPT_PARAM_ALGID          2
-#define CRYPT_PARAM_ALGO_TYPE      3
-#define CRYPT_PARAM_LIB_CTX        4
+#define CRYPT_EAL_SM_ATTR "provider=sm"
 
-#define CRYPT_EAL_ISO_ATTR "provider=iso"
-
-typedef struct EalIsoProvCtx {
+typedef struct EalSmProvCtx {
     void *libCtx;
     void *mgrCtx;
     CRYPT_EAL_Es *es;
     CRYPT_EAL_SeedPoolCtx *pool;
-    CRYPT_EAL_CMVP_LogFunc runLog;
-} CRYPT_EAL_IsoProvCtx;
+} CRYPT_EAL_SmProvCtx;
 
 int32_t CRYPT_EAL_ProviderInit(CRYPT_EAL_ProvMgrCtx *mgrCtx, BSL_Param *param, CRYPT_EAL_Func *capFuncs,
     CRYPT_EAL_Func **outFuncs, void **provCtx);
@@ -55,5 +49,5 @@ int32_t CRYPT_EAL_ProviderInit(CRYPT_EAL_ProvMgrCtx *mgrCtx, BSL_Param *param, C
 }
 #endif /* __cplusplus */
 
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 */
-#endif /* CRYPT_EAL_ISO_PROVIDER_H */
+#endif /* HITLS_CRYPTO_CMVP_SM */
+#endif /* CRYPT_EAL_SM_PROVIDER_H */

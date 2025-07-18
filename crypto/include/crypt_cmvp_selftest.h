@@ -17,7 +17,7 @@
 #define CRYPT_CMVP_SELFTEST_H
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_GM) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_SM) || defined(HITLS_CRYPTO_CMVP_FIPS)
 
 #include <stdint.h>
 #include "crypt_cmvp.h"
@@ -115,9 +115,11 @@ bool CRYPT_CMVP_SelftestProviderSlhdsaSignVerify(void *libCtx, const char *attrN
 
 bool CRYPT_CMVP_SelftestPkeyPct(void *ctx, int32_t algId);
 
+int32_t CRYPT_CMVP_RandomnessTest(const uint8_t *data, const uint32_t len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_GM || HITLS_CRYPTO_CMVP_FIPS */
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_SM || HITLS_CRYPTO_CMVP_FIPS */
 #endif /* CRYPT_CMVP_SELFTEST_H */

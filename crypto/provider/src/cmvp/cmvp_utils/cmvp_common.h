@@ -17,7 +17,7 @@
 #define CMVP_COMMON_H
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_GM) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_SM) || defined(HITLS_CRYPTO_CMVP_FIPS)
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -37,12 +37,14 @@ void CMVP_WriteSyslog(const char *ident, int32_t priority, const char *format, .
 
 char *CMVP_ReadFile(const char *path, const char *mode, uint32_t *bufLen); // Read file
 
-char *CMVP_GetLibPath(void *func); // Obtaining the Library Path
-
 int32_t CMVP_CheckIntegrity(void *libCtx, const char *attrName, CRYPT_MAC_AlgId macId);
+
+int32_t CMVP_CreateInternalLibCtx(BSL_Param *param, CRYPT_EAL_LibCtx **libCtx, void *func);
+
+bool CMVP_CheckIsInternalLibCtx(BSL_Param *param);
 
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_GM || HITLS_CRYPTO_CMVP_FIPS */
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_SM || HITLS_CRYPTO_CMVP_FIPS */
 #endif // CMVP_COMMON_H

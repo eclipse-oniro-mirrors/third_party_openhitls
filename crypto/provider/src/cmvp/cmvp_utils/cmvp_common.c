@@ -14,7 +14,7 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_GM) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_SM) || defined(HITLS_CRYPTO_CMVP_FIPS)
 
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -32,6 +32,8 @@
 #include "crypt_cmvp_selftest.h"
 #include "cmvp_integrity_hmac.h"
 #include "cmvp_common.h"
+
+#define BSL_PARAM_MAX_NUMBER 1000
 
 uint8_t *CMVP_StringsToBins(const char *in, uint32_t *outLen)
 {
@@ -102,7 +104,7 @@ EXIT:
     return NULL;
 }
 
-char *CMVP_GetLibPath(void *func)
+static char *CMVP_GetLibPath(void *func)
 {
     Dl_info info;
     char *path = NULL;
@@ -141,4 +143,89 @@ EXIT:
     BSL_SAL_Free(libBslPath);
     return ret;
 }
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_GM || HITLS_CRYPTO_CMVP_FIPS */
+
+static int32_t CopyParam(BSL_Param *param, int32_t *selfTestFlag, BSL_Param **newParam)
+{
+    int32_t index = 0;
+    if (param != NULL) {
+        while (param[index].key != 0 && index < BSL_PARAM_MAX_NUMBER) {
+            index++;
+        }
+        if (index >= BSL_PARAM_MAX_NUMBER) {
+            BSL_ERR_PUSH_ERROR(CRYPT_CMVP_COMMON_ERR);
+            return CRYPT_CMVP_COMMON_ERR;
+        }
+    }
+    int32_t count = index + 2;
+    BSL_Param *tmpParam = (BSL_Param *)BSL_SAL_Calloc(count, sizeof(BSL_Param));
+    if (tmpParam == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    if (param != NULL) {
+        (void)memcpy_s(tmpParam, count * sizeof(BSL_Param), param, index * sizeof(BSL_Param));
+    }
+    int32_t ret = BSL_PARAM_InitValue(&tmpParam[index], CRYPT_PARAM_CMVP_INTERNAL_LIBCTX_FLAG, BSL_PARAM_TYPE_INT32,
+        selfTestFlag, sizeof(int32_t));
+    if (ret != BSL_SUCCESS) {
+        BSL_SAL_FREE(tmpParam);
+        return ret;
+    }
+    *newParam = tmpParam;
+    return CRYPT_SUCCESS;
+}
+
+int32_t CMVP_CreateInternalLibCtx(BSL_Param *param, CRYPT_EAL_LibCtx **libCtx, void *func)
+{
+    int32_t selfTestFlag = 1;
+    int32_t ret = CRYPT_SUCCESS;
+    char *libPath = NULL;
+    BSL_Param *newParam = NULL;
+    CRYPT_EAL_LibCtx *ctx = NULL;
+
+    do {
+        ret = CopyParam(param, &selfTestFlag, &newParam);
+        if (ret != CRYPT_SUCCESS) {
+            break;
+        }
+
+        ctx = CRYPT_EAL_LibCtxNew();
+        if (ctx == NULL) {
+            BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+            ret = CRYPT_MEM_ALLOC_FAIL;
+            break;
+        }
+
+        libPath = CMVP_GetLibPath(func);
+        if (libPath == NULL) {
+            BSL_ERR_PUSH_ERROR(CRYPT_CMVP_COMMON_ERR);
+            ret = CRYPT_CMVP_COMMON_ERR;
+            break;
+        }
+
+        ret = CRYPT_EAL_ProviderLoad(ctx, 0, libPath, newParam, NULL);
+        if (ret != CRYPT_SUCCESS) {
+            break;
+        }
+        *libCtx = ctx;
+    } while (0);
+    if (ret != CRYPT_SUCCESS) {
+        CRYPT_EAL_LibCtxFree(ctx);
+    }
+    BSL_SAL_Free(libPath);
+    BSL_SAL_Free(newParam);
+    return ret;
+}
+
+bool CMVP_CheckIsInternalLibCtx(BSL_Param *param)
+{
+    if (param == NULL) {
+        return false;
+    }
+    BSL_Param *temp = BSL_PARAM_FindParam(param, CRYPT_PARAM_CMVP_INTERNAL_LIBCTX_FLAG);
+    if (temp != NULL && temp->valueType == BSL_PARAM_TYPE_INT32) {
+        return true;
+    }
+    return false;
+}
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_SM || HITLS_CRYPTO_CMVP_FIPS */
