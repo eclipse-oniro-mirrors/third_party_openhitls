@@ -108,6 +108,7 @@
                         "cfb": null,
                         "ccm": null,
                         "gcm": null,
+                        "hctr": null,
                         "chacha20poly1305": null
                     },
                     "cipher": {
@@ -920,7 +921,7 @@
                 ]
             },
             "modes": {
-                ".features": ["cbc", "ecb", "xts", "ctr", "ofb", "cfb", "ccm", "gcm", "chacha20poly1305"],
+                ".features": ["cbc", "ecb", "xts", "ctr", "ofb", "cfb", "ccm", "gcm", "hctr", "chacha20poly1305"],
                 ".srcs": {
                     "public": "crypto/modes/src/modes*.c",
                     "no_asm": "crypto/modes/src/noasm_*.c",
