@@ -52,6 +52,7 @@ int32_t BSL_PARAM_InitValue(BSL_Param *param, int32_t key, uint32_t type, void *
         case BSL_PARAM_TYPE_CTX_PTR:
         case BSL_PARAM_TYPE_INT32:
         case BSL_PARAM_TYPE_OCTETS_PTR:
+        case BSL_PARAM_TYPE_UTF8_STR:
             param->value = val;
             param->valueLen = valueLen;
             param->valueType = type;
@@ -240,6 +241,13 @@ BSL_Param *BSL_PARAM_FindParam(BSL_Param *param, int32_t key)
         index++;
     }
     return NULL;
+}
+
+void BSL_PARAM_Free(BSL_Param *params)
+{
+    if (params != NULL) {
+        BSL_SAL_Free(params);
+    }
 }
 
 #endif

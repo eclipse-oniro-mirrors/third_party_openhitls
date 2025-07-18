@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "bsl_list.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +44,7 @@ typedef enum {
     BSL_PARAM_TYPE_BOOL,
     BSL_PARAM_TYPE_INT32,
     BSL_PARAM_TYPE_OCTETS,
+    BSL_PARAM_TYPE_UTF8_STR
 } BSL_PARAM_VALUE_TYPE;
 
 typedef struct BslParam {
@@ -52,6 +54,8 @@ typedef struct BslParam {
     uint32_t valueLen;
     uint32_t useLen;
 } BSL_Param;
+
+typedef struct BslParamMaker BSL_ParamMaker;
 
 /**
  * @brief Initialize a BSL parameter structure
@@ -142,6 +146,51 @@ const BSL_Param *BSL_PARAM_FindConstParam(const BSL_Param *param, int32_t key);
  *         - NULL indicates the parameter was not found
  */
 BSL_Param *BSL_PARAM_FindParam(BSL_Param *param, int32_t key);
+
+/**
+ * @brief Free BSL parameter
+ *
+ * @param param [IN] Pointer to the BSL_Param structure array
+ */
+void BSL_PARAM_Free(BSL_Param *param);
+
+/**
+ * @brief Create a BSL parameter maker
+ *
+ * @return BSL_ParamMaker* Returns pointer to the parameter maker
+ */
+BSL_ParamMaker *BSL_PARAM_MAKER_New(void);
+
+/**
+ * @brief Push value to BSL parameter maker
+ *
+ * @param maker [IN] Pointer to the BSL_ParamMaker structure
+ * @param key [IN] Parameter key value, refer to crypt_params_key.h
+ * @param type [IN] Parameter value type, refer to BSL_PARAM_VALUE_TYPE enum
+ * @param value [IN] Pointer to the new parameter value
+ * @param len [IN] Length of the new parameter value
+ *
+ * @return int32_t Returns the operation result
+ *         - BSL_SUCCESS indicates successful setting
+ *         - Other values indicate setting failure
+ */
+int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, int32_t type, void *value, uint32_t len);
+
+/**
+ * @brief BSL parameter maker to BSL parameter
+ *
+ * @param param [IN] Pointer to the BSL_Param structure array
+ *
+ * @return BSL_ParamMaker* Returns pointer to the parameter maker
+ */
+BSL_Param *BSL_PARAM_MAKER_ToParam(BSL_ParamMaker *maker);
+
+/**
+ * @brief Free BSL parameter maker
+ *
+ * @param param [IN] Pointer to the BSL_Param structure array
+ */
+void BSL_PARAM_MAKER_Free(BSL_ParamMaker *maker);
 
 #ifdef __cplusplus
 }
