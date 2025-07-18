@@ -627,7 +627,7 @@ int32_t CRYPT_EAL_PkeySetPub(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPub *k
             ret = pkey->method->setPub(pkey->key, &paParam);
             break;
         }
-        case CRYPT_PKEY_MAX:
+        default:
             ret = CRYPT_EAL_ALG_NOT_SUPPORT;
     }
 
@@ -744,7 +744,7 @@ int32_t CRYPT_EAL_PkeySetPrv(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPrv *k
             ret = pkey->method->setPrv(pkey->key, &paParam);
             break;
         }
-        case CRYPT_PKEY_MAX:
+        default:
             ret = CRYPT_EAL_ALG_NOT_SUPPORT;
     }
 
@@ -996,7 +996,7 @@ int32_t CRYPT_EAL_PkeyGetPub(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPub *k
         case CRYPT_PKEY_SLH_DSA:
             ret = GetSlhDsaPub(pkey, &key->key.slhDsaPub);
             break;
-        case CRYPT_PKEY_MAX:
+        default:
             ret = CRYPT_EAL_ALG_NOT_SUPPORT;
     }
 
@@ -1187,7 +1187,7 @@ int32_t CRYPT_EAL_PkeyGetPrv(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPrv *k
 		case CRYPT_PKEY_HYBRID_KEM:
             ret = GetHybridkemPrv(pkey, &key->key.kemDk);
             break;
-        case CRYPT_PKEY_MAX:
+        default:
             ret = CRYPT_EAL_ALG_NOT_SUPPORT;
     }
 
