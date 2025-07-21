@@ -178,6 +178,9 @@
     #ifndef HITLS_TLS_FEATURE_KEM
         #define HITLS_TLS_FEATURE_KEM
     #endif
+    #ifndef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+        #define HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+    #endif
 #endif /* HITLS_TLS_FEATURE */
 
 #ifdef HITLS_TLS_FEATURE_SESSION

@@ -227,6 +227,7 @@ static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t 
     };
 
     listSize = sizeof(extMsgList) / sizeof(extMsgList[0]);
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
     if (IsPackNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), HITLS_EX_TYPE_TLS1_3_CERTIFICATE_REQUEST)) {
         ret = PackCustomExtensions(ctx, &buf[offset], bufLen - offset, &exLen, HITLS_EX_TYPE_TLS1_3_CERTIFICATE_REQUEST, NULL, 0);
         if (ret != HITLS_SUCCESS) {
@@ -234,6 +235,7 @@ static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t 
         }
         offset += exLen;
     }
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
 
     for (uint32_t index = 0; index < listSize; index++) {
         if (extMsgList[index].packFunc == NULL) {

@@ -21,8 +21,10 @@
 #include "bsl_err_internal.h"
 #include "hitls_error.h"
 #include "hitls_cert_reg.h"
+#ifdef HITLS_TLS_FEATURE_PROVIDER
 #include "hitls_x509_adapt.h"
 #include "hitls_pki_x509.h"
+#endif /* HITLS_TLS_FEATURE_PROVIDER */
 #include "tls_config.h"
 #include "tls.h"
 #include "cert_mgr_ctx.h"

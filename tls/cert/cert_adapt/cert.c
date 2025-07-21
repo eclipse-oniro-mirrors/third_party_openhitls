@@ -538,6 +538,7 @@ int32_t EncodeCertificate(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, uint8_t *buf, u
         }
 
         uint32_t exLen = 0;
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
         if (IsPackNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), HITLS_EX_TYPE_TLS1_3_CERTIFICATE)) {
             ret = PackCustomExtensions(ctx, &buf[offset + sizeof(uint16_t)], bufLen - offset - sizeof(uint16_t), &exLen,
                 HITLS_EX_TYPE_TLS1_3_CERTIFICATE, cert, certIndex);
@@ -545,7 +546,7 @@ int32_t EncodeCertificate(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, uint8_t *buf, u
                 return ret;
             }
         }
-
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
         /* Valid extensions for server certificates at present include the OCSP Status extension [RFC6066]
         and the SignedCertificateTimestamp extension [RFC6962] */
         BSL_Uint16ToByte(exLen, &buf[offset]);

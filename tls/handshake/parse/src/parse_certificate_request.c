@@ -269,12 +269,12 @@ static int32_t ParseCertificateRequestExBody(TLS_Ctx *ctx, uint16_t extMsgType, 
         default:
             break;
     }
-
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
     if (IsParseNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), extMsgType, HITLS_EX_TYPE_TLS1_3_CERTIFICATE_REQUEST)) {
         return ParseCustomExtensions(pkt.ctx, pkt.buf + *pkt.bufOffset, extMsgType, extMsgLen,
             HITLS_EX_TYPE_TLS1_3_CERTIFICATE_REQUEST, NULL, 0);
     }
-
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
     return HITLS_SUCCESS;
 }
 

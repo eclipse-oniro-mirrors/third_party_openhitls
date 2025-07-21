@@ -79,6 +79,8 @@ int32_t ParseSingleCert(ParsePacket *pkt, CERT_Item **certItem)
 
 static int32_t ParseCertExtension(ParsePacket *pkt, CertificateMsg *msg, CERT_Item *item, uint32_t certIndex)
 {
+    (void)item;
+    (void)certIndex;
     if (pkt->ctx->negotiatedInfo.version != HITLS_VERSION_TLS13) {
         return HITLS_SUCCESS;
     }
@@ -104,6 +106,7 @@ static int32_t ParseCertExtension(ParsePacket *pkt, CertificateMsg *msg, CERT_It
         }
         *pkt->bufOffset += HS_EX_HEADER_LEN;
         offset += HS_EX_HEADER_LEN;
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
         if (IsParseNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(pkt->ctx), extMsgType, HITLS_EX_TYPE_TLS1_3_CERTIFICATE)) {
             HITLS_CERT_X509 *cert = SAL_CERT_X509Parse(LIBCTX_FROM_CTX(pkt->ctx),
                 ATTRIBUTE_FROM_CTX(pkt->ctx), &pkt->ctx->config.tlsConfig, item->data, item->dataSize,
@@ -119,7 +122,9 @@ static int32_t ParseCertExtension(ParsePacket *pkt, CertificateMsg *msg, CERT_It
                 return ParseErrorProcess(pkt->ctx, ret, BINLOG_ID15332, "ParseCustomExtensions fail",
                     ALERT_DECODE_ERROR);
             }
-        } else {
+        } else
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
+        {
             msg->extensionTypeMask |= 1ULL << HS_GetExtensionTypeId(extMsgType);
         }
         *pkt->bufOffset += extMsgLen;

@@ -142,6 +142,8 @@ void *CRYPT_EAL_DefPkeyMgmtNewCtx(CRYPT_EAL_DefProvCtx *provCtx, int32_t algId)
             pkeyCtx = CRYPT_HYBRID_KEM_NewCtx();
             break;
 #endif
+        default:
+            pkeyCtx = NULL;
     }
     if (pkeyCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_PROVIDER_NOT_SUPPORT);

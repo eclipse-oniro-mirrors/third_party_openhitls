@@ -343,13 +343,13 @@ static int32_t ParseServerExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
         default:
             break;
     }
-
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
     if (IsParseNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), extMsgType,
         HITLS_EX_TYPE_TLS1_2_SERVER_HELLO | HITLS_EX_TYPE_TLS1_3_SERVER_HELLO | HITLS_EX_TYPE_HELLO_RETRY_REQUEST)) {
         return ParseCustomExtensions(pkt.ctx, pkt.buf + *pkt.bufOffset, extMsgType, extMsgLen,
             HITLS_EX_TYPE_TLS1_2_SERVER_HELLO | HITLS_EX_TYPE_TLS1_3_SERVER_HELLO | HITLS_EX_TYPE_HELLO_RETRY_REQUEST, NULL, 0);
     }
-
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
     // You need to send an alert when an unknown extended field is encountered
     BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15205, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
         "unknown extension message type:%d len:%lu in server hello message.", extMsgType, extMsgLen, 0, 0);
@@ -377,9 +377,13 @@ int32_t ParseServerExtension(TLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, 
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
-        if (extensionId != HS_EX_TYPE_ID_UNRECOGNIZED || !IsParseNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), extMsgType,
-            HITLS_EX_TYPE_TLS1_2_SERVER_HELLO | HITLS_EX_TYPE_TLS1_3_SERVER_HELLO |
-            HITLS_EX_TYPE_HELLO_RETRY_REQUEST)) {
+        if (extensionId != HS_EX_TYPE_ID_UNRECOGNIZED
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+            || !IsParseNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), extMsgType,
+                HITLS_EX_TYPE_TLS1_2_SERVER_HELLO | HITLS_EX_TYPE_TLS1_3_SERVER_HELLO |
+                HITLS_EX_TYPE_HELLO_RETRY_REQUEST)
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
+        ) {
             if (!GetExtensionFlagValue(ctx, extensionId)) {
                 BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSUPPORT_EXTENSION_TYPE);
                 BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17330, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,

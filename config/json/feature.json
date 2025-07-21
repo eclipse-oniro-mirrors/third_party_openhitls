@@ -268,7 +268,8 @@
                         "feature_key_update": null,
                         "feature_flight": null,
                         "feature_cert_mode": null,
-                        "feature_kem": null
+                        "feature_max_send_fragment": null,
+                        "feature_custom_extension": null
                     },
                     "proto": {
                         "deps": ["tlv", "sal", "eal", "list"],
