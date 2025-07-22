@@ -23,6 +23,7 @@
 #define CRYPT_EAL_CMVP_H
 
 #include <stdint.h>
+#include "bsl_params.h"
 #include "crypt_types.h"
 
 #ifdef __cplusplus
@@ -80,12 +81,12 @@ const char *CRYPT_CMVP_GetVersion(CRYPT_SelftestCtx *ctx);
  * @brief   Run the self-test.
  *
  * @param   ctx [IN] The self-test context.
- * @param   type [IN] The type of the self-test.
+ * @param   param [IN] This is a self-check parameter and must contain CRYPT_CMVP_SELFTEST_TYPE.
  *
  * @retval  #CRYPT_SUCCESS.
  *          For other error codes, see crypt_errno.h.
  */
-int32_t CRYPT_CMVP_Selftest(CRYPT_SelftestCtx *ctx, CRYPT_CMVP_SELFTEST_TYPE type);
+int32_t CRYPT_CMVP_Selftest(CRYPT_SelftestCtx *ctx, const BSL_Param *param);
 
 /**
  * @ingroup crypt_eal_cmvp

@@ -194,8 +194,7 @@
                         "deps": ["asn1", "obj"],
                         "opts":["ecdsa", "sm2_sign", "sm2_crypt", "ed25519", "rsa_sign", "rsa_verify"]
                     },
-                    "codecs": null,
-                    "cmvp": {"deps": ["pkey", "cipher", "modes", "md", "bn", "entropy"]}
+                    "codecs": null
                 },
                 "x8664": {
                     "sha1": {"ins_set":["x8664", "avx512"]},
@@ -1010,10 +1009,11 @@
                 ".srcs": [
                     "crypto/provider/src/mgr/*.c",
                     "crypto/provider/src/default/*.c",
+                    "crypto/provider/src/cmvp/cmvp_utils/*.c",
                     "crypto/provider/src/cmvp/iso_prov/*.c",
                     "crypto/provider/src/cmvp/gm_prov/*.c",
                     "crypto/provider/src/cmvp/fips_prov/*.c"],
-                ".deps": ["bsl::sal", "bsl::hash", "bsl::err", "bsl::params"],
+                ".deps": ["bsl::sal", "bsl::hash", "bsl::err", "bsl::params", "crypto::encode"],
                 ".include": [
                     "crypto/provider/include",
                     "crypto/provider/src/cmvp/cmvp_utils",
@@ -1239,26 +1239,6 @@
                 ".srcs": "crypto/slh_dsa/src/*.c",
                 ".deps": ["crypto::sha3", "crypto::sha2", "bsl::obj"],
                 ".include": ["crypto/eal/src", "bsl/asn1/include"]
-            },
-            "cmvp": {
-                ".features": ["cmvp"],
-                ".srcs": "crypto/provider/src/cmvp/cmvp_utils/*.c",
-                ".deps": ["crypto::eal", "crypto::bn", "crypto::entropy", "crypto::encode", "bsl::sal"],
-                ".include": ["crypto/provider/src/cmvp/cmvp_utils",
-                            "crypto/bn/include",
-                            "crypto/entropy/include",
-                            "crypto/mlkem/include",
-                            "crypto/dsa/include",
-                            "crypto/curve25519/include",
-                            "crypto/rsa/include",
-                            "crypto/ecdsa/include",
-                            "crypto/ecc/include",
-                            "crypto/sm2/include",
-                            "crypto/mldsa/include",
-                            "crypto/slh_dsa/include",
-                            "include/bsl",
-                            "include/crypto"
-                ]
             }
         },
         "bsl":{

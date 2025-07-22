@@ -19,6 +19,7 @@
 #include "crypt_eal_implprovider.h"
 #include "bsl_err_internal.h"
 #include "crypt_errno.h"
+#include "crypt_params_key.h"
 #include "crypt_cmvp_selftest.h"
 #include "crypt_iso_selftest.h"
 #include "crypt_iso_provider.h"
@@ -61,12 +62,26 @@ static const char *CRYPT_Selftest_GetVersion(IsoSelftestCtx *ctx)
     return ISO_19790_PROVIDER_VERSION;
 }
 
-static int32_t CRYPT_Selftest_Selftest(IsoSelftestCtx *ctx, int32_t type)
+static int32_t CRYPT_Selftest_Selftest(IsoSelftestCtx *ctx, const BSL_Param *param)
 {
-    if (ctx == NULL) {
+    int32_t type = 0;
+    uint32_t len = sizeof(type);
+    if (ctx == NULL || param == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
+
+    const BSL_Param *temp = BSL_PARAM_FindConstParam(param, CRYPT_PARAM_CMVP_SELFTEST_TYPE);
+    if (temp == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    int32_t ret = BSL_PARAM_GetValue(temp, CRYPT_PARAM_CMVP_SELFTEST_TYPE, BSL_PARAM_TYPE_INT32, &type, &len);
+    if (ret != BSL_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+
     int32_t event = 0;
     switch (type) {
         case CRYPT_CMVP_INTEGRITY_TEST:
@@ -80,10 +95,10 @@ static int32_t CRYPT_Selftest_Selftest(IsoSelftestCtx *ctx, int32_t type)
             return CRYPT_NOT_SUPPORT;
     }
 
-    BSL_Param param[3] = {{0}, {0}, BSL_PARAM_END};
-    (void)BSL_PARAM_InitValue(&param[0], CRYPT_PARAM_EVENT, BSL_PARAM_TYPE_INT32, &event, sizeof(event));
-    (void)BSL_PARAM_InitValue(&param[1], CRYPT_PARAM_LIB_CTX, BSL_PARAM_TYPE_CTX_PTR, ctx->libCtx, 0);
-    return CRYPT_Iso_EventOperation(ctx->provCtx, param);
+    BSL_Param tmpParams[3] = {{0}, {0}, BSL_PARAM_END};
+    (void)BSL_PARAM_InitValue(&tmpParams[0], CRYPT_PARAM_EVENT, BSL_PARAM_TYPE_INT32, &event, sizeof(event));
+    (void)BSL_PARAM_InitValue(&tmpParams[1], CRYPT_PARAM_LIB_CTX, BSL_PARAM_TYPE_CTX_PTR, ctx->libCtx, 0);
+    return CRYPT_Iso_EventOperation(ctx->provCtx, tmpParams);
 }
 
 static void CRYPT_Selftest_FreeCtx(IsoSelftestCtx *ctx)

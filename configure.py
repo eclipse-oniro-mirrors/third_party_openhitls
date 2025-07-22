@@ -275,7 +275,7 @@ class CMakeGenerator:
         self._asm_type = self._cfg_custom_feature.asm_type
 
         self._platform = 'linux'
-        self._hmac = False
+        self._iso_provider = False
 
     @staticmethod
     def _get_common_include(modules: list):
@@ -380,7 +380,7 @@ class CMakeGenerator:
             cmake += self._gen_cmd_cmake('target_link_directories', '{} PRIVATE'.format(tgt_name), '{}/platform/Secure_C/lib'.format(srcdir))
         cmake += self._gen_cmd_cmake('set_target_properties', '{} PROPERTIES'.format(tgt_name), properties)
         cmake += 'install(TARGETS %s DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)\n' % tgt_name
-        if (self._hmac):
+        if (self._iso_provider):
             # Use the openssl command to generate an HMAC file.
             cmake += 'install(CODE "execute_process(COMMAND openssl dgst -hmac \\\"%s\\\" -sha256 -out lib%s.so.hmac lib%s.so)")\n' % (self._args.hkey, lib_name, lib_name)
             # Install the hmac file to the output directory.
@@ -393,6 +393,7 @@ class CMakeGenerator:
                 if item == '-DHITLS_BSL_SAL_DL':
                     cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared dl " + str(self._args.securec_lib))
         if lib_name == 'hitls_crypto':
+            cmake += self._gen_cmd_cmake("target_link_directories", "hitls_crypto-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
         if lib_name == 'hitls_tls':
             cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_tls-shared hitls_bsl-shared " + str(self._args.securec_lib))
@@ -404,8 +405,8 @@ class CMakeGenerator:
             cmake += self._gen_cmd_cmake("target_link_directories", "hitls_auth-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake(
                 "target_link_libraries", "hitls_auth-shared hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))
-        if lib_name == 'hitls_iso':
-            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_iso-shared m " + str(self._args.securec_lib))
+        if self._iso_provider:
+            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls-shared m " + str(self._args.securec_lib))
         tgt_list.append(tgt_name)
         return cmake
 
@@ -437,7 +438,7 @@ class CMakeGenerator:
     def _get_definitions(self):
         ret = '"${CMAKE_C_FLAGS} -DOPENHITLS_VERSION_S=\'\\"%s\\"\' -DOPENHITLS_VERSION_I=%lu %s' % (
                 self._args.hitls_version, self._args.hitls_version_num, '-D__FILENAME__=\'\\"$(notdir $(subst .o,,$@))\\"\'')
-        if self._hmac:
+        if self._iso_provider:
             icv_key = '-DCMVP_INTEGRITYKEY=\'\\"%s\\"\'' % self._args.hkey
             ret += ' %s' % icv_key
         ret += '"'
@@ -529,7 +530,7 @@ class CMakeGenerator:
         macros.sort()
 
         if '-DHITLS_CRYPTO_CMVP_ISO19790' in compile_flags:
-            self._hmac = True
+            self._iso_provider = True
 
         compile_flags.extend(macros)
         hitls_macros = list(filter(lambda x: '-DHITLS' in x, compile_flags))

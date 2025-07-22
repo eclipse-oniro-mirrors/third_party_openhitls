@@ -22,8 +22,7 @@
                 "provider",
                 "bn",
                 "codecskey",
-                "codecs",
-                "cmvp"
+                "codecs"
             ]
         },
         "hitls_bsl": {

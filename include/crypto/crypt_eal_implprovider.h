@@ -311,7 +311,7 @@ typedef void (*CRYPT_DECODER_IMPL_FreeCtx)(void *ctx);
 
 typedef void *(*CRYPT_EAL_ImplSelftestNewCtx)(void *provCtx);
 typedef const char *(*CRYPT_EAL_ImplSelftestGetVersion)(void *ctx);
-typedef int32_t (*CRYPT_EAL_ImplSelftestSelftest)(void *ctx, int32_t type);
+typedef int32_t (*CRYPT_EAL_ImplSelftestSelftest)(void *ctx, const BSL_Param *param);
 typedef void (*CRYPT_EAL_ImplSelftestFreeCtx)(void *ctx);
 
 #ifdef __cplusplus

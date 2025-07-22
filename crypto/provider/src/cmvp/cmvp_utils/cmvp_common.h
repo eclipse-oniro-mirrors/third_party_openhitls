@@ -17,7 +17,7 @@
 #define CMVP_COMMON_H
 
 #include "hitls_build.h"
-#ifdef HITLS_CRYPTO_CMVP
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_GM) || defined(HITLS_CRYPTO_CMVP_FIPS)
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -44,5 +44,5 @@ int32_t CMVP_CheckIntegrity(void *libCtx, const char *attrName, CRYPT_MAC_AlgId 
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-#endif
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_GM || HITLS_CRYPTO_CMVP_FIPS */
 #endif // CMVP_COMMON_H

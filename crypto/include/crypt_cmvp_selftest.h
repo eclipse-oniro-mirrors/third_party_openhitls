@@ -17,7 +17,7 @@
 #define CRYPT_CMVP_SELFTEST_H
 
 #include "hitls_build.h"
-#ifdef HITLS_CRYPTO_CMVP
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_GM) || defined(HITLS_CRYPTO_CMVP_FIPS)
 
 #include <stdint.h>
 #include "crypt_cmvp.h"
@@ -119,5 +119,5 @@ bool CRYPT_CMVP_SelftestPkeyPct(void *ctx, int32_t algId);
 }
 #endif /* __cplusplus */
 
-#endif /* HITLS_CRYPTO_CMVP */
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_GM || HITLS_CRYPTO_CMVP_FIPS */
 #endif /* CRYPT_CMVP_SELFTEST_H */

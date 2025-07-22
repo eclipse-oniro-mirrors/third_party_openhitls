@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#ifdef HITLS_CRYPTO_CMVP
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_GM) || defined(HITLS_CRYPTO_CMVP_FIPS)
 
 /* BEGIN_HEADER */
 #include <stdlib.h>

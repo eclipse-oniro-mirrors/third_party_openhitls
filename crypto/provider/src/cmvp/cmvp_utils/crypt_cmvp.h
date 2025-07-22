@@ -17,10 +17,8 @@
 #define CRYPT_CMVP_H
 
 #include "hitls_build.h"
-#ifdef HITLS_CRYPTO_CMVP
-
 #include <stdint.h>
-#include "crypt_cmvp.h"
+#include "bsl_params.h"
 #include "crypt_types.h"
 #include "crypt_eal_pkey.h"
 #include "crypt_eal_rand.h"
@@ -28,6 +26,7 @@
 #include "crypt_eal_mac.h"
 #include "crypt_eal_cipher.h"
 #include "crypt_eal_kdf.h"
+#include "crypt_cmvp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +34,7 @@ extern "C" {
 
 typedef void* (*CmvpProvNewCtx)(void *provCtx);
 typedef const char* (*CmvpGetVersion)(void *ctx);
-typedef int32_t (*CmvpSelftest)(void *ctx, int32_t type);
+typedef int32_t (*CmvpSelftest)(void *ctx, const BSL_Param *param);
 typedef void (*CmvpFreeCtx)(void *ctx);
 
 typedef struct {
@@ -89,6 +88,4 @@ typedef struct {
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-
-#endif /* HITLS_CRYPTO_CMVP */
 #endif /* CRYPT_CMVP_H */

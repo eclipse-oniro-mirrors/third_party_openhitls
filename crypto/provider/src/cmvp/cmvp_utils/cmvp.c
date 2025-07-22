@@ -15,7 +15,6 @@
 
 #include "hitls_build.h"
 #ifdef HITLS_CRYPTO_CMVP
-
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
@@ -126,7 +125,7 @@ const char *CRYPT_CMVP_GetVersion(CRYPT_SelftestCtx *ctx)
     return ctx->method->getVersion(ctx->data);
 }
 
-int32_t CRYPT_CMVP_Selftest(CRYPT_SelftestCtx *ctx, CRYPT_CMVP_SELFTEST_TYPE type)
+int32_t CRYPT_CMVP_Selftest(CRYPT_SelftestCtx *ctx, const BSL_Param *param)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
@@ -137,7 +136,7 @@ int32_t CRYPT_CMVP_Selftest(CRYPT_SelftestCtx *ctx, CRYPT_CMVP_SELFTEST_TYPE typ
         return CRYPT_EAL_ALG_NOT_SUPPORT;
     }
 
-    return ctx->method->selftest(ctx->data, type);
+    return ctx->method->selftest(ctx->data, param);
 }
 
 void CRYPT_CMVP_SelftestFreeCtx(CRYPT_SelftestCtx *ctx)
@@ -153,4 +152,4 @@ void CRYPT_CMVP_SelftestFreeCtx(CRYPT_SelftestCtx *ctx)
     BSL_SAL_FREE(ctx);
 }
 
-#endif
+#endif /* HITLS_CRYPTO_CMVP */

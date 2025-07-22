@@ -194,6 +194,7 @@ extern "C" {
 
 #define CRYPT_PARAM_CMVP_BASE                               5200
 #define CRYPT_PARAM_CMVP_LOG_FUNC                           (CRYPT_PARAM_CMVP_BASE + 1)
+#define CRYPT_PARAM_CMVP_SELFTEST_TYPE                      (CRYPT_PARAM_CMVP_BASE + 2)
 
 #ifdef __cplusplus
 }

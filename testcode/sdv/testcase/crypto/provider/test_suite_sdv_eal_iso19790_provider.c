@@ -752,10 +752,17 @@ void SDV_ISO19790_PROVIDER_CMVP_SELFTEST_Test_TC001()
     const char *version = CRYPT_CMVP_GetVersion(selftestCtx);
     ASSERT_TRUE(version != NULL);
 
-    int32_t ret = CRYPT_CMVP_Selftest(selftestCtx, CRYPT_CMVP_KAT_TEST);
+    BSL_Param params[2] = {{0}, BSL_PARAM_END};
+    int32_t type = CRYPT_CMVP_KAT_TEST;
+    ASSERT_EQ(BSL_PARAM_InitValue(&params[0], CRYPT_PARAM_CMVP_SELFTEST_TYPE, BSL_PARAM_TYPE_INT32,
+        &type, sizeof(type)), CRYPT_SUCCESS);
+    int32_t ret = CRYPT_CMVP_Selftest(selftestCtx, params);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
-    ret = CRYPT_CMVP_Selftest(selftestCtx, CRYPT_CMVP_INTEGRITY_TEST);
+    type = CRYPT_CMVP_INTEGRITY_TEST;
+    ASSERT_EQ(BSL_PARAM_InitValue(&params[0], CRYPT_PARAM_CMVP_SELFTEST_TYPE, BSL_PARAM_TYPE_INT32,
+        &type, sizeof(type)), CRYPT_SUCCESS);
+    ret = CRYPT_CMVP_Selftest(selftestCtx, params);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
 EXIT:
