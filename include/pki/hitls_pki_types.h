@@ -342,11 +342,9 @@ typedef struct {
 /**
  * Parameters for p12 file generation.
  * Only PBES2 is supported, but different symmetric encryption algorithms can be used within certificates and keys.
- * Additionally, the encryption key must be the same for both certificates and private keys.
  */
 typedef struct {
-    CRYPT_EncodeParam certEncParam;
-    CRYPT_EncodeParam keyEncParam;
+    CRYPT_EncodeParam encParam;
     HITLS_PKCS12_MacParam macParam;
 } HITLS_PKCS12_EncodeParam;
 
@@ -357,6 +355,14 @@ typedef enum {
     HITLS_PKCS12_ADD_CERTBAG,                   /** Set other cert-Bag to p12-ctx. */
     HITLS_PKCS12_GET_ENTITY_CERT,               /** Obtain entity cert from p12-ctx. */
     HITLS_PKCS12_GET_ENTITY_KEY,                /** Obtain entity pkey from p12-ctx. */
+    HITLS_PKCS12_GET_SECRETBAGS,                /** Get secret-Bags from p12-ctx.
+                                                    The list is read-only and should not be modified. */
+    HITLS_PKCS12_ADD_SECRETBAG,                 /** Add secret-Bag to p12-ctx. */
+    HITLS_PKCS12_BAG_ADD_ATTR,                  /** Add attribute to safeBag. */
+    HITLS_PKCS12_BAG_GET_ATTR,                  /** Get attribute from safeBag. */
+    HITLS_PKCS12_BAG_GET_VALUE,                 /** Get value from safeBag. */
+    HITLS_PKCS12_BAG_GET_ID,                    /** Get id from safeBag. */
+    HITLS_PKCS12_BAG_GET_TYPE,                  /** Get type from safeBag. */
 } HITLS_PKCS12_Cmd;
 
 typedef enum {

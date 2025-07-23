@@ -45,9 +45,11 @@ typedef struct {
 /* This struct is provided for users to create related bags and add them to the p12-ctx. */
 typedef struct _HITLS_PKCS12_Bag {
     uint32_t type;
+    uint32_t id;
     union {
         CRYPT_EAL_PkeyCtx *key;
         HITLS_X509_Cert *cert;
+        BSL_Buffer secret;
     } value;
     HITLS_X509_Attrs *attributes; // localKeyId, friendlyName, ect. Item is HITLS_PKCS12_SafeBagAttr.
 } HITLS_PKCS12_Bag;
@@ -60,6 +62,7 @@ typedef struct _HITLS_PKCS12 {
     uint32_t version;
     HITLS_PKCS12_Bag *key;
     HITLS_PKCS12_Bag *entityCert;
+    BSL_ASN1_List *secretBags;
     BSL_ASN1_List *certList;
     HITLS_PKCS12_MacData *macData;
     HITLS_PKI_LibCtx *libCtx;
@@ -68,7 +71,7 @@ typedef struct _HITLS_PKCS12 {
 
 /* A common bag, could store a crl-bag, or a cert-bag, or a secret-bag... */
 typedef struct {
-    BslCid bagId;
+    BslCid bagType;
     BSL_Buffer *bagValue; // encode data
 } HITLS_PKCS12_CommonSafeBag;
 

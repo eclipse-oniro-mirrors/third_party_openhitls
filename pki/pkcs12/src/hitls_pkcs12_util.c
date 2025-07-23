@@ -119,8 +119,16 @@ HITLS_PKCS12 *HITLS_PKCS12_New(void)
         HITLS_PKCS12_MacDataFree(macData);
         return NULL;
     }
+    BSL_ASN1_List *secretBags = BSL_LIST_New(sizeof(HITLS_PKCS12_Bag));
+    if (secretBags == NULL) {
+        BSL_SAL_Free(p12);
+        HITLS_PKCS12_MacDataFree(macData);
+        BSL_LIST_FREE(certList, NULL);
+        return NULL;
+    }
     p12->version = 3; // RFC7292 required the version = 3;
     p12->certList = certList;
+    p12->secretBags = secretBags;
     p12->macData = macData;
     return p12;
 }
@@ -145,7 +153,20 @@ static void CertBagFree(void *value)
     HITLS_X509_CertFree(bag->value.cert);
     HITLS_X509_AttrsFree(bag->attributes, HITLS_PKCS12_AttributesFree);
     bag->attributes = NULL;
-    BSL_SAL_FREE(bag);
+    BSL_SAL_Free(bag);
+}
+
+static void SecretBagFree(void *value)
+{
+    if (value == NULL) {
+        return;
+    }
+    HITLS_PKCS12_Bag *bag = (HITLS_PKCS12_Bag *)value;
+    BSL_SAL_CleanseData(bag->value.secret.data, bag->value.secret.dataLen);
+    BSL_SAL_FREE(bag->value.secret.data);
+    HITLS_X509_AttrsFree(bag->attributes, HITLS_PKCS12_AttributesFree);
+    bag->attributes = NULL;
+    BSL_SAL_Free(bag);
 }
 
 void HITLS_PKCS12_Free(HITLS_PKCS12 *p12)
@@ -167,31 +188,67 @@ void HITLS_PKCS12_Free(HITLS_PKCS12 *p12)
         BSL_SAL_FREE(p12->key);
     }
     BSL_LIST_FREE(p12->certList, CertBagFree);
+    BSL_LIST_FREE(p12->secretBags, SecretBagFree);
     HITLS_PKCS12_MacDataFree(p12->macData);
     BSL_SAL_Free(p12);
 }
 
-static int32_t BagSetValue(HITLS_PKCS12_Bag *bag, void *value, uint32_t bagType)
+/* PKCS8ShroudedKeyBag didn't needs to set bagType. */
+static int32_t SetP8ShroudedKeyBag(HITLS_PKCS12_Bag *bag, void *value)
 {
-    int32_t ret;
+    int32_t ret = CRYPT_EAL_PkeyUpRef((CRYPT_EAL_PkeyCtx *)value);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    bag->value.key = (CRYPT_EAL_PkeyCtx *)value;
+    return HITLS_PKI_SUCCESS;
+}
+
+static int32_t SetCertBag(HITLS_PKCS12_Bag *bag, void *value, uint32_t bagType)
+{
     int32_t ref;
-    switch (bagType) {
+    if (bagType != BSL_CID_X509CERTIFICATE) { // now only support x509 certificate.
+        BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_INVALID_PARAM);
+        return HITLS_PKCS12_ERR_INVALID_PARAM;
+    }
+    int32_t ret = HITLS_X509_CertCtrl((HITLS_X509_Cert *)value, HITLS_X509_REF_UP, &ref, sizeof(int32_t));
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    bag->value.cert = (HITLS_X509_Cert *)value;
+    bag->type = bagType;
+    return HITLS_PKI_SUCCESS;
+}
+
+static int32_t SetSecretBag(HITLS_PKCS12_Bag *bag, void *value, uint32_t bagType)
+{
+    BSL_Buffer *tmp = (BSL_Buffer *)value;
+    if (tmp->data == NULL || tmp->dataLen == 0) {
+        bag->value.secret.dataLen = 0;
+        bag->type = bagType;
+        return HITLS_PKI_SUCCESS;
+    }
+    bag->value.secret.data = BSL_SAL_Dump(tmp->data, tmp->dataLen);
+    if (bag->value.secret.data == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
+        return BSL_MALLOC_FAIL;
+    }
+    bag->value.secret.dataLen = tmp->dataLen;
+    bag->type = bagType;
+    return HITLS_PKI_SUCCESS;
+}
+
+static int32_t BagSetValue(HITLS_PKCS12_Bag *bag, void *value, uint32_t bagId, uint32_t bagType)
+{
+    switch (bagId) {
         case BSL_CID_PKCS8SHROUDEDKEYBAG:
-            ret = CRYPT_EAL_PkeyUpRef((CRYPT_EAL_PkeyCtx *)value);
-            if (ret != CRYPT_SUCCESS) {
-                BSL_ERR_PUSH_ERROR(ret);
-                return ret;
-            }
-            bag->value.key = (CRYPT_EAL_PkeyCtx *)value;
-            return HITLS_PKI_SUCCESS;
+            return SetP8ShroudedKeyBag(bag, value);
         case BSL_CID_CERTBAG:
-            ret = HITLS_X509_CertCtrl((HITLS_X509_Cert *)value, HITLS_X509_REF_UP, &ref, sizeof(int32_t));
-            if (ret != HITLS_PKI_SUCCESS) {
-                BSL_ERR_PUSH_ERROR(ret);
-                return ret;
-            }
-            bag->value.cert = (HITLS_X509_Cert *)value;
-            return HITLS_PKI_SUCCESS;
+            return SetCertBag(bag, value, bagType);
+        case BSL_CID_SECRETBAG:
+            return SetSecretBag(bag, value, bagType);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_INVALID_PARAM);
             return HITLS_PKCS12_ERR_INVALID_PARAM;
@@ -210,11 +267,11 @@ HITLS_PKCS12_Bag *HITLS_PKCS12_BagNew(uint32_t bagId, uint32_t bagType, void *ba
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
         return NULL;
     }
-    if (BagSetValue(bag, bagValue, bagId) != HITLS_PKI_SUCCESS) {
+    if (BagSetValue(bag, bagValue, bagId, bagType) != HITLS_PKI_SUCCESS) {
         BSL_SAL_Free(bag);
         return NULL;
     }
-    bag->type = bagId;
+    bag->id = bagId;
     return bag;
 }
 
@@ -223,12 +280,18 @@ void HITLS_PKCS12_BagFree(HITLS_PKCS12_Bag *bag)
     if (bag == NULL) {
         return;
     }
-    switch (bag->type) {
+    switch (bag->id) {
         case BSL_CID_PKCS8SHROUDEDKEYBAG:
             CRYPT_EAL_PkeyFreeCtx(bag->value.key);
             break;
         case BSL_CID_CERTBAG:
-            HITLS_X509_CertFree(bag->value.cert);
+            if (bag->type == BSL_CID_X509CERTIFICATE) {
+                HITLS_X509_CertFree(bag->value.cert);
+            }
+            break;
+        case BSL_CID_SECRETBAG:
+            BSL_SAL_CleanseData(bag->value.secret.data, bag->value.secret.dataLen);
+            BSL_SAL_FREE(bag->value.secret.data);
             break;
         default:
             break;
@@ -254,6 +317,7 @@ const Pkcs12KdfParam PKCS12KDF_PARAM[] = {
     {.alg = CRYPT_MD_SHA256, .u = 32, .v = 64},
     {.alg = CRYPT_MD_SHA384, .u = 48, .v = 128},
     {.alg = CRYPT_MD_SHA512, .u = 64, .v = 128},
+    {.alg = CRYPT_MD_SM3, .u = 32, .v = 64},
 };
 
 const Pkcs12KdfParam *FindKdfParam(CRYPT_MD_AlgId id)
@@ -467,6 +531,8 @@ static uint32_t GetMacId(BslCid id)
             return CRYPT_MAC_HMAC_SHA384;
         case CRYPT_MD_SHA512:
             return CRYPT_MAC_HMAC_SHA512;
+        case CRYPT_MD_SM3:
+            return CRYPT_MAC_HMAC_SM3;
         default:
             BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_INVALID_ALGO);
             return BSL_CID_UNKNOWN;

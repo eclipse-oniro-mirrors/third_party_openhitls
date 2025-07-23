@@ -983,8 +983,7 @@ void SDV_PKCS12_ENCODE_P12_TC001(Hex *buff, Hex *cert)
     pbParam.itCnt = 2048;
 
     CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
-    encodeParam.certEncParam = encParam;
-    encodeParam.keyEncParam = encParam;
+    encodeParam.encParam = encParam;
 
     HITLS_PKCS12_KdfParam macParam = {0};
     macParam.macId = p12->macData->alg;
@@ -1080,8 +1079,7 @@ void SDV_PKCS12_ENCODE_P12_TC002(Hex *buff, Hex *cert)
     pbParam.itCnt = 2048;
 
     CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
-    encodeParam.certEncParam = encParam;
-    encodeParam.keyEncParam = encParam;
+    encodeParam.encParam = encParam;
 
     HITLS_PKCS12_KdfParam macParam = {0};
     macParam.macId = p12->macData->alg;
@@ -1156,8 +1154,7 @@ void SDV_PKCS12_ENCODE_P12_TC003(Hex *buff)
     pbParam.itCnt = 2048;
 
     CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
-    encodeParam.certEncParam = encParam;
-    encodeParam.keyEncParam = encParam;
+    encodeParam.encParam = encParam;
 
     BSL_Buffer output1 = {0};
     BSL_Buffer output2 = {0};
@@ -1282,9 +1279,8 @@ void SDV_PKCS12_ENCODE_P12_TC004(char *pkeyPath, char *certPath)
 
     BSL_Buffer output = {0};
     // While the encrypted data is null of cert and key
-    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, false, &output), HITLS_PKCS12_ERR_INVALID_PARAM);
-
-    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), HITLS_PKCS12_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, false, &output), HITLS_PKCS12_ERR_NO_ENCRYPT_PARAM);
+    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), HITLS_PKCS12_ERR_NO_ENCRYPT_PARAM);
 
     char *pwd = "123456";
     CRYPT_Pbkdf2Param pbParam = {0};
@@ -1304,15 +1300,12 @@ void SDV_PKCS12_ENCODE_P12_TC004(char *pkeyPath, char *certPath)
     macParam.pwdLen = strlen(pwd);
     macParam.itCnt = 2048;
     HITLS_PKCS12_MacParam paramTest = {.para = &macParam, .algId = BSL_CID_PKCS12KDF};
-    encodeParam.keyEncParam = encParam;
-
-    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), HITLS_PKCS12_ERR_INVALID_PARAM);
-
+    encodeParam.encParam = encParam;
+    encodeParam.macParam = paramTest;
     ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, false, &output), HITLS_PKI_SUCCESS);
 
     BSL_SAL_Free(output.data);
     output.data = NULL;
-    encodeParam.certEncParam = encParam;
     paramTest.algId = BSL_CID_MAX;
     encodeParam.macParam = paramTest;
     ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), HITLS_PKCS12_ERR_INVALID_ALGO);
@@ -1320,41 +1313,9 @@ void SDV_PKCS12_ENCODE_P12_TC004(char *pkeyPath, char *certPath)
     paramTest.algId = BSL_CID_PKCS12KDF;
     paramTest.para = NULL;
     encodeParam.macParam = paramTest;
-    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), HITLS_PKCS12_ERR_NULL_POINTER);
-    paramTest.para = &macParam;
-
-    BSL_Buffer output1 = {0};
-    char *pwd1 = "1234567";
-    CRYPT_Pbkdf2Param pbParam1 = {0};
-    pbParam1.pbesId = BSL_CID_PBES2;
-    pbParam1.pbkdfId = BSL_CID_PBKDF2;
-    pbParam1.hmacId = CRYPT_MAC_HMAC_SHA256;
-    pbParam1.symId = CRYPT_CIPHER_AES256_CBC;
-    pbParam1.pwd = (uint8_t *)pwd1;
-    pbParam1.saltLen = 16;
-    pbParam1.pwdLen = strlen(pwd1);
-    pbParam1.itCnt = 2048;
-    CRYPT_EncodeParam encParam1 = {CRYPT_DERIVE_PBKDF2, &pbParam1};
-    encodeParam.certEncParam = encParam;
-    encodeParam.keyEncParam = encParam1;
-    encodeParam.macParam = paramTest;
-    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output1), HITLS_PKCS12_ERR_INVALID_PARAM);
-
-    encodeParam.keyEncParam = encParam;
-    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output1), HITLS_PKI_SUCCESS);
-
-    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output1), HITLS_PKCS12_ERR_INVALID_PARAM);
-
-    BSL_Buffer output2 = {0};
-    pbParam1.pwd = NULL;
-    pbParam.pwd = NULL;
-    pbParam1.pwdLen = 0;
-    pbParam.pwdLen = 0;
-    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output2), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), HITLS_PKCS12_ERR_NO_MAC_PARAM);
 EXIT:
     BSL_SAL_Free(output.data);
-    BSL_SAL_Free(output1.data);
-    BSL_SAL_Free(output2.data);
     HITLS_PKCS12_Free(p12);
     HITLS_X509_CertFree(enCert);
     CRYPT_EAL_PkeyFreeCtx(pkey);
@@ -1399,8 +1360,7 @@ void SDV_PKCS12_GEN_PARSE_P12FILE_TC001(void)
     pbParam.itCnt = 2048;
 
     CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
-    encodeParam.certEncParam = encParam;
-    encodeParam.keyEncParam = encParam;
+    encodeParam.encParam = encParam;
 
     const char *path = "../testdata/cert/asn1/pkcs12/chain.p12";
     const char *writePath = "../testdata/cert/asn1/pkcs12/chain_cp.p12";
@@ -1613,7 +1573,8 @@ void SDV_PKCS12_BAG_TEST_TC001(char *pkeyPath, char *certPath)
     char *name = "friendlyName";
     uint32_t nameLen = strlen(name);
     BSL_Buffer buffer = {.data = (uint8_t *)name, .dataLen = nameLen};
-
+    int32_t id = 0;
+    int32_t type = 0;
     int32_t ret = CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, pkeyPath, NULL, 0, &pkey);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
@@ -1626,11 +1587,27 @@ void SDV_PKCS12_BAG_TEST_TC001(char *pkeyPath, char *certPath)
     certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert);
     ASSERT_NE(certBag, NULL);
 
-    ret = HITLS_PKCS12_BagAddAttr(keyBag, BSL_CID_FRIENDLYNAME, &buffer);
-    ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(NULL, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_FRIENDLYNAME),
+        HITLS_PKCS12_ERR_NULL_POINTER);
 
-    ret = HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_FRIENDLYNAME);
-    ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_GET_ID, NULL, sizeof(uint32_t)),
+        HITLS_PKCS12_ERR_NULL_POINTER);
+
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_GET_TYPE, NULL, sizeof(uint32_t)),
+        HITLS_PKCS12_ERR_NULL_POINTER);
+
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_FRIENDLYNAME), 0);
+
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_GET_ID, &id, sizeof(uint8_t)),
+        HITLS_PKCS12_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_GET_TYPE, &type, sizeof(uint8_t)),
+        HITLS_PKCS12_ERR_INVALID_PARAM);
+
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_GET_ID, &id, sizeof(uint32_t)), 0);
+    ASSERT_EQ(id, BSL_CID_CERTBAG);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_GET_TYPE, &type, sizeof(uint32_t)), 0);
+    ASSERT_EQ(type, BSL_CID_X509CERTIFICATE);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_FRIENDLYNAME), 0);
 
 EXIT:
     HITLS_PKCS12_BagFree(keyBag);
@@ -1663,23 +1640,23 @@ void SDV_PKCS12_BAG_TEST_TC002(char *pkeyPath)
     keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey);
     ASSERT_NE(keyBag, NULL);
 
-    ret = HITLS_PKCS12_BagAddAttr(keyBag, BSL_CID_FRIENDLYNAME, NULL); // Attribute is null.
+    ret = HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_ADD_ATTR, NULL, BSL_CID_FRIENDLYNAME); // Attribute is null.
     ASSERT_EQ(ret, HITLS_PKCS12_ERR_NULL_POINTER);
 
     char *name = "friendlyName";
     uint32_t nameLen = strlen(name);
     buffer.data = (uint8_t *)name;
     buffer.dataLen = nameLen;
-    ret = HITLS_PKCS12_BagAddAttr(NULL, BSL_CID_FRIENDLYNAME, &buffer);
+    ret = HITLS_PKCS12_BagCtrl(NULL, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_FRIENDLYNAME);
     ASSERT_EQ(ret, HITLS_PKCS12_ERR_NULL_POINTER);
 
-    ret = HITLS_PKCS12_BagAddAttr(keyBag, BSL_CID_EXTEND, &buffer);
+    ret = HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_EXTEND);
     ASSERT_EQ(ret, HITLS_PKCS12_ERR_INVALID_SAFEBAG_ATTRIBUTES);
 
-    ret = HITLS_PKCS12_BagAddAttr(keyBag, BSL_CID_FRIENDLYNAME, &buffer);
+    ret = HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_FRIENDLYNAME);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    ret = HITLS_PKCS12_BagAddAttr(keyBag, BSL_CID_FRIENDLYNAME, &buffer);
+    ret = HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_FRIENDLYNAME);
     ASSERT_EQ(ret, HITLS_X509_ERR_SET_ATTR_REPEAT);
 EXIT:
     HITLS_PKCS12_BagFree(keyBag);
@@ -1723,7 +1700,7 @@ void SDV_PKCS12_BAG_TEST_TC003(char *pkeyPath, char *certPath)
     uint8_t keyId[32] = {0};
     uint32_t idLen = 32;
     BSL_Buffer attr = {.data = keyId, .dataLen = idLen};
-    ret = HITLS_PKCS12_BagAddAttr(certBag, BSL_CID_LOCALKEYID, &attr);
+    ret = HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_ADD_ATTR, &attr, BSL_CID_LOCALKEYID);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_SET_ENTITY_KEYBAG, keyBag, 0);
@@ -1773,7 +1750,7 @@ void SDV_PKCS12_GEN_FROM_DATA_TC001(char *pkeyPath, char *enCertPath, char *ca1C
     CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
     HITLS_PKCS12_KdfParam macParam = {8, 2048, BSL_CID_SHA256, (uint8_t *)pwd, strlen(pwd)};
     HITLS_PKCS12_MacParam paramTest = {.para = &macParam, .algId = BSL_CID_PKCS12KDF};
-    HITLS_PKCS12_EncodeParam encodeParam = {encParam, encParam, paramTest};
+    HITLS_PKCS12_EncodeParam encodeParam = {encParam, paramTest};
 
 #ifdef HITLS_PKI_PKCS12_PARSE
     BSL_Buffer encPwd = {.data = (uint8_t *)pwd, .dataLen = strlen(pwd)};
@@ -1830,10 +1807,10 @@ void SDV_PKCS12_GEN_FROM_DATA_TC001(char *pkeyPath, char *enCertPath, char *ca1C
     ASSERT_NE(otherCertBag, NULL);
 
     // Add a attribute to the keyBag.
-    ASSERT_EQ(HITLS_PKCS12_BagAddAttr(pkeyBag, BSL_CID_FRIENDLYNAME, &buffer1), 0);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(pkeyBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer1, BSL_CID_FRIENDLYNAME), 0);
     // Add a attribute to the certBag.
-    ASSERT_EQ(HITLS_PKCS12_BagAddAttr(encertBag, BSL_CID_FRIENDLYNAME, &buffer1), 0);
-    ASSERT_EQ(HITLS_PKCS12_BagAddAttr(ca1Bag, BSL_CID_FRIENDLYNAME, &buffer2), 0);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(encertBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer1, BSL_CID_FRIENDLYNAME), 0);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(ca1Bag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer2, BSL_CID_FRIENDLYNAME), 0);
     // Set entity-key to p12.
     ASSERT_EQ(HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_SET_ENTITY_KEYBAG, pkeyBag, 0), 0);
     // Set entity-cert to p12.
@@ -1870,6 +1847,340 @@ EXIT:
     HITLS_X509_CertFree(enCert);
     HITLS_X509_CertFree(ca1Cert);
     HITLS_X509_CertFree(otherCert);
+    HITLS_PKCS12_Free(p12);
+    HITLS_PKCS12_Free(p12_1);
+    BSL_SAL_Free(output.data);
+#endif
+}
+/* END_CASE */
+
+/**
+ * For test generating a .p12, which including a secret-bag.
+*/
+/* BEGIN_CASE */
+void SDV_PKCS12_GEN_SECRET_BAG_TC001(char *pkeyPath, char *certPath)
+{
+#if !defined(HITLS_CRYPTO_KEY_DECODE) || !defined(HITLS_BSL_SAL_FILE) || !defined(HITLS_PKI_PKCS12_GEN)
+    SKIP_TEST();
+#else
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), 0);
+    const char *writePath = "../testdata/cert/asn1/pkcs12/secret.p12";
+
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
+    HITLS_X509_Cert *enCert = NULL;
+    HITLS_PKCS12_Bag *keyBag = NULL;
+    HITLS_PKCS12_Bag *certBag = NULL;
+    char *pwd = "123456";
+    // All adopt smX algorithms
+    CRYPT_Pbkdf2Param pbParam = {BSL_CID_PBES2, BSL_CID_PBKDF2, CRYPT_MAC_HMAC_SM3, CRYPT_CIPHER_SM4_CBC,
+        16, (uint8_t *)pwd, strlen(pwd), 2048};
+    CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
+    HITLS_PKCS12_KdfParam macParam = {8, 2048, BSL_CID_SM3, (uint8_t *)pwd, strlen(pwd)};
+    HITLS_PKCS12_MacParam paramTest = {.para = &macParam, .algId = BSL_CID_PKCS12KDF};
+    HITLS_PKCS12_EncodeParam encodeParam = {encParam, paramTest};
+    BSL_Buffer encPwd = {.data = (uint8_t *)pwd, .dataLen = strlen(pwd)};
+    HITLS_PKCS12_PwdParam pwdParam = {.encPwd = &encPwd, .macPwd = &encPwd};
+    HITLS_PKCS12_Bag *secretBag = NULL;
+    uint8_t secretData[20] = {1};
+    uint32_t secretDataLen = 20;
+    BSL_Buffer secret = {.data = (uint8_t *)secretData, .dataLen = secretDataLen};
+    char *name = "secret";
+    uint32_t nameLen = strlen(name);
+    BSL_Buffer friendlyName = {.data = (uint8_t *)name, .dataLen = nameLen};
+    BSL_Buffer output = {0};
+    HITLS_PKCS12 *p12_1 = NULL;
+    HITLS_PKCS12 *p12 = HITLS_PKCS12_New();
+    ASSERT_NE(p12, NULL);
+
+    secretBag = HITLS_PKCS12_BagNew(BSL_CID_SECRETBAG, BSL_CID_CE_EXTKEYUSAGE, &secret);
+    ASSERT_NE(secretBag, NULL);
+
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, pkeyPath, NULL, 0, &pkey), 0);
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, certPath, &enCert), 0);
+
+    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey);
+    ASSERT_NE(keyBag, NULL);
+
+    certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert);
+    ASSERT_NE(certBag, NULL);
+
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_SET_ENTITY_KEYBAG, keyBag, 0), 0);
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_SET_ENTITY_CERTBAG, certBag, 0), 0);
+
+    // Add a attribute to the secretBag.
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(secretBag, HITLS_PKCS12_BAG_ADD_ATTR, &friendlyName, BSL_CID_FRIENDLYNAME), 0);
+    // Set the secretBag to p12.
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_ADD_SECRETBAG, secretBag, 0), 0);
+    // no mac
+    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, false, &output), 0);
+    ASSERT_EQ(HITLS_PKCS12_ParseBuff(BSL_FORMAT_ASN1, &output, &pwdParam, &p12_1, false), HITLS_PKI_SUCCESS);
+    BSL_SAL_FREE(output.data);
+    HITLS_PKCS12_Free(p12_1);
+    p12_1 = NULL;
+    // with mac
+    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), 0);
+    ASSERT_EQ(HITLS_PKCS12_ParseBuff(BSL_FORMAT_ASN1, &output, &pwdParam, &p12_1, true), HITLS_PKI_SUCCESS);
+    HITLS_PKCS12_Free(p12_1);
+    p12_1 = NULL;
+    // no mac
+    ASSERT_EQ(HITLS_PKCS12_GenFile(BSL_FORMAT_ASN1, p12, &encodeParam, false, writePath), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_ParseFile(BSL_FORMAT_ASN1, writePath, &pwdParam, &p12_1, false), HITLS_PKI_SUCCESS);
+    HITLS_PKCS12_Free(p12_1);
+    p12_1 = NULL;
+    // with mac
+    ASSERT_EQ(HITLS_PKCS12_GenFile(BSL_FORMAT_ASN1, p12, &encodeParam, true, writePath), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_ParseFile(BSL_FORMAT_ASN1, writePath, &pwdParam, &p12_1, true), HITLS_PKI_SUCCESS);
+EXIT:
+    HITLS_X509_CertFree(enCert);
+    CRYPT_EAL_PkeyFreeCtx(pkey);
+    HITLS_PKCS12_BagFree(secretBag);
+    HITLS_PKCS12_BagFree(keyBag);
+    HITLS_PKCS12_BagFree(certBag);
+    HITLS_PKCS12_Free(p12);
+    HITLS_PKCS12_Free(p12_1);
+    BSL_SAL_Free(output.data);
+#endif
+}
+/* END_CASE */
+
+/**
+ * For test bag-ctrl, including get-id, get-type, get-value in secret-bag.
+*/
+/* BEGIN_CASE */
+void SDV_PKCS12_BAG_CTRL_TC001(void)
+{
+#if !defined(HITLS_CRYPTO_KEY_DECODE) || !defined(HITLS_BSL_SAL_FILE) || !defined(HITLS_PKI_PKCS12_GEN)
+    SKIP_TEST();
+#else
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), 0);
+
+    char *pwd = "123456";
+    CRYPT_Pbkdf2Param pbParam = {BSL_CID_PBES2, BSL_CID_PBKDF2, CRYPT_MAC_HMAC_SHA256, CRYPT_CIPHER_AES256_CBC,
+        16, (uint8_t *)pwd, strlen(pwd), 2048};
+    CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
+    HITLS_PKCS12_KdfParam macParam = {8, 2048, BSL_CID_SHA256, (uint8_t *)pwd, strlen(pwd)};
+    HITLS_PKCS12_MacParam paramTest = {.para = &macParam, .algId = BSL_CID_PKCS12KDF};
+    HITLS_PKCS12_EncodeParam encodeParam = {encParam, paramTest};
+
+    BSL_Buffer encPwd = {.data = (uint8_t *)pwd, .dataLen = strlen(pwd)};
+    HITLS_PKCS12_PwdParam pwdParam = {.encPwd = &encPwd, .macPwd = &encPwd};
+
+    uint32_t id;
+    uint32_t type;
+    BSL_ASN1_List *secretBags = NULL;
+    HITLS_PKCS12_Bag *secretBag1 = NULL;
+    HITLS_PKCS12_Bag *secretBag2 = NULL;
+
+    uint8_t secretData1[20];
+    uint32_t secretDataLen1 = 20;
+    (void)memset_s(secretData1, secretDataLen1, 'F', secretDataLen1);
+    BSL_Buffer secret1 = {.data = (uint8_t *)secretData1, .dataLen = secretDataLen1};
+    uint8_t secretData2[30];
+    uint32_t secretDataLen2 = 30;
+    (void)memset_s(secretData2, secretDataLen2, 'A', secretDataLen2);
+    BSL_Buffer secret2 = {.data = (uint8_t *)secretData2, .dataLen = secretDataLen2};
+
+    uint8_t outputSecret[30] = {2};
+    uint32_t outputSecretLen = 30;
+    BSL_Buffer outBuf = {.data = (uint8_t *)outputSecret, .dataLen = outputSecretLen};
+
+    char *name = "secret1"; // friendlyName of secretBag1
+    uint32_t nameLen = strlen(name);
+    BSL_Buffer friendlyName1 = {.data = (uint8_t *)name, .dataLen = nameLen};
+    char *name2 = "secret2"; // friendlyName of secretBag2
+    uint32_t nameLen2 = strlen(name2);
+    BSL_Buffer friendlyName2 = {.data = (uint8_t *)name2, .dataLen = nameLen2};
+    BSL_Buffer output = {0};
+
+    HITLS_PKCS12_Bag *tmpBag = NULL;
+    HITLS_PKCS12 *p12 = HITLS_PKCS12_New();
+    ASSERT_NE(p12, NULL);
+    HITLS_PKCS12 *p12_1 = NULL;
+    secretBag1 = HITLS_PKCS12_BagNew(BSL_CID_SECRETBAG, BSL_CID_CE_EXTKEYUSAGE, &secret1);
+    ASSERT_NE(secretBag1, NULL);
+    secretBag2 = HITLS_PKCS12_BagNew(BSL_CID_SECRETBAG, BSL_CID_CE_KEYUSAGE, &secret2);
+    ASSERT_NE(secretBag2, NULL);
+
+    // Add a attribute to the secretBag.
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(secretBag1, HITLS_PKCS12_BAG_ADD_ATTR, &friendlyName1, BSL_CID_FRIENDLYNAME), 0);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(secretBag2, HITLS_PKCS12_BAG_ADD_ATTR, &friendlyName2, BSL_CID_FRIENDLYNAME), 0);
+    // Set the secretBag to p12.
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_ADD_SECRETBAG, secretBag1, 0), 0);
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_ADD_SECRETBAG, secretBag2, 0), 0);
+
+    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), 0);
+    ASSERT_EQ(HITLS_PKCS12_ParseBuff(BSL_FORMAT_ASN1, &output, &pwdParam, &p12_1, true), HITLS_PKI_SUCCESS);
+
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12_1, HITLS_PKCS12_GET_SECRETBAGS, &secretBags, 0), 0);
+    ASSERT_EQ(BSL_LIST_COUNT(secretBags), 2);
+    tmpBag = BSL_LIST_GET_FIRST(secretBags);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_ID, &id, sizeof(uint32_t)), 0);
+    ASSERT_EQ(id, BSL_CID_SECRETBAG);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_TYPE, &type, sizeof(uint32_t)), 0);
+    ASSERT_EQ(type, BSL_CID_CE_EXTKEYUSAGE);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_VALUE, &outBuf, sizeof(BSL_Buffer)), 0);
+    ASSERT_COMPARE("compare secret1", outBuf.data, outBuf.dataLen, secretData1, secretDataLen1);
+
+    outBuf.dataLen = 30; // init len is 30.
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_ATTR, &outBuf, BSL_CID_FRIENDLYNAME), 0);
+    ASSERT_COMPARE("compare attr1", outBuf.data, outBuf.dataLen, name, nameLen);
+
+    tmpBag = (HITLS_PKCS12_Bag *)BSL_LIST_GET_LAST(secretBags);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_ID, &id, sizeof(uint32_t)), 0);
+    ASSERT_EQ(id, BSL_CID_SECRETBAG);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_TYPE, &type, sizeof(uint32_t)), 0);
+    ASSERT_EQ(type, BSL_CID_CE_KEYUSAGE);
+    outBuf.dataLen = 30; // init len is 30.
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_ATTR, &outBuf, BSL_CID_FRIENDLYNAME), 0);
+    ASSERT_COMPARE("compare attr2", outBuf.data, outBuf.dataLen, name2, nameLen2);
+
+    outBuf.dataLen = 30; // init len is 30.
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_VALUE, &outBuf, sizeof(BSL_Buffer)), 0);
+    ASSERT_COMPARE("compare secret2", outBuf.data, outBuf.dataLen, secretData2, secretDataLen2);
+EXIT:
+    HITLS_PKCS12_BagFree(secretBag1);
+    HITLS_PKCS12_BagFree(secretBag2);
+    HITLS_PKCS12_Free(p12);
+    HITLS_PKCS12_Free(p12_1);
+    BSL_SAL_Free(output.data);
+#endif
+}
+/* END_CASE */
+
+/**
+ * For test bag-ctrl, including get-id, get-type, get-value in cert-bag and key-bag.
+*/
+/* BEGIN_CASE */
+void SDV_PKCS12_BAG_CTRL_TC002(char *pkeyPath, char *certPath)
+{
+#if !defined(HITLS_CRYPTO_KEY_DECODE) || !defined(HITLS_BSL_SAL_FILE) || !defined(HITLS_PKI_PKCS12_GEN)
+    (void)pkeyPath;
+    (void)certPath;
+    SKIP_TEST();
+#else
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
+    HITLS_X509_Cert *enCert = NULL;
+    HITLS_PKCS12_Bag *certBag = NULL;
+    HITLS_PKCS12_Bag *keyBag = NULL;
+    CRYPT_EAL_PkeyCtx *tmpKey = NULL;
+    HITLS_X509_Cert *tmpCert = NULL;
+    uint32_t id;
+    uint32_t type;
+    uint8_t keyId[32] = {0};
+    uint32_t idLen = 32;
+    BSL_Buffer attr = {.data = keyId, .dataLen = idLen};
+
+    int32_t ret = CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, pkeyPath, NULL, 0, &pkey);
+    ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
+
+    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey);
+    ASSERT_NE(keyBag, NULL);
+
+    ret = HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, certPath, &enCert);
+    ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
+
+    certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert);
+    ASSERT_NE(certBag, NULL);
+
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_ADD_ATTR, &attr, BSL_CID_LOCALKEYID), 0);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_ADD_ATTR, &attr, BSL_CID_LOCALKEYID), 0);
+
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_GET_ID, &id, sizeof(uint32_t)), 0);
+    ASSERT_EQ(id, BSL_CID_CERTBAG);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_GET_TYPE, &type, sizeof(uint32_t)), 0);
+    ASSERT_EQ(type, BSL_CID_X509CERTIFICATE);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_GET_VALUE, NULL, 0), HITLS_PKCS12_ERR_NULL_POINTER);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_GET_VALUE, &tmpCert, 0), 0);
+    ASSERT_NE(tmpCert, NULL);
+
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_GET_ID, &id, sizeof(uint32_t)), 0);
+    ASSERT_EQ(id, BSL_CID_PKCS8SHROUDEDKEYBAG);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_GET_TYPE, &type, sizeof(uint32_t)), 0);
+    ASSERT_EQ(type, 0);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_GET_VALUE, &tmpKey, 0), 0);
+    ASSERT_NE(tmpKey, NULL);
+EXIT:
+    HITLS_X509_CertFree(enCert);
+    CRYPT_EAL_PkeyFreeCtx(pkey);
+    HITLS_X509_CertFree(tmpCert);
+    CRYPT_EAL_PkeyFreeCtx(tmpKey);
+    HITLS_PKCS12_BagFree(keyBag);
+    HITLS_PKCS12_BagFree(certBag);
+#endif
+}
+/* END_CASE */
+
+/**
+ * For test secret-bag with custom oid.
+*/
+/* BEGIN_CASE */
+void SDV_PKCS12_BAG_CUSTOM_OID_TC001(void)
+{
+#if !defined(HITLS_CRYPTO_KEY_DECODE) || !defined(HITLS_BSL_SAL_FILE) || !defined(HITLS_PKI_PKCS12_GEN)
+    SKIP_TEST();
+#else
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), 0);
+    const char *writePath = "../testdata/cert/asn1/pkcs12/secret.p12";
+    HITLS_PKCS12_Bag *tmpBag = NULL;
+    BSL_ASN1_List *secretBags = NULL;
+    char *pwd = "123456";
+    // All adopt smX algorithms
+    CRYPT_Pbkdf2Param pbParam = {BSL_CID_PBES2, BSL_CID_PBKDF2, CRYPT_MAC_HMAC_SM3, CRYPT_CIPHER_SM4_CBC,
+        16, (uint8_t *)pwd, strlen(pwd), 2048};
+    CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
+    HITLS_PKCS12_KdfParam macParam = {8, 2048, BSL_CID_SM3, (uint8_t *)pwd, strlen(pwd)};
+    HITLS_PKCS12_MacParam paramTest = {.para = &macParam, .algId = BSL_CID_PKCS12KDF};
+    HITLS_PKCS12_EncodeParam encodeParam = {encParam, paramTest};
+    BSL_Buffer encPwd = {.data = (uint8_t *)pwd, .dataLen = strlen(pwd)};
+    HITLS_PKCS12_PwdParam pwdParam = {.encPwd = &encPwd, .macPwd = &encPwd};
+    HITLS_PKCS12_Bag *secretBag = NULL;
+
+    uint8_t secretData1[20];
+    uint32_t secretDataLen1 = 20;
+    (void)memset_s(secretData1, secretDataLen1, 'F', secretDataLen1);
+    BSL_Buffer secret = {.data = (uint8_t *)secretData1, .dataLen = secretDataLen1};
+
+    char *name = "secret";
+    uint32_t nameLen = strlen(name);
+    BSL_Buffer friendlyName = {.data = (uint8_t *)name, .dataLen = nameLen};
+    BSL_Buffer output = {0};
+    uint32_t id;
+    uint32_t type;
+    char *oid = "\1\1\1\3\1";
+    int32_t ourCid = BSL_CID_MAX + 1;
+    HITLS_PKCS12 *p12_1 = NULL;
+    HITLS_PKCS12 *p12 = HITLS_PKCS12_New();
+    ASSERT_NE(p12, NULL);
+    
+    ASSERT_EQ(BSL_OBJ_Create(oid, (uint32_t)strlen(oid), "Our OID", ourCid), HITLS_PKI_SUCCESS);
+
+    secretBag = HITLS_PKCS12_BagNew(BSL_CID_SECRETBAG, ourCid, &secret);
+    ASSERT_NE(secretBag, NULL);
+
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(secretBag, HITLS_PKCS12_BAG_GET_TYPE, &type, sizeof(uint32_t)), 0);
+    ASSERT_EQ(type, ourCid);
+    // Add a attribute to the secretBag.
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(secretBag, HITLS_PKCS12_BAG_ADD_ATTR, &friendlyName, BSL_CID_FRIENDLYNAME), 0);
+
+    // Set the secretBag to p12.
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_ADD_SECRETBAG, secretBag, 0), 0);
+
+    // with mac
+    ASSERT_EQ(HITLS_PKCS12_GenFile(BSL_FORMAT_ASN1, p12, &encodeParam, false, writePath), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_ParseFile(BSL_FORMAT_ASN1, writePath, &pwdParam, &p12_1, false), HITLS_PKI_SUCCESS);
+
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12_1, HITLS_PKCS12_GET_SECRETBAGS, &secretBags, 0), 0);
+    ASSERT_EQ(BSL_LIST_COUNT(secretBags), 1);
+    tmpBag = BSL_LIST_GET_FIRST(secretBags);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_ID, &id, sizeof(uint32_t)), 0);
+    ASSERT_EQ(id, BSL_CID_SECRETBAG);
+    ASSERT_EQ(HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_TYPE, &type, sizeof(uint32_t)), 0);
+    ASSERT_EQ(type, ourCid);
+EXIT:
+    HITLS_PKCS12_BagFree(secretBag);
     HITLS_PKCS12_Free(p12);
     HITLS_PKCS12_Free(p12_1);
     BSL_SAL_Free(output.data);
