@@ -96,7 +96,7 @@ static int32_t ProcessHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
             break;
 #endif /* HITLS_TLS_PROTO_TLS_BASIC only for tls13 */
         case TRY_RECV_CERTIFICATE_REQUEST:
-            return ClientRecvCertRequestProcess(ctx, hsMsg);
+            return ClientRecvCertRequestProcess(ctx);
         case TRY_RECV_CLIENT_KEY_EXCHANGE:
             return ServerRecvClientKxProcess(ctx, hsMsg);
         case TRY_RECV_CERTIFICATE_VERIFY:

@@ -114,7 +114,7 @@ static void CleanPeerInfo(PeerInfo *peerInfo)
 {
     BSL_SAL_FREE(peerInfo->groups);
     BSL_SAL_FREE(peerInfo->cipherSuites);
-    BSL_LIST_FREE(peerInfo->caList, CaListNodeDestroy);
+    BSL_LIST_FREE(peerInfo->caList, (BSL_LIST_PFUNC_FREE)CaListNodeDestroy);
     BSL_SAL_FREE(peerInfo->signatureAlgorithms);
 }
 
