@@ -251,7 +251,7 @@ class FeatureConfigParser:
         "asmType":{"require": True, "type": str, "choices": [], "default": "no_asm"},
         "libs":{"require": True, "type": dict, "choices": [], "default": {}},
         "bundleLibs":{"require": False, "type": bool, "choices": [True, False], "default": False},
-        "securecLib":{"require": False, "type": str, "choices": ["boundscheck", "securec", ""], "default": "boundscheck"}
+        "securecLib":{"require": False, "type": str, "choices": ["boundscheck", "securec", "sec_shared.z", ""], "default": "boundscheck"}
     }
 
     def __init__(self, features: FeatureParser, file_path):
