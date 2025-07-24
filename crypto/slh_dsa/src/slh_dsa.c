@@ -854,7 +854,7 @@ static int32_t SlhDsaKeyPairCheck(const CryptSlhDsaCtx *pubKey, const CryptSlhDs
     SlhDsaAdrs adrs = {0};
     prvKey->adrsOps.setLayerAddr(&adrs, prvKey->para.d - 1);
     uint8_t node[SLH_DSA_MAX_N] = {0};
-    int32_t ret = XmssNode(node, 0, prvKey->para.hp, &adrs, prvKey);
+    int32_t ret = XmssNode(node, 0, prvKey->para.hp, &adrs, prvKey, NULL, 0);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
