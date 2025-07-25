@@ -1214,6 +1214,17 @@ int32_t HITLS_SetModeSupport(HITLS_Ctx *ctx, uint32_t mode);
 
 /**
  * @ingroup hitls
+ * @brief   Function to clear the specified feature.
+ *
+ * @param   ctx [OUT] TLS Connection Handle
+ * @param   mode [IN] Mode features to clear.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_ClearModeSupport(HITLS_Ctx *ctx, uint32_t mode);
+
+/**
+ * @ingroup hitls
  * @brief   Obtain the mode of the function feature in the config file.
  *
  * @param   ctx [OUT] TLS Connection Handle

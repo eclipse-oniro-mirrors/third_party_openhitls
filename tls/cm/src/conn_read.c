@@ -369,6 +369,11 @@ static int32_t ReadEventInTransportingState(HITLS_Ctx *ctx, uint8_t *data, uint3
         if (unexpectMsgRet != HITLS_SUCCESS) {
             return unexpectMsgRet;
         }
+#ifdef HITLS_TLS_FEATURE_MODE_AUTO_RETRY
+        if (!(ctx->config.tlsConfig.modeSupport & HITLS_MODE_AUTO_RETRY)) {
+            return HITLS_REC_NORMAL_RECV_BUF_EMPTY;
+        }
+#endif
     } while (ret != HITLS_SUCCESS);
 
     return ret;

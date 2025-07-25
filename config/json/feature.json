@@ -269,7 +269,10 @@
                             "feature_session_id": null
                         },
                         "feature_mode": {
-                            "feature_mode_fall_back_scsv": null
+                            "feature_mode_fall_back_scsv": null,
+                            "feature_mode_auto_retry": null,
+                            "feature_mode_accept_moving_write_buffer": null,
+                            "feature_mode_release_buffers": null
                         },
                         "feature_key_update": null,
                         "feature_flight": null,

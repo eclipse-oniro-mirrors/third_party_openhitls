@@ -41,6 +41,7 @@
 #include "hs_common.h"
 #include "config_type.h"
 #include "config_check.h"
+#include "record.h"
 
 #ifdef HITLS_TLS_PROTO_DTLS12
 #define DTLS_SCTP_AUTH_LABEL "EXPORTER_DTLS_OVER_SCTP" /* dtls SCTP auth key label */
@@ -175,6 +176,18 @@ int32_t HS_ChangeState(TLS_Ctx *ctx, uint32_t nextState)
 {
     HS_Ctx *hsCtx = (HS_Ctx *)ctx->hsCtx;
     hsCtx->state = nextState;
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+    if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS) != 0) {
+        if (hsCtx->state == TLS_CONNECTED) {
+            RecTryFreeRecBuf(ctx, false);
+            RecTryFreeRecBuf(ctx, true);
+        } else if (IsHsSendState(hsCtx->state)) {
+            RecTryFreeRecBuf(ctx, false);
+        } else {
+            RecTryFreeRecBuf(ctx, true);
+        }
+    }
+#endif
     /* when link state is transporting, unexpected hs message should be processed, the log shouldn't be printed during
         the hsCtx initiation */
     if (ctx->state != CM_STATE_TRANSPORTING) {

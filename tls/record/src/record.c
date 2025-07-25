@@ -50,6 +50,40 @@ static void RecCmpPmtu(const TLS_Ctx *ctx, uint32_t *recSize)
 }
 #endif
 
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+void RecTryFreeRecBuf(TLS_Ctx *ctx, bool isOut)
+{
+    RecCtx *recordCtx = (RecCtx *)ctx->recCtx;
+    if (isOut) {
+        if (recordCtx->outBuf != NULL && recordCtx->outBuf->start == recordCtx->outBuf->end) {
+            RecBufFree(recordCtx->outBuf);
+            recordCtx->outBuf = NULL;
+        }
+    } else {
+        if (recordCtx->inBuf != NULL && recordCtx->inBuf->start == recordCtx->inBuf->end) {
+            RecBufFree(recordCtx->inBuf);
+            recordCtx->inBuf = NULL;
+        }
+    }
+    return;
+}
+#endif
+
+int32_t RecIoBufInit(TLS_Ctx *ctx, RecCtx *recordCtx, bool isRead)
+{
+    RecBuf **ioBuf = isRead ? &recordCtx->inBuf : &recordCtx->outBuf;
+    if (*ioBuf == NULL) {
+        *ioBuf = RecBufNew(RecGetInitBufferSize(ctx, isRead));
+        if (*ioBuf == NULL) {
+            BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15532, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "Record: malloc fail.", 0, 0, 0, 0);
+            return HITLS_MEMALLOC_FAIL;
+        }
+    }
+    return HITLS_SUCCESS;
+}
+
 static uint32_t RecGetDefaultBufferSize(bool isDtls, bool isRead)
 {
 (void)isDtls;
@@ -196,23 +230,22 @@ static int32_t RecConnStatesInit(RecCtx *recordCtx)
     return HITLS_SUCCESS;
 }
 
-static int RecBufInit(TLS_Ctx *ctx, RecCtx *newRecCtx)
+static int32_t RecBufInit(TLS_Ctx *ctx, RecCtx *newRecCtx)
 {
-    newRecCtx->inBuf = RecBufNew(RecGetInitBufferSize(ctx, true));
-    if (newRecCtx->inBuf == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15532, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "Record: malloc fail.", 0, 0, 0, 0);
-        return HITLS_MEMALLOC_FAIL;
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+    if (!(ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS)) {
+#endif
+        int32_t ret = RecIoBufInit(ctx, newRecCtx, true);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+        ret = RecIoBufInit(ctx, newRecCtx, false);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
     }
-
-    newRecCtx->outBuf = RecBufNew(RecGetInitBufferSize(ctx, false));
-    if (newRecCtx->outBuf == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15533, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "Record: malloc fail.", 0, 0, 0, 0);
-        return HITLS_MEMALLOC_FAIL;
-    }
+#endif
     newRecCtx->hsRecList = RecBufListNew();
     newRecCtx->appRecList = RecBufListNew();
     if (newRecCtx->hsRecList == NULL || newRecCtx->appRecList == NULL) {

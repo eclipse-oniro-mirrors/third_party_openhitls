@@ -281,13 +281,7 @@ int32_t CommonEventInHandshakingState(HITLS_Ctx *ctx)
 
     // If HS_DoHandshake returns success, the connection has been established.
     ChangeConnState(ctx, CM_STATE_TRANSPORTING);
-
-    /* In the UDP scenario, peer may retransmit the finished message even if the local endpoint is connected
-     * Therefore, the hsCtx is not released in the UDP scenario */
-    if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
-        HS_DeInit(ctx);
-    }
-
+    HS_DeInit(ctx);
     return HITLS_SUCCESS;
 }
 
@@ -661,12 +655,7 @@ int32_t CommonEventInRenegotiationState(HITLS_Ctx *ctx)
 
     // If the HS_DoHandshake message is returned successfully, the link has been terminated.
     ChangeConnState(ctx, CM_STATE_TRANSPORTING);
-
-    /* In the UDP scenario, the peer end may retransmit the finished message even if the local end is terminated.
-     * Therefore, the hsCtx is not released in the UDP scenario */
-    if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
-        HS_DeInit(ctx);
-    }
+    HS_DeInit(ctx);
 
     // Prevent the renegotiation status from being changed after the Hello Request message is sent.
     if (ctx->negotiatedInfo.isRenegotiation) {

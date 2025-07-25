@@ -166,6 +166,9 @@ static void BasicInitConfig(HITLS_Config *config)
 {
     config->isSupportExtendedMasterSecret = false;
     config->emptyRecordsNum = HITLS_MAX_EMPTY_RECORDS;
+#ifdef HITLS_TLS_FEATURE_MODE
+    config->modeSupport = HITLS_MODE_AUTO_RETRY;
+#endif
 #ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
     config->maxSendFragment = HITLS_MAX_SEND_FRAGMENT_DEFAULT;
 #endif
