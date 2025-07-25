@@ -402,6 +402,33 @@ int32_t CRYPT_EAL_DecodeFileKey(int32_t format, int32_t type, const char *path,
 
 #endif // HITLS_CRYPTO_KEY_DECODE
 
+int32_t CRYPT_EAL_GetEncodeType(const char *type)
+{
+    if (type == NULL) {
+        return CRYPT_ENCDEC_UNKNOW;
+    }
+    static const struct {
+        const char *typeStr;
+        int32_t typeInt;
+    } TYPE_MAP[] = {
+        {"PRIKEY_PKCS8_UNENCRYPT", CRYPT_PRIKEY_PKCS8_UNENCRYPT},
+        {"PRIKEY_PKCS8_ENCRYPT", CRYPT_PRIKEY_PKCS8_ENCRYPT},
+        {"PRIKEY_RSA", CRYPT_PRIKEY_RSA},
+        {"PRIKEY_ECC", CRYPT_PRIKEY_ECC},
+        {"PUBKEY_SUBKEY", CRYPT_PUBKEY_SUBKEY},
+        {"PUBKEY_RSA", CRYPT_PUBKEY_RSA},
+        {"PUBKEY_SUBKEY_WITHOUT_SEQ", CRYPT_PUBKEY_SUBKEY_WITHOUT_SEQ}
+    };
+
+    for (size_t i = 0; i < sizeof(TYPE_MAP) / sizeof(TYPE_MAP[0]); i++) {
+        if (strcmp(type, TYPE_MAP[i].typeStr) == 0) {
+            return TYPE_MAP[i].typeInt;
+        }
+    }
+
+    return CRYPT_ENCDEC_UNKNOW;
+}
+
 #ifdef HITLS_CRYPTO_KEY_ENCODE
 
 int32_t CRYPT_EAL_EncodeAsn1PriKey(CRYPT_EAL_LibCtx *libCtx, const char *attrName, CRYPT_EAL_PkeyCtx *ealPriKey,
@@ -483,33 +510,6 @@ int32_t CRYPT_EAL_PubKeyEncodeBuff(CRYPT_EAL_PkeyCtx *ealPubKey,
     BSL_ParseFormat format, int32_t type, BSL_Buffer *encode)
 {
     return CRYPT_EAL_EncodePubKeyBuffInternal(ealPubKey, format, type, true, encode);
-}
-
-int32_t CRYPT_EAL_GetEncodeType(const char *type)
-{
-    if (type == NULL) {
-        return CRYPT_ENCDEC_UNKNOW;
-    }
-    static const struct {
-        const char *typeStr;
-        int32_t typeInt;
-    } TYPE_MAP[] = {
-        {"PRIKEY_PKCS8_UNENCRYPT", CRYPT_PRIKEY_PKCS8_UNENCRYPT},
-        {"PRIKEY_PKCS8_ENCRYPT", CRYPT_PRIKEY_PKCS8_ENCRYPT},
-        {"PRIKEY_RSA", CRYPT_PRIKEY_RSA},
-        {"PRIKEY_ECC", CRYPT_PRIKEY_ECC},
-        {"PUBKEY_SUBKEY", CRYPT_PUBKEY_SUBKEY},
-        {"PUBKEY_RSA", CRYPT_PUBKEY_RSA},
-        {"PUBKEY_SUBKEY_WITHOUT_SEQ", CRYPT_PUBKEY_SUBKEY_WITHOUT_SEQ}
-    };
-
-    for (size_t i = 0; i < sizeof(TYPE_MAP) / sizeof(TYPE_MAP[0]); i++) {
-        if (strcmp(type, TYPE_MAP[i].typeStr) == 0) {
-            return TYPE_MAP[i].typeInt;
-        }
-    }
-
-    return CRYPT_ENCDEC_UNKNOW;
 }
 
 static int32_t ProviderEncodeBuffKeyInternal(CRYPT_EAL_LibCtx *libCtx, const char *attrName, CRYPT_EAL_PkeyCtx *ealPKey,
