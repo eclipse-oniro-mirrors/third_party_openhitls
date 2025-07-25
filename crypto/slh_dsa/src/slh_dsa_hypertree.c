@@ -16,7 +16,6 @@
 #ifdef HITLS_CRYPTO_SLH_DSA
 
 #include <stdint.h>
-#include <stddef.h>
 #include "securec.h"
 #include "bsl_err_internal.h"
 #include "bsl_sal.h"
@@ -51,7 +50,7 @@ int32_t HypertreeSign(const uint8_t *msg, uint32_t msgLen, uint64_t treeIdx, uin
 
     for (uint32_t j = 0; j < d; j++) {
         if (j != 0) {
-            leafIdxTmp = treeIdxTmp & ((1UL << hp) - 1);
+            leafIdxTmp = (uint32_t)(treeIdxTmp & ((1UL << hp) - 1));
             treeIdxTmp = treeIdxTmp >> hp;
             ctx->adrsOps.setLayerAddr(&adrs, j);
         }
@@ -95,7 +94,7 @@ int32_t HypertreeVerify(const uint8_t *msg, uint32_t msgLen, const uint8_t *sig,
     (void)memcpy_s(node, sizeof(node), msg, msgLen);
     for (uint32_t j = 0; j < d; j++) {
         if (j != 0) {
-            leafIdxTmp = treeIdxTmp & ((1UL << hp) - 1);
+            leafIdxTmp = (uint32_t)(treeIdxTmp & ((1UL << hp) - 1));
             treeIdxTmp = treeIdxTmp >> hp;
             ctx->adrsOps.setLayerAddr(&adrs, j);
         }

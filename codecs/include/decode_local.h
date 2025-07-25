@@ -19,6 +19,7 @@
 #include "hitls_build.h"
 #ifdef HITLS_CRYPTO_CODECS
 #include "crypt_eal_implprovider.h"
+#include "bsl_list.h"
 
 #ifdef __cplusplus
 extern "C" {

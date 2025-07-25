@@ -185,7 +185,7 @@ static int32_t ConstructOutputParams(DECODER_Der2KeyCtx *decoderCtx, void *key, 
         goto EXIT;
     }
     ret = BSL_PARAM_InitValue(&result[1], CRYPT_PARAM_DECODE_OBJECT_TYPE, BSL_PARAM_TYPE_INT32, &decoderCtx->keyAlgId,
-        sizeof(decoderCtx->outType));
+        sizeof(int32_t));
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         goto EXIT;
@@ -285,21 +285,21 @@ int32_t DECODER_##keyType##Pkcs8Der2KeyDecode(void *ctx, const BSL_Param *inPara
     return ConstructOutputParams(decoderCtx, key, outParam); \
 }
 
-void DECODER_DER2KEY_FreeOutData(void *ctx, BSL_Param *outData)
+void DECODER_DER2KEY_FreeOutData(void *ctx, BSL_Param *outParam)
 {
     DECODER_Der2KeyCtx *decoderCtx = ctx;
-    if (decoderCtx == NULL || outData == NULL) {
+    if (decoderCtx == NULL || outParam == NULL) {
         return;
     }
     if (decoderCtx->method == NULL || decoderCtx->method->freeCtx == NULL) {
         return;
     }
-    BSL_Param *outKey = BSL_PARAM_FindParam(outData, CRYPT_PARAM_DECODE_OBJECT_DATA);
+    BSL_Param *outKey = BSL_PARAM_FindParam(outParam, CRYPT_PARAM_DECODE_OBJECT_DATA);
     if (outKey == NULL) {
         return;
     }
     decoderCtx->method->freeCtx(outKey->value);
-    BSL_SAL_Free(outData);
+    BSL_SAL_Free(outParam);
 }
 
 void DECODER_DER2KEY_FreeCtx(void *ctx)

@@ -1060,7 +1060,7 @@ int32_t CRYPT_RSA_Import(CRYPT_RSA_Ctx *ctx, const BSL_Param *params)
     return ret;
 }
 
-static void InitRsaPubKeyParams(BSL_Param *params, uint32_t *index, uint8_t *buffer, int32_t len)
+static void InitRsaPubKeyParams(BSL_Param *params, uint32_t *index, uint8_t *buffer, uint32_t len)
 {
     (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_E,
         BSL_PARAM_TYPE_OCTETS, buffer + ((*index) * len), len);
@@ -1070,7 +1070,7 @@ static void InitRsaPubKeyParams(BSL_Param *params, uint32_t *index, uint8_t *buf
     (*index)++;
 }
 
-static void InitRsaPrvKeyParams(BSL_Param *params, uint32_t *index, uint8_t *buffer, int32_t len)
+static void InitRsaPrvKeyParams(BSL_Param *params, uint32_t *index, uint8_t *buffer, uint32_t len)
 {
     (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_D, 
         BSL_PARAM_TYPE_OCTETS, buffer + ((*index) * len), len);

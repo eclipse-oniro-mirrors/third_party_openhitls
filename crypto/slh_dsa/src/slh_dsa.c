@@ -130,7 +130,7 @@ static uint32_t UCAdrsGetAdrsLen(void)
 // "C" means compressed
 static void CAdrsSetLayerAddr(SlhDsaAdrs *adrs, uint32_t layer)
 {
-    adrs->c.layerAddr = layer;
+    adrs->c.layerAddr = (uint8_t)layer;
 }
 
 static void CAdrsSetTreeAddr(SlhDsaAdrs *adrs, uint64_t tree)
@@ -528,14 +528,14 @@ static int32_t MsgEncode(const CryptSlhDsaCtx *ctx, int32_t algId, const uint8_t
         return CRYPT_MEM_ALLOC_FAIL;
     }
     mp[0] = ctx->isPrehash ? 1 : 0;
-    mp[1] = ctx->contextLen;
+    mp[1] = (uint8_t)ctx->contextLen;
     (void)memcpy_s(mp + SLH_DSA_PREFIX_LEN, mpLen - SLH_DSA_PREFIX_LEN, ctx->context, ctx->contextLen);
     offset += SLH_DSA_PREFIX_LEN + ctx->contextLen;
 
     if (ctx->isPrehash) {
         // asn1 encoding of hash oid
         (mp + offset)[0] = BSL_ASN1_TAG_OBJECT_ID;
-        (mp + offset)[1] = oid->octetLen;
+        (mp + offset)[1] = (uint8_t)oid->octetLen;
         offset += 2; // asn1 header length is 2
         (void)memcpy_s(mp + offset, mpLen - offset, oid->octs, oid->octetLen);
         offset += oid->octetLen;
