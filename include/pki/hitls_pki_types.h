@@ -70,6 +70,7 @@ typedef enum {
     HITLS_X509_GET_BEFORE_TIME,        /** Get the validity start time */
     HITLS_X509_GET_AFTER_TIME,         /** Get the validity end time */
     HITLS_X509_GET_SIGN_MDALG,         /** Get the hash algorithm of signature algorithm used to sign the cert/ */
+    HITLS_X509_GET_ENCODE_SUBJECT_DN,  /** Get the ASN.1 DER encoded subject distinguished name */
 
     HITLS_X509_SET_VERSION = 0x0200,   /** Set the version for the cert. */
     HITLS_X509_SET_SERIALNUM,          /** Set the serial number for the cert, the length range is 1 to 20. */

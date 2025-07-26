@@ -870,6 +870,17 @@ HITLS_TrustedCAList *HITLS_CFG_GetCAList(const HITLS_Config *config);
 
 /**
  * @ingroup hitls_config
+ * @brief   Set the CA list.
+ *
+ * @param   config [in] TLS link configuration
+ * @param   list [in] CA list
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_SetCAList(HITLS_Config *config, HITLS_TrustedCAList *list);
+
+/**
+ * @ingroup hitls_config
  * @brief   Clear the CA list.
  * @param   config [OUT] TLS link configuration
  * @retval  CA list

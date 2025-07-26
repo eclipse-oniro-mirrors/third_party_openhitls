@@ -57,6 +57,8 @@ void PackDtlsMsgHeader(HS_MsgType type, uint16_t sequence, uint32_t length, uint
  * @retval  error code
  */
 int32_t PackBufLenError(uint32_t logId, const void *format);
+
+int32_t PackTrustedCAList(HITLS_TrustedCAList *caList, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen);
 #ifdef __cplusplus
 }
 #endif /* end __cplusplus */

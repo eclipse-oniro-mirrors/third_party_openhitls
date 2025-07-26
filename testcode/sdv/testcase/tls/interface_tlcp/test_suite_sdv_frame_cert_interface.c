@@ -716,7 +716,7 @@ void StubListDataDestroy(void *data)
 *   6. Create a peer certificate management instance and a certificate chain. Expected result 6.
 *   7. Add the created certificates to the certificate linked list one by one. Expected result 7.
 *   8. Invoke HITLS_GetPeerCertChain to obtain the peer certificate chain. Expected result 8.
-*   9. Invoke the HITLS_GetClientCAList client certificate authority (CA) list. Expected result 9.
+*   9. Invoke the HITLS_GetPeerCAList client certificate authority (CA) list. Expected result 9.
 * @expect
 *   1. The creation is successful.
 *   2. Obtaining failed. The session is empty.
@@ -789,7 +789,7 @@ void UT_TLS_CERT_GET_CALIST_FUNC_TC001(int version)
 
     ret = BSL_LIST_AddElement((BslList *)tmpCAList, newNode2, BSL_LIST_POS_END);
     ASSERT_TRUE(ret == 0);
-    HITLS_TrustedCAList *caList = HITLS_GetClientCAList(ctx);
+    HITLS_TrustedCAList *caList = HITLS_GetPeerCAList(ctx);
     ASSERT_TRUE(caList != NULL);
     ASSERT_EQ(caList->count, 2);
 

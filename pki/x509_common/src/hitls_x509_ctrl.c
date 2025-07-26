@@ -67,6 +67,31 @@ int32_t HITLS_X509_GetList(BslList *list, void *val, uint32_t valLen)
     return HITLS_PKI_SUCCESS;
 }
 
+int32_t HITLS_X509_GetListBuff(BslList *list, void *val, uint32_t valLen)
+{
+    if (list == NULL || val == NULL || valLen != sizeof(BslList *)) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
+        return HITLS_X509_ERR_INVALID_PARAM;
+    }
+    BSL_ASN1_Buffer tmp = {0};
+    int32_t ret = HITLS_X509_EncodeNameList((BSL_ASN1_List *)list, &tmp);
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    BSL_Buffer *res = (BSL_Buffer *)val;
+    BSL_ASN1_TemplateItem item[] = {{BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 0}};
+    BSL_ASN1_Template templ = {item, 1};
+
+    ret = BSL_ASN1_EncodeTemplate(&templ, &tmp, 1, &res->data, &res->dataLen);
+    if (ret != BSL_SUCCESS) {
+        BSL_SAL_Free(tmp.buff);
+        return ret;
+    }
+    BSL_SAL_Free(tmp.buff);
+    return HITLS_PKI_SUCCESS;
+}
+
 int32_t HITLS_X509_GetPubKey(void *ealPubKey, void **val)
 {
     if (val == NULL) {

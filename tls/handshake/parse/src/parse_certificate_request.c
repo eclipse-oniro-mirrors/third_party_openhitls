@@ -194,6 +194,10 @@ static int32_t ParseDistinguishedName(ParsePacket *pkt, CertificateRequestMsg *m
     }
 
     if (distinguishedNamesLen > 0u) {
+        if (pkt->ctx->peerInfo.caList != NULL) {
+            FreeDNList(pkt->ctx->peerInfo.caList);
+            pkt->ctx->peerInfo.caList = NULL;
+        }
         pkt->ctx->peerInfo.caList = ParseDNList(&pkt->buf[*pkt->bufOffset], distinguishedNamesLen);
         if (pkt->ctx->peerInfo.caList == NULL) {
             return ParseErrorProcess(pkt->ctx, HITLS_PARSE_CA_LIST_ERR, BINLOG_ID16951,

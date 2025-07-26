@@ -611,18 +611,36 @@ HITLS_CERT_Chain *HITLS_GetPeerCertChain(const HITLS_Ctx *ctx)
 }
 #endif
 #ifdef HITLS_TLS_CONNECTION_INFO_NEGOTIATION
-HITLS_TrustedCAList *HITLS_GetClientCAList(const HITLS_Ctx *ctx)
+HITLS_TrustedCAList *HITLS_GetPeerCAList(const HITLS_Ctx *ctx)
 {
     if (ctx == NULL) {
         return NULL;
     }
 
-    if (ctx->isClient) {
-        return ctx->peerInfo.caList;
-    }
-    return ctx->globalConfig->caList;
+    return ctx->peerInfo.caList;
 }
 #endif
+
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+HITLS_TrustedCAList *HITLS_GetCAList(const HITLS_Ctx *ctx)
+{
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+    return HITLS_CFG_GetCAList(&(ctx->config.tlsConfig));
+}
+
+int32_t HITLS_SetCAList(HITLS_Ctx *ctx, HITLS_TrustedCAList *list)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_SetCAList(&(ctx->config.tlsConfig), list);
+}
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
 int32_t HITLS_GetSecureRenegotiationSupport(const HITLS_Ctx *ctx, bool *isSecureRenegotiation)
 {

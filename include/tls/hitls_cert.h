@@ -833,7 +833,25 @@ HITLS_CERT_Chain *HITLS_GetPeerCertChain(const HITLS_Ctx *ctx);
  * @param   ctx [OUT] TLS connection handle
  * @retval  Peer CA list
  */
-HITLS_TrustedCAList *HITLS_GetClientCAList(const HITLS_Ctx *ctx);
+HITLS_TrustedCAList *HITLS_GetPeerCAList(const HITLS_Ctx *ctx);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Obtain the trusted CA list of the current context.
+ *
+ * @param   ctx [OUT] TLS connection handle
+ * @retval  Trusted CA list
+ */
+HITLS_TrustedCAList *HITLS_GetCAList(const HITLS_Ctx *ctx);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Set the trusted CA list of the current context.
+ *
+ * @param   ctx [OUT] TLS connection handle
+ * @retval  Trusted CA list
+ */
+int32_t HITLS_SetCAList(HITLS_Ctx *ctx, HITLS_TrustedCAList *list);
 
 /**
  * @ingroup hitls_cert
@@ -944,125 +962,21 @@ int32_t HITLS_LogSecret(HITLS_Ctx *ctx, const char *label, const uint8_t *secret
 
 /**
  * @ingroup hitls_cert
- * @brief  Set certificate verification parameters.
+ * @brief   Load the CA file and parse it into a trusted CA list.
+ *
+ * @attention The user cannot release the memory.
  * @param   config [OUT] TLS link configuration
- * @param   store  [IN] Certificate store
- * @param   cmd    [IN] Operation command, HITLS_CERT_CtrlCmd enum
- * @param   in     [IN] Input parameter, integer type
- * @param   inArg  [IN] Input parameter, pointer type
- * @retval  HITLS_SUCCESS, if successful.
- * @retval  For other error codes, see hitls_error.h.
- */
-int32_t HITLS_CFG_CtrlSetVerifyParams(
-    HITLS_Config *config, HITLS_CERT_Store *store, uint32_t cmd, int64_t in, void *inArg);
-
-/**
- * @ingroup hitls_cert
- * @brief   Load CRL from file and add it into the verify store of the TLS configuration.
- *
- * @param   config [OUT] TLS link configuration
- * @param   file   [IN]  CRL file path
- * @param   format [IN]  Data format, see HITLS_ParseFormat
- * @retval  HITLS_SUCCESS if successful
- * @retval  For other error codes, see hitls_error.h
- */
-int32_t HITLS_CFG_LoadCrlFile(HITLS_Config *config, const char *file, HITLS_ParseFormat format);
-
-/**
- * @ingroup hitls_cert
- * @brief   Load CRL from buffer and add it into the verify store of the TLS configuration.
- *
- * @param   config [OUT] TLS link configuration
- * @param   buf    [IN]  CRL data
- *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
- * @param   bufLen [IN]  Data length
- *        the bufLen should exclude the end '\0'
- * @param   format [IN]  Data format, see HITLS_ParseFormat
- * @retval  HITLS_SUCCESS if successful
- * @retval  For other error codes, see hitls_error.h
- */
-int32_t HITLS_CFG_LoadCrlBuffer(HITLS_Config *config, const uint8_t *buf, uint32_t bufLen, HITLS_ParseFormat format);
-
-/**
- * @ingroup hitls_cert
- * @brief   Clear all CRLs in the verify store of the configuration.
- *
- * @param   config [IN] TLS link configuration
- * @retval  HITLS_SUCCESS if successful
- * @retval  For other error codes, see hitls_error.h
- */
-int32_t HITLS_CFG_ClearVerifyCrls(HITLS_Config *config);
-
-/**
- * @ingroup hitls_cert
- * @brief   Set the certificate verification flags.
- *
- * @param   config [OUT] TLS link configuration
- * @param   verifyFlags   [IN] Verification flags, type: uint32_t
- * @retval  HITLS_SUCCESS, if successful.
- * @retval  For other error codes, see hitls_error.h.
- */
-#define HITLS_CFG_SetVerifyFlags(config, verifyFlags) \
-    HITLS_CFG_CtrlSetVerifyParams(config, NULL, CERT_STORE_CTRL_SET_VERIFY_FLAGS, verifyFlags, NULL)
-/**
- * @ingroup hitls_cert
- * @brief   Load CRL from file and add it into the verify store of the TLS context.
- */
-int32_t HITLS_LoadCrlFile(HITLS_Ctx *ctx, const char *file, HITLS_ParseFormat format);
-
-/**
- * @ingroup hitls_cert
- * @brief   Load CRL from buffer and add it into the verify store of the TLS context.
- *
- * @param   ctx [OUT] TLS link configuration
- * @param   buf    [IN]  CRL data
- *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
- * @param   bufLen [IN]  Data length
- *        the bufLen should exclude the end '\0'
- * @param   format [IN]  Data format, see HITLS_ParseFormat
- */
-int32_t HITLS_LoadCrlBuffer(HITLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, HITLS_ParseFormat format);
-
-/**
- * @ingroup hitls_cert
- * @brief   Clear all CRLs in the verify store of the context.
- */
-int32_t HITLS_ClearVerifyCrls(HITLS_Ctx *ctx);
-
-/**
- * @ingroup hitls_cert
- * @brief   Release the certificate.
- *
- * @param   config [IN] Config handle
- * @param   cert [IN] X509 certificate
- *
+ * @param   input  [IN] Input data
+ * @param   inputLen [IN] Length of the input data
+ * @param   inputType [IN] Type of the input data
+ * @param   format [IN] File format
+ * @param   caList [OUT] Trusted CA list
  * @retval  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
-int32_t HITLS_CFG_FreeCert(HITLS_Config *config, HITLS_CERT_X509 *cert);
+int32_t HITLS_CFG_ParseCAList(HITLS_Config *config, const char *input, uint32_t inputLen, HITLS_ParseType inputType,
+                              HITLS_ParseFormat format, HITLS_TrustedCAList **caList);
 
-/**
- * @ingroup hitls_cert
- * @brief   Release the key.
- *
- * @param   config [IN] Config handle
- * @param   key [IN] private key
- *
- * @retval  HITLS_SUCCESS, if successful.
- *          For details about other error codes, see hitls_error.h.
- */
-int32_t HITLS_CFG_FreeKey(HITLS_Config *config, HITLS_CERT_Key *key);
-
-/**
- * @ingroup hitls_cert
- * @brief   Load the verification file from the directory.
- *
- * @param   config  [OUT] TLS link configuration
- * @param   path  [IN] Directory path
- * @retval  HITLS_SUCCESS, if successful.
- *          For details about other error codes, see hitls_error.h.
- */
-int32_t HITLS_CFG_LoadVerifyDir(HITLS_Config *config, const char *path);
 #ifdef __cplusplus
 }
 #endif

@@ -333,7 +333,7 @@ typedef enum {
     HITLS_CERT_KEY_CTRL_ERR_IS_DATA_ENC_USAGE,      /**< Determine whether the certificate fails to be data enc. */
     HITLS_CERT_KEY_CTRL_ERR_IS_NON_REPUDIATION_USAGE, /**< Determine whether the certificate fails to be
                                                            non-repudiation. */
-    HITLS_CERT_CTRL_ERR_INVALID_CMD,               /**< certificate ctrl invalid command */
+    HITLS_CERT_CTRL_ERR_GET_SUBJECT_DN,             /**< Failed to obtain the subject DN of the certificate. */
 
     HITLS_CRYPT_FAIL_START = 0x020D0001,           /**< Crypt adaptation module error code start bit. */
     HITLS_CRYPT_ERR_GENERATE_RANDOM,               /**< Failed to generate a random number. */

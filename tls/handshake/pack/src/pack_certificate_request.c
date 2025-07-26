@@ -120,6 +120,35 @@ static int32_t PackSignAlgorithms(const TLS_Ctx *ctx, uint8_t *buf, uint32_t buf
 #endif /* HITLS_TLS_PROTO_TLS12 || HITLS_TLS_PROTO_DTLS12 */
 
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
+static int32_t PackCALists(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+{
+    uint32_t offset = 0u;
+    const TLS_Config *config = &(ctx->config.tlsConfig);
+    int32_t ret = HITLS_SUCCESS;
+    if (bufLen < sizeof(uint16_t)) {
+        return PackBufLenError(BINLOG_ID17371, BINGLOG_STR("CA list"));
+    }
+    if (config->caList == NULL) {
+        BSL_Uint16ToByte(0, &buf[offset]);
+        offset += sizeof(uint16_t);
+        *usedLen = offset;
+        return ret;
+    }
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+    uint32_t tmpOffset = 0;
+    offset = sizeof(uint16_t);
+    ret = PackTrustedCAList(config->caList, &buf[offset], bufLen - offset, &tmpOffset);
+    if (ret != HITLS_SUCCESS) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17370, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "pack CA list error", 0, 0, 0, 0);
+        return ret;
+    }
+    BSL_Uint16ToByte(tmpOffset, &buf[0]);
+    *usedLen = offset + tmpOffset;
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+    return ret;
+}
+
 int32_t PackCertificateRequest(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
 {
     uint32_t offset = 0u;
@@ -142,11 +171,11 @@ int32_t PackCertificateRequest(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen
         offset += len;
     }
 #endif
-    /* The distinguishable name of the certificate authorization list. The currently supported certificate authorization
-     * list is empty */
-    BSL_Uint16ToByte(0, &buf[offset]);
-    offset += sizeof(uint16_t);
-
+    ret = PackCALists(ctx, &buf[offset], bufLen - offset, &len);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    offset += len;
     *usedLen = offset;
     return HITLS_SUCCESS;
 }
@@ -222,6 +251,12 @@ static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t 
         {.exMsgType = HS_EX_TYPE_SIGNATURE_ALGORITHMS_CERT,
          .needPack = false,
          .packFunc = NULL},
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+        {.exMsgType = HS_EX_TYPE_CERTIFICATE_AUTHORITIES,
+            /* We do not generate signature_algorithms_cert at present. */
+         .needPack = ctx->config.tlsConfig.caList != NULL,
+         .packFunc = PackClientCAList},
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
     };
 
     listSize = sizeof(extMsgList) / sizeof(extMsgList[0]);

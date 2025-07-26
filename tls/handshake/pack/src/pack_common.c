@@ -22,6 +22,8 @@
 #include "bsl_bytes.h"
 #include "hitls_error.h"
 #include "hs_msg.h"
+#include "hitls_cert_type.h"
+#include "bsl_list.h"
 #include "pack_common.h"
 
 #ifdef HITLS_TLS_PROTO_DTLS12
@@ -103,3 +105,27 @@ int32_t PackBufLenError(uint32_t logId, const void *format)
     }
     return HITLS_PACK_NOT_ENOUGH_BUF_LENGTH;
 }
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+int32_t PackTrustedCAList(HITLS_TrustedCAList *caList, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+{
+    if (caList == NULL || buf == NULL || usedLen == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    uint32_t offset = 0;
+    HITLS_TrustedCANode *node = (HITLS_TrustedCANode *)BSL_LIST_GET_FIRST(caList);
+    while (node != NULL) {
+        if (node->data != NULL && node->dataSize != 0) {
+            if (bufLen < (sizeof(uint16_t) + node->dataSize)) {
+                return PackBufLenError(BINLOG_ID17369, BINGLOG_STR("ca list"));
+            }
+            BSL_Uint16ToByte(node->dataSize, &buf[offset]);
+            offset += sizeof(uint16_t);
+            (void)memcpy_s(&buf[offset], bufLen - offset, node->data, node->dataSize);
+            offset += node->dataSize;
+        }
+        node = (HITLS_TrustedCANode *)BSL_LIST_GET_NEXT(caList);
+    }
+    *usedLen = offset;
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */

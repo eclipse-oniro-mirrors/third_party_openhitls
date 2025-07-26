@@ -794,6 +794,28 @@ static int32_t PackClientPreSharedKey(const TLS_Ctx *ctx, uint8_t *buf, uint32_t
     *usedLen = minLen;
     return HITLS_SUCCESS;
 }
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+int32_t PackClientCAList(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+{
+    const TLS_Config *config = &(ctx->config.tlsConfig);
+    uint32_t tmpOffset = 0;
+    uint32_t offset = sizeof(uint16_t) + HS_EX_HEADER_LEN; // skip header len and ca list length, will fill in later
+    if (bufLen < offset) {
+        return PackBufLenError(BINLOG_ID17368, BINGLOG_STR("ca list"));
+    }
+    int32_t ret = PackTrustedCAList(config->caList, &buf[offset], bufLen - offset, &tmpOffset);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    ret = PackExtensionHeader(HS_EX_TYPE_CERTIFICATE_AUTHORITIES, sizeof(uint16_t) + tmpOffset, buf, bufLen);
+    BSL_Uint16ToByte(tmpOffset, &buf[HS_EX_HEADER_LEN]);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    *usedLen = offset + tmpOffset;
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
 
 #ifdef HITLS_TLS_FEATURE_PHA
 static bool IsNeedPackPha(const TLS_Ctx *ctx)
@@ -893,6 +915,9 @@ static int32_t PackClientExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t b
 #ifdef HITLS_TLS_PROTO_TLS13
         { EXTENSION_MSG(HS_EX_TYPE_PSK_KEY_EXCHANGE_MODES, isTls13, PackClientPskKeyExModes) },
         { EXTENSION_MSG(HS_EX_TYPE_KEY_SHARE, isTls13, PackClientKeyShare) },
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+        { EXTENSION_MSG(HS_EX_TYPE_CERTIFICATE_AUTHORITIES, isTls13 && tlsConfig->caList != NULL, PackClientCAList) },
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
 #endif /* HITLS_TLS_PROTO_TLS13 */
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
         { EXTENSION_MSG(HS_EX_TYPE_RENEGOTIATION_INFO, negoInfo->isSecureRenegotiation, PackClientSecRenegoInfo) },

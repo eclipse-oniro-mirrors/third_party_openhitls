@@ -245,7 +245,7 @@ typedef struct {
     bool isNoSetCert;                   // Indicates whether the certificate does not need to be set
 	int32_t securitylevel;                  // Security level
     int32_t readAhead;
-
+    void *caList;
     char psk[PSK_MAX_LEN];              // psk password
     char ticketKeyCb[TICKET_KEY_CB_NAME_LEN]; // ticket key Callback Function Name
 

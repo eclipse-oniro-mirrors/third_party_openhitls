@@ -643,6 +643,8 @@ static int32_t X509_CertGetCtrl(HITLS_X509_Cert *cert, int32_t cmd, void *val, u
         case HITLS_X509_GET_AFTER_TIME_STR:
             return X509_GetAsn1BslTimeStr(cert, val, HITLS_X509_AFTER_TIME);
 #endif // HITLS_PKI_INFO
+        case HITLS_X509_GET_ENCODE_SUBJECT_DN:
+            return HITLS_X509_GetListBuff(cert->tbs.subjectName, val, valLen);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;

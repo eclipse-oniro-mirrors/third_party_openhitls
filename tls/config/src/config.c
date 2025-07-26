@@ -57,28 +57,6 @@
 #define MIN_MAX_SEND_FRAGMENT 512u
 #endif
 
-#ifdef HITLS_TLS_EXTENSION_CERT_AUTH
-static void HitlsTrustedCANodeFree(void *caNode)
-{
-    if (caNode == NULL) {
-        return;
-    }
-    HITLS_TrustedCANode *newCaNode = (HITLS_TrustedCANode *)caNode;
-    BSL_SAL_FREE(newCaNode->data);
-    newCaNode->data = NULL;
-    BSL_SAL_FREE(newCaNode);
-}
-
-void HITLS_CFG_ClearCAList(HITLS_Config *config)
-{
-    if (config == NULL) {
-        return;
-    }
-    BSL_LIST_FREE(config->caList, HitlsTrustedCANodeFree);
-    config->caList = NULL;
-    return;
-}
-#endif
 void CFG_CleanConfig(HITLS_Config *config)
 {
     BSL_SAL_FREE(config->cipherSuites);
@@ -112,9 +90,9 @@ void CFG_CleanConfig(HITLS_Config *config)
 #ifdef HITLS_TLS_FEATURE_SNI
     BSL_SAL_FREE(config->serverName);
 #endif
-#ifdef HITLS_TLS_EXTENSION_CERT_AUTH
-    BSL_LIST_FREE(config->caList, HitlsTrustedCANodeFree);
-#endif
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+    HITLS_CFG_ClearCAList(config);
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
 #ifdef HITLS_TLS_CONFIG_MANUAL_DH
     SAL_CRYPT_FreeDhKey(config->dhTmp);
     config->dhTmp = NULL;
@@ -480,6 +458,50 @@ static int32_t CryptKeyDeepCopy(HITLS_Config *destConfig, const HITLS_Config *sr
 }
 #endif /* HITLS_TLS_CONFIG_MANUAL_DH */
 
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+void FreeNode(HITLS_TrustedCANode *node)
+{
+    BSL_SAL_FREE(node->data);
+    BSL_SAL_FREE(node);
+    return;
+}
+
+static HITLS_TrustedCANode *DupNameNode(const HITLS_TrustedCANode *src)
+{
+    /* Src is not null. */
+    HITLS_TrustedCANode *dest = BSL_SAL_Malloc(sizeof(HITLS_TrustedCANode));
+    if (dest == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
+        return NULL;
+    }
+    dest->caType = src->caType;
+    // nameValue
+    dest->dataSize = src->dataSize;
+    if (dest->dataSize != 0) {
+        dest->data = BSL_SAL_Dump(src->data, src->dataSize);
+        if (dest->data == NULL) {
+            BSL_SAL_Free(dest);
+            BSL_ERR_PUSH_ERROR(BSL_DUMP_FAIL);
+            return NULL;
+        }
+    }
+    return dest;
+}
+
+static int32_t CaListDeepCopy(HITLS_Config *destConfig, const HITLS_Config *srcConfig)
+{
+    if (srcConfig->caList != NULL) {
+        destConfig->caList =
+            BSL_LIST_Copy(srcConfig->caList, (BSL_LIST_PFUNC_DUP)DupNameNode, (BSL_LIST_PFUNC_FREE)FreeNode);
+        if (destConfig->caList == NULL) {
+            return HITLS_MEMCPY_FAIL;
+        }
+    }
+
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+
 static int32_t BasicConfigDeepCopy(HITLS_Config *destConfig, const HITLS_Config *srcConfig)
 {
     int32_t ret = HITLS_SUCCESS;
@@ -525,6 +547,12 @@ static int32_t BasicConfigDeepCopy(HITLS_Config *destConfig, const HITLS_Config 
         return HITLS_MEMALLOC_FAIL;
     }
 #endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+    ret = CaListDeepCopy(destConfig, srcConfig);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
     return HITLS_SUCCESS;
 }
 

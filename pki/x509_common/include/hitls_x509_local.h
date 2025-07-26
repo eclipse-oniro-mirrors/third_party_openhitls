@@ -243,6 +243,8 @@ int32_t HITLS_X509_RefUp(BSL_SAL_RefCount *references, int32_t *val, uint32_t va
 
 int32_t HITLS_X509_GetList(BslList *list, void *val, uint32_t valLen);
 
+int32_t HITLS_X509_GetListBuff(BslList *list, void *val, uint32_t valLen);
+
 int32_t HITLS_X509_GetPubKey(void *ealPubKey, void **val);
 
 int32_t HITLS_X509_GetSignAlg(BslCid signAlgId, int32_t *val, uint32_t valLen);

@@ -91,6 +91,7 @@ void HLT_CleanFrameHandle(void);
 int HLT_FreeResFromSsl(const void *ssl);
 int HLT_SetClientHelloCb(HLT_Ctx_Config *ctxConfig, HITLS_ClientHelloCb callback, void *arg);
 int HLT_SetCertCb(HLT_Ctx_Config *ctxConfig, HITLS_CertCb certCb, void *arg);
+int HLT_SetCAList(HLT_Ctx_Config *ctxConfig, HITLS_TrustedCAList *caList);
 // General initialization interface
 int HLT_LibraryInit(TLS_TYPE tlsType);
 
