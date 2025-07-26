@@ -379,13 +379,13 @@ class CMakeGenerator:
         cmake += 'install(TARGETS %s DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)\n' % tgt_name
 
         if lib_name == 'hitls_bsl':
-            deps = ""
-            if  '-DHITLS_BSL_SAL_DL' in macros:
-                deps += " dl"
-            if  '-DHITLS_BSL_SAL_LOCK' in macros and '-DHITLS_BSL_SAL_LINUX' in macros:
-                deps += " pthread"
-            cmake += self._gen_cmd_cmake("target_link_directories", "hitls_bsl-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
-            cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared " + str(self._args.securec_lib) + deps)
+            for item in macros:
+                if item == '-DHITLS_BSL_UIO' or item == '-DHITLS_BSL_UIO_SCTP':
+                    cmake += self._gen_cmd_cmake("target_link_directories", "hitls_bsl-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
+                    cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared " + str(self._args.securec_lib))
+                if item == '-DHITLS_BSL_SAL_DL':
+                    cmake += self._gen_cmd_cmake("target_link_directories", "hitls_bsl-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
+                    cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_bsl-shared dl " + str(self._args.securec_lib))
         if lib_name == 'hitls_crypto':
             cmake += self._gen_cmd_cmake("target_link_directories", "hitls_crypto-shared PRIVATE " + "${CMAKE_SOURCE_DIR}/platform/Secure_C/lib")
             cmake += self._gen_cmd_cmake("target_link_libraries", "hitls_crypto-shared hitls_bsl-shared " + str(self._args.securec_lib))

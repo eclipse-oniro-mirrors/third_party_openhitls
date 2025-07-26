@@ -47,9 +47,7 @@
             "-Wl,-z,relro",
             "-Wl,-z,now"
         ],
-        "SHARED": [
-            "-Wl,--no-undefined"
-        ],
+        "SHARED": [],
         "EXE": []
     }
 }
