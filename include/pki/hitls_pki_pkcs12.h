@@ -57,12 +57,13 @@ void HITLS_PKCS12_Free(HITLS_PKCS12 *p12);
  * @ingroup pkcs12
  * @brief Allocate a bag struct, which could store a cert or key and its attributes.
  *
- * @param bagType          [IN] BagType, BSL_CID_PKCS8SHROUDEDKEYBAG/BSL_CID_CERTBAG
+ * @param bagId            [IN] BagId, BSL_CID_PKCS8SHROUDEDKEYBAG/BSL_CID_CERTBAG/BSL_CID_SECRETBAG
+ * @param bagType          [IN] BagType, for example, BSL_CID_X509CERTIFICATE is a bagType of BSL_CID_CERTBAG.
  * @param bagValue         [IN] bagValue, the bagValue must match the bag-type. Each Bag only holds one piece of
  *                              information -- a key or a certificate...
  * @retval HITLS_PKCS12_Bag *
  */
-HITLS_PKCS12_Bag *HITLS_PKCS12_BagNew(uint32_t bagType, void *bagValue);
+HITLS_PKCS12_Bag *HITLS_PKCS12_BagNew(uint32_t bagId, uint32_t bagType, void *bagValue);
 
 /**
  * @ingroup pkcs12
@@ -75,16 +76,16 @@ void HITLS_PKCS12_BagFree(HITLS_PKCS12_Bag *bag);
 
 /**
  * @ingroup pkcs12
- * @brief Add attributes to a bag.
+ * @brief Generic function to set a p12 context.
  *
- * @attention A bag can have multiple properties, but each property only contains one value.
- * @param bag          [IN] bag
- * @param type         [IN] BSL_CID_LOCALKEYID/BSL_CID_FRIENDLYNAME
- * @param attrValue    [IN] the attr buffer
+ * @param bag    [IN] bag context.
+ * @param cmd    [IN] HITLS_PKCS12_XXX
+ * @param val    [IN/OUT] input and output value
+ * @param valLen [In] value length
  * @retval #HITLS_PKI_SUCCESS, success.
  *         Error codes can be found in hitls_pki_errno.h
  */
-int32_t HITLS_PKCS12_BagAddAttr(HITLS_PKCS12_Bag *bag, uint32_t type, const BSL_Buffer *attrValue);
+int32_t HITLS_PKCS12_BagCtrl(HITLS_PKCS12_Bag *bag, int32_t cmd, void *val, uint32_t valType);
 
 /**
  * @ingroup pkcs12

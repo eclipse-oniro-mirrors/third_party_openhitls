@@ -171,6 +171,12 @@ int32_t HITLS_PKCS12_EncodeAsn1List(BSL_ASN1_List *list, uint32_t encodeType, co
     BSL_Buffer *encode);
 #endif
 
+/**
+ * @ingroup pkcs12
+ * @brief Add attributes to a bag.
+ */
+int32_t HITLS_PKCS12_BagAddAttr(HITLS_PKCS12_Bag *bag, uint32_t type, const BSL_Buffer *attrValue);
+
 #ifdef __cplusplus
 }
 #endif

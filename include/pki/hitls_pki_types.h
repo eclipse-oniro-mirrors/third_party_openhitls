@@ -328,6 +328,9 @@ typedef enum {
     HITLS_PKCS12_GET_ENTITY_KEY,                /** Obtain entity pkey from p12-ctx. */
 } HITLS_PKCS12_Cmd;
 
+typedef enum {
+    HITLS_PKCS12_BAG_ADD_ATTR,                  /** Add attribute to safeBag. */
+} HITLS_PKCS12_BagCmd;
 #ifdef __cplusplus
 }
 #endif

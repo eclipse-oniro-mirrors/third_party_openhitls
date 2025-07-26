@@ -198,8 +198,9 @@ static int32_t BagSetValue(HITLS_PKCS12_Bag *bag, void *value, uint32_t bagType)
     }
 }
 
-HITLS_PKCS12_Bag *HITLS_PKCS12_BagNew(uint32_t bagType, void *bagValue)
+HITLS_PKCS12_Bag *HITLS_PKCS12_BagNew(uint32_t bagId, uint32_t bagType, void *bagValue)
 {
+    (void)bagType;
     if (bagValue == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_NULL_POINTER);
         return NULL;
@@ -209,11 +210,11 @@ HITLS_PKCS12_Bag *HITLS_PKCS12_BagNew(uint32_t bagType, void *bagValue)
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
         return NULL;
     }
-    if (BagSetValue(bag, bagValue, bagType) != HITLS_PKI_SUCCESS) {
+    if (BagSetValue(bag, bagValue, bagId) != HITLS_PKI_SUCCESS) {
         BSL_SAL_Free(bag);
         return NULL;
     }
-    bag->type = bagType;
+    bag->type = bagId;
     return bag;
 }
 
@@ -630,5 +631,20 @@ int32_t HITLS_PKCS12_CalMac(BSL_Buffer *output, BSL_Buffer *pwd, BSL_Buffer *ini
     output->data = temp;
     output->dataLen = macSize;
     return ret;
+}
+
+int32_t HITLS_PKCS12_BagCtrl(HITLS_PKCS12_Bag *bag, int32_t cmd, void *val, uint32_t valType)
+{
+    if (bag == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_NULL_POINTER);
+        return HITLS_PKCS12_ERR_NULL_POINTER;
+    }
+    switch (cmd) {
+        case HITLS_PKCS12_BAG_ADD_ATTR:
+            return HITLS_PKCS12_BagAddAttr(bag, valType, val);
+        default:
+            BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_INVALID_PARAM);
+            return HITLS_PKCS12_ERR_INVALID_PARAM;
+    }
 }
 #endif // HITLS_PKI_PKCS12
