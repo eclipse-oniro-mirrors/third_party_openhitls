@@ -620,15 +620,6 @@ PKEY_IMPORT_EXPORT_FUNC(RSA)
 PKEY_IMPORT_EXPORT_FUNC(ECDSA)
 PKEY_IMPORT_EXPORT_FUNC(SM2)
 
-static int32_t CRYPT_DH_CheckWrapper(const CRYPT_Iso_Pkey_Ctx *prv, const CRYPT_Iso_Pkey_Ctx *pub)
-{
-    if (prv == NULL || pub == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return CRYPT_NULL_INPUT;
-    }
-    return CRYPT_DH_Check(prv->ctx, pub->ctx);
-}
-
 const CRYPT_EAL_Func g_isoKeyMgmtDsa[] = {
 #ifdef HITLS_CRYPTO_DSA
     {CRYPT_EAL_IMPLPKEYMGMT_NEWCTX, (CRYPT_EAL_ImplPkeyMgmtNewCtx)CRYPT_DSA_NewCtxExWrapper},
@@ -711,7 +702,6 @@ const CRYPT_EAL_Func g_isoKeyMgmtDh[] = {
     {CRYPT_EAL_IMPLPKEYMGMT_GETPRV, (CRYPT_EAL_ImplPkeyMgmtGetPrv)CRYPT_DH_GetPrvKeyWrapper},
     {CRYPT_EAL_IMPLPKEYMGMT_GETPUB, (CRYPT_EAL_ImplPkeyMgmtGetPub)CRYPT_DH_GetPubKeyWrapper},
     {CRYPT_EAL_IMPLPKEYMGMT_DUPCTX, (CRYPT_EAL_ImplPkeyMgmtDupCtx)CRYPT_DH_DupCtxWrapper},
-    {CRYPT_EAL_IMPLPKEYMGMT_CHECK, (CRYPT_EAL_ImplPkeyMgmtCheck)CRYPT_DH_CheckWrapper},
     {CRYPT_EAL_IMPLPKEYMGMT_COMPARE, (CRYPT_EAL_ImplPkeyMgmtCompare)CRYPT_DH_CmpWrapper},
     {CRYPT_EAL_IMPLPKEYMGMT_CTRL, (CRYPT_EAL_ImplPkeyMgmtCtrl)CRYPT_DH_CtrlWrapper},
     {CRYPT_EAL_IMPLPKEYMGMT_FREECTX, (CRYPT_EAL_ImplPkeyMgmtFreeCtx)CRYPT_DH_FreeCtxWrapper},
