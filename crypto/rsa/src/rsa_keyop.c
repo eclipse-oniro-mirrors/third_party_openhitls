@@ -539,6 +539,7 @@ static int32_t FactorPrimeCheck(const BN_BigNum *n, const BN_BigNum *e, const BN
         return ret;
     }
     int32_t nBits = BN_Bits(n);
+    uint32_t checkTimes = nBits < 1536 ? 5 : 4; // ref. FIPS 186-5, Table B.1
     int32_t needRoom = nBits / BN_UINT_BITS;
     BN_BigNum *tmp1 = OptimizerGetBn(opt, needRoom);
     BN_BigNum *tmp2 = OptimizerGetBn(opt, needRoom);
@@ -576,7 +577,7 @@ static int32_t FactorPrimeCheck(const BN_BigNum *n, const BN_BigNum *e, const BN
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
     }
-    ret = BN_PrimeCheck(p, 0, opt, NULL);
+    ret = BN_PrimeCheck(p, checkTimes, opt, NULL);
     if (ret != CRYPT_SUCCESS) {
         if (ret == CRYPT_BN_NOR_CHECK_PRIME) {
             ret = CRYPT_RSA_KEYPAIRWISE_CONSISTENCY_FAILURE;
@@ -584,7 +585,7 @@ static int32_t FactorPrimeCheck(const BN_BigNum *n, const BN_BigNum *e, const BN
             goto ERR;
         }
     }
-    ret = BN_PrimeCheck(q, 0, opt, NULL);
+    ret = BN_PrimeCheck(q, checkTimes, opt, NULL);
     if (ret != CRYPT_SUCCESS) {
         if (ret == CRYPT_BN_NOR_CHECK_PRIME) {
             ret = CRYPT_RSA_KEYPAIRWISE_CONSISTENCY_FAILURE;
@@ -649,6 +650,8 @@ static int32_t RecoverPrimeFactorsAndCheck(const CRYPT_RSA_Ctx *pubKey, const CR
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
+    bool flag = false;
+    int32_t tFactor;
     int32_t nBits = BN_Bits(pubKey->pubKey->n);
     int32_t needRoom = nBits / BN_UINT_BITS;
     BN_BigNum *g = OptimizerGetBn(opt, needRoom);
@@ -673,8 +676,6 @@ static int32_t RecoverPrimeFactorsAndCheck(const CRYPT_RSA_Ctx *pubKey, const CR
         goto ERR;
     }
     // step 2: find t and m = (2^t) * r, r is the largest odd integer.
-    bool flag = false;
-    int32_t tFactor;
     CalMaxT(r, &tFactor); // r = m / 2^t
     // step 3: find prime factors p and q.
     for (int32_t i = 0; i < 100; i++) { // try 100 times
