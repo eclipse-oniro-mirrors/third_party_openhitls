@@ -72,9 +72,9 @@ typedef struct {
  * Elliptic Curve Point Information
  */
 struct EccPointInfo {
-    BN_BigNum *x;
-    BN_BigNum *y;
-    BN_BigNum *z;
+    BN_BigNum x;
+    BN_BigNum y;
+    BN_BigNum z;
     CRYPT_PKEY_ParaId id;
 };
 
