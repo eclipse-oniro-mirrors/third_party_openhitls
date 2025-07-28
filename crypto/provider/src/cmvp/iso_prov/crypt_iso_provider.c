@@ -341,7 +341,6 @@ static int32_t IsoCreateProvCtx(void *libCtx, CRYPT_EAL_ProvMgrCtx *mgrCtx, BSL_
         BSL_SAL_Free(temp);
         return ret;
     }
-    CRYPT_EAL_RegEventReport(temp->runLog);
     CRYPT_EAL_SetRandCallBackEx((CRYPT_EAL_RandFuncEx)CRYPT_EAL_RandbytesEx);
     ret = CreateSeedPool(&temp->pool, &temp->es);
     if (ret != CRYPT_SUCCESS) {

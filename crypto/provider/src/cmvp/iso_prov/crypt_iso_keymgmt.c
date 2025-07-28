@@ -357,7 +357,7 @@ static int32_t CRYPT_ASMCAP_PkeyCheck(int32_t algId)
             return ret;                                                                                      \
         }                                                                                                    \
         if (!CMVP_Iso19790PkeyPct(ctx)) {                                                                    \
-            return CRYPT_CMVP_ERR_ALGO_SELFTEST;                                                             \
+            return CRYPT_CMVP_ERR_PAIRWISETEST;                                                              \
         }                                                                                                    \
         return CRYPT_SUCCESS;                                                                                \
     }
