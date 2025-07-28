@@ -244,10 +244,11 @@ static void Iso19790_ProviderLoad(Iso19790_ProviderLoadCtx *ctx)
     CRYPT_EAL_LibCtx *libCtx = NULL;
     CRYPT_EAL_Es *es = NULL;
     CRYPT_EAL_SeedPoolCtx *pool = NULL;
-    
+
     libCtx = CRYPT_EAL_LibCtxNew();
     ASSERT_TRUE(libCtx != NULL);
 
+    CRYPT_EAL_RegEventReport(ISO19790_RunLogCb);
     ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(libCtx, "../script/build"), CRYPT_SUCCESS);
 
     BSL_Param param[2] = {{0}, BSL_PARAM_END};
@@ -362,6 +363,51 @@ void SDV_ISO19790_PROVIDER_PKEY_SIGN_VERIFY_TEST_TC002()
     ASSERT_TRUE(signatureLen > 0);
 
     ASSERT_EQ(CRYPT_EAL_PkeyVerify(pkeyCtx, mdId, testData, testDataLen, signature, signatureLen), CRYPT_SUCCESS);
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    Iso19790_ProviderUnload(&ctx);
+    return;
+#endif
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_ISO_PROVIDER_PKEY_ENCRYPT_DECRYPT_TEST_TC001()
+{
+#ifndef HITLS_CRYPTO_CMVP_ISO19790
+    SKIP_TEST();
+#else
+    Iso19790_ProviderLoadCtx ctx = {0};
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+    uint8_t e[] = {1, 0, 1};
+    CRYPT_EAL_PkeyPara para = {0};
+    int32_t mdId = CRYPT_MD_SHA256;
+    uint8_t plaintext[256] = {0};
+    uint32_t plaintextLen = sizeof(plaintext);
+    uint8_t ciphertext[256] = {0};
+    uint32_t ciphertextLen = sizeof(ciphertext);
+    uint8_t testData[] = "Test data for encrypt and decrypt with RSA.";
+    uint32_t testDataLen = sizeof(testData) - 1;
+
+    Iso19790_ProviderLoad(&ctx);
+    ASSERT_TRUE(ctx.libCtx != NULL && ctx.es != NULL && ctx.pool != NULL);
+
+    BSL_Param oaep[3] = {{CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        BSL_PARAM_END
+    };
+
+    pkeyCtx = CRYPT_EAL_ProviderPkeyNewCtx(ctx.libCtx, CRYPT_PKEY_RSA, 0, "provider=iso");
+    ASSERT_TRUE(pkeyCtx != NULL);
+    SetRsaPara(&para, e, 3, 2048);
+    ASSERT_EQ(CRYPT_EAL_PkeySetPara(pkeyCtx, &para), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkeyCtx), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_RSAES_OAEP, oaep, 0), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyEncrypt(pkeyCtx, testData, testDataLen, ciphertext, &ciphertextLen), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyDecrypt(pkeyCtx, ciphertext, ciphertextLen, plaintext, &plaintextLen), CRYPT_SUCCESS);
+    ASSERT_EQ(testDataLen, plaintextLen);
+    ASSERT_EQ(memcmp(testData, plaintext, plaintextLen), 0);
 
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
@@ -1231,6 +1277,71 @@ EXIT:
 }
 /* END_CASE */
 
+/*
+    Check the padding mode of the RSA.
+*/
+/* BEGIN_CASE */
+void SDV_ISO19790_PROVIDER_RSA_PARAM_CHECK_TC002()
+{
+#ifndef HITLS_CRYPTO_CMVP_ISO19790
+    SKIP_TEST();
+#else
+    Iso19790_ProviderLoadCtx ctx = {0};
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+    uint8_t e[] = {1, 0, 1};
+    CRYPT_EAL_PkeyPara para = {0};
+    int32_t mdId = CRYPT_MD_SHA256;
+
+    Iso19790_ProviderLoad(&ctx);
+    ASSERT_TRUE(ctx.libCtx != NULL && ctx.es != NULL && ctx.pool != NULL);
+
+    pkeyCtx = CRYPT_EAL_ProviderPkeyNewCtx(ctx.libCtx, CRYPT_PKEY_RSA, 0, "provider=iso");
+    ASSERT_TRUE(pkeyCtx != NULL);
+    SetRsaPara(&para, e, 3, 2048);
+    ASSERT_EQ(CRYPT_EAL_PkeySetPara(pkeyCtx, &para), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkeyCtx), CRYPT_SUCCESS);
+
+    int32_t pkcsv15 = mdId;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_RSAES_PKCSV15, &pkcsv15, sizeof(pkcsv15)), CRYPT_CMVP_ERR_PARAM_CHECK);
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_RSAES_PKCSV15_TLS, &pkcsv15, sizeof(pkcsv15)), CRYPT_CMVP_ERR_PARAM_CHECK);
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_NO_PADDING, NULL, 0), CRYPT_CMVP_ERR_PARAM_CHECK);
+
+    int32_t pad = CRYPT_EMSA_PKCSV15;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(pad)), CRYPT_SUCCESS);
+    pad = CRYPT_EMSA_PSS;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(pad)), CRYPT_SUCCESS);
+    pad = CRYPT_RSAES_OAEP;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(pad)), CRYPT_SUCCESS);
+    pad = CRYPT_RSAES_PKCSV15;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(pad)), CRYPT_CMVP_ERR_PARAM_CHECK);
+    pad = CRYPT_RSA_NO_PAD;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(pad)), CRYPT_CMVP_ERR_PARAM_CHECK);
+    pad = CRYPT_RSAES_PKCSV15_TLS;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(pad)), CRYPT_CMVP_ERR_PARAM_CHECK);
+
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_EMSA_PKCSV15, &pkcsv15, sizeof(pkcsv15)), CRYPT_SUCCESS);
+
+    BSL_Param pssParam[3] = {
+        {CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        BSL_PARAM_END};
+
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_EMSA_PSS, pssParam, 0), CRYPT_SUCCESS);
+
+    BSL_Param oaep[3] = {{CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        BSL_PARAM_END
+    };
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_RSAES_OAEP, oaep, 0), CRYPT_SUCCESS);
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    Iso19790_ProviderUnload(&ctx);
+    return;
+#endif
+}
+/* END_CASE */
+
 /* BEGIN_CASE */
 void SDV_ISO19790_PROVIDER_ECDH_SM2_TEST_TC001()
 {
@@ -1268,6 +1379,31 @@ void SDV_ISO19790_PROVIDER_ECDH_SM2_TEST_TC001()
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx1);
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx2);
+    Iso19790_ProviderUnload(&ctx);
+    return;
+#endif
+}
+/* END_CASE */
+
+/*
+    Test event report log.
+*/
+/* BEGIN_CASE */
+void SDV_ISO19790_PROVIDER_RUN_LOG_TEST_TC001()
+{
+#ifndef HITLS_CRYPTO_CMVP_ISO19790
+    SKIP_TEST();
+#else
+    Iso19790_ProviderLoadCtx ctx = {0};
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+    CRYPT_EAL_RegEventReport(ISO19790_RunLogCb);
+
+    Iso19790_ProviderLoad(&ctx);
+    ASSERT_TRUE(ctx.libCtx != NULL && ctx.es != NULL && ctx.pool != NULL);
+
+    pkeyCtx = CRYPT_EAL_ProviderPkeyNewCtx(ctx.libCtx, BSL_CID_UNKNOWN, 0, "provider=iso");
+    ASSERT_TRUE(pkeyCtx == NULL);
+EXIT:
     Iso19790_ProviderUnload(&ctx);
     return;
 #endif

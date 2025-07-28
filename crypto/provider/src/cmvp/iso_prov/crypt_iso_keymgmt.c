@@ -209,8 +209,11 @@ static int32_t CheckSetPubKey(CRYPT_Iso_Pkey_Ctx *ctx, const BSL_Param *params)
     return CRYPT_SUCCESS;
 }
 
-static int32_t CheckParaId(CRYPT_Iso_Pkey_Ctx *ctx, void *val, uint32_t len)
+static int32_t CheckParaId(CRYPT_Iso_Pkey_Ctx *ctx, int32_t opt, void *val, uint32_t len)
 {
+    if (opt != CRYPT_CTRL_SET_PARA_BY_ID) {
+        return CRYPT_SUCCESS;
+    }
     if (val == NULL || len != sizeof(CRYPT_PKEY_ParaId)) {
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
@@ -224,6 +227,37 @@ static int32_t CheckParaId(CRYPT_Iso_Pkey_Ctx *ctx, void *val, uint32_t len)
     return CRYPT_SUCCESS;
 }
 
+static int32_t CheckRsaPadding(CRYPT_Iso_Pkey_Ctx *ctx, int32_t opt, void *val, uint32_t len)
+{
+    if (ctx->algId != CRYPT_PKEY_RSA) {
+        return CRYPT_SUCCESS;
+    }
+    int32_t ret = CRYPT_SUCCESS;
+    do {
+        if (opt == CRYPT_CTRL_SET_RSA_RSAES_PKCSV15 || opt == CRYPT_CTRL_SET_RSA_RSAES_PKCSV15_TLS ||
+            opt == CRYPT_CTRL_SET_NO_PADDING) {
+            ret = CRYPT_CMVP_ERR_PARAM_CHECK;
+            break;
+        }
+        if (opt == CRYPT_CTRL_SET_RSA_PADDING) {
+            if (val == NULL || len != sizeof(int32_t)) {
+                ret = CRYPT_NULL_INPUT;
+                break;
+            }
+            int32_t padType = *(int32_t *)val;
+            if (padType != CRYPT_EMSA_PKCSV15 && padType != CRYPT_EMSA_PSS && padType != CRYPT_RSAES_OAEP) {
+                ret = CRYPT_CMVP_ERR_PARAM_CHECK;
+                break;
+            }
+        }
+    } while (0);
+    if (ret != CRYPT_SUCCESS) {
+        (void)CRYPT_Iso_Log(ctx->provCtx, CRYPT_EVENT_PARAM_CHECK, CRYPT_ALGO_PKEY, ctx->algId);
+        BSL_ERR_PUSH_ERROR(ret);
+    }
+    return ret;
+}
+
 static int32_t CheckRsaMdId(CRYPT_Iso_Pkey_Ctx *ctx, int32_t opt, void *val, uint32_t len)
 {
     CRYPT_RSA_PkcsV15Para pkcsv15 = {0};
@@ -232,7 +266,6 @@ static int32_t CheckRsaMdId(CRYPT_Iso_Pkey_Ctx *ctx, int32_t opt, void *val, uin
 
     switch (opt) {
         case CRYPT_CTRL_SET_RSA_EMSA_PKCSV15:
-        case CRYPT_CTRL_SET_RSA_RSAES_PKCSV15:
             if (val == NULL || len != sizeof(int32_t)) {
                 BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
                 return CRYPT_NULL_INPUT;
@@ -263,8 +296,13 @@ static int32_t PkeyCtrlCheck(CRYPT_Iso_Pkey_Ctx *ctx, int32_t opt, void *val, ui
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
     }
-    if (opt == CRYPT_CTRL_SET_PARA_BY_ID) {
-        return CheckParaId(ctx, val, len);
+    int32_t ret = CheckParaId(ctx, opt, val, len);
+    if (ret != CRYPT_SUCCESS) {
+        return ret;
+    }
+    ret = CheckRsaPadding(ctx, opt, val, len);
+    if (ret != CRYPT_SUCCESS) {
+        return ret;
     }
 
     return CheckRsaMdId(ctx, opt, val, len);
