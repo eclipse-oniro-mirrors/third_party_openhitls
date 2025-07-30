@@ -233,7 +233,7 @@ static int32_t RecConnStatesInit(RecCtx *recordCtx)
 static int32_t RecBufInit(TLS_Ctx *ctx, RecCtx *newRecCtx)
 {
 #ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
-    if (!(ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS)) {
+    if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS) == 0) {
 #endif
         int32_t ret = RecIoBufInit(ctx, newRecCtx, true);
         if (ret != HITLS_SUCCESS) {

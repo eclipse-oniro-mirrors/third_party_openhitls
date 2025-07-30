@@ -81,7 +81,7 @@ static int32_t CheckDataLen(TLS_Ctx *ctx, const uint8_t *data, uint32_t *sendLen
     if (recCtx->pendingData != NULL) {
         if ((
 #ifdef HITLS_TLS_FEATURE_MODE_ACCEPT_MOVING_WRITE_BUFFER
-            !(ctx->config.tlsConfig.modeSupport & HITLS_MODE_ACCEPT_MOVING_WRITE_BUFFER) &&
+            (ctx->config.tlsConfig.modeSupport & HITLS_MODE_ACCEPT_MOVING_WRITE_BUFFER) == 0 &&
 #endif
                 recCtx->pendingData != data) || recCtx->pendingDataSize > *sendLen) {
             ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);

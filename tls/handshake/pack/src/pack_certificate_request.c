@@ -135,7 +135,7 @@ static int32_t PackCALists(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, ui
         return ret;
     }
 #ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
-    uint32_t tmpOffset = 0;
+    uint16_t tmpOffset = 0;
     offset = sizeof(uint16_t);
     ret = PackTrustedCAList(config->caList, &buf[offset], bufLen - offset, &tmpOffset);
     if (ret != HITLS_SUCCESS) {

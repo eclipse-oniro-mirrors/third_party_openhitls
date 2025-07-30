@@ -789,6 +789,10 @@ int32_t HITLS_CFG_AddCAIndication(HITLS_Config *config, HITLS_TrustedCAType caTy
         return HITLS_MEMALLOC_FAIL;
     }
     newCaNode->caType = caType;
+    if (len >= UINT16_MAX) {
+        BSL_SAL_FREE(newCaNode);
+        return HITLS_CONFIG_INVALID_LENGTH;
+    }
     newCaNode->data = BSL_SAL_Dump(data, len);
     if (newCaNode->data == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16559, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "Dump fail", 0, 0, 0, 0);

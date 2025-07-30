@@ -798,7 +798,7 @@ static int32_t PackClientPreSharedKey(const TLS_Ctx *ctx, uint8_t *buf, uint32_t
 int32_t PackClientCAList(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
 {
     const TLS_Config *config = &(ctx->config.tlsConfig);
-    uint32_t tmpOffset = 0;
+    uint16_t tmpOffset = 0;
     uint32_t offset = sizeof(uint16_t) + HS_EX_HEADER_LEN; // skip header len and ca list length, will fill in later
     if (bufLen < offset) {
         return PackBufLenError(BINLOG_ID17368, BINGLOG_STR("ca list"));
