@@ -249,7 +249,7 @@ int32_t REC_Init(TLS_Ctx *ctx)
     if (ctx->recCtx != NULL) {
         return HITLS_SUCCESS;
     }
-    /* Allocate RecCtxHandle space */
+
     RecCtx *newRecCtx = (RecCtx *)BSL_SAL_Calloc(1, sizeof(RecCtx));
     if (newRecCtx == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15531, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -299,7 +299,6 @@ bool REC_ReadHasPending(const TLS_Ctx *ctx)
         return false;
     }
 
-    /* Obtain the record structure */
     RecCtx *recordCtx = (RecCtx *)ctx->recCtx;
     RecBuf *inBuf = recordCtx->inBuf;
 
@@ -488,7 +487,6 @@ int32_t REC_ActivePendingState(TLS_Ctx *ctx, bool isOut)
     states->outdatedState = states->currentState;
     states->currentState = states->pendingState;
     states->pendingState = NULL;
-    /* Set the sequence number to 0 */
     RecConnSetSeqNum(states->currentState, 0);
 
 #ifdef HITLS_TLS_PROTO_DTLS12

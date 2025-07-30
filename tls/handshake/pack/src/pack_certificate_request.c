@@ -208,7 +208,6 @@ static int32_t PackSignAlgorithmsExtension(const TLS_Ctx *ctx, uint8_t *buf, uin
     return HITLS_SUCCESS;
 }
 
-// Pack the extension of the Tls1.3 Certificate Request
 static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
 {
     int32_t ret = HITLS_SUCCESS;
@@ -221,7 +220,6 @@ static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t 
          .needPack = true,
          .packFunc = PackSignAlgorithmsExtension},
         {.exMsgType = HS_EX_TYPE_SIGNATURE_ALGORITHMS_CERT,
-            /* We do not generate signature_algorithms_cert at present. */
          .needPack = false,
          .packFunc = NULL},
     };
@@ -261,7 +259,6 @@ static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t 
     return HITLS_SUCCESS;
 }
 
-// Pack the Tls1.3 Certificate Request extension.
 int32_t Tls13PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *len)
 {
     int32_t ret = HITLS_SUCCESS;
@@ -290,7 +287,6 @@ int32_t Tls13PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bu
     return HITLS_SUCCESS;
 }
 
-// Pack the Tls1.3 CertificateRequest message.
 int32_t Tls13PackCertificateRequest(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
 {
     int32_t ret = HITLS_SUCCESS;

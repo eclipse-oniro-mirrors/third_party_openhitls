@@ -338,7 +338,7 @@ int32_t HITLS_SetModeSupport(HITLS_Ctx *ctx, uint32_t mode)
     return HITLS_CFG_SetModeSupport(&(ctx->config.tlsConfig), mode);
 }
 
-int32_t HITLS_GetModeSupport(HITLS_Ctx *ctx, uint32_t *mode)
+int32_t HITLS_GetModeSupport(const HITLS_Ctx *ctx, uint32_t *mode)
 {
     if (ctx == NULL) {
         return HITLS_NULL_INPUT;

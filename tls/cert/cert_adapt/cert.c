@@ -41,7 +41,6 @@ static int32_t CheckKeySecbits(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, HITLS_CERT
     int32_t secBits = 0;
     HITLS_Config *config = &ctx->config.tlsConfig;
 
-    /* Certificate key security check */
     ret = SAL_CERT_KeyCtrl(config, key, CERT_KEY_CTRL_GET_SECBITS, NULL, (void *)&secBits);
     if (ret != HITLS_SUCCESS) {
         return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16303, "GET_SECBITS fail");
@@ -198,7 +197,6 @@ static int32_t CheckSelectSignAlgorithms(TLS_Ctx *ctx, const SelectSignAlgorithm
             }
         }
 #endif
-        /* Save the negotiated signature algorithm. */
         ctx->negotiatedInfo.signScheme = baseSignAlgorithms[i];
         return HITLS_SUCCESS;
     }
@@ -287,8 +285,7 @@ int32_t IsEcParamCompatible(HITLS_Config *config, const CERT_ExpectInfo *info, H
 {
     int32_t ret;
 
-    /* If the client has used a Supported Elliptic Curves Extension,
-    the public key in the server's certificate MUST
+    /* If the client has used a Supported Elliptic Curves Extension, the public key in the server's certificate MUST
     respect the client's choice of elliptic curves */
     if (info->ellipticCurveNum != 0) {
         ret = CheckCurveName(config, info->ellipticCurveList, info->ellipticCurveNum, pubkey);
@@ -297,7 +294,6 @@ int32_t IsEcParamCompatible(HITLS_Config *config, const CERT_ExpectInfo *info, H
         }
     }
 
-    /* Check point format. */
     if (info->ecPointFormatNum != 0) {
         ret = CheckPointFormat(config, info->ecPointFormatList, info->ecPointFormatNum, pubkey);
         if (ret != HITLS_SUCCESS) {
@@ -319,12 +315,12 @@ static int32_t CheckCertTypeAndSignScheme(HITLS_Ctx *ctx, const CERT_ExpectInfo 
             "check certificate error: pubkey type unknown.", 0, 0, 0, 0);
         return ret;
     }
-    /* Check the certificate type. */
+
     ret = CheckCertType(expectCertInfo->certType, keyType);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-    /* Check the signature algorithm. */
+
     if (signCheck == true) {
         ret = CheckSignScheme(ctx, expectCertInfo->signSchemeList, expectCertInfo->signSchemeNum,
             keyType, pubkey, isNegotiateSignAlgo);
@@ -334,8 +330,7 @@ static int32_t CheckCertTypeAndSignScheme(HITLS_Ctx *ctx, const CERT_ExpectInfo 
     }
 
     /* ECDSA certificate. The curve ID and point format must be checked.
-    TLS_CERT_KEY_TYPE_SM2 does not check the curve ID and point format.
-    TLCP curves is sm2 and is not compressed. */
+    TLS_CERT_KEY_TYPE_SM2 does not check the curve ID and point format. TLCP curves is sm2 and is not compressed. */
     if (keyType == TLS_CERT_KEY_TYPE_ECDSA && ctx->negotiatedInfo.version != HITLS_VERSION_TLS13) {
         ret = IsEcParamCompatible(config, expectCertInfo, pubkey);
     }
@@ -356,7 +351,6 @@ int32_t SAL_CERT_CheckCertInfo(HITLS_Ctx *ctx, const CERT_ExpectInfo *expectCert
 
     do {
 #ifdef HITLS_TLS_FEATURE_SECURITY
-        /* Certificate key security check */
         ret = CheckKeySecbits(ctx, cert, pubkey);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16307, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -441,7 +435,6 @@ static int32_t SelectCertByInfo(HITLS_Ctx *ctx, CERT_ExpectInfo *info)
     int32_t ret;
     CERT_MgrCtx *mgrCtx = ctx->config.tlsConfig.certMgrCtx;
     if (mgrCtx == NULL) {
-        /* The user does not set the certificate callback. */
         BSL_ERR_PUSH_ERROR(HITLS_UNREGISTERED_CALLBACK);
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_UNREGISTERED_CALLBACK, BINLOG_ID16312, "unregistered callback");
     }
@@ -472,7 +465,6 @@ int32_t SAL_CERT_SelectCertByInfo(HITLS_Ctx *ctx, CERT_ExpectInfo *info)
     int32_t ret = HITLS_SUCCESS;
     CERT_MgrCtx *mgrCtx = ctx->config.tlsConfig.certMgrCtx;
     if (mgrCtx == NULL) {
-        /* The user does not set the certificate callback. */
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_UNREGISTERED_CALLBACK, BINLOG_ID16313, "unregistered callback");
     }
     if (ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11) {
@@ -485,7 +477,6 @@ int32_t SAL_CERT_SelectCertByInfo(HITLS_Ctx *ctx, CERT_ExpectInfo *info)
     if (ret == HITLS_SUCCESS) {
         return ret;
     }
-    /* No proper certificate. */
     BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_SELECT_CERTIFICATE);
     BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16151, BSL_LOG_LEVEL_INFO, BSL_LOG_BINLOG_TYPE_RUN,
         "select certificate fail. ret %d", ret, 0, 0, 0);
@@ -530,8 +521,7 @@ int32_t EncodeCertificate(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, uint8_t *buf, u
 
 #ifdef HITLS_TLS_PROTO_TLS13
     if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
-        /* If an extension applies to the entire chain,
-        it SHOULD be included in the first CertificateEntry. */
+        /* If an extension applies to the entire chain, it SHOULD be included in the first CertificateEntry. */
         if (bufLen - offset < sizeof(uint16_t)) {
             BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_ENCODE_CERT);
             return RETURN_ERROR_NUMBER_PROCESS(HITLS_CERT_ERR_ENCODE_CERT, BINLOG_ID16316, "bufLen err");
@@ -583,7 +573,6 @@ static int32_t EncodeEECert(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint3
 
 #ifdef HITLS_TLS_FEATURE_SECURITY
     HITLS_CERT_Key *key = currentCertPair->privateKey;
-    /* Certificate key security check */
     ret = CheckKeySecbits(ctx, tmpCert, key);
     if (ret != HITLS_SUCCESS) {
         return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16317, "check key fail");
@@ -597,8 +586,8 @@ static int32_t EncodeEECert(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint3
     }
     offset += *usedLen;
 #ifdef HITLS_TLS_PROTO_TLCP11
-    /* If the TLCP algorithm is used and the encryption certificate is required,
-       write the second encryption certificate. */
+    /* If the TLCP algorithm is used and the encryption certificate is required, write the
+    second encryption certificate. */
     HITLS_CERT_X509 *certEnc = currentCertPair->encCert;
     if (ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11 && certEnc != NULL) {
 #ifdef HITLS_TLS_FEATURE_SECURITY
@@ -955,7 +944,6 @@ int32_t SAL_CERT_VerifyCertChain(HITLS_Ctx *ctx, CERT_Pair *certPair, bool isTlc
         isTlcpEncCert ? certPair->encCert :
 #endif
         certPair->cert;
-    /* Convert the CERT_Chain into an array. */
     HITLS_CERT_X509 *currCert = NULL;
     for (uint32_t index = 0u; index < (certNum - 1); ++index) {
         currCert = (HITLS_CERT_X509 *)BSL_LIST_GetIndexNode(index, chain);
@@ -1032,7 +1020,6 @@ static uint8_t *EncodeEncCert(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, uint32_t *u
         return NULL;
     }
 
-    /* Allocate the signature data memory. */
     uint8_t *data = BSL_SAL_Calloc(1u, certLen);
     if (data == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_INTERNAL_EXCEPTION);

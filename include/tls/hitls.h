@@ -1186,7 +1186,7 @@ int32_t HITLS_SetModeSupport(HITLS_Ctx *ctx, uint32_t mode);
  * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
  * @retval  HITLS_SUCCESS, if successful.
  */
-int32_t HITLS_GetModeSupport(HITLS_Ctx *ctx, uint32_t *mode);
+int32_t HITLS_GetModeSupport(const HITLS_Ctx *ctx, uint32_t *mode);
 
 /**
  * @ingroup hitls
