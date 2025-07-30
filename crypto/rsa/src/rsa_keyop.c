@@ -437,9 +437,9 @@ int32_t CRYPT_RSA_GetSecBits(const CRYPT_RSA_Ctx *ctx)
 #define RSA_CHECK_CRT_CHECK 3 // check crt
 
 // m = 2^t * r, m != 0. cal Max(t) and bn = m / 2^t.
-static void CalMaxT(BN_BigNum *bn, int32_t *res)
+static void CalMaxT(BN_BigNum *bn, uint32_t *res)
 {
-    int32_t t = 0;
+    uint32_t t = 0;
     while (BN_GetBit(bn, t) == false) {
         t++;
     }
@@ -463,7 +463,7 @@ static int32_t BasicKeypairCheck(const CRYPT_RSA_PubKey *pubKey, const CRYPT_RSA
     if ((eBits2 != 0 && eBits2 != eBits1) || eBits1 < 17 || eBits1 > 256 || !BN_IsOdd(pubKey->e)) {
         return CRYPT_RSA_ERR_E_VALUE;
     }
-    int32_t nBbits = BN_Bits(pubKey->n);
+    uint32_t nBbits = BN_Bits(pubKey->n);
     if (nBbits % 2 != 0) { // mod 2 to check nBits is a positive even integer or not.
         return CRYPT_RSA_ERR_KEY_BITS;
     }
@@ -471,7 +471,7 @@ static int32_t BasicKeypairCheck(const CRYPT_RSA_PubKey *pubKey, const CRYPT_RSA
     if (ret != 0) { // not equal
         return CRYPT_RSA_KEYPAIRWISE_CONSISTENCY_FAILURE;
     }
-    ret = BN_SecBits(nBbits, -1); // no need to consider prvLen.
+    ret = BN_SecBits((int32_t)nBbits, -1); // no need to consider prvLen.
     /* SP800-56B requires that its should in the interval [112, 256]
      * Because the current rsa specification supports 1024 bits, so the lower limit is 80. */
     if (ret < 80 || ret > 256) {
@@ -496,6 +496,7 @@ static int32_t RangeCheck(const BN_BigNum *lower, const BN_BigNum *p, const BN_B
     return CRYPT_SUCCESS;
 }
 
+#ifdef HITLS_CRYPTO_SP800_STRICT_CHECK
 /*
  * if (p < √2)(2nBits/2−1)) or (p > 2nBits/2 – 1), return error.
 */
@@ -535,6 +536,7 @@ ERR:
     OptimizerEnd(opt);
     return ret;
 }
+#endif
 
 static int32_t FactorPrimeCheck(const BN_BigNum *n, const BN_BigNum *e, const BN_BigNum *p, const BN_BigNum *q,
     BN_Optimizer *opt)
@@ -544,9 +546,9 @@ static int32_t FactorPrimeCheck(const BN_BigNum *n, const BN_BigNum *e, const BN
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    int32_t nBits = BN_Bits(n);
+    uint32_t nBits = BN_Bits(n);
     uint32_t checkTimes = nBits < 1536 ? 5 : 4; // ref. FIPS 186-5, Table B.1
-    int32_t needRoom = nBits / BN_UINT_BITS;
+    uint32_t needRoom = nBits / BN_UINT_BITS;
     BN_BigNum *tmp1 = OptimizerGetBn(opt, needRoom);
     BN_BigNum *tmp2 = OptimizerGetBn(opt, needRoom);
     if (tmp1 == NULL || tmp2 == NULL) {
@@ -561,6 +563,7 @@ static int32_t FactorPrimeCheck(const BN_BigNum *n, const BN_BigNum *e, const BN
         goto ERR;
     }
 
+#ifdef HITLS_CRYPTO_SP800_STRICT_CHECK
     // get ((√2)(2^(nBits/2 - 1)))^2
     (void)BN_SetLimb(tmp1, 1);
     GOTO_ERR_IF(BN_Lshift(tmp1, tmp1, nBits - 2), ret); // secLen can guarantee nBits > 2.
@@ -573,7 +576,9 @@ static int32_t FactorPrimeCheck(const BN_BigNum *n, const BN_BigNum *e, const BN
 
     GOTO_ERR_IF(FactorPQcheck(e, p, tmp1, tmp2, opt), ret);
     GOTO_ERR_IF(FactorPQcheck(e, q, tmp1, tmp2, opt), ret);
-
+#else
+    (void)e;
+#endif
     GOTO_ERR_IF(BN_Sub(tmp1, p, q), ret);
     (void)BN_SetSign(tmp1, false); // tmp1 = |p - q|
     (void)BN_SetLimb(tmp2, 1);
@@ -611,8 +616,8 @@ static int32_t FactorDCheck(const BN_BigNum *n, const BN_BigNum *e, const BN_Big
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    int32_t nBits = BN_Bits(n);
-    int32_t needRoom = nBits / BN_UINT_BITS;
+    uint32_t nBits = BN_Bits(n);
+    uint32_t needRoom = nBits / BN_UINT_BITS;
     BN_BigNum *tmp0 = OptimizerGetBn(opt, needRoom);
     BN_BigNum *tmp1 = OptimizerGetBn(opt, needRoom);
     BN_BigNum *tmp2 = OptimizerGetBn(opt, needRoom);
@@ -629,9 +634,12 @@ static int32_t FactorDCheck(const BN_BigNum *n, const BN_BigNum *e, const BN_Big
     GOTO_ERR_IF(BN_SubLimb(tmp2, q, 1), ret);
     // tmp1 = LCM(p – 1, q – 1)
     GOTO_ERR_IF(BN_Lcm(tmp1, tmp1, tmp2, opt), ret);
-    // check. 2^(nBits / 2) < d < LCM(p – 1, q – 1).
+#ifdef HITLS_CRYPTO_SP800_STRICT_CHECK
+    // In the original RSA paper <A Method for Obtaining Digital Signatures and Public-Key Cryptosystems>,
+    // the Euler totient function is φ(n) = (p – 1)(q – 1), hence d < LCM(p – 1, q – 1) will be incompatible.
+    // check 2^(nBits / 2) < d < LCM(p – 1, q – 1).
     GOTO_ERR_IF(RangeCheck(tmp0, d, tmp1), ret);
-
+#endif
     GOTO_ERR_IF(BN_Mul(tmp0, e, d, opt), ret);
     GOTO_ERR_IF(BN_Mod(tmp2, tmp0, tmp1, opt), ret);
     // check. 1 = (d * epub) mod LCM(p – 1, q – 1).
@@ -657,9 +665,9 @@ static int32_t RecoverPrimeFactorsAndCheck(const CRYPT_RSA_Ctx *pubKey, const CR
         return ret;
     }
     bool flag = false;
-    int32_t tFactor;
-    int32_t nBits = BN_Bits(pubKey->pubKey->n);
-    int32_t needRoom = nBits / BN_UINT_BITS;
+    uint32_t tFactor;
+    uint32_t nBits = BN_Bits(pubKey->pubKey->n);
+    uint32_t needRoom = nBits / BN_UINT_BITS;
     BN_BigNum *g = OptimizerGetBn(opt, needRoom);
     BN_BigNum *x = OptimizerGetBn(opt, needRoom);
     BN_BigNum *y = OptimizerGetBn(opt, needRoom);
@@ -684,13 +692,13 @@ static int32_t RecoverPrimeFactorsAndCheck(const CRYPT_RSA_Ctx *pubKey, const CR
     // step 2: find t and m = (2^t) * r, r is the largest odd integer.
     CalMaxT(r, &tFactor); // r = m / 2^t
     // step 3: find prime factors p and q.
-    for (int32_t i = 0; i < 100; i++) { // try 100 times
+    for (uint32_t i = 0; i < 100; i++) { // try 100 times
         GOTO_ERR_IF(BN_RandRangeEx(LIBCTX_FROM_RSA_CTX(pubKey), g, pubKey->pubKey->n), ret); // rand(0, n)
         GOTO_ERR_IF(BN_ModExp(y, g, r, pubKey->pubKey->n, opt), ret); // y = g ^ r % n
         if (BN_IsOne(y) == true || BN_Cmp(y, nSubOne) == 0) { // y == 1 or y == n - 1
             continue;
         }
-        for (int32_t j = 1; j < tFactor; j++) { // 1 -> t - 1
+        for (uint32_t j = 1; j < tFactor; j++) { // 1 -> t - 1
             GOTO_ERR_IF(BN_ModSqr(x, y, pubKey->pubKey->n, opt), ret); // y ^ 2 mod n
             if (BN_IsOne(x) == true) {
                 flag = true;
@@ -731,8 +739,8 @@ static int32_t FactorCRTCheck(const CRYPT_RSA_PrvKey *prvKey, BN_Optimizer *opt)
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    int32_t nBits = BN_Bits(prvKey->n);
-    int32_t needRoom = nBits / BN_UINT_BITS;
+    uint32_t nBits = BN_Bits(prvKey->n);
+    uint32_t needRoom = nBits / BN_UINT_BITS;
     BN_BigNum *pMinusOne = OptimizerGetBn(opt, needRoom);
     BN_BigNum *qMinusOne = OptimizerGetBn(opt, needRoom);
     BN_BigNum *one = OptimizerGetBn(opt, needRoom);

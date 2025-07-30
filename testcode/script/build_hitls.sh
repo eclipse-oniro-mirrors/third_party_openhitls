@@ -91,6 +91,7 @@ build_hitls_code()
     add_options="${add_options} ${test_options}"
     if [[ $get_arch = "x86_64" ]]; then
         echo "Compile: env=x86_64, c, little endian, 64bits"
+        add_options="${add_options} -DHITLS_CRYPTO_SP800_STRICT_CHECK" # open the strict check in crypto.
         del_options="${del_options} -DHITLS_CRYPTO_SM2_PRECOMPUTE_512K_TBL" # close the sm2 512k pre-table
         if [[ $executes = "ON" ]]; then
             python3 ../configure.py --executes hitls --lib_type ${LIB_TYPE} --enable all --asm_type x8664 --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}

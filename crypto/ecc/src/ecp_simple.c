@@ -281,7 +281,7 @@ int32_t ECP_PointMul(ECC_Para *para,  ECC_Point *r, const BN_BigNum *k, const EC
         return CRYPT_ECC_POINT_AT_INFINITY;
     }
     if (BN_IsZero(k)) {
-        BN_Zeroize(&r->z);
+        (void)BN_Zeroize(&r->z);
         return CRYPT_SUCCESS;
     }
     if (BN_Cmp(k, para->n) == 0 && pt != NULL) {
@@ -765,7 +765,7 @@ int32_t ECP_PointMulFast(ECC_Para *para, ECC_Point *r, const BN_BigNum *k, const
         return CRYPT_ECC_POINT_ERR_CURVE_ID;
     }
     if (BN_IsZero(k)) {
-        BN_Zeroize(&r->z);
+        (void)BN_Zeroize(&r->z);
         return CRYPT_SUCCESS;
     }
     int32_t ret;
@@ -811,7 +811,7 @@ static int32_t KZeroHandle(ECC_Para *para, ECC_Point *r, const BN_BigNum *k1,
 {
     if (BN_IsZero(k1) && BN_IsZero(k2)) {
         // When k1 and k2 are both 0, the result is infinity.
-        BN_Zeroize(&r->z);
+        (void)BN_Zeroize(&r->z);
         return CRYPT_SUCCESS;
     }
     if (BN_IsZero(k1)) {
