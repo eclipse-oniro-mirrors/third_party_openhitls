@@ -41,7 +41,7 @@ struct BslParamMaker {
     BslList *params;
 };
 
-BSL_ParamMaker *BSL_PARAM_MAKER_New()
+BSL_ParamMaker *BSL_PARAM_MAKER_New(void)
 {
     BSL_ParamMaker *maker = BSL_SAL_Calloc(1, sizeof(BSL_ParamMaker));
     if (maker == NULL) {
@@ -147,9 +147,9 @@ exit:
 }
 
 static int32_t BSL_PARAM_MAKER_NumberConvert(BSL_PARAM_MAKER_DEF *paramMakerDef, BSL_Param *params,
-    int32_t i, void **valueIndex)
+    int32_t i, uint8_t **valueIndex)
 {
-    void *value = *valueIndex;
+    uint8_t *value = *valueIndex;
     (void)memcpy_s(value, paramMakerDef->len, &paramMakerDef->num, paramMakerDef->len);
     *valueIndex += paramMakerDef->allocLen;
     int32_t ret = BSL_PARAM_InitValue(&params[i], paramMakerDef->key, paramMakerDef->type, value, paramMakerDef->len);
@@ -164,9 +164,9 @@ static int32_t BSL_PARAM_MAKER_PointerConvert(BSL_PARAM_MAKER_DEF *paramMakerDef
 }
 
 static int32_t BSL_PARAM_MAKER_StringConvert(BSL_PARAM_MAKER_DEF *paramMakerDef, BSL_Param *params,
-    int32_t i, void **valueIndex)
+    int32_t i, uint8_t **valueIndex)
 {
-    void *value = *valueIndex;
+    uint8_t *value = *valueIndex;
     if (paramMakerDef->value != NULL) {
         (void)memcpy_s(value, paramMakerDef->len, paramMakerDef->value, paramMakerDef->len);
     } else {
@@ -195,7 +195,7 @@ BSL_Param *BSL_PARAM_MAKER_ToParam(BSL_ParamMaker *maker)
         return NULL;
     }
     
-    void *valueIndex = list->count + 1 + params;
+    uint8_t *valueIndex = (uint8_t *)(list->count + 1 + params);
     BSL_PARAM_MAKER_DEF **paramMakerDef = BSL_LIST_First(list);
     int i = 0;
 
