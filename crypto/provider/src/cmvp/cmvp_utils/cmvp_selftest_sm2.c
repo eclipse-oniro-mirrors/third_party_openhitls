@@ -128,9 +128,7 @@ static int32_t SetRandomVector(const char *vector, uint8_t *r, uint32_t rLen)
         BSL_SAL_FREE(rand);
         return CRYPT_CMVP_ERR_ALGO_SELFTEST;
     }
-    for (uint32_t i = 0; i < randLen; i++) {
-        r[i] = rand[i];
-    }
+    (void)memcpy_s(r, rLen, rand, rLen);
     BSL_SAL_FREE(rand);
     return CRYPT_SUCCESS;
 }
