@@ -455,6 +455,34 @@ int32_t CRYPT_EAL_PkeyDecrypt(const CRYPT_EAL_PkeyCtx *pkey, const uint8_t *data
 
 /**
  * @ingroup crypt_eal_pkey
+ * @brief   Homomorphic addition operations
+ *
+ * @param   pkey      [IN] Addition Context
+ * @param   input    [IN] Input ciphertext data
+ * @param   out      [OUT] The result of the addition operation
+ * @param   outLen   [OUT/IN] Pointer to the length of the addition result
+ *
+ * @retval  #CRYPT_SUCCESS, if successful.
+ *          For other error codes, see crypt_errno.h.
+ */
+int32_t CRYPT_EAL_PkeyHEAdd(const CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *input, uint8_t *out, uint32_t *outLen);
+
+/**
+ * @ingroup crypt_eal_pkey
+ * @brief   Homomorphic multiplication operations
+ *
+ * @param   pkey      [IN] Multiplication Context
+ * @param   input    [IN] Input ciphertext data
+ * @param   out      [OUT] The result of the multiplication operation
+ * @param   outLen   [OUT/IN] Pointer to the length of the multiplication result
+ *
+ * @retval  #CRYPT_SUCCESS, if successful.
+ *          For other error codes, see crypt_errno.h.
+ */
+int32_t CRYPT_EAL_PkeyHEMul(const CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *input, uint8_t *out, uint32_t *outLen);
+
+/**
+ * @ingroup crypt_eal_pkey
  * @brief   Check whether the public and private keys match.
  * @note    pubKey and prvKey must has identical key management.
  *

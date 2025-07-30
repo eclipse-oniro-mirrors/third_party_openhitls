@@ -113,6 +113,7 @@ typedef int32_t (*PkeyRecover)(const void *key, const uint8_t *sign, uint32_t si
     uint8_t *data, uint32_t *dataLen);
 typedef int32_t (*PkeyComputeShareKey)(const void *key, const void *pub, uint8_t *share, uint32_t *shareLen);
 typedef int32_t (*PkeyCrypt)(const void *key, const uint8_t *data, uint32_t dataLen, uint8_t *out, uint32_t *outLen);
+typedef int32_t (*PkeyHEOperation)(const void *ctx, const BSL_Param *input, uint8_t *out, uint32_t *outLen);
 typedef int32_t (*PkeyCheck)(uint32_t checkType, const void *key1, const void *key2);
 typedef int32_t (*PkeyCmp)(const void *key1, const void *key2);
 typedef int32_t (*PkeyCopyParam)(const void *src, void *dest);
@@ -160,6 +161,8 @@ typedef struct EAL_PkeyMethod {
     PkeyComputeShareKey computeShareKey;    // Calculate the shared key.
     PkeyCrypt encrypt;                      // Encrypt.
     PkeyCrypt decrypt;                      // Decrypt.
+    PkeyHEOperation headd;                  // Add
+    PkeyHEOperation hemul;                  // Multiply
     PkeyCheck check;                        // Check the consistency of the key pair.
     PkeyCmp cmp;                            // Compare keys and parameters.
     PkeyCopyParam copyPara;                 // Copy parameter from source to destination
@@ -190,6 +193,8 @@ typedef struct EAL_PkeyUnitaryMethod {
     PkeyComputeShareKey computeShareKey;    // Calculate the shared key.
     PkeyCrypt encrypt;                      // Encrypt.
     PkeyCrypt decrypt;                      // Decrypt.
+    PkeyHEOperation headd;                  // Add
+    PkeyHEOperation hemul;                  // Multiply
     PkeyCheck check;                        // Check the consistency of the key pair.
     PkeyCmp cmp;                            // Compare keys and parameters.
     PkeyEncapsulateInit encapsInit;        // Key encapsulation init.

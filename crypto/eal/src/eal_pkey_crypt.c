@@ -86,4 +86,34 @@ int32_t CRYPT_EAL_PkeyPrvCheck(CRYPT_EAL_PkeyCtx *prvKey)
     return prvKey->method->check(CRYPT_PKEY_CHECK_PRVKEY, prvKey->key, NULL);
 }
 
+int32_t CRYPT_EAL_PkeyHEAdd(const CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *input, uint8_t *out, uint32_t *outLen)
+{
+    if (pkey == NULL) {
+        EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_PKEY, CRYPT_PKEY_MAX, CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    
+    if (pkey->method == NULL || pkey->method->headd == NULL) {
+        EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_PKEY, pkey->id, CRYPT_EAL_ALG_NOT_SUPPORT);
+        return CRYPT_EAL_ALG_NOT_SUPPORT;
+    }
+
+    return pkey->method->headd(pkey->key, input, out, outLen);
+}
+
+int32_t CRYPT_EAL_PkeyHEMul(const CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *input, uint8_t *out, uint32_t *outLen)
+{
+    if (pkey == NULL) {
+        EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_PKEY, CRYPT_PKEY_MAX, CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    
+    if (pkey->method == NULL || pkey->method->hemul == NULL) {
+        EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_PKEY, pkey->id, CRYPT_EAL_ALG_NOT_SUPPORT);
+        return CRYPT_EAL_ALG_NOT_SUPPORT;
+    }
+
+    return pkey->method->hemul(pkey->key, input, out, outLen);
+}
+
 #endif

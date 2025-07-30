@@ -26,6 +26,8 @@ extern "C" {
 #define CRYPT_PARAM_PKEY_ENCODE_PUBKEY                      (CRYPT_PARAM_PKEY_BASE + 1)
 #define CRYPT_PARAM_PKEY_PROCESS_FUNC                       (CRYPT_PARAM_PKEY_BASE + 2)
 #define CRYPT_PARAM_PKEY_PROCESS_ARGS                       (CRYPT_PARAM_PKEY_BASE + 3)
+#define CRYPT_PARAM_PKEY_HE_CIPHERTEXT1                     (CRYPT_PARAM_PKEY_BASE + 4)
+#define CRYPT_PARAM_PKEY_HE_CIPHERTEXT2                     (CRYPT_PARAM_PKEY_BASE + 5)
 
 #define CRYPT_PARAM_KDF_BASE                                100
 #define CRYPT_PARAM_KDF_PASSWORD                            (CRYPT_PARAM_KDF_BASE + 1)
