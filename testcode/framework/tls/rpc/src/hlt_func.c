@@ -625,6 +625,7 @@ HLT_Ctx_Config* HLT_NewCtxConfig(char *setFile, const char *key)
     ctxConfig->isSupportSessionTicket = false;
     ctxConfig->isSupportDhAuto = true;
 	ctxConfig->isEncryptThenMac = true;
+    ctxConfig->isMiddleBoxCompat = true;
     ctxConfig->keyExchMode = TLS13_KE_MODE_PSK_WITH_DHE;
     ctxConfig->setSessionCache = HITLS_SESS_CACHE_SERVER;
     ctxConfig->mtu = 0;
@@ -1078,9 +1079,25 @@ int HLT_SetEmptyRecordsNum(HLT_Ctx_Config *ctxConfig, uint32_t emptyNum)
     return SUCCESS;
 }
 
+int HLT_SetKeyLogCb(HLT_Ctx_Config *ctxConfig, char *SetKeyLogCb)
+{
+    (void)memset_s(ctxConfig->keyLogCb, KEY_LOG_CB_LEN, 0, KEY_LOG_CB_LEN);
+    if (strcpy_s(ctxConfig->keyLogCb, KEY_LOG_CB_LEN, SetKeyLogCb) != EOK) {
+        LOG_ERROR("HLT_SetKeyLogCb failed.");
+        return -1;
+    }
+    return SUCCESS;
+}
+
 int HLT_SetEncryptThenMac(HLT_Ctx_Config *ctxConfig, int support)
 {
     ctxConfig->isEncryptThenMac = support;
+    return SUCCESS;
+}
+
+int HLT_SetMiddleBoxCompat(HLT_Ctx_Config *ctxConfig, int support)
+{
+    ctxConfig->isMiddleBoxCompat = support;
     return SUCCESS;
 }
 

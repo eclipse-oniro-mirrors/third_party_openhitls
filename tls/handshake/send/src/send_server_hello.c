@@ -295,7 +295,7 @@ int32_t Tls13ServerSendServerHelloProcess(TLS_Ctx *ctx)
         "send tls1.3 server hello msg success.", 0, 0, 0, 0);
 
     /* In the middlebox mode, If the scenario is not hrr, the CCS needs to be sent before the EE */
-    if (!ctx->hsCtx->haveHrr) {
+    if (ctx->config.tlsConfig.isMiddleBoxCompat && !ctx->hsCtx->haveHrr) {
         ctx->hsCtx->ccsNextState = TRY_SEND_ENCRYPTED_EXTENSIONS;
         return HS_ChangeState(ctx, TRY_SEND_CHANGE_CIPHER_SPEC);
     }
@@ -342,7 +342,9 @@ int32_t Tls13ServerSendHelloRetryRequestProcess(TLS_Ctx *ctx)
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-
+    if (!ctx->config.tlsConfig.isMiddleBoxCompat) {
+        return HS_ChangeState(ctx, TRY_RECV_CLIENT_HELLO);
+    }
     /* In middlebox mode, the peer sends CCS messages. Set this parameter to allow receiving CCS messages */
     ctx->method.ctrlCCS(ctx, CCS_CMD_RECV_READY);
     /* In middlebox mode, the server sends the CCS immediately after sending the hrr */

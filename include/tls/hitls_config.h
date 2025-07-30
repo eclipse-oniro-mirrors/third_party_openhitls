@@ -1537,6 +1537,28 @@ int32_t HITLS_CFG_ClearModeSupport(HITLS_Config *config, uint32_t mode);
  */
 int32_t HITLS_CFG_GetModeSupport(const HITLS_Config *config, uint32_t *mode);
 
+/**
+ * @ingroup hitls
+ * @brief   Sets whether to support middle box compat mode.
+ *
+ * @param   ctx [IN] TLS Connection Handle.
+ * @param   isMiddleBox [IN] Support or Not.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_SetMiddleBoxCompat(HITLS_Config *config, bool isMiddleBox);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain whether middle box compat mode is supported.
+ *
+ * @param   ctx [IN] TLS connection handle.
+ * @param   isMiddleBox [OUT] Support or Not.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_GetMiddleBoxCompat(HITLS_Config *config, bool *isMiddleBox);
+
 #ifdef __cplusplus
 }
 #endif

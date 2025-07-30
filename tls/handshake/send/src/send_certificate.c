@@ -85,7 +85,7 @@ int32_t Tls13ClientSendCertificateProcess(TLS_Ctx *ctx)
     if (hsCtx->msgLen == 0) {
         /* In the middlebox scenario, if the client does not send the hrr message, a CCS message needs to be sent
          * before the certificate */
-        if (!ctx->hsCtx->haveHrr
+        if (ctx->config.tlsConfig.isMiddleBoxCompat && !ctx->hsCtx->haveHrr
 #ifdef HITLS_TLS_FEATURE_PHA
                 && ctx->phaState != PHA_REQUESTED
 #endif /* HITLS_TLS_FEATURE_PHA */

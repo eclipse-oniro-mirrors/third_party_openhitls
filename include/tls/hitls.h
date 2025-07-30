@@ -1570,6 +1570,28 @@ int32_t HITLS_DtlsProcessTimeout(HITLS_Ctx *ctx);
  */
 int32_t HITLS_DtlsGetTimeout(HITLS_Ctx *ctx, uint64_t *remainTimeOut);
 
+/**
+ * @ingroup hitls
+ * @brief   Sets whether to support middle box compat mode.
+ *
+ * @param   ctx [IN] TLS Connection Handle.
+ * @param   isMiddleBox [IN] Support or Not.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_SetMiddleBoxCompat(HITLS_Ctx *ctx, bool isMiddleBox);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain whether middle box compat mode is supported.
+ *
+ * @param   ctx [IN] TLS connection handle.
+ * @param   isMiddleBox [OUT] Support or Not.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_GetMiddleBoxCompat(HITLS_Ctx *ctx, bool *isMiddleBox);
+
 #ifdef __cplusplus
 }
 #endif

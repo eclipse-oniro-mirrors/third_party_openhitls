@@ -230,7 +230,7 @@ int32_t Tls13ClientSendFinishedProcess(TLS_Ctx *ctx)
 
     /* Determine whether the message needs to be packed */
     if (hsCtx->msgLen == 0) {
-        if ((!ctx->hsCtx->haveHrr) && (!ctx->hsCtx->isNeedClientCert)) {
+        if ((ctx->config.tlsConfig.isMiddleBoxCompat && (!ctx->hsCtx->haveHrr)) && (!ctx->hsCtx->isNeedClientCert)) {
             /* In the middlebox scenario, if the client does not send the hrr message and the certificate does not need
              * to be sent, a CCS message needs to be sent before the finished message */
             ret = ctx->method.sendCCS(ctx);

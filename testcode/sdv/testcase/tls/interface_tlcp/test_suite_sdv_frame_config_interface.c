@@ -90,6 +90,7 @@
 #include "crypt_default.h"
 #include "stub_crypt.h"
 #include "hitls_crypt.h"
+#include "security.h"
 /* END_HEADER */
 
 #define DEFAULT_DESCRIPTION_LEN 128
@@ -342,8 +343,6 @@ EXIT:
 }
 /* END_CASE */
 
-
-
 /** @
 * @test  UT_TLS_CFG_SET_TMPDH_API_TC001
 * @spec  -
@@ -359,10 +358,11 @@ EXIT:
 @ */
 
 /* BEGIN_CASE */
-void UT_TLS_CFG_SET_TMPDH_API_TC001(int tlsVersion)
+void UT_TLS_CFG_SET_TMPDH_API_TC001(int tlsVersion, int securityBits, int securityLevel)
 {
     FRAME_Init();
     HITLS_Config *config = NULL;
+    HITLS_CRYPT_Key *dhPkey = NULL;
     switch (tlsVersion) {
         case HITLS_VERSION_TLS12:
             config = HITLS_CFG_NewTLS12Config();
@@ -374,17 +374,102 @@ void UT_TLS_CFG_SET_TMPDH_API_TC001(int tlsVersion)
             config = NULL;
             break;
     }
-    HITLS_CRYPT_Key *dhPkey = HITLS_CRYPT_GenerateDhKeyBySecbits(LIBCTX_FROM_CONFIG(config),
-        ATTRIBUTE_FROM_CONFIG(config), config, HITLS_SECURITY_LEVEL_THREE_SECBITS );
+    dhPkey = HITLS_CRYPT_GenerateDhKeyBySecbits(LIBCTX_FROM_CONFIG(config), ATTRIBUTE_FROM_CONFIG(config), config,
+                                                securityBits);
     ASSERT_TRUE(HITLS_CFG_SetTmpDh(NULL, dhPkey) == HITLS_NULL_INPUT);
-
-
+    ASSERT_TRUE(HITLS_CFG_SetSecurityLevel(config, securityLevel) == HITLS_SUCCESS);
     ASSERT_TRUE(HITLS_CFG_SetTmpDh(config, NULL) == HITLS_NULL_INPUT);
-
-    ASSERT_TRUE(HITLS_CFG_SetTmpDh(config, dhPkey) == HITLS_SUCCESS);
+    if (SECURITY_GetSecbits(securityLevel) <= securityBits) {
+        ASSERT_TRUE(HITLS_CFG_SetTmpDh(config, dhPkey) == HITLS_SUCCESS);
+    } else {
+        ASSERT_TRUE(HITLS_CFG_SetTmpDh(config, dhPkey) == HITLS_CRYPT_ERR_DH);
+    }
 
 EXIT:
+    if (SECURITY_GetSecbits(securityLevel) > securityBits) {
+        SAL_CRYPT_FreeDhKey(dhPkey);
+    }
     HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+int32_t g_securityBits = 0;
+
+static HITLS_CRYPT_Key *UT_TmpDhCb(HITLS_Ctx *ctx, int32_t isExport, uint32_t keyLen)
+{
+    (void)isExport;
+    (void)keyLen;
+    HITLS_CRYPT_Key *dhPkey = NULL;
+    HITLS_Config *config = &ctx->config.tlsConfig;
+    dhPkey = HITLS_CRYPT_GenerateDhKeyBySecbits(LIBCTX_FROM_CONFIG(config), ATTRIBUTE_FROM_CONFIG(config), config,
+                                                g_securityBits);
+    return dhPkey;
+}
+
+/* @
+* @test  UT_TLS_CFG_SET_TMPDHCB_API_TC001
+* @title  Set tmpdhcallback. The link setup status varies according to the security level.
+* @precon  nan
+* @brief
+* 1. Set the RSA certificate and algorithm suite.
+* 2. Set dh callback and generate dhkey through dhcb.
+* 3. Set security level to 2, set tmpdh key to 80 bits, and set up a link.
+* 4. Set security level to 2, set tmpdh key to 112 bits, and set up a link.
+* 5. Set security level to 1, set tmpdh key to 128 bits, and set up a link.
+* 6. Set security level to 2, set tmpdh key to 128 bits, and set up a link.
+* @expect
+* 1. The setting is successful.
+* 2. The setting is successful.
+* 3. The link fails to be set up.
+* 4. The link is set up successfully.
+* 5. The link is set up successfully.
+* 6. The link is set up successfully.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_SET_TMPDHCB_API_TC001(int securityBits, int securityLevel)
+{
+    FRAME_Init();
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    uint16_t pfsCipherSuites[] = {HITLS_DHE_RSA_WITH_AES_128_GCM_SHA256};
+
+    HITLS_Config *clientConfig = HITLS_CFG_NewTLS12Config();
+    HITLS_Config *serverConfig = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(clientConfig != NULL);
+    ASSERT_TRUE(serverConfig != NULL);
+
+    ASSERT_TRUE(HiTLS_X509_LoadCertAndKey(clientConfig, RSA_SHA_CA_PATH, RSA_SHA_CHAIN_PATH, RSA_SHA256_EE_PATH3, NULL,
+                                          RSA_SHA256_PRIV_PATH3, NULL) == HITLS_SUCCESS);
+    ASSERT_TRUE(HiTLS_X509_LoadCertAndKey(serverConfig, RSA_SHA_CA_PATH, RSA_SHA_CHAIN_PATH, RSA_SHA256_EE_PATH3, NULL,
+                                          RSA_SHA256_PRIV_PATH3, NULL) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(HITLS_CFG_SetCipherSuites(clientConfig, pfsCipherSuites, sizeof(pfsCipherSuites) / sizeof(uint16_t)) ==
+                HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_SetCipherSuites(serverConfig, pfsCipherSuites, sizeof(pfsCipherSuites) / sizeof(uint16_t)) ==
+                HITLS_SUCCESS);
+
+    HITLS_CFG_SetDhAutoSupport(serverConfig, false);
+    g_securityBits = securityBits;
+    ASSERT_TRUE(HITLS_CFG_SetTmpDhCb(serverConfig, UT_TmpDhCb) == HITLS_SUCCESS);
+    FRAME_CertInfo certInfo = {0, 0, 0, 0, 0, 0};
+    client = FRAME_CreateLinkWithCert(clientConfig, BSL_UIO_TCP, &certInfo);
+    server = FRAME_CreateLinkWithCert(serverConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_TRUE(server != NULL);
+    ASSERT_TRUE(HITLS_SetSecurityLevel(server->ssl, securityLevel) == HITLS_SUCCESS);
+
+    if (SECURITY_GetSecbits(securityLevel) > securityBits) {
+        ASSERT_EQ(FRAME_CreateConnection(client, server, false, TRY_SEND_SERVER_KEY_EXCHANGE), HITLS_SUCCESS);
+        ASSERT_EQ(HITLS_Accept(server->ssl), HITLS_MSG_HANDLE_ERR_GET_DH_KEY);
+    } else {
+        ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+    }
+
+EXIT:
+    HITLS_CFG_FreeConfig(serverConfig);
+    HITLS_CFG_FreeConfig(clientConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
 }
 /* END_CASE */
 
@@ -1355,8 +1440,9 @@ void UT_TLS_CFG_SETTMPDH_FUNC_TC001(int level)
     ASSERT_TRUE(HITLS_CFG_SetCipherSuites(serverConfig, pfsCipherSuites, sizeof(pfsCipherSuites) / sizeof(uint16_t)) == HITLS_SUCCESS);
 
     HITLS_CFG_SetDhAutoSupport(serverConfig, false);
+    int32_t secBits = 80;
     key = HITLS_CRYPT_GenerateDhKeyBySecbits(LIBCTX_FROM_CONFIG(serverConfig), ATTRIBUTE_FROM_CONFIG(serverConfig),
-        serverConfig, 80);
+        serverConfig, secBits);
     HITLS_CFG_SetTmpDh(serverConfig, key);
     key = NULL;
     HITLS_CFG_SetSecurityLevel(serverConfig, level);
@@ -1376,7 +1462,9 @@ void UT_TLS_CFG_SETTMPDH_FUNC_TC001(int level)
         ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
     }
 EXIT:
-    SAL_CRYPT_FreeDhKey(key);
+    if (SECURITY_GetSecbits(level) > secBits) {
+        SAL_CRYPT_FreeDhKey(key);
+    }
     HITLS_CFG_FreeConfig(clientConfig);
     HITLS_CFG_FreeConfig(serverConfig);
     FRAME_FreeLink(client);

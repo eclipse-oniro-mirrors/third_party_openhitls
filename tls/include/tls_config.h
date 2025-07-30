@@ -249,6 +249,7 @@ typedef struct TlsConfig {
     bool isKeepPeerCert;                /* whether to save the peer certificate */
 
     HITLS_CustomExts *customExts;
+    bool isMiddleBoxCompat;             /* whether to support middlebox compatibility */
 } TLS_Config;
 
 #define LIBCTX_FROM_CONFIG(config) ((config == NULL) ? NULL : (config)->libCtx)

@@ -113,11 +113,6 @@ HITLS_CERT_X509 *HITLS_X509_Adapt_CertParse(HITLS_Config *config, const uint8_t 
 }
 #endif
 
-HITLS_CERT_X509 *HITLS_X509_Adapt_CertDup(HITLS_CERT_X509 *cert)
-{
-    return HITLS_X509_CertDup(cert);
-}
-
 void HITLS_X509_Adapt_CertFree(HITLS_CERT_X509 *cert)
 {
     HITLS_X509_CertFree(cert);
@@ -132,6 +127,11 @@ HITLS_CERT_X509 *HITLS_X509_Adapt_CertRef(HITLS_CERT_X509 *cert)
         return NULL;
     }
     return cert;
+}
+
+HITLS_CERT_X509 *HITLS_X509_Adapt_CertDup(HITLS_CERT_X509 *cert)
+{
+    return HITLS_X509_Adapt_CertRef(cert);
 }
 
 static HITLS_SignHashAlgo BslCid2SignHashAlgo(HITLS_Config *config, BslCid signAlgId, BslCid hashAlgId)

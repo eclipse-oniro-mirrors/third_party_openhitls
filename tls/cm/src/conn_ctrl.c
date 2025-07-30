@@ -651,3 +651,23 @@ int32_t HITLS_SetCheckKeyUsage(HITLS_Ctx *ctx, bool isCheck)
     return HITLS_CFG_SetCheckKeyUsage(&(ctx->config.tlsConfig), isCheck);
 }
 #endif
+
+#ifdef HITLS_TLS_PROTO_TLS13
+int32_t HITLS_SetMiddleBoxCompat(HITLS_Ctx *ctx, bool isMiddleBox)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_SetMiddleBoxCompat(&(ctx->config.tlsConfig), isMiddleBox);
+}
+
+int32_t HITLS_GetMiddleBoxCompat(HITLS_Ctx *ctx, bool *isMiddleBox)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_GetMiddleBoxCompat(&(ctx->config.tlsConfig), isMiddleBox);
+}
+#endif

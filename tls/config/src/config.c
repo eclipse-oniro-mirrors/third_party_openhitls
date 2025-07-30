@@ -46,6 +46,10 @@
 #include "bsl_list.h"
 #include "rec.h"
 #include "hitls_cookie.h"
+#include "cert_method.h"
+#ifdef HITLS_TLS_FEATURE_SECURITY
+#include "security.h"
+#endif
 
 #ifdef HITLS_TLS_CONFIG_CIPHER_SUITE
 /* Define the upper limit of the group type */
@@ -132,6 +136,9 @@ static void ShallowCopy(HITLS_Ctx *ctx, const HITLS_Config *srcConfig)
     destConfig->isKeepPeerCert = srcConfig->isKeepPeerCert;
     destConfig->version = srcConfig->version;
     destConfig->originVersionMask = srcConfig->originVersionMask;
+#ifdef HITLS_TLS_PROTO_TLS13
+    destConfig->isMiddleBoxCompat = srcConfig->isMiddleBoxCompat;
+#endif
 #ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
     destConfig->maxSendFragment = srcConfig->maxSendFragment;
 #endif
@@ -1183,7 +1190,18 @@ int32_t HITLS_CFG_SetTmpDh(HITLS_Config *config, HITLS_CRYPT_Key *dhPkey)
     if ((config == NULL) || (dhPkey == NULL)) {
         return HITLS_NULL_INPUT;
     }
-
+#ifdef HITLS_TLS_FEATURE_SECURITY
+    int32_t secBits = 0;
+    /* Temporary DH security check */
+    int32_t ret = SAL_CERT_KeyCtrl(config, dhPkey, CERT_KEY_CTRL_GET_SECBITS, NULL, (void *)&secBits);
+    if (ret != HITLS_SUCCESS) {
+        return HITLS_CERT_KEY_CTRL_ERR_GET_SECBITS;
+    }
+    ret = SECURITY_CfgCheck(config, HITLS_SECURITY_SECOP_TMP_DH, secBits, 0, dhPkey);
+    if (ret != SECURITY_SUCCESS) {
+        return HITLS_CRYPT_ERR_DH;
+    }
+#endif /* HITLS_TLS_FEATURE_SECURITY */
     SAL_CRYPT_FreeDhKey(config->dhTmp);
     config->dhTmp = dhPkey;
     return HITLS_SUCCESS;
@@ -2168,6 +2186,27 @@ int32_t HITLS_CFG_GetMaxSendFragment(const HITLS_Config *config, uint16_t *maxSe
     }
     *maxSendFragment = config->maxSendFragment;
 
+    return HITLS_SUCCESS;
+}
+#endif
+
+#ifdef HITLS_TLS_PROTO_TLS13
+int32_t HITLS_CFG_SetMiddleBoxCompat(HITLS_Config *config, bool isMiddleBox)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    config->isMiddleBoxCompat = isMiddleBox;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_CFG_GetMiddleBoxCompat(HITLS_Config *config, bool *isMiddleBox)
+{
+    if (config == NULL || isMiddleBox == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    *isMiddleBox = config->isMiddleBoxCompat;
     return HITLS_SUCCESS;
 }
 #endif

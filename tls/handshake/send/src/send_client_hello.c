@@ -260,7 +260,7 @@ static int32_t Tls13ClientPrepareKeyShare(TLS_Ctx *ctx, uint32_t tls13BasicKeyEx
     KeyShareParam *share = &ctx->hsCtx->kxCtx->keyExchParam.share;
     if (ctx->hsCtx->haveHrr) {
         /* If the value of group is not updated in the hello retry request, the system directly returns */
-        if (share->group == ctx->negotiatedInfo.negotiatedGroup || 
+        if (share->group == ctx->negotiatedInfo.negotiatedGroup ||
             share->secondGroup == ctx->negotiatedInfo.negotiatedGroup) {
             return HITLS_SUCCESS;
         }
@@ -283,6 +283,11 @@ static int32_t Tls13ClientPrepareKeyShare(TLS_Ctx *ctx, uint32_t tls13BasicKeyEx
 
 static int32_t Tls13ClientPrepareSession(TLS_Ctx *ctx)
 {
+    if (!ctx->config.tlsConfig.isMiddleBoxCompat) {
+        ctx->hsCtx->sessionIdSize = 0;
+        return HITLS_SUCCESS;
+    }
+
     int32_t ret = HITLS_SUCCESS;
     HS_Ctx *hsCtx = (HS_Ctx *)ctx->hsCtx;
 
@@ -480,7 +485,7 @@ int32_t Tls13ClientHelloPrepare(TLS_Ctx *ctx)
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
-    } else {
+    } else if (ctx->config.tlsConfig.isMiddleBoxCompat) {
         /* If the middlebox is used, a CCS message must be sent before the second clientHello message is sent */
         ret = ctx->method.sendCCS(ctx);
         if (ret != HITLS_SUCCESS) {

@@ -233,6 +233,26 @@ static const HitlsConfig g_eccFormatList[] = {
     {"HITLS_INVALID_FORMAT_TC02", 0xFE},
 };
 
+#ifdef HITLS_TLS_MAINTAIN_KEYLOG
+static void KetLogPrint(HITLS_Ctx *ctx, const char *out)
+{
+    (void)ctx;
+    char *fileName = "FileKeyLog.txt";
+    char *fileEndStr = "\n";
+    char *p = getenv("HITLSKEYLOGFILE");
+    if (p == NULL) {
+        return;
+    }
+    FILE *fp = fopen(fileName, "a+");
+    if (fp == NULL) {
+        return;
+    }
+    fwrite(out, sizeof(char), strlen(out), fp);
+    fwrite((char *)fileEndStr, sizeof(char), strlen(fileEndStr), fp);
+    fclose(fp);
+}
+#endif
+
 int HitlsInit(void)
 {
     int ret;
@@ -723,6 +743,27 @@ int HitlsSetCtx(HITLS_Config *outCfg, HLT_Ctx_Config *inCtxCfg)
         ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetCAList Fail");
     }
 #endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+#ifdef HITLS_TLS_PROTO_TLS13
+    // Whether to support middlebox compatibility.
+    LOG_DEBUG("HiTLS Set Support middlebox compatibility is %d", inCtxCfg->isMiddleBoxCompat);
+    ret = HITLS_CFG_SetMiddleBoxCompat(outCfg, (uint32_t)inCtxCfg->isMiddleBoxCompat);
+    ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetMiddleBoxCompat ERROR");
+#endif
+
+#ifdef HITLS_TLS_MAINTAIN_KEYLOG
+    // Set the keylogcb callback function on the server.
+    if (strncmp("NULL", inCtxCfg->keyLogCb, strlen(inCtxCfg->keyLogCb)) != 0) {
+        LOG_DEBUG("HiTLS Set key log callback is %s", inCtxCfg->keyLogCb);
+        ret = HITLS_CFG_SetKeyLogCb(outCfg, GetExtensionCb(inCtxCfg->keyLogCb));
+        ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetKeyLogCb Fail");
+    }
+    // support exporting keys through environment variables
+    if (strncmp("NULL", inCtxCfg->keyLogCb, strlen(inCtxCfg->keyLogCb)) == 0) {
+        ret = HITLS_CFG_SetKeyLogCb(outCfg, KetLogPrint);
+        ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetKeyLogCb Fail");
+    }
+#endif
+
     return SUCCESS;
 }
 
