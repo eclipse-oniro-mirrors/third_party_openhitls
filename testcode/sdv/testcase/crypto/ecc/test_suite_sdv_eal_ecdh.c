@@ -15,6 +15,7 @@
 /* INCLUDE_BASE test_suite_sdv_eal_ecc */
 
 /* BEGIN_HEADER */
+#include "crypt_ecc.h"
 #include "ecc_local.h"
 /* END_HEADER */
 #define ECDH_MAX_BIT_LEN 521
@@ -854,5 +855,56 @@ EXIT:
     CRYPT_EAL_PkeyFreeCtx(prvCtx);
     BN_Destroy(n);
 #endif
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_CRYPTO_ECC_MUL_CAL_TEST_FUNC_TC001
+ * @title  ECDH SDV_CRYPTO_ECC_MUL_CAL_TEST_FUNC_TC001 test.
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_ECC_MUL_CAL_TEST_FUNC_TC001(int paraId)
+{
+    if (IsCurveDisabled(paraId) && paraId != CRYPT_ECC_SM2) {
+        SKIP_TEST();
+    }
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    ECC_Para *para = ECC_NewPara(paraId);
+    ASSERT_TRUE(para != NULL);
+    BN_BigNum *N = ECC_GetParaN(para);
+    ASSERT_TRUE(N != NULL);
+    BN_BigNum *rand = BN_Create(0);
+    ASSERT_TRUE(rand != NULL);
+    ASSERT_EQ(BN_RandRange(rand, N), CRYPT_SUCCESS);
+
+    ECC_Point *point1 = ECC_NewPoint(para);
+    ASSERT_TRUE(point1 != NULL);
+    ECC_Point *point2 = ECC_NewPoint(para);
+    ASSERT_TRUE(point2 != NULL);
+    ECC_Point *point3 = ECC_NewPoint(para);
+    ASSERT_TRUE(point3 != NULL);
+
+    // cal N*G
+    ASSERT_EQ(ECC_PointMul(para, point1, N, NULL), CRYPT_SUCCESS);
+    ASSERT_EQ(ECP_PointMulFast(para, point2, N, NULL), CRYPT_SUCCESS);
+    ASSERT_EQ(ECC_PointCmp(para, point1, point2), CRYPT_SUCCESS);
+    // cal random*G
+    ASSERT_EQ(ECC_PointMul(para, point1, rand, NULL), CRYPT_SUCCESS);
+    ASSERT_EQ(ECP_PointMulFast(para, point2, rand, NULL), CRYPT_SUCCESS);
+    ASSERT_EQ(ECC_PointCmp(para, point1, point2), CRYPT_SUCCESS);
+    // cal random*Point
+    ASSERT_EQ(ECC_PointMul(para, point2, rand, point1), CRYPT_SUCCESS);
+    ASSERT_EQ(ECP_PointMulFast(para, point3, rand, point1), CRYPT_SUCCESS);
+    ASSERT_EQ(ECC_PointCmp(para, point2, point3), CRYPT_SUCCESS);
+
+EXIT:
+    ECC_FreePara(para);
+    ECC_FreePoint(point1);
+    ECC_FreePoint(point2);
+    ECC_FreePoint(point3);
+    BN_Destroy(rand);
+    BN_Destroy(N);
+    TestRandDeInit();
 }
 /* END_CASE */
