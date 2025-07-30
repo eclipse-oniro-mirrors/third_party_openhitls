@@ -354,26 +354,15 @@ static int32_t ParseBMPString(const uint8_t *bmp, uint32_t bmpLen, BSL_ASN1_Buff
     return BSL_SUCCESS;
 }
 
-int32_t EncodeBMPString(const uint8_t *in, uint32_t inLen, uint8_t *encode, uint32_t *offset)
+static void EncodeBMPString(const uint8_t *in, uint32_t inLen, uint8_t *encode, uint32_t *offset)
 {
-    if (in == NULL || inLen == 0 || encode == NULL || offset == NULL) {
-        return BSL_NULL_INPUT;
-    }
-    uint8_t *tmp = (uint8_t *)BSL_SAL_Calloc(inLen * 2, 1); // encodeLen = 2 * inLen
-    if (tmp == NULL) {
-        return BSL_MALLOC_FAIL;
-    }
+    uint8_t *output = encode + *offset;
     for (uint32_t i = 0; i < inLen; i++) {
-        if (in[i] > 127) { // max ascii 127.
-            BSL_SAL_FREE(tmp);
-            return BSL_INVALID_ARG;
-        }
-        tmp[2 * i + 1] = in[i]; // we need 2 space, [0,0] -> after encode = [0, data];
+        output[2 * i + 1] = in[i]; // need 2 space, [0,0] -> after encode = [0, data];
+        output[2 * i + 0] = 0;
     }
-    (void)memcpy_s(encode + *offset, inLen * 2, tmp, inLen * 2); // encodeLen = 2 * inLen
-    BSL_SAL_FREE(tmp);
     *offset += inLen * 2; // encodeLen = 2 * inLen
-    return BSL_SUCCESS;
+    return;
 }
 
 /**
@@ -819,7 +808,6 @@ static int32_t GetContentLen(BSL_ASN1_Buffer *asn, uint32_t *len)
     if (asn == NULL || len == NULL) {
         return BSL_NULL_INPUT;
     }
-
     switch (asn->tag) {
         case BSL_ASN1_TAG_NULL:
             *len = 0;
@@ -1105,6 +1093,16 @@ static int32_t CheckBslTime(BSL_ASN1_Buffer *asn)
     return BSL_SUCCESS;
 }
 
+static int32_t CheckBMPString(BSL_ASN1_Buffer *asn)
+{
+    for (uint32_t i = 0; i < asn->len; i++) {
+        if (asn->buff[i] > 127) { // max ascii 127.
+            return BSL_INVALID_ARG;
+        }
+    }
+    return BSL_SUCCESS;
+}
+
 static int32_t CheckAsn(BSL_ASN1_Buffer *asn)
 {
     switch (asn->tag) {
@@ -1119,6 +1117,8 @@ static int32_t CheckAsn(BSL_ASN1_Buffer *asn)
         case BSL_ASN1_TAG_UTCTIME:
         case BSL_ASN1_TAG_GENERALIZEDTIME:
             return CheckBslTime(asn);
+        case BSL_ASN1_TAG_BMPSTRING:
+            return CheckBMPString(asn);
         default:
             return BSL_SUCCESS;
     }
