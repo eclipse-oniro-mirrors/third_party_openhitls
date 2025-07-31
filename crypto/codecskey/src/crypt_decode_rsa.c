@@ -34,7 +34,7 @@ static int32_t ProcRsaPubKey(const BSL_ASN1_Buffer *asn1, CRYPT_RSA_Ctx *rsaKey)
             asn1[CRYPT_RSA_PRV_N_IDX].len, 0},
         BSL_PARAM_END
     };
-    return CRYPT_RSA_SetPubKey(rsaKey, param);
+    return CRYPT_RSA_SetPubKeyEx(rsaKey, param);
 }
 
 static int32_t ProcRsaPrivKey(const BSL_ASN1_Buffer *asn1, CRYPT_RSA_Ctx *rsaKey)
@@ -58,7 +58,7 @@ static int32_t ProcRsaPrivKey(const BSL_ASN1_Buffer *asn1, CRYPT_RSA_Ctx *rsaKey
             asn1[CRYPT_RSA_PRV_QINV_IDX].len, 0},
         BSL_PARAM_END
     };
-    return CRYPT_RSA_SetPrvKey(rsaKey, param);
+    return CRYPT_RSA_SetPrvKeyEx(rsaKey, param);
 }
 
 
@@ -163,12 +163,7 @@ int32_t CRYPT_RSA_ParsePubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buff
             pubAsn1[CRYPT_RSA_PUB_N_IDX].len, 0},
         BSL_PARAM_END
     };
-    ret = CRYPT_RSA_SetPubKey(pctx, pubParam);
-    if (ret != CRYPT_SUCCESS) {
-        CRYPT_RSA_FreeCtx(pctx);
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
-    }
+    ret = CRYPT_RSA_SetPubKeyEx(pctx, pubParam);
     if (cid != BSL_CID_RSASSAPSS) {
         *rsaPubKey = pctx;
         return CRYPT_SUCCESS;

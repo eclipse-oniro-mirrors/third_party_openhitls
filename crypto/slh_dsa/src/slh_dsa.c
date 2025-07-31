@@ -606,8 +606,17 @@ int32_t CRYPT_SLH_DSA_Verify(const CryptSlhDsaCtx *ctx, int32_t algId, const uin
     return ret;
 }
 
-static void SlhDsaSetAlgId(CryptSlhDsaCtx *ctx, CRYPT_PKEY_ParaId algId)
+static int32_t SlhDsaSetAlgId(CryptSlhDsaCtx *ctx, void *val, uint32_t len)
 {
+    if (val == NULL || len != sizeof(CRYPT_SLH_DSA_AlgId)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    CRYPT_SLH_DSA_AlgId algId = *(CRYPT_SLH_DSA_AlgId *)val;
+    if (algId >= CRYPT_SLH_DSA_ALG_ID_MAX) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
+        return CRYPT_SLHDSA_ERR_INVALID_ALGID;
+    }
     ctx->para.algId = algId;
     int32_t index = algId - CRYPT_SLH_DSA_SHA2_128S;
     ctx->para.n = g_slhDsaN[index];
@@ -626,6 +635,46 @@ static void SlhDsaSetAlgId(CryptSlhDsaCtx *ctx, CRYPT_PKEY_ParaId algId)
     } else {
         ctx->adrsOps = g_adrsOps[0];
     }
+    return CRYPT_SUCCESS;
+}
+
+static int32_t SetContextInfo(CryptSlhDsaCtx *ctx, void *val, uint32_t len)
+{
+    if (val == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    if (len > 255) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_CONTEXT_LEN_OVERFLOW);
+        return CRYPT_SLHDSA_ERR_CONTEXT_LEN_OVERFLOW;
+    }
+    ctx->contextLen = len;
+    BSL_SAL_Free(ctx->context);
+    ctx->context = (uint8_t *)BSL_SAL_Malloc(len);
+    if (ctx->context == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    (void)memcpy_s(ctx->context, len, val, len);
+    return CRYPT_SUCCESS;
+}
+
+static int32_t SetAddrand(CryptSlhDsaCtx *ctx, void *val, uint32_t len)
+{
+    if (val == NULL || len != ctx->para.n) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    BSL_SAL_FREE(ctx->addrand);
+    uint8_t *rand = (uint8_t *)BSL_SAL_Malloc(len);
+    if (rand == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    (void)memcpy_s(rand, len, val, len);
+    ctx->addrand = rand;
+    ctx->addrandLen = len;
+    return CRYPT_SUCCESS;
 }
 
 int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t len)
@@ -636,17 +685,7 @@ int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t
     }
     switch (opt) {
         case CRYPT_CTRL_SET_PARA_BY_ID:
-            if (val == NULL || len != sizeof(CRYPT_PKEY_ParaId)) {
-                BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
-                return CRYPT_INVALID_ARG;
-            }
-            CRYPT_PKEY_ParaId algId = *(CRYPT_PKEY_ParaId *)val;
-            if (CheckNotSlhDsaAlgId(algId)) {
-                BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
-                return CRYPT_SLHDSA_ERR_INVALID_ALGID;
-            }
-            SlhDsaSetAlgId(ctx, algId);
-            return CRYPT_SUCCESS;
+            return SlhDsaSetAlgId(ctx, val, len);
         case CRYPT_CTRL_SET_PREHASH_FLAG:
             if (val == NULL || len != sizeof(int32_t)) {
                 BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
@@ -655,23 +694,7 @@ int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t
             ctx->isPrehash = (*(int32_t *)val != 0);
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_SET_CTX_INFO:
-            if (val == NULL) {
-                BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
-                return CRYPT_INVALID_ARG;
-            }
-            if (len > 255) {
-                BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_CONTEXT_LEN_OVERFLOW);
-                return CRYPT_SLHDSA_ERR_CONTEXT_LEN_OVERFLOW;
-            }
-            ctx->contextLen = len;
-            BSL_SAL_Free(ctx->context);
-            ctx->context = (uint8_t *)BSL_SAL_Malloc(len);
-            if (ctx->context == NULL) {
-                BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-                return CRYPT_MEM_ALLOC_FAIL;
-            }
-            (void)memcpy_s(ctx->context, len, val, len);
-            return CRYPT_SUCCESS;
+            return SetContextInfo(ctx, val, len);
         case CRYPT_CTRL_GET_SLH_DSA_KEY_LEN:
             if (val == NULL || len != sizeof(uint32_t)) {
                 BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
@@ -687,20 +710,7 @@ int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t
             ctx->isDeterministic = (*(int32_t *)val != 0);
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_SET_SLH_DSA_ADDRAND:
-            if (val == NULL || len != ctx->para.n) {
-                BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
-                return CRYPT_INVALID_ARG;
-            }
-            BSL_SAL_FREE(ctx->addrand);
-            uint8_t *rand = (uint8_t *)BSL_SAL_Malloc(len);
-            if (rand == NULL) {
-                BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-                return CRYPT_MEM_ALLOC_FAIL;
-            }
-            (void)memcpy_s(rand, len, val, len);
-            ctx->addrand = rand;
-            ctx->addrandLen = len;
-            return CRYPT_SUCCESS;
+            return SetAddrand(ctx, val, len);
         case CRYPT_CTRL_CLEAN_PUB_KEY:
             BSL_SAL_CleanseData(ctx->prvKey.pub.seed, sizeof(ctx->prvKey.pub.seed));
             BSL_SAL_CleanseData(ctx->prvKey.pub.root, sizeof(ctx->prvKey.pub.root));
@@ -711,6 +721,101 @@ int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t
     }
 }
 
+static int32_t PubKeyCheck(const CryptSlhDsaCtx *ctx, const CRYPT_SlhDsaPub *pub)
+{
+    if (ctx == NULL || pub == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (pub->seed == NULL || pub->root == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (pub->len != ctx->para.n) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_KEYLEN);
+        return CRYPT_SLHDSA_ERR_INVALID_KEYLEN;
+    }
+    return CRYPT_SUCCESS;
+}
+
+static int32_t PrvKeyCheck(const CryptSlhDsaCtx *ctx, const CRYPT_SlhDsaPrv *prv)
+{
+    if (ctx == NULL || prv == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (prv->prf == NULL || prv->seed == NULL || prv->pub.root == NULL || prv->pub.seed == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (prv->pub.len != ctx->para.n) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_KEYLEN);
+        return CRYPT_SLHDSA_ERR_INVALID_KEYLEN;
+    }
+    return CRYPT_SUCCESS;
+}
+
+int32_t CRYPT_SLH_DSA_GetPubKey(const CryptSlhDsaCtx *ctx, CRYPT_SlhDsaPub *pub)
+{
+    int32_t ret = PubKeyCheck(ctx, pub);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    pub->len = ctx->para.n;
+    (void)memcpy_s(pub->seed, pub->len, ctx->prvKey.pub.seed, ctx->para.n);
+    (void)memcpy_s(pub->root, pub->len, ctx->prvKey.pub.root, ctx->para.n);
+
+    return CRYPT_SUCCESS;
+}
+
+int32_t CRYPT_SLH_DSA_GetPrvKey(const CryptSlhDsaCtx *ctx, CRYPT_SlhDsaPrv *prv)
+{
+    int32_t ret = PrvKeyCheck(ctx, prv);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+
+    prv->pub.len = ctx->para.n;
+    (void)memcpy_s(prv->seed, prv->pub.len, ctx->prvKey.seed, ctx->para.n);
+    (void)memcpy_s(prv->prf, prv->pub.len, ctx->prvKey.prf, ctx->para.n);
+    (void)memcpy_s(prv->pub.seed, prv->pub.len, ctx->prvKey.pub.seed, ctx->para.n);
+    (void)memcpy_s(prv->pub.root, prv->pub.len, ctx->prvKey.pub.root, ctx->para.n);
+
+    return CRYPT_SUCCESS;
+}
+
+int32_t CRYPT_SLH_DSA_SetPubKey(CryptSlhDsaCtx *ctx, const CRYPT_SlhDsaPub *pub)
+{
+    int32_t ret = PubKeyCheck(ctx, pub);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    (void)memcpy_s(ctx->prvKey.pub.seed, ctx->para.n, pub->seed, ctx->para.n);
+    (void)memcpy_s(ctx->prvKey.pub.root, ctx->para.n, pub->root, ctx->para.n);
+
+    return CRYPT_SUCCESS;
+}
+
+int32_t CRYPT_SLH_DSA_SetPrvKey(CryptSlhDsaCtx *ctx, const CRYPT_SlhDsaPrv *prv)
+{
+    int32_t ret = PrvKeyCheck(ctx, prv);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+
+    (void)memcpy_s(ctx->prvKey.seed, sizeof(ctx->prvKey.seed), prv->seed, ctx->para.n);
+    (void)memcpy_s(ctx->prvKey.prf, sizeof(ctx->prvKey.prf), prv->prf, ctx->para.n);
+    (void)memcpy_s(ctx->prvKey.pub.seed, sizeof(ctx->prvKey.pub.seed), prv->pub.seed, ctx->para.n);
+    (void)memcpy_s(ctx->prvKey.pub.root, sizeof(ctx->prvKey.pub.root), prv->pub.root, ctx->para.n);
+
+    return CRYPT_SUCCESS;
+}
+
+#ifdef HITLS_BSL_PARAMS
 static int32_t PubKeyParamCheck(const CryptSlhDsaCtx *ctx, BSL_Param *para, SlhDsaPubKeyParam *pub)
 {
     if (ctx == NULL || para == NULL) {
@@ -753,7 +858,7 @@ static int32_t PrvKeyParamCheck(const CryptSlhDsaCtx *ctx, BSL_Param *para, SlhD
     return CRYPT_SUCCESS;
 }
 
-int32_t CRYPT_SLH_DSA_GetPubKey(const CryptSlhDsaCtx *ctx, BSL_Param *para)
+int32_t CRYPT_SLH_DSA_GetPubKeyEx(const CryptSlhDsaCtx *ctx, BSL_Param *para)
 {
     SlhDsaPubKeyParam pub;
     int32_t ret = PubKeyParamCheck(ctx, para, &pub);
@@ -772,7 +877,7 @@ int32_t CRYPT_SLH_DSA_GetPubKey(const CryptSlhDsaCtx *ctx, BSL_Param *para)
     return CRYPT_SUCCESS;
 }
 
-int32_t CRYPT_SLH_DSA_GetPrvKey(const CryptSlhDsaCtx *ctx, BSL_Param *para)
+int32_t CRYPT_SLH_DSA_GetPrvKeyEx(const CryptSlhDsaCtx *ctx, BSL_Param *para)
 {
     SlhDsaPrvKeyParam prv;
     int32_t ret = PrvKeyParamCheck(ctx, para, &prv);
@@ -796,7 +901,7 @@ int32_t CRYPT_SLH_DSA_GetPrvKey(const CryptSlhDsaCtx *ctx, BSL_Param *para)
     return CRYPT_SUCCESS;
 }
 
-int32_t CRYPT_SLH_DSA_SetPubKey(CryptSlhDsaCtx *ctx, const BSL_Param *para)
+int32_t CRYPT_SLH_DSA_SetPubKeyEx(CryptSlhDsaCtx *ctx, const BSL_Param *para)
 {
     SlhDsaPubKeyParam pub;
     int32_t ret = PubKeyParamCheck(ctx, (BSL_Param *)(uintptr_t)para, &pub);
@@ -810,7 +915,7 @@ int32_t CRYPT_SLH_DSA_SetPubKey(CryptSlhDsaCtx *ctx, const BSL_Param *para)
     return CRYPT_SUCCESS;
 }
 
-int32_t CRYPT_SLH_DSA_SetPrvKey(CryptSlhDsaCtx *ctx, const BSL_Param *para)
+int32_t CRYPT_SLH_DSA_SetPrvKeyEx(CryptSlhDsaCtx *ctx, const BSL_Param *para)
 {
     SlhDsaPrvKeyParam prv;
     int32_t ret = PrvKeyParamCheck(ctx, (BSL_Param *)(uintptr_t)para, &prv);
@@ -826,6 +931,7 @@ int32_t CRYPT_SLH_DSA_SetPrvKey(CryptSlhDsaCtx *ctx, const BSL_Param *para)
     ctx->keyType |= SLH_DSA_PRVKEY;
     return CRYPT_SUCCESS;
 }
+#endif
 
 #ifdef HITLS_CRYPTO_SLH_DSA_CHECK
 
