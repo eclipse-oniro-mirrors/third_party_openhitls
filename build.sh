@@ -108,27 +108,51 @@ parse_option()
                 subdir=$value
                 ;;
             "help")
-                printf "%-50s %-30s\n" "Build openHiTLS Code With iso x8664:"    "sh build.sh subdir=CMVP iso x8664"
-                printf "%-50s %-30s\n" "Build openHiTLS Code With iso x8664:"    "sh build.sh subdir=CMVP iso x8664"
+                show_help
                 exit 0
                 ;;
             *)
-                echo "${i} option is not recognized, Please run <sh build.sh> get supported options."
+                echo "${i} option is not recognized, Please run 'bash build.sh help' to get supported options."
                 exit -1
                 ;;
         esac
     done
 }
 
+show_help()
+{
+    echo "Usage: bash build.sh <crypto_mode> [arch_type] [debug]"
+    echo ""
+    echo "Required parameters:"
+    echo "  crypto_mode    One of: iso, fips, gm (must select exactly one)"
+    echo ""
+    echo "Optional parameters:"
+    echo "  arch_type      One of: armv8_le, pure_c, x8664 (default: pure_c)"
+    echo "  debug          Add debug compilation flags (-O0 -g3 -gdwarf-2)"
+    echo ""
+    echo "Examples:"
+    echo "  bash build.sh iso x8664"
+    echo "  bash build.sh fips armv8_le"
+    echo "  bash build.sh gm pure_c debug"
+    echo "  bash build.sh iso debug"
+    echo ""
+    echo "Note:"
+    echo "  - crypto_mode is mandatory (iso, fips, or gm)"
+    echo "  - arch_type defaults to pure_c if not specified"
+    echo "  - debug is optional and can be combined with any other options"
+    echo ""
+    echo "For more information, run: bash build.sh help"
+}
+
 validate_crypto_mode()
 {
     if [ -z "$libname" ]; then
-        echo "Error: One of the crypto modes (iso, gm, or fips) must be selected."
+        echo "Error: One of the crypto modes (iso, fips, or gm) must be selected."
         echo "Usage examples:"
-        echo "  sh build.sh iso x8664"
-        echo "  sh build.sh gm x8664"
-        echo "  sh build.sh fips x8664"
-        echo "Run 'sh build.sh help' for more information."
+        echo "  bash build.sh iso x8664"
+        echo "  bash build.sh fips x8664"
+        echo "  bash build.sh gm x8664"
+        echo "Run 'bash build.sh help' for more information."
         exit 1
     fi
 }
