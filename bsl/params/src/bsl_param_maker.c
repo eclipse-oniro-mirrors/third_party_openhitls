@@ -37,7 +37,7 @@ typedef struct {
 } BSL_PARAM_MAKER_DEF;
 
 struct BslParamMaker {
-    size_t valueLen;
+    uint32_t valueLen;
     BslList *params;
 };
 
@@ -57,7 +57,7 @@ BSL_ParamMaker *BSL_PARAM_MAKER_New(void)
     return maker;
 }
 
-static int32_t BSL_PARAM_MAKER_CheckNumberLen(int32_t type, uint32_t len)
+static int32_t BSL_PARAM_MAKER_CheckNumberLen(uint32_t type, uint32_t len)
 {
     switch (type) {
         case BSL_PARAM_TYPE_UINT8:
@@ -91,14 +91,24 @@ static int32_t BSL_PARAM_MAKER_CheckNumberLen(int32_t type, uint32_t len)
     return BSL_SUCCESS;
 }
 
-int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, int32_t type, void *value, uint32_t len)
+static int32_t BSL_PARAM_MAKER_CheckInput(BSL_ParamMaker *maker, void *value, uint32_t len)
 {
     if (maker == NULL || maker->params == NULL || (value == NULL && len != 0)) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
     }
-    
-    int32_t ret;
+    if (((uint32_t)maker->params->count + 1) > UINT32_MAX / sizeof(BSL_Param)) {
+        return BSL_PARAMS_OUT_LIMIT;
+    }
+    return BSL_SUCCESS;
+}
+
+int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, uint32_t type, void *value, uint32_t len)
+{
+    int32_t ret = BSL_PARAM_MAKER_CheckInput(maker, value, len);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
     BSL_PARAM_MAKER_DEF *paramMakerDef = BSL_SAL_Calloc(1, sizeof(BSL_PARAM_MAKER_DEF));
     if (paramMakerDef == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
@@ -180,21 +190,38 @@ static int32_t BSL_PARAM_MAKER_StringConvert(BSL_PARAM_MAKER_DEF *paramMakerDef,
     return ret;
 }
 
-BSL_Param *BSL_PARAM_MAKER_ToParam(BSL_ParamMaker *maker)
+static int32_t BSL_PARAM_MAKER_CalculateSize(BSL_ParamMaker *maker, uint32_t *paramSize)
 {
     if (maker == NULL || maker->params == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
-        return NULL;
+        return BSL_NULL_INPUT;
     }
 
     BslList *list = maker->params;
-    size_t paramSize = (list->count + 1) * sizeof(BSL_Param);
-    BSL_Param *params = BSL_SAL_Calloc(1, paramSize + maker->valueLen);
+    *paramSize = ((uint32_t)list->count + 1) * sizeof(BSL_Param);
+    if (*paramSize > UINT32_MAX - maker->valueLen) {
+        return BSL_PARAMS_OUT_LIMIT;
+    } else {
+        *paramSize += maker->valueLen;
+    }
+
+    return BSL_SUCCESS;
+}
+
+BSL_Param *BSL_PARAM_MAKER_ToParam(BSL_ParamMaker *maker)
+{
+    uint32_t paramSize = 0;
+    if (BSL_PARAM_MAKER_CalculateSize(maker, &paramSize) != BSL_SUCCESS) {
+        return NULL;
+    }
+    
+    BSL_Param *params = BSL_SAL_Calloc(1, paramSize);
     if (params == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
         return NULL;
     }
     
+    BslList *list = maker->params;
     uint8_t *valueIndex = (uint8_t *)(list->count + 1 + params);
     BSL_PARAM_MAKER_DEF **paramMakerDef = BSL_LIST_First(list);
     int i = 0;

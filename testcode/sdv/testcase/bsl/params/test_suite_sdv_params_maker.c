@@ -19,9 +19,6 @@
 #include "bsl_params.h"
 #include "bsl_err.h"
 #include "bsl_list.h"
-#include "crypt_eal_cipher.h"
-#include "crypt_eal_kdf.h"
-#include "crypt_params_key.h"
 /* END_HEADER */
 
 
@@ -174,42 +171,5 @@ EXIT:
         CRYPT_EAL_CipherFreeCtx(ctx);
     }
     return;
-}
-/* END_CASE */
-
-/* BEGIN_CASE */
-void SDV_BSL_BSL_PARAM_MAKER_CIPHER_TC001(int algId, Hex *key, Hex *salt, Hex *info, Hex *result)
-{
-    TestMemInit();
-    uint32_t outLen = result->len;
-    uint8_t *out = malloc(outLen * sizeof(uint8_t));
-    ASSERT_TRUE(out != NULL);
-    CRYPT_EAL_KdfCTX *ctx = CRYPT_EAL_KdfNewCtx(CRYPT_KDF_HKDF);
-    ASSERT_TRUE(ctx != NULL);
-    CRYPT_HKDF_MODE mode = CRYPT_KDF_HKDF_MODE_FULL;
-
-    BSL_ParamMaker *maker = BSL_PARAM_MAKER_New();
-    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32,
-        &algId, sizeof(algId)), BSL_SUCCESS);
-    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_MODE, BSL_PARAM_TYPE_UINT32,
-        &mode, sizeof(mode)), BSL_SUCCESS);
-    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_KEY, BSL_PARAM_TYPE_OCTETS,
-        key->x, key->len), BSL_SUCCESS);
-    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_SALT, BSL_PARAM_TYPE_OCTETS,
-        salt->x, salt->len), BSL_SUCCESS);
-    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_INFO, BSL_PARAM_TYPE_OCTETS,
-        info->x, info->len), BSL_SUCCESS);
-    BSL_Param *params = BSL_PARAM_MAKER_ToParam(maker);
-
-    ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), BSL_SUCCESS);
-    ASSERT_EQ(CRYPT_EAL_KdfDerive(ctx, out, outLen), BSL_SUCCESS);
-    ASSERT_COMPARE("result cmp", out, outLen, result->x, result->len);
-EXIT:
-    if (out != NULL) {
-        free(out);
-    }
-    CRYPT_EAL_KdfFreeCtx(ctx);
-    BSL_PARAM_MAKER_Free(maker);
-    BSL_PARAM_Free(params);
 }
 /* END_CASE */

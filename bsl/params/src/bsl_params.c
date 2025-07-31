@@ -243,10 +243,10 @@ BSL_Param *BSL_PARAM_FindParam(BSL_Param *param, int32_t key)
     return NULL;
 }
 
-void BSL_PARAM_Free(BSL_Param *params)
+void BSL_PARAM_Free(BSL_Param *param)
 {
-    if (params != NULL) {
-        BSL_SAL_Free(params);
+    if (param != NULL) {
+        BSL_SAL_Free(param);
     }
 }
 

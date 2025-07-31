@@ -174,7 +174,7 @@ BSL_ParamMaker *BSL_PARAM_MAKER_New(void);
  *         - BSL_SUCCESS indicates successful setting
  *         - Other values indicate setting failure
  */
-int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, int32_t type, void *value, uint32_t len);
+int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, uint32_t type, void *value, uint32_t len);
 
 /**
  * @brief BSL parameter maker to BSL parameter
