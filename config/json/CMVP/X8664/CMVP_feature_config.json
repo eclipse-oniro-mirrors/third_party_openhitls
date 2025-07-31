@@ -3,10 +3,23 @@
     "bits":64,
     "system":"linux",
     "endian":"little",
-    "asmType":"no_asm",
+    "asmType":"x8664",
     "bundleLibs":true,
     "libs":{
         "hitls_crypto":{
+            "asm":[
+                "sha1",
+                "sha2",
+                "md5",
+                "sm3",
+                "modes",
+                "aes",
+                "chacha20",
+                "sm4",
+                "bn",
+                "x25519",
+                "ecc"
+            ],
             "c": [
                 "eal",
                 "ealinit",
@@ -47,37 +60,8 @@
                 "sal_dl",
                 "tlv",
                 "uio",
-                "usrdata",
                 "params",
                 "asn1"
-            ]
-        },
-        "hitls_tls": {
-            "c": [
-                "proto_version",
-                "host",
-                "callback",
-                "feature",
-                "proto",
-                "config",
-                "connection",
-                "suite",
-                "suite_cipher",
-                "suite_kx",
-                "suite_auth",
-                "maintain"
-            ]
-        },
-        "hitls_pki":{
-            "c": [
-                "x509",
-                "pkcs12",
-                "info"
-            ]
-        },
-        "hitls_auth":{
-            "c": [
-                "privpass_token"
             ]
         }
     }

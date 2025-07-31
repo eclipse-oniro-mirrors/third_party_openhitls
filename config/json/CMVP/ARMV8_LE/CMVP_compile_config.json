@@ -4,8 +4,6 @@
             "CC_FLAGS_ADD":[
                 "-DHITLS_CRYPTO_CMVP_FIPS",
                 "-DHITLS_CRYPTO_ACVP_TESTS",
-                "-DHITLS_CRYPTO_CMVP_GM",
-                "-DHITLS_CRYPTO_CMVP_ISO19790",
                 "-DHITLS_CRYPTO_DRBG_GM",
                 "-DHITLS_CRYPTO_ENTROPY_SYS",
                 "-DHITLS_CRYPTO_RAND_CB"

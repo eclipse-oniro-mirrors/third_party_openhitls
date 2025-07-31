@@ -51,6 +51,9 @@
 #ifdef HITLS_CRYPTO_CMVP_ISO19790
 #define ISO19790_LOG_FILE "iso19790_audit.log"
 #define HITLS_ISO_LIB_NAME "libhitls_iso.so"
+#define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/PURE_C/lib"
+// #define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/X8664/lib"
+// #define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/ARMV8_LE/lib"
 
 static FILE* g_logFile = NULL;
 
@@ -249,7 +252,7 @@ static void Iso19790_ProviderLoad(Iso19790_ProviderLoadCtx *ctx)
     ASSERT_TRUE(libCtx != NULL);
 
     CRYPT_EAL_RegEventReport(ISO19790_RunLogCb);
-    ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(libCtx, "../script/build"), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(libCtx, HITLS_ISO_PROVIDER_PATH), CRYPT_SUCCESS);
 
     BSL_Param param[2] = {{0}, BSL_PARAM_END};
     (void)BSL_PARAM_InitValue(&param[0], CRYPT_PARAM_CMVP_LOG_FUNC, BSL_PARAM_TYPE_FUNC_PTR, ISO19790_RunLogCb, 0);
@@ -737,7 +740,7 @@ void SDV_ISO19790_PROVIDER_Get_Status_Test_TC001()
 
     libCtx = CRYPT_EAL_LibCtxNew();
     ASSERT_TRUE(libCtx != NULL);
-    ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(libCtx, "../script/build"), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(libCtx, HITLS_ISO_PROVIDER_PATH), CRYPT_SUCCESS);
     
     bool isLoaded = false;
     int32_t ret = CRYPT_EAL_ProviderIsLoaded(libCtx, 0, HITLS_ISO_LIB_NAME, &isLoaded);

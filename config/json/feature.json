@@ -1099,7 +1099,8 @@
                     "crypto/hybridkem/include",
                     "crypto/eal/src",
                     "crypto/include",
-                    "crypto/codecskey/include"
+                    "crypto/codecskey/include",
+                    "include/tls"
                 ]
             },
             "bn": {
