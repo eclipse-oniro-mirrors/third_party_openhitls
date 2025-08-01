@@ -808,8 +808,8 @@ static int32_t SetValidity(X509OptCtx *optCtx)
         AppPrintError("x509: Get system time failed.\n");
         return HITLS_APP_SAL_FAIL;
     }
-    if ((startTime + optCtx->certOpts.days * X509_DAY_SECONDS) < startTime) {
-        AppPrintError("x509: The sum of the current time and -days %s outside integer range.\n", optCtx->certOpts.days);
+    if (optCtx->certOpts.days > (INT64_MAX - startTime) / X509_DAY_SECONDS) {
+        AppPrintError("x509: The sum of the current time and -days %lld outside integer range.\n", optCtx->certOpts.days);
         return HITLS_APP_SAL_FAIL;
     }
     int64_t endTime = startTime + optCtx->certOpts.days * X509_DAY_SECONDS;
@@ -1193,7 +1193,7 @@ static int32_t OutputPubkey(X509OptCtx *optCtx)
     ret = BSL_UIO_Write(optCtx->outUio, encodePubkey.data, encodePubkey.dataLen, &writeLen);
     BSL_SAL_Free(encodePubkey.data);
     if (ret != 0 || writeLen != encodePubkey.dataLen) {
-        AppPrintError("x509: write pubKey failed, errCode = %d, writeLen = %ld.\n", ret, writeLen);
+        AppPrintError("x509: write pubKey failed, errCode = %d, writeLen = %u.\n", ret, writeLen);
         return HITLS_APP_UIO_FAIL;
     }
     return HITLS_APP_SUCCESS;
@@ -1239,7 +1239,7 @@ static int32_t X509Output(X509OptCtx *optCtx)
     uint32_t writeLen = 0;
     ret = BSL_UIO_Write(optCtx->outUio, optCtx->encodeCert.data, optCtx->encodeCert.dataLen, &writeLen);
     if (ret != 0 || writeLen != optCtx->encodeCert.dataLen) {
-        AppPrintError("x509: write cert failed, errCode = %d, writeLen = %ld.\n", ret, writeLen);
+        AppPrintError("x509: write cert failed, errCode = %d, writeLen = %u.\n", ret, writeLen);
         return HITLS_APP_UIO_FAIL;
     }
     return HITLS_APP_SUCCESS;

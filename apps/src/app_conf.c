@@ -603,7 +603,7 @@ static int32_t ParseGeneralName(BSL_CONF *conf, char *genNameStr, HITLS_X509_Gen
         value++;
     }
     if (strlen(value) == 0) {
-        AppPrintError("The value of general name is not set, key: %u.\n", key);
+        AppPrintError("The value of general name is not set, key: %s.\n", key);
         return HITLS_APP_INVALID_GENERAL_NAME;
     }
     HITLS_X509_GeneralNameType type = HITLS_X509_GN_MAX;
@@ -783,8 +783,8 @@ static int32_t GetDnTypeAndValue(const char **nameStr, HITLS_X509_DN *name, bool
     }
     *tmp++ = '\0';
     if (*p == '\0') {
-        BSL_SAL_FREE(nameTypeStr);
         AppPrintError("The type(%s) must be have value.\n", nameTypeStr);
+        BSL_SAL_FREE(nameTypeStr);
         return HITLS_APP_INVALID_DN_VALUE;
     }
     p++; // skip '='
