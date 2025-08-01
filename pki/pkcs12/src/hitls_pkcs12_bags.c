@@ -147,6 +147,16 @@ int32_t BagGetValue(HITLS_PKCS12_Bag *bag, void *val)
     }
 }
 
+int32_t HITLS_PKCS12_BagRefUp(HITLS_PKCS12_Bag *bag)
+{
+    if (bag == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_NULL_POINTER);
+        return HITLS_PKCS12_ERR_NULL_POINTER;
+    }
+    int val = 0;
+    return BSL_SAL_AtomicUpReferences(&(bag->references), &val);
+}
+
 int32_t HITLS_PKCS12_BagCtrl(HITLS_PKCS12_Bag *bag, int32_t cmd, void *val, uint32_t valType)
 {
     if (bag == NULL) {

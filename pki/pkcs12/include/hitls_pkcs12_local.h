@@ -52,6 +52,7 @@ typedef struct _HITLS_PKCS12_Bag {
         BSL_Buffer secret;
     } value;
     HITLS_X509_Attrs *attributes; // localKeyId, friendlyName, ect. Item is HITLS_PKCS12_SafeBagAttr.
+    BSL_SAL_RefCount references;
 } HITLS_PKCS12_Bag;
 
 /*
@@ -72,7 +73,7 @@ typedef struct _HITLS_PKCS12 {
 /* A common bag, could store a crl-bag, or a cert-bag, or a secret-bag... */
 typedef struct {
     BslCid bagType;
-    BSL_Buffer *bagValue; // encode data
+    BSL_Buffer bagValue; // encode data
 } HITLS_PKCS12_CommonSafeBag;
 
 /* SafeBag Attributes. */
@@ -179,6 +180,12 @@ int32_t HITLS_PKCS12_EncodeAsn1List(BSL_ASN1_List *list, uint32_t encodeType, co
  * @brief Add attributes to a bag.
  */
 int32_t HITLS_PKCS12_BagAddAttr(HITLS_PKCS12_Bag *bag, uint32_t type, const BSL_Buffer *attrValue);
+
+/**
+ * @ingroup pkcs12
+ * @brief Increase the reference count of a bag.
+ */
+int32_t HITLS_PKCS12_BagRefUp(HITLS_PKCS12_Bag *bag);
 
 #ifdef __cplusplus
 }

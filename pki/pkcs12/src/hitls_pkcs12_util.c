@@ -144,51 +144,15 @@ HITLS_PKCS12 *HITLS_PKCS12_ProviderNew(HITLS_PKI_LibCtx *libCtx, const char *att
     return p12;
 }
 
-static void CertBagFree(void *value)
-{
-    if (value == NULL) {
-        return;
-    }
-    HITLS_PKCS12_Bag *bag = (HITLS_PKCS12_Bag *)value;
-    HITLS_X509_CertFree(bag->value.cert);
-    HITLS_X509_AttrsFree(bag->attributes, HITLS_PKCS12_AttributesFree);
-    bag->attributes = NULL;
-    BSL_SAL_Free(bag);
-}
-
-static void SecretBagFree(void *value)
-{
-    if (value == NULL) {
-        return;
-    }
-    HITLS_PKCS12_Bag *bag = (HITLS_PKCS12_Bag *)value;
-    BSL_SAL_CleanseData(bag->value.secret.data, bag->value.secret.dataLen);
-    BSL_SAL_FREE(bag->value.secret.data);
-    HITLS_X509_AttrsFree(bag->attributes, HITLS_PKCS12_AttributesFree);
-    bag->attributes = NULL;
-    BSL_SAL_Free(bag);
-}
-
 void HITLS_PKCS12_Free(HITLS_PKCS12 *p12)
 {
     if (p12 == NULL) {
         return;
     }
-    if (p12->entityCert != NULL) {
-        HITLS_X509_CertFree(p12->entityCert->value.cert);
-        HITLS_X509_AttrsFree(p12->entityCert->attributes, HITLS_PKCS12_AttributesFree);
-        p12->entityCert->attributes = NULL;
-        BSL_SAL_FREE(p12->entityCert);
-    }
-    if (p12->key != NULL) {
-        CRYPT_EAL_PkeyFreeCtx(p12->key->value.key);
-        p12->key->value.key = NULL;
-        HITLS_X509_AttrsFree(p12->key->attributes, HITLS_PKCS12_AttributesFree);
-        p12->key->attributes = NULL;
-        BSL_SAL_FREE(p12->key);
-    }
-    BSL_LIST_FREE(p12->certList, CertBagFree);
-    BSL_LIST_FREE(p12->secretBags, SecretBagFree);
+    HITLS_PKCS12_BagFree(p12->entityCert);
+    HITLS_PKCS12_BagFree(p12->key);
+    BSL_LIST_FREE(p12->certList, (BSL_LIST_PFUNC_FREE)HITLS_PKCS12_BagFree);
+    BSL_LIST_FREE(p12->secretBags, (BSL_LIST_PFUNC_FREE)HITLS_PKCS12_BagFree);
     HITLS_PKCS12_MacDataFree(p12->macData);
     BSL_SAL_Free(p12);
 }
@@ -272,12 +236,18 @@ HITLS_PKCS12_Bag *HITLS_PKCS12_BagNew(uint32_t bagId, uint32_t bagType, void *ba
         return NULL;
     }
     bag->id = bagId;
+    BSL_SAL_ReferencesInit(&(bag->references));
     return bag;
 }
 
 void HITLS_PKCS12_BagFree(HITLS_PKCS12_Bag *bag)
 {
     if (bag == NULL) {
+        return;
+    }
+    int ret = 0;
+    BSL_SAL_AtomicDownReferences(&(bag->references), &ret);
+    if (ret > 0) {
         return;
     }
     switch (bag->id) {
@@ -297,7 +267,7 @@ void HITLS_PKCS12_BagFree(HITLS_PKCS12_Bag *bag)
             break;
     }
     HITLS_X509_AttrsFree(bag->attributes, HITLS_PKCS12_AttributesFree);
-    bag->attributes = NULL;
+    BSL_SAL_ReferencesFree(&(bag->references));
     BSL_SAL_Free(bag);
     return;
 }
