@@ -29,6 +29,7 @@
 #include "crypt_errno.h"
 #include "hitls_crl_local.h"
 #include "hitls_cert_local.h"
+#include "stub_replace.h"
 
 static char g_sm2DefaultUserid[] = "1234567812345678";
 /* END_HEADER */
@@ -1086,5 +1087,27 @@ EXIT:
     HITLS_X509_CrlFree(parseCrl);
     HITLS_X509_CertFree(issuerCert);
     CRYPT_EAL_PkeyFreeCtx(prvKey);
+}
+/* END_CASE */
+
+static int32_t STUB_HITLS_X509_ParseNameList(BSL_ASN1_Buffer *name, BSL_ASN1_List *list)
+{
+    (void)name;
+    (void)list;
+    return BSL_MALLOC_FAIL;
+}
+
+/* BEGIN_CASE */
+void SDV_X509_CRL_INVALIED_TEST_TC001(int format, char *path)
+{
+    TestMemInit();
+    FuncStubInfo tmpRpInfo = {0};
+    STUB_Init();
+    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, HITLS_X509_ParseNameList, STUB_HITLS_X509_ParseNameList) == 0);
+    HITLS_X509_Crl *crl = NULL;
+    ASSERT_NE(HITLS_X509_CrlParseFile((int32_t)format, path, &crl), HITLS_PKI_SUCCESS);
+EXIT:
+    STUB_Reset(&tmpRpInfo);
+    HITLS_X509_CrlFree(crl);
 }
 /* END_CASE */

@@ -780,15 +780,15 @@ int32_t HITLS_X509_CrlGenFile(int32_t format, HITLS_X509_Crl *crl, const char *p
 #endif // HITLS_PKI_X509_CRL_GEN
 
 #ifdef HITLS_PKI_X509_CRL_PARSE
-int32_t HITLS_X509_ParseAsn1Crl(uint8_t **encode, uint32_t *encodeLen, HITLS_X509_Crl *crl)
+int32_t HITLS_X509_ParseAsn1Crl(uint8_t *encode, uint32_t encodeLen, HITLS_X509_Crl *crl)
 {
-    uint8_t *temp = *encode;
-    uint32_t tempLen = *encodeLen;
+    uint8_t *temp = encode;
+    uint32_t tempLen = encodeLen;
+    crl->rawData = encode; // crl takes over the encode immediately.
     if ((crl->flag & HITLS_X509_CRL_GEN_FLAG) != 0) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
         return HITLS_X509_ERR_INVALID_PARAM;
     }
-
     // template parse
     BSL_ASN1_Buffer asnArr[HITLS_X509_CRL_MAX_IDX] = {0};
     BSL_ASN1_Template templ = {g_crlTempl, sizeof(g_crlTempl) / sizeof(g_crlTempl[0])};
@@ -799,7 +799,7 @@ int32_t HITLS_X509_ParseAsn1Crl(uint8_t **encode, uint32_t *encodeLen, HITLS_X50
         return ret;
     }
     // parse tbs raw data
-    ret = HITLS_X509_ParseTbsRawData(*encode, *encodeLen, &crl->tbs.tbsRawData, &crl->tbs.tbsRawDataLen);
+    ret = HITLS_X509_ParseTbsRawData(encode, encodeLen, &crl->tbs.tbsRawData, &crl->tbs.tbsRawDataLen);
     if (ret != HITLS_PKI_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -822,11 +822,7 @@ int32_t HITLS_X509_ParseAsn1Crl(uint8_t **encode, uint32_t *encodeLen, HITLS_X50
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
     }
-
-    crl->rawData = *encode;
-    crl->rawDataLen = *encodeLen - tempLen;
-    *encode = temp;
-    *encodeLen = tempLen;
+    crl->rawDataLen = encodeLen - tempLen;
     crl->flag |= HITLS_X509_CRL_PARSE_FLAG;
     return HITLS_PKI_SUCCESS;
 ERR:

@@ -123,7 +123,7 @@ typedef struct _HITLS_X509_Asn1AlgId {
     };
 } HITLS_X509_Asn1AlgId;
 
-typedef int32_t (*HITLS_X509_Asn1Parse)(uint8_t **encode, uint32_t *encodeLen, void *out);
+typedef int32_t (*HITLS_X509_Asn1Parse)(uint8_t *encode, uint32_t encodeLen, void *out);
 typedef void *(*HITLS_X509_ProviderNew)(CRYPT_EAL_LibCtx *libCtx, const char *attrName);
 typedef void *(*HITLS_X509_New)(void);
 typedef void (*HITLS_X509_Free)(void *elem);

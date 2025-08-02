@@ -31,6 +31,7 @@
 #include "crypt_encode_decode_key.h"
 #include "crypt_eal_codecs.h"
 #include "hitls_x509_local.h"
+#include "stub_replace.h"
 
 /* END_HEADER */
 
@@ -1117,5 +1118,29 @@ EXIT:
     HITLS_X509_CertFree(cert);
     HITLS_X509_CsrFree(csr);
     BSL_SAL_Free(encodeExt.buff);
+}
+/* END_CASE */
+
+extern int32_t HITLS_X509_ParseCertTbs(BSL_ASN1_Buffer *asnArr, HITLS_X509_Cert *cert);
+
+static int32_t STUB_HITLS_X509_ParseCertTbs(BSL_ASN1_Buffer *asnArr, HITLS_X509_Cert *cert)
+{
+    (void)asnArr;
+    (void)cert;
+    return BSL_MALLOC_FAIL;
+}
+
+/* BEGIN_CASE */
+void SDV_X509_CERT_INVALIED_TEST_TC001(int format, char *path)
+{
+    TestMemInit();
+    FuncStubInfo tmpRpInfo = {0};
+    STUB_Init();
+    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, HITLS_X509_ParseCertTbs, STUB_HITLS_X509_ParseCertTbs) == 0);
+    HITLS_X509_Cert *cert = NULL;
+    ASSERT_NE(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
+EXIT:
+    STUB_Reset(&tmpRpInfo);
+    HITLS_X509_CertFree(cert);
 }
 /* END_CASE */
