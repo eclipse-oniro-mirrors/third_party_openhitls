@@ -139,6 +139,7 @@ static const CidInfo g_allMacAlgInfo[] = {
     {CRYPT_MAC_GMAC_AES256, "gmac-aes256"},
     {CRYPT_MAC_SIPHASH64, "siphash64"},
     {CRYPT_MAC_SIPHASH128, "siphash128"},
+    {CRYPT_MAC_CBC_MAC_SM4, "sm4-cbc-mac"},
 };
 
 #define MAC_ALG_CNT (sizeof(g_allMacAlgInfo) / sizeof(CidInfo))
@@ -176,6 +177,7 @@ static const CidInfo g_allKdfAlgInfo[] = {
     {CRYPT_MAC_HMAC_SHA3_384, "hmac-sha3-384"},
     {CRYPT_MAC_HMAC_SHA3_512, "hmac-sha3-512"},
     {CRYPT_MAC_HMAC_SM3, "hmac-sm3"},
+    {CRYPT_KDF_PBKDF2, "pbkdf2"},
 };
 
 #define KDF_ALG_CNT (sizeof(g_allKdfAlgInfo) / sizeof(CidInfo))

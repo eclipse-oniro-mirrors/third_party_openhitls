@@ -38,6 +38,7 @@
 
 #define DEFAULT_PEM_FILE_SIZE 1024U
 #define RSA_PRV_CTX_LEN 8
+#define HEX_TO_BYTE 2
 
 #define APP_LINESIZE 255
 #define PEM_BEGIN_STR "-----BEGIN "
@@ -863,4 +864,44 @@ void HITLS_APP_PrintPassErrlog(void)
 {
     AppPrintError("The password length is incorrect. It should be in the range of %d to %d.\n", APP_MIN_PASS_LENGTH,
         APP_MAX_PASS_LENGTH);
+}
+
+int32_t HITLS_APP_HexToByte(const char *hex, uint8_t **bin, uint32_t *len)
+{
+    uint32_t hexLen = strlen(hex);
+    const char *num = hex;
+    // Skip the preceding zeros.
+    for (uint32_t i = 0; i < hexLen; ++i) {
+        if (num[i] != '0' && (i + 1) != hexLen) {
+            num += i;
+            hexLen -= i;
+            break;
+        }
+    }
+    *len = (hexLen + 1) / HEX_TO_BYTE;
+    uint8_t *res = BSL_SAL_Malloc(*len);
+    if (res == NULL) {
+        AppPrintError("Allocate memory failed.\n");
+        return HITLS_APP_MEM_ALLOC_FAIL;
+    }
+    uint32_t hexIdx = 0;
+    uint32_t binIdx = 0;
+    char *endptr;
+    char tmp[] = {'0', '0', '\0'};
+    while (hexIdx < hexLen) {
+        if (hexIdx == 0 && hexLen % HEX_TO_BYTE == 1) {
+            tmp[0] = '0';
+        } else {
+            tmp[0] = hex[hexIdx++];
+        }
+        tmp[1] = hex[hexIdx++];
+        res[binIdx++] = (uint32_t)strtol(tmp, &endptr, 16);  // 16: hex
+        if (*endptr != '\0') {
+            BSL_SAL_Free(res);
+            return HITLS_APP_OPT_VALUE_INVALID;
+        }
+    }
+
+    *bin = res;
+    return HITLS_APP_SUCCESS;
 }
