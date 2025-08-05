@@ -73,6 +73,7 @@ int32_t CRYPT_EAL_GetRsaPssPara(CRYPT_EAL_PkeyCtx *ealPriKey, CRYPT_RSA_PssPara 
     return ret;
 }
 
+#ifdef HITLS_CRYPTO_KEY_ENCODE
 int32_t CRYPT_EAL_InitRsaPrv(const CRYPT_EAL_PkeyCtx *ealPriKey, CRYPT_PKEY_AlgId cid, CRYPT_EAL_PkeyPrv *rsaPrv)
 {
     uint32_t bnLen = CRYPT_EAL_PkeyGetKeyLen(ealPriKey);
@@ -108,7 +109,8 @@ void CRYPT_EAL_DeinitRsaPrv(CRYPT_EAL_PkeyPrv *rsaPrv)
 {
     BSL_SAL_ClearFree(rsaPrv->key.rsaPrv.d, rsaPrv->key.rsaPrv.dLen * 8); // 8 items
 }
-#endif
+#endif // HITLS_CRYPTO_KEY_ENCODE
+#endif // HITLS_CRYPTO_RSA
 
 #ifdef HITLS_CRYPTO_KEY_DECODE
 #ifdef HITLS_CRYPTO_RSA

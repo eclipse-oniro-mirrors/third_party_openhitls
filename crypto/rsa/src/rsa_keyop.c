@@ -685,7 +685,7 @@ static int32_t RecoverPrimeFactorsAndCheck(const CRYPT_RSA_Ctx *pubKey, const CR
     CalMaxT(r, &tFactor); // r = m / 2^t
     // step 3: find prime factors p and q.
     for (int32_t i = 0; i < 100; i++) { // try 100 times
-        GOTO_ERR_IF(BN_RandRangeEx(pubKey->libCtx, g, pubKey->pubKey->n), ret); // rand(0, n)
+        GOTO_ERR_IF(BN_RandRangeEx(LIBCTX_FROM_RSA_CTX(pubKey), g, pubKey->pubKey->n), ret); // rand(0, n)
         GOTO_ERR_IF(BN_ModExp(y, g, r, pubKey->pubKey->n, opt), ret); // y = g ^ r % n
         if (BN_IsOne(y) == true || BN_Cmp(y, nSubOne) == 0) { // y == 1 or y == n - 1
             continue;

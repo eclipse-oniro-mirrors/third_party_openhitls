@@ -165,7 +165,7 @@ int32_t CRYPT_RSA_SetPss(CRYPT_RSA_Ctx *ctx, const EAL_MdMethod *hashMethod, con
         ctx->pad.salt.len = 0;
     } else if (saltLen != 0) {
         // Generate a salt information to the salt.
-        ret = GenPssSalt(ctx->libCtx, &salt, hashMethod, saltLen, padLen);
+        ret = GenPssSalt(LIBCTX_FROM_RSA_CTX(ctx), &salt, hashMethod, (int32_t)saltLen, padLen);
         RETURN_RET_IF((ret != CRYPT_SUCCESS), CRYPT_RSA_ERR_GEN_SALT);
     }
     RETURN_RET_IF((salt.data == NULL && salt.len != 0), CRYPT_RSA_ERR_PSS_SALT_DATA);
@@ -303,9 +303,9 @@ int32_t CRYPT_RSA_VerifyPss(CRYPT_RSA_Ctx *ctx, const EAL_MdMethod *hashMethod, 
     uint32_t hLen = hashMethod->mdSize;
     uint32_t saltLength = saltLen;
     if (saltLength == (uint32_t)CRYPT_RSA_SALTLEN_TYPE_HASHLEN) { // saltLength is -1
-        saltLength = (uint32_t)ctx->pad.para.pss.mdMeth->mdSize;
+        saltLength = (uint32_t)ctx->pad.para.pss.mdMeth.mdSize;
     } else if (saltLength == (uint32_t)CRYPT_RSA_SALTLEN_TYPE_MAXLEN) { // saltLength is -2
-        saltLength = (uint32_t)(padLen - ctx->pad.para.pss.mdMeth->mdSize - 2); // salt, obtains DRBG
+        saltLength = (uint32_t)(padLen - ctx->pad.para.pss.mdMeth.mdSize - 2); // salt, obtains DRBG
     }
     RETURN_RET_IF_ERR(PssEncodeLengthCheck(keyBits, hLen, saltLength, dataLen, padLen), ret);
     //  EM = maskedDB || H || 0xbc
@@ -696,8 +696,8 @@ EXIT:
 int32_t CRYPT_RSA_SetPkcs1Oaep(CRYPT_RSA_Ctx *ctx, const uint8_t *in, uint32_t inLen, uint8_t *pad, uint32_t padLen)
 {
     int32_t ret;
-    const EAL_MdMethod *hashMethod = ctx->pad.para.oaep.mdMeth;
-    const EAL_MdMethod *mgfMethod = ctx->pad.para.oaep.mgfMeth;
+    const EAL_MdMethod *hashMethod = &ctx->pad.para.oaep.mdMeth;
+    const EAL_MdMethod *mgfMethod = &ctx->pad.para.oaep.mgfMeth;
 
     if (hashMethod == NULL || mgfMethod == NULL || (in == NULL && inLen != 0) || pad == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
@@ -718,7 +718,7 @@ int32_t CRYPT_RSA_SetPkcs1Oaep(CRYPT_RSA_Ctx *ctx, const uint8_t *in, uint32_t i
     *pad = 0x00;
     uint8_t *seed = pad + 1;
     // Generate a random octet string seed of length hLen<rfc8017>
-    ret = CRYPT_RandEx(ctx->libCtx, seed, hashLen);
+    ret = CRYPT_RandEx(LIBCTX_FROM_RSA_CTX(ctx), seed, hashLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;

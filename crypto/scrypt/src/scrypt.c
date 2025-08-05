@@ -26,6 +26,7 @@
 #include "crypt_types.h"
 #include "crypt_scrypt.h"
 #include "eal_mac_local.h"
+#include "eal_md_local.h"
 #include "pbkdf2_local.h"
 #include "bsl_params.h"
 #include "crypt_params_key.h"
@@ -255,7 +256,7 @@ static int32_t SCRYPT_CheckPointer(PBKDF2_PRF pbkdf2Prf, const uint8_t *key, uin
 }
 
 /* For details about this function, see section 6 in RFC7914. */
-int32_t CRYPT_SCRYPT(PBKDF2_PRF pbkdf2Prf, const EAL_MacMethod *macMeth,  CRYPT_MAC_AlgId macId,
+int32_t CRYPT_SCRYPT(PBKDF2_PRF pbkdf2Prf, const EAL_MacMethod *macMeth, CRYPT_MAC_AlgId macId,
     const EAL_MdMethod *mdMeth, const uint8_t *key, uint32_t keyLen, const uint8_t *salt,
     uint32_t saltLen, uint32_t n, uint32_t r, uint32_t p, uint8_t *out, uint32_t len)
 {
@@ -303,14 +304,17 @@ ERR:
 
 int32_t CRYPT_SCRYPT_SetMacMethod(CRYPT_SCRYPT_Ctx *ctx)
 {
-    EAL_MacMethLookup method;
-    int32_t ret = EAL_MacFindMethod(CRYPT_MAC_HMAC_SHA256, &method);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_METH_NULL_NUMBER);
-        return CRYPT_EAL_ERR_METH_NULL_NUMBER;
+    ctx->macMeth = EAL_MacFindDefaultMethod(CRYPT_MAC_HMAC_SHA256);
+    if (ctx->macMeth == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_METH_NULL_MEMBER);
+        return CRYPT_EAL_ERR_METH_NULL_MEMBER;
     }
-    ctx->macMeth = method.macMethod;
-    ctx->mdMeth = method.md;
+    ctx->mdMeth = EAL_MdFindDefaultMethod(CRYPT_MD_SHA256);
+    if (ctx->mdMeth == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_METH_NULL_MEMBER);
+        return CRYPT_EAL_ERR_METH_NULL_MEMBER;
+    }
+
     return CRYPT_SUCCESS;
 }
 
@@ -325,7 +329,7 @@ int32_t CRYPT_SCRYPT_InitCtx(CRYPT_SCRYPT_Ctx *ctx)
     return CRYPT_SUCCESS;
 }
 
-CRYPT_SCRYPT_Ctx* CRYPT_SCRYPT_NewCtx(void)
+CRYPT_SCRYPT_Ctx *CRYPT_SCRYPT_NewCtx(void)
 {
     CRYPT_SCRYPT_Ctx *ctx = BSL_SAL_Calloc(1, sizeof(CRYPT_SCRYPT_Ctx));
     if (ctx == NULL) {
@@ -339,6 +343,12 @@ CRYPT_SCRYPT_Ctx* CRYPT_SCRYPT_NewCtx(void)
         return NULL;
     }
     return ctx;
+}
+
+CRYPT_SCRYPT_Ctx *CRYPT_SCRYPT_NewCtxEx(void *libCtx)
+{
+    (void)libCtx;
+    return CRYPT_SCRYPT_NewCtx();
 }
 
 int32_t CRYPT_SCRYPT_SetPassWord(CRYPT_SCRYPT_Ctx *ctx, const uint8_t *password, uint32_t passLen)

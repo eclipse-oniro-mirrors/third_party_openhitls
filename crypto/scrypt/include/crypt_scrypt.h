@@ -34,14 +34,25 @@ typedef int32_t (*PBKDF2_PRF)(const EAL_MacMethod *macMeth, CRYPT_MAC_AlgId macI
     const uint8_t *salt, uint32_t saltLen,
     uint32_t iterCnt, uint8_t *out, uint32_t len);
 
+#define CRYPT_SCRYPT_Ctrl NULL
+
 /**
  * @ingroup  SCRYPT
  * @brief Generate SCRYPT context.
  *
- * @retval Success: cipher ctx.
+ * @retval Success: SCRYPT ctx.
  *         Fails: NULL.
  */
-CRYPT_SCRYPT_Ctx* CRYPT_SCRYPT_NewCtx(void);
+CRYPT_SCRYPT_Ctx *CRYPT_SCRYPT_NewCtx(void);
+
+/**
+ * @ingroup  SCRYPT
+ * @brief Generate SCRYPT context.
+ *
+ * @retval Success: SCRYPT ctx.
+ *         Fails: NULL.
+ */
+CRYPT_SCRYPT_Ctx *CRYPT_SCRYPT_NewCtxEx(void *libCtx);
 
 /**
  * @ingroup SCRYPT

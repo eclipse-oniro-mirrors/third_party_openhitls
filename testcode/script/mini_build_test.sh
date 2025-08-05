@@ -41,6 +41,7 @@ SYSTEM=""
 BITS=64
 ENDIAN="little"
 FEATURE_CONFIG_FILE=""
+INCLUDE_PATH=""
 
 print_usage() {
     printf "Usage: $0\n"
@@ -101,9 +102,6 @@ parse_option()
                 ;;
             "enable")
                 FEATURES=(${value//,/ })
-                if [[ $value == *entropy* || $value == *hitls_crypto* ]]; then
-                    ADD_OPTIONS="$ADD_OPTIONS -DHITLS_SEED_DRBG_INIT_RAND_ALG=CRYPT_RAND_SHA256 -DHITLS_CRYPTO_ENTROPY_DEVRANDOM"
-                fi
                 ;;
             "debug")
                 ADD_OPTIONS="$ADD_OPTIONS -O0 -g3 -gdwarf-2"
@@ -145,6 +143,13 @@ parse_option()
                 ;;
             "no-mpa")
                 NO_LIB="$NO_LIB no-mpa"
+                ;;
+            "add-options")
+                ADD_OPTIONS="$ADD_OPTIONS $value"
+                ;;
+            "include-path")
+                INCLUDE_PATH="$value $INCLUDE_PATH "
+                ADD_OPTIONS="$ADD_OPTIONS $value"
                 ;;
             *)
                 echo "Wrong parameter: $key" 
@@ -344,7 +349,6 @@ exe_file_testcases()
 test_feature()
 {
     features=$1
-
     cd $HITLS_ROOT_DIR/testcode/script
     files=`get_testfiles_by_features $features`
     echo "files: $files"
@@ -353,7 +357,12 @@ test_feature()
         return
     fi
 
-    bash build_sdv.sh run-tests="$files" $NO_LIB no-demos no-sctp
+    params=""
+    if [ "$INCLUDE_PATH" != "" ]; then
+        params="${params} include-path=$INCLUDE_PATH"
+    fi
+
+    bash build_sdv.sh run-tests="$files" $NO_LIB no-demos no-sctp $params
 
     if [ $EXE_TEST == "on" ]; then
         # exe test

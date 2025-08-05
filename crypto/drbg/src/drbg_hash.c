@@ -502,7 +502,7 @@ DRBG_Ctx *DRBG_NewHashCtx(const EAL_MdMethod *md, bool isGm, const CRYPT_RandSee
 
     ctx = (DRBG_HashCtx*)(drbg + 1);
     ctx->md = md;
-    ctx->mdCtx = md->newCtx();
+    ctx->mdCtx = md->newCtx(NULL, md->id);
     if (ctx->mdCtx == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
         BSL_SAL_FREE(drbg);

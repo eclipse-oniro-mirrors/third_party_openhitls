@@ -28,8 +28,8 @@
 CRYPT_CMAC_Ctx *CRYPT_CMAC_NewCtx(CRYPT_MAC_AlgId id)
 {
     int32_t ret;
-    EAL_MacMethLookup method = {0};
-    ret = EAL_MacFindMethod(id, &method);
+    EAL_MacDepMethod method = {0};
+    ret = EAL_MacFindDepMethod(id, NULL, NULL, &method);
     if (ret != CRYPT_SUCCESS) {
         return NULL;
     }
@@ -38,12 +38,18 @@ CRYPT_CMAC_Ctx *CRYPT_CMAC_NewCtx(CRYPT_MAC_AlgId id)
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return NULL;
     }
-    ret = CipherMacInitCtx(ctx, method.ciph);
+    ret = CipherMacInitCtx(ctx, method.method.sym);
     if (ret != CRYPT_SUCCESS) {
         BSL_SAL_Free(ctx);
         return NULL;
     }
     return ctx;
+}
+
+CRYPT_CMAC_Ctx *CRYPT_CMAC_NewCtxEx(void *libCtx, CRYPT_MAC_AlgId id)
+{
+    (void)libCtx;
+    return CRYPT_CMAC_NewCtx(id);
 }
 
 int32_t CRYPT_CMAC_Init(CRYPT_CMAC_Ctx *ctx, const uint8_t *key, uint32_t len, void *param)
@@ -141,14 +147,14 @@ int32_t CRYPT_CMAC_Final(CRYPT_CMAC_Ctx *ctx, uint8_t *out, uint32_t *len)
     return CRYPT_SUCCESS;
 }
 
-void CRYPT_CMAC_Reinit(CRYPT_CMAC_Ctx *ctx)
+int32_t CRYPT_CMAC_Reinit(CRYPT_CMAC_Ctx *ctx)
 {
-    CipherMacReinit((Cipher_MAC_Common_Ctx *)ctx);
+    return CipherMacReinit((Cipher_MAC_Common_Ctx *)ctx);
 }
 
-void CRYPT_CMAC_Deinit(CRYPT_CMAC_Ctx *ctx)
+int32_t CRYPT_CMAC_Deinit(CRYPT_CMAC_Ctx *ctx)
 {
-    CipherMacDeinit((Cipher_MAC_Common_Ctx *)ctx);
+    return CipherMacDeinit((Cipher_MAC_Common_Ctx *)ctx);
 }
 
 int32_t CRYPT_CMAC_Ctrl(CRYPT_CMAC_Ctx *ctx, uint32_t opt, void *val, uint32_t len)

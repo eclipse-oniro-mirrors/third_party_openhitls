@@ -90,6 +90,7 @@ void SDV_CRYPT_EAL_KDF_TLS12_API_TC001(int algId)
     ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), CRYPT_KDFTLS12_PARAM_ERROR);
 
     ASSERT_EQ(CRYPT_EAL_KdfDeInitCtx(ctx), CRYPT_SUCCESS);
+
 EXIT:
     CRYPT_EAL_KdfFreeCtx(ctx);
 }

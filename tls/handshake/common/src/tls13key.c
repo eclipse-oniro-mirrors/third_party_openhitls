@@ -273,7 +273,7 @@ int32_t TLS13DeriveHandshakeSecret(TLS_Ctx *ctx)
 int32_t TLS13DeriveMasterSecret(TLS_Ctx *ctx)
 {
     uint16_t hashAlg = ctx->negotiatedInfo.cipherSuiteInfo.hashAlg;
-    uint32_t hashLen = (uint32_t)SAL_CRYPT_DigestSize(hashAlg);
+    uint32_t hashLen = SAL_CRYPT_DigestSize(hashAlg);
     if (hashLen == 0) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16896, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "DigestSize err", 0, 0, 0, 0);
         return HITLS_CRYPT_ERR_DIGEST;

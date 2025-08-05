@@ -33,16 +33,15 @@ extern "C" {
 typedef int32_t (*GetLenFunc)(const void *ctx);
 
 /* Prototype of the MD algorithm operation functions */
-typedef void* (*MdNewCtx)(void);
-typedef void* (*MdProvNewCtx)(void *provCtx, int32_t algId);
+typedef void* (*MdNewCtx)(void *provCtx, int32_t algId);
 typedef int32_t (*MdInit)(void *data, const BSL_Param *param);
 typedef int32_t (*MdUpdate)(void *data, const uint8_t *input, uint32_t len);
 typedef int32_t (*MdFinal)(void *data, uint8_t *out, uint32_t *len);
-typedef void (*MdDeinit)(void *data);
-typedef int32_t (*MdCopyCtx)(void *dst, void *src);
+typedef int32_t (*MdDeinit)(void *data);
+typedef int32_t (*MdCopyCtx)(void *dst, const void *src);
 typedef void* (*MdDupCtx)(const void *src);
 typedef void (*MdFreeCtx)(void *data);
-typedef int32_t (*MdCtrl)(void *data, int32_t cmd, void *val, uint32_t valLen);
+typedef int32_t (*MdGetParam)(void *data, BSL_Param *param);
 typedef int32_t (*MdSqueeze)(void *data, uint8_t *out, uint32_t len);
 
 #ifdef HITLS_CRYPTO_MD_MB
@@ -62,52 +61,26 @@ typedef struct {
 #endif // HITLS_CRYPTO_MD_MB
 
 typedef struct {
-    uint16_t blockSize; // Block size processed by the hash algorithm at a time, which is used with other algorithms.
-    uint16_t mdSize;    // Output length of the HASH algorithm
-    MdNewCtx newCtx;    // generate md context
-    MdInit init;        // Initialize the MD context.
-    MdUpdate update;    // Add block data for MD calculation.
-    MdFinal final;      // Complete the MD calculation and obtain the MD result.
-    MdDeinit deinit;    // Clear the key information of the MD context.
-    MdCopyCtx copyCtx; // Copy the MD context.
-    MdDupCtx dupCtx;  // Dup the MD context.
+    uint32_t id;
+    uint16_t blockSize;  // Block size processed by the hash algorithm at a time, which is used with other algorithms.
+    uint16_t mdSize;     // Output length of the HASH algorithm
+    MdNewCtx newCtx;     // generate md context
+    MdInit init;         // Initialize the MD context.
+    MdUpdate update;     // Add block data for MD calculation.
+    MdFinal final;       // Complete the MD calculation and obtain the MD result.
+    MdDeinit deinit;     // Clear the key information of the MD context.
+    MdCopyCtx copyCtx;   // Copy the MD context.
+    MdDupCtx dupCtx;     // Dup the MD context.
     MdFreeCtx freeCtx;   // free md context
-    MdCtrl ctrl;        // get/set md param
-    MdSqueeze squeeze;  // squeeze the MD context.
+    MdGetParam getParam; // get/set md param
+    MdSqueeze squeeze;   // squeeze the MD context.
 } EAL_MdMethod;
-
-typedef struct {
-    uint16_t blockSize;
-    uint16_t mdSize;
-    MdNewCtx newCtx;
-    MdProvNewCtx provNewCtx;
-    MdInit init;
-    MdUpdate update;
-    MdFinal final;
-    MdDeinit deinit;
-    MdDupCtx dupCtx;
-    MdFreeCtx freeCtx;
-    MdCtrl ctrl;
-    MdSqueeze squeeze;  // squeeze the MD context.
-} EAL_MdUnitaryMethod;
 
 typedef struct {
     uint16_t hashSize;              // Output length of the Siphash algorithm
     uint16_t compressionRounds;     // the number of compression rounds
     uint16_t finalizationRounds;    // the number of finalization rounds
 } EAL_SiphashMethod;
-
-typedef struct {
-    uint32_t id;
-    EAL_MdMethod *mdMeth;
-} EAL_CidToMdMeth;
-
-#ifdef HITLS_CRYPTO_MD_MB
-typedef struct {
-    uint32_t id;
-    const EAL_MdMBMethod *mbMeth;
-} EAL_CidToMdMbMeth;
-#endif
 
 /* provide asymmetric primitive method */
 typedef void *(*PkeyNew)(void);
@@ -297,16 +270,16 @@ typedef struct {
 } EAL_CipherUnitaryMethod;
 
 /* prototype of MAC algorithm operation functions */
-typedef void* (*MacNewCtx)(CRYPT_MAC_AlgId id);
-typedef void* (*MacProvNewCtx)(void *provCtx, int32_t algId);
+typedef void* (*MacNewCtx)(void *provCtx, int32_t algId);
 // Complete key initialization.
 typedef int32_t (*MacInit)(void *ctx, const uint8_t *key, uint32_t len, const BSL_Param *param);
 typedef int32_t (*MacUpdate)(void *ctx, const uint8_t *in, uint32_t len);
 typedef int32_t (*MacFinal)(void *ctx, const uint8_t *out, uint32_t *len);
-typedef void    (*MacDeinit)(void *ctx);
+typedef int32_t (*MacDeinit)(void *ctx);
 // The action is opposite to the initCtx. Sensitive data is deleted.
-typedef void    (*MacReinit)(void *ctx);
+typedef int32_t (*MacReinit)(void *ctx);
 typedef int32_t (*MacCtrl)(void *data, int32_t cmd, void *val, uint32_t valLen);
+typedef int32_t (*MacSetParam)(void *data, const BSL_Param *param);
 typedef void (*MacFreeCtx)(void *ctx);
 typedef void* (*MacDupCtx)(const void *ctx);
 
@@ -320,33 +293,21 @@ typedef struct {
     // Re-initialize the key. This method is used where the keys are the same during multiple MAC calculations.
     MacReinit reinit;
     MacCtrl ctrl;
-    MdFreeCtx freeCtx;
-    MacDupCtx dupCtx;
+    MacSetParam setParam;
+    MacFreeCtx freeCtx;
 } EAL_MacMethod;
 
 typedef struct {
-    MacNewCtx newCtx;
-    MdFreeCtx freeCtx;
-    MacProvNewCtx provNewCtx;
-    MacInit init;           // Initialize the MAC context.
-    MacUpdate update;       // Add block data for MAC calculation.
-    MacFinal final;         // Complete MAC calculation and obtain the MAC result.
-    MacDeinit deinit;       // Clear the key information in MAC context.
-    // Re-initialize the key. This method is used where the keys are the same during multiple MAC calculations.
-    MacReinit reinit;
-    MacCtrl ctrl;
-    MacDupCtx dupCtx;
-} EAL_MacUnitaryMethod;
-
-typedef struct {
-    const EAL_MacMethod *macMethod;
     union {
-        const EAL_MdMethod *md;        // MD algorithm which HMAC depends on
-        const EAL_SymMethod *ciph;  // AES function wihch CMAC depends on
-        const EAL_SiphashMethod *sip;  // siphash method
-        const void *depMeth;           // Pointer to the dependent algorithm, which is reserved for extension.
-    };
-} EAL_MacMethLookup;
+        CRYPT_MD_AlgId mdId;
+        CRYPT_SYM_AlgId symId;
+    } id;
+    union {
+        EAL_MdMethod *md;        // MD algorithm which HMAC depends on
+        const EAL_SymMethod *sym;  // AES function wihch CMAC depends on
+        EAL_SiphashMethod *sip;  // siphash method
+    } method;
+} EAL_MacDepMethod;
 
 /**
  * @ingroup  mode_algid
@@ -374,8 +335,8 @@ typedef enum {
  */
 typedef struct {
     int32_t saltLen;               /**< pss salt length. -1 indicates hashLen, -2 indicates MaxLen, -3 is AutoLen */
-    const EAL_MdMethod *mdMeth;    /**< pss mdid method when padding */
-    const EAL_MdMethod *mgfMeth;   /**< pss mgfid method when padding */
+    EAL_MdMethod mdMeth;           /**< pss mdid method when padding */
+    EAL_MdMethod mgfMeth;          /**< pss mgfid method when padding */
     CRYPT_MD_AlgId mdId;           /**< pss mdid when padding */
     CRYPT_MD_AlgId mgfId;          /**< pss mgfid when padding */
 } RSA_PadingPara;
@@ -396,8 +357,6 @@ typedef struct {
     KdfDerive derive;
     KdfDeinit deinit;
     KdfFreeCtx freeCtx;
-    KdfCtrl ctrl;
-    KdfDupCtx dupCtx;
 } EAL_KdfMethod;
 
 typedef struct {

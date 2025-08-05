@@ -24,6 +24,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "bsl_params.h"
 #include "crypt_algid.h"
 #include "crypt_types.h"
 
@@ -204,25 +205,15 @@ int32_t CRYPT_EAL_MacCtrl(CRYPT_EAL_MacCtx *ctx, int32_t type, void *in, uint32_
 
 /**
  * @ingroup crypt_eal_mac
- * @brief   Copy the MAC context.
+ * @brief   Set algorithm parameters.
  *
- * @param   to [IN] target MAC context.
- * @param   from [IN] original MAC context.
+ * @param   ctx [IN] MAC context
+ * @param   param [IN] Parameter
  * @retval #CRYPT_SUCCESS, parameters are set successfully.
  * @retval #CRYPT_NULL_INPUT, the input parameter is NULL.
  *         Other error codes see crypt_errno.h
  */
-int32_t CRYPT_EAL_MacCopyCtx(CRYPT_EAL_MacCtx *to, const CRYPT_EAL_MacCtx *from);
-
-/**
- * @ingroup crypt_eal_mac
- * @brief   Dup the MAC context.
- *
- * @param   from [IN] original MAC context.
- * @retval  CRYPT_EAL_MacCtx, MAC context pointer.
- *          NULL, if the operation fails.
- */
-CRYPT_EAL_MacCtx *CRYPT_EAL_MacDupCtx(const CRYPT_EAL_MacCtx *from);
+int32_t CRYPT_EAL_MacSetParam(CRYPT_EAL_MacCtx *ctx, const BSL_Param *param);
 
 #ifdef __cplusplus
 }   // end extern "C"

@@ -108,7 +108,7 @@
         "xmss": ["test_suite_sdv_eal_xmss"],
 
         "encode": ["test_suite_sdv_encode"],
-        "provider": ["test_suite_sdv_eal_provider_load"],
+        "provider": ["test_suite_sdv_eal_multi_provider"],
         "key_encode": ["test_suite_sdv_x509"],
         "key_decode": ["test_suite_sdv_x509"],
         "x509_crl_gen": ["test_suite_sdv_x509"],
@@ -284,6 +284,7 @@
         "test_suite_sdv_eal_xmss": [],
         "test_suite_sdv_eal_elgamal": [],
         "test_suite_sdv_x509": [],
-        "test_suite_sdv_pkcs12": []
+        "test_suite_sdv_pkcs12": [],
+        "test_suite_sdv_eal_multi_provider": []
     }
 }

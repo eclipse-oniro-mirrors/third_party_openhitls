@@ -26,36 +26,56 @@
 #include "crypt_utils.h"
 #include "crypt_algid.h"
 #include "crypt_errno.h"
-#include "crypt_eal_implprovider.h"
-#include "crypt_eal_provider.h"
-#include "crypt_default_provderimpl.h"
-#include "crypt_default_provider.h"
-#include "crypt_provider.h"
 #include "crypt_params_key.h"
+#ifdef HITLS_TLS_FEATURE_PROVIDER
 #include "hitls_crypt_type.h"
 #include "hitls_cert_type.h"
 #include "hitls_type.h"
+#endif
+#include "crypt_eal_implprovider.h"
+#include "crypt_eal_provider.h"
+#include "crypt_provider.h"
+#include "crypt_default_provderimpl.h"
+#include "crypt_default_provider.h"
 
 #define CRYPT_EAL_DEFAULT_ATTR "provider=default"
 
+#ifdef HITLS_CRYPTO_MD
 static const CRYPT_EAL_AlgInfo g_defEalMds[] = {
+#ifdef HITLS_CRYPTO_MD5
     {CRYPT_MD_MD5, g_defEalMdMd5, CRYPT_EAL_DEFAULT_ATTR},
+#endif // HITLS_CRYPTO_MD5
+#ifdef HITLS_CRYPTO_SHA1
     {CRYPT_MD_SHA1, g_defEalMdSha1, CRYPT_EAL_DEFAULT_ATTR},
+#endif // HITLS_CRYPTO_SHA1
+#ifdef HITLS_CRYPTO_SHA224
     {CRYPT_MD_SHA224, g_defEalMdSha224, CRYPT_EAL_DEFAULT_ATTR},
+#endif // HITLS_CRYPTO_SHA224
+#ifdef HITLS_CRYPTO_SHA256
     {CRYPT_MD_SHA256, g_defEalMdSha256, CRYPT_EAL_DEFAULT_ATTR},
+#endif // HITLS_CRYPTO_SHA256
+#ifdef HITLS_CRYPTO_SHA384
     {CRYPT_MD_SHA384, g_defEalMdSha384, CRYPT_EAL_DEFAULT_ATTR},
+#endif // HITLS_CRYPTO_SHA384
+#ifdef HITLS_CRYPTO_SHA512
     {CRYPT_MD_SHA512, g_defEalMdSha512, CRYPT_EAL_DEFAULT_ATTR},
+#endif // HITLS_CRYPTO_SHA512
+#ifdef HITLS_CRYPTO_SHA3
     {CRYPT_MD_SHA3_224, g_defEalMdSha3224, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MD_SHA3_256, g_defEalMdSha3256, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MD_SHA3_384, g_defEalMdSha3384, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MD_SHA3_512, g_defEalMdSha3512, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MD_SHAKE128, g_defEalMdShake128, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MD_SHAKE256, g_defEalMdShake256, CRYPT_EAL_DEFAULT_ATTR},
+#endif // HITLS_CRYPTO_SHA3
+#ifdef HITLS_CRYPTO_SM3
     {CRYPT_MD_SM3, g_defEalMdSm3, CRYPT_EAL_DEFAULT_ATTR},
+#endif // HITLS_CRYPTO_SM3
     CRYPT_EAL_ALGINFO_END
 };
+#endif // HITLS_CRYPTO_MD
 
-
+#ifdef HITLS_CRYPTO_KDF
 static const CRYPT_EAL_AlgInfo g_defEalKdfs[] = {
     {CRYPT_KDF_SCRYPT, g_defEalKdfScrypt, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_KDF_PBKDF2, g_defEalKdfPBKdf2, CRYPT_EAL_DEFAULT_ATTR},
@@ -63,7 +83,9 @@ static const CRYPT_EAL_AlgInfo g_defEalKdfs[] = {
     {CRYPT_KDF_HKDF, g_defEalKdfHkdf, CRYPT_EAL_DEFAULT_ATTR},
     CRYPT_EAL_ALGINFO_END
 };
+#endif
 
+#ifdef HITLS_CRYPTO_PKEY
 static const CRYPT_EAL_AlgInfo g_defEalKeyMgmt[] = {
     {CRYPT_PKEY_DSA, g_defEalKeyMgmtDsa, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_PKEY_ED25519, g_defEalKeyMgmtEd25519, CRYPT_EAL_DEFAULT_ATTR},
@@ -109,6 +131,16 @@ static const CRYPT_EAL_AlgInfo g_defEalSigns[] = {
     CRYPT_EAL_ALGINFO_END
 };
 
+#if defined(HITLS_CRYPTO_MLKEM) || defined(HITLS_CRYPTO_HYBRIDKEM)
+static const CRYPT_EAL_AlgInfo g_defEalKems[] = {
+    {CRYPT_PKEY_ML_KEM, g_defEalMlKem, CRYPT_EAL_DEFAULT_ATTR},
+    {CRYPT_PKEY_HYBRID_KEM, g_defEalHybridKeyKem, CRYPT_EAL_DEFAULT_ATTR},
+    CRYPT_EAL_ALGINFO_END
+};
+#endif
+#endif
+
+#ifdef HITLS_CRYPTO_MAC
 static const CRYPT_EAL_AlgInfo g_defEalMacs[] = {
     {CRYPT_MAC_HMAC_MD5, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MAC_HMAC_SHA1, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
@@ -133,7 +165,9 @@ static const CRYPT_EAL_AlgInfo g_defEalMacs[] = {
     {CRYPT_MAC_GMAC_AES256, g_defEalMacGmac, CRYPT_EAL_DEFAULT_ATTR},
     CRYPT_EAL_ALGINFO_END
 };
+#endif
 
+#ifdef HITLS_CRYPTO_DRBG
 static const CRYPT_EAL_AlgInfo g_defEalRands[] = {
     {CRYPT_RAND_SHA1, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_RAND_SHA224, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
@@ -155,7 +189,9 @@ static const CRYPT_EAL_AlgInfo g_defEalRands[] = {
     {CRYPT_RAND_SM4_CTR_DF, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
     CRYPT_EAL_ALGINFO_END
 };
+#endif
 
+#ifdef HITLS_CRYPTO_CIPHER
 static const CRYPT_EAL_AlgInfo g_defEalCiphers[] = {
     {CRYPT_CIPHER_AES128_CBC, g_defEalCbc, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_CIPHER_AES192_CBC, g_defEalCbc, CRYPT_EAL_DEFAULT_ATTR},
@@ -198,13 +234,9 @@ static const CRYPT_EAL_AlgInfo g_defEalCiphers[] = {
 #endif
     CRYPT_EAL_ALGINFO_END
 };
+#endif
 
-static const CRYPT_EAL_AlgInfo g_defEalKems[] = {
-    {CRYPT_PKEY_ML_KEM, g_defEalMlKem, CRYPT_EAL_DEFAULT_ATTR},
-    {CRYPT_PKEY_HYBRID_KEM, g_defEalHybridKeyKem, CRYPT_EAL_DEFAULT_ATTR},
-    CRYPT_EAL_ALGINFO_END
-};
-
+#ifdef HITLS_CRYPTO_CODECSKEY
 static const CRYPT_EAL_AlgInfo g_defEalDecoders[] = {
     {BSL_CID_DECODE_UNKNOWN, g_defEalPem2Der,
         "provider=default, inFormat=PEM, outFormat=ASN1"},
@@ -246,15 +278,19 @@ static const CRYPT_EAL_AlgInfo g_defEalDecoders[] = {
         "provider=default, inFormat=OBJECT, inType=LOW_KEY, outFormat=OBJECT, outType=HIGH_KEY"},
     CRYPT_EAL_ALGINFO_END
 };
+#endif
 
 static int32_t CRYPT_EAL_DefaultProvQuery(void *provCtx, int32_t operaId, const CRYPT_EAL_AlgInfo **algInfos)
 {
     (void)provCtx;
     int32_t ret = CRYPT_SUCCESS;
     switch (operaId) {
+#ifdef HITLS_CRYPTO_CIPHER
         case CRYPT_EAL_OPERAID_SYMMCIPHER:
             *algInfos = g_defEalCiphers;
             break;
+#endif
+#ifdef HITLS_CRYPTO_PKEY
         case CRYPT_EAL_OPERAID_KEYMGMT:
             *algInfos = g_defEalKeyMgmt;
             break;
@@ -267,24 +303,37 @@ static int32_t CRYPT_EAL_DefaultProvQuery(void *provCtx, int32_t operaId, const 
         case CRYPT_EAL_OPERAID_KEYEXCH:
             *algInfos = g_defEalKeyExch;
             break;
+#if defined(HITLS_CRYPTO_MLKEM) || defined(HITLS_CRYPTO_HYBRIDKEM)
         case CRYPT_EAL_OPERAID_KEM:
             *algInfos = g_defEalKems;
             break;
+#endif
+#endif
+#ifdef HITLS_CRYPTO_MD
         case CRYPT_EAL_OPERAID_HASH:
             *algInfos = g_defEalMds;
             break;
+#endif
+#ifdef HITLS_CRYPTO_MAC
         case CRYPT_EAL_OPERAID_MAC:
             *algInfos = g_defEalMacs;
             break;
+#endif
+#ifdef HITLS_CRYPTO_KDF
         case CRYPT_EAL_OPERAID_KDF:
             *algInfos = g_defEalKdfs;
             break;
+#endif
+#ifdef HITLS_CRYPTO_DRBG
         case CRYPT_EAL_OPERAID_RAND:
             *algInfos = g_defEalRands;
             break;
+#endif
+#ifdef HITLS_CRYPTO_CODECSKEY
         case CRYPT_EAL_OPERAID_DECODER:
             *algInfos = g_defEalDecoders;
             break;
+#endif
         default:
             ret = CRYPT_NOT_SUPPORT;
             break;
@@ -297,6 +346,7 @@ static void CRYPT_EAL_DefaultProvFree(void *provCtx)
     BSL_SAL_Free(provCtx);
 }
 
+#ifdef HITLS_TLS_FEATURE_PROVIDER
 #define TLS_GROUP_PARAM_COUNT 11
 #define TLS_SIGN_SCHEME_PARAM_COUNT 18
 typedef struct {
@@ -874,12 +924,15 @@ static int32_t CRYPT_EAL_DefaultProvGetCaps(void *provCtx, int32_t cmd, CRYPT_EA
             return CRYPT_NOT_SUPPORT;
     }
 }
+#endif
 
 static CRYPT_EAL_Func g_defEalProvOutFuncs[] = {
     {CRYPT_EAL_PROVCB_QUERY, CRYPT_EAL_DefaultProvQuery},
     {CRYPT_EAL_PROVCB_FREE, CRYPT_EAL_DefaultProvFree},
     {CRYPT_EAL_PROVCB_CTRL, NULL},
+#ifdef HITLS_TLS_FEATURE_PROVIDER
     {CRYPT_EAL_PROVCB_GETCAPS, CRYPT_EAL_DefaultProvGetCaps},
+#endif
     CRYPT_EAL_FUNC_END
 };
 

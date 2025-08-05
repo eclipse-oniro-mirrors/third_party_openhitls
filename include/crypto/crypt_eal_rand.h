@@ -282,7 +282,7 @@ CRYPT_EAL_RndCtx *CRYPT_EAL_DrbgNew(CRYPT_RAND_AlgId id, CRYPT_RandSeedMethod *s
  * @param attrName [IN] Specify expected attribute values
  * @param param [IN] Transparent transmission of underlying parameters
  *
- * @retval Success: cipher ctx.
+ * @retval Success: DRBG ctx.
  *         Fails: NULL.
  */
 CRYPT_EAL_RndCtx *CRYPT_EAL_ProviderDrbgNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t algId, const char *attrName,

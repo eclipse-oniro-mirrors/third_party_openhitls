@@ -59,7 +59,7 @@ CRYPT_SM2_Ctx *CRYPT_SM2_NewCtx(void)
         return NULL;
     }
 
-    const EAL_MdMethod *mdMethod = EAL_MdFindMethod(CRYPT_MD_SM3);
+    const EAL_MdMethod *mdMethod = EAL_MdFindDefaultMethod(CRYPT_MD_SM3);
     if (mdMethod == NULL) {
         CRYPT_SM2_FreeCtx(ctx);
         BSL_ERR_PUSH_ERROR(CRYPT_EVENT_ERR);
@@ -157,7 +157,7 @@ int32_t Sm2ComputeZDigest(const CRYPT_SM2_Ctx *ctx, uint8_t *out, uint32_t *outL
     BN_BigNum *b = ECC_GetParaB(ctx->pkey->para);
     BN_BigNum *xG = ECC_GetParaX(ctx->pkey->para);
     BN_BigNum *yG = ECC_GetParaY(ctx->pkey->para);
-    void *mdCtx = ctx->hashMethod->newCtx();
+    void *mdCtx = ctx->hashMethod->newCtx(NULL, ctx->hashMethod->id);
     uint8_t *buf = BSL_SAL_Calloc(1u, keyBits);
     if (a == NULL || b == NULL || xG == NULL || yG == NULL || buf == NULL || mdCtx == NULL) {
         ret = CRYPT_MEM_ALLOC_FAIL;
@@ -205,7 +205,7 @@ static int32_t Sm2ComputeMsgHash(const CRYPT_SM2_Ctx *ctx, const uint8_t *msg, u
     int ret;
     uint8_t out[SM3_MD_SIZE];
     uint32_t outLen = sizeof(out);
-    void *mdCtx = ctx->hashMethod->newCtx();
+    void *mdCtx = ctx->hashMethod->newCtx(NULL, ctx->hashMethod->id);
     if (mdCtx == NULL) {
         ret = CRYPT_MEM_ALLOC_FAIL;
         BSL_ERR_PUSH_ERROR(ret);

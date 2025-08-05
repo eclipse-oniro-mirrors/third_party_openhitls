@@ -141,7 +141,7 @@ enum CRYPT_ERROR {
     CRYPT_EAL_ERR_NEW_PARA_FAIL,        /**< Failed to generate parameters. */
     CRYPT_EAL_ERR_RAND_WORKING,         /**< DRBG is in the working state. */
     CRYPT_EAL_ERR_RAND_NO_WORKING,      /**< DRBG is not working. */
-    CRYPT_EAL_ERR_METH_NULL_NUMBER,     /**< The method variable member is NULL. */
+    CRYPT_EAL_ERR_METH_NULL_MEMBER,     /**< The method variable member is NULL. */
     CRYPT_EAL_ERR_GLOBAL_DRBG_NULL,     /**< The global DRBG is null. */
     CRYPT_EAL_ERR_DRBG_REPEAT_INIT,     /**< DRBG is initialized repeatedly. */
     CRYPT_EAL_ERR_DRBG_INIT_FAIL,       /**< DRBG initialization failure. */
@@ -171,6 +171,7 @@ enum CRYPT_ERROR {
     CRYPT_EAL_ALG_ASM_NOT_SUPPORT,      /**< Algorithm assembly is not supported. */
     CRYPT_EAL_CIPHER_ERR_NEWCTX,
     CRYPT_EAL_PKEY_CHECK_ERROR,         /**< Pkey check failure. */
+    CRYPT_EAL_MD_METH_NULL,
 
     CRYPT_SHA2_INPUT_OVERFLOW = 0x01050001, /**< The length of the input data exceeds the maximum
                                                      processing range of SHA2. */
@@ -244,6 +245,8 @@ enum CRYPT_ERROR {
     CRYPT_HMAC_OUT_BUFF_LEN_NOT_ENOUGH = 0x010C0001, /**< The length of the buffer that storing
                                                           the output result is insufficient. */
     CRYPT_HMAC_ERR_UNSUPPORTED_CTRL_OPTION,  /**< Unsupport the control type. */
+    CRYPT_HMAC_ERR_NO_MD_LIB_CTX,            /**< MD library context not set. */
+    CRYPT_HMAC_PARAM_ERROR,                  /**< Incorrect input parameter. */
 
     CRYPT_DH_BUFF_LEN_NOT_ENOUGH = 0x010D0001,   /**< The buffer length is insufficient. */
     CRYPT_DH_PARA_ERROR,                         /**< The value of the key parameter does not meet
@@ -325,6 +328,8 @@ enum CRYPT_ERROR {
     CRYPT_HKDF_DKLEN_OVERFLOW = 0x01110001,          /**< The length of the derived key exceeds the maximum. */
     CRYPT_HKDF_NOT_SUPPORTED,                        /**< Unsupport HKDF algorithm. */
     CRYPT_HKDF_PARAM_ERROR,                          /**< Incorrect input parameter. */
+    CRYPT_HKDF_ERR_MAC_ID_NOT_SET,                   /**< Mac id not set. */
+    CRYPT_HKDF_ERR_MAC_METH,                         /**< Mac method err. */
 
     CRYPT_CMAC_OUT_BUFF_LEN_NOT_ENOUGH = 0x01120001, /**< The length of the buffer that storing the output
                                                           result is insufficient. */
@@ -339,6 +344,8 @@ enum CRYPT_ERROR {
 
     CRYPT_PBKDF2_PARAM_ERROR = 0x01150001,           /**< Incorrect input parameter. */
     CRYPT_PBKDF2_NOT_SUPPORTED,                      /**< Does not support the PBKDF2 algorithm. */
+    CRYPT_PBKDF2_ERR_MAC_METH,                       /**< Mac method err. */
+    CRYPT_PBKDF2_ERR_MAC_ID_NOT_SET,                 /**< Mac id not set. */
 
     CRYPT_ECC_POINT_AT_INFINITY = 0x01160001,         /**< Point at infinity. */
     CRYPT_ECC_POINT_NOT_ON_CURVE,                    /**< Point is not on the curve. */
@@ -430,7 +437,9 @@ enum CRYPT_ERROR {
     CRYPT_SM2_INVALID_PRVKEY,                         /**< Invalid private key. */
 
     CRYPT_KDFTLS12_NOT_SUPPORTED = 0x01210001,        /**< Unsupport the KDFTLS12 algorithm. */
-    CRYPT_KDFTLS12_PARAM_ERROR,
+    CRYPT_KDFTLS12_PARAM_ERROR,                       /**< Incorrect input parameter. */
+    CRYPT_KDFTLS12_ERR_MAC_METH,                      /**< Mac method err. */
+    CRYPT_KDFTLS12_ERR_MAC_ID_NOT_SET,                /**< Mac id not set. */
 
     CRYPT_SIPHASH_OUT_BUFF_LEN_NOT_ENOUGH = 0x01220001, /**< The buffer size for storing the output
                                                              result is insufficient. */

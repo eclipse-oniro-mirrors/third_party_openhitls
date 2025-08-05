@@ -33,10 +33,20 @@ typedef struct CryptHkdfCtx CRYPT_HKDF_Ctx;
  * @ingroup HKDF
  * @brief Generate HKDF context.
  *
- * @retval Success: cipher ctx.
+ * @retval Success: hkdf ctx.
  *         Fails: NULL.
  */
 CRYPT_HKDF_Ctx* CRYPT_HKDF_NewCtx(void);
+
+/**
+ * @ingroup HKDF
+ * @brief Generate HKDF context.
+ *
+ * @param libCtx [in] library context
+ * @retval Success: hkdf ctx.
+ *         Fails: NULL.
+ */
+CRYPT_HKDF_Ctx* CRYPT_HKDF_NewCtxEx(void *libCtx);
 
 /**
  * @ingroup HKDF

@@ -115,6 +115,30 @@ static bool IsCipherCCM8(HITLS_CipherAlgo cipherAlgo)
 }
 #endif
 
+static int32_t SetHmacMdAttr(CRYPT_EAL_MacCtx *ctx, const char *attrName)
+{
+#ifdef HITLS_TLS_FEATURE_PROVIDER
+    if (attrName == NULL) {
+        return CRYPT_SUCCESS;
+    }
+    BSL_Param param[] = {
+        {.key = CRYPT_PARAM_MD_ATTR, .valueType = BSL_PARAM_TYPE_UTF8_STR,
+        .value = (void *)(uintptr_t)attrName, .valueLen = strlen(attrName), .useLen = 0},
+        BSL_PARAM_END
+    };
+    int32_t ret = CRYPT_EAL_MacSetParam(ctx, param);
+    if (ret != CRYPT_SUCCESS) {
+        CRYPT_EAL_MacFreeCtx(ctx);
+        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17372, "MacSetParam fail");
+    }
+    return ret;
+#else
+    (void)ctx;
+    (void)attrName;
+    return CRYPT_SUCCESS;
+#endif
+}
+
 #ifdef HITLS_TLS_CALLBACK_CRYPT_HMAC_PRIMITIVES
 HITLS_HMAC_Ctx *HITLS_CRYPT_HMAC_Init(HITLS_Lib_Ctx *libCtx, const char *attrName,
     HITLS_HashAlgo hashAlgo, const uint8_t *key, uint32_t len)
@@ -132,7 +156,15 @@ HITLS_HMAC_Ctx *HITLS_CRYPT_HMAC_Init(HITLS_Lib_Ctx *libCtx, const char *attrNam
         return NULL;
     }
 
-    int32_t ret = CRYPT_EAL_MacInit(ctx, key, len);
+    int32_t ret = SetHmacMdAttr(ctx, attrName);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17365, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "MacSetParam fail", 0, 0, 0,
+            0);
+        CRYPT_EAL_MacFreeCtx(ctx);
+        return NULL;
+    }
+
+    ret = CRYPT_EAL_MacInit(ctx, key, len);
     if (ret != CRYPT_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16620, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "MacInit fail", 0, 0, 0, 0);
         CRYPT_EAL_MacFreeCtx(ctx);
@@ -212,7 +244,12 @@ int32_t HITLS_CRYPT_HMAC(HITLS_Lib_Ctx *libCtx, const char *attrName,
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_CRYPT_ERR_HMAC, BINLOG_ID16622, "new ctx fail");
     }
 
-    int32_t ret = CRYPT_EAL_MacInit(ctx, key, keyLen);
+    int32_t ret = SetHmacMdAttr(ctx, attrName);
+    if (ret != CRYPT_SUCCESS) {
+        CRYPT_EAL_MacFreeCtx(ctx);
+        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17373, "MacSetParam fail");
+    }
+    ret = CRYPT_EAL_MacInit(ctx, key, keyLen);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_MacFreeCtx(ctx);
         return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16623, "mac init fail");

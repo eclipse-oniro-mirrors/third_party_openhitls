@@ -137,6 +137,7 @@ void SDV_CRYPT_EAL_KDF_SCRYPT_API_TC001(void)
     ASSERT_EQ(CRYPT_EAL_KdfDerive(ctx, out, 0), CRYPT_SCRYPT_PARAM_ERROR);
 
     ASSERT_EQ(CRYPT_EAL_KdfDeInitCtx(ctx), CRYPT_SUCCESS);
+
 EXIT:
     CRYPT_EAL_KdfFreeCtx(ctx);
 }

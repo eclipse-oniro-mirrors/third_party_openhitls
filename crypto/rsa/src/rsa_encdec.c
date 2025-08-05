@@ -363,7 +363,7 @@ static int32_t RSA_InitBlind(CRYPT_RSA_Ctx *ctx, BN_Optimizer *opt)
 
     ctx->scBlind = RSA_BlindNewCtx();
 
-    int32_t ret = RSA_BlindCreateParam(ctx->libCtx, ctx->scBlind, e, ctx->prvKey->n, bits, opt);
+    int32_t ret = RSA_BlindCreateParam(LIBCTX_FROM_RSA_CTX(ctx), ctx->scBlind, e, ctx->prvKey->n, bits, opt);
     if (needDestoryE) {
         BN_Destroy(e);
     }
@@ -511,7 +511,7 @@ static uint32_t GetHashLen(const CRYPT_RSA_Ctx *ctx)
         return (uint32_t)(ctx->pad.para.iso9796_2.mdMeth->mdSize);
     }
 
-    return (uint32_t)(ctx->pad.para.pss.mdMeth->mdSize);
+    return (uint32_t)(ctx->pad.para.pss.mdMeth.mdSize);
 }
 
 static int32_t CheckHashLen(uint32_t inputLen)
@@ -540,7 +540,7 @@ static int32_t PssPad(CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32_t inputLe
     } else if (ctx->pad.para.pss.saltLen != 0) {
         saltLen = ctx->pad.para.pss.saltLen;
     }
-    int32_t ret = CRYPT_RSA_SetPss(ctx, ctx->pad.para.pss.mdMeth, ctx->pad.para.pss.mgfMeth,
+    int32_t ret = CRYPT_RSA_SetPss(ctx, &ctx->pad.para.pss.mdMeth, &ctx->pad.para.pss.mgfMeth,
         saltLen, input, inputLen, out, outLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
@@ -633,7 +633,7 @@ static int32_t BssaBlind(CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32_t inpu
             ret = CRYPT_MEM_ALLOC_FAIL;
             goto ERR;
         }
-        GOTO_ERR_IF(RSA_BlindCreateParam(ctx->libCtx, param->para.bssa, e, n, bits, opt), ret);
+        GOTO_ERR_IF(RSA_BlindCreateParam(LIBCTX_FROM_RSA_CTX(ctx), param->para.bssa, e, n, bits, opt), ret);
     }
     blind = param->para.bssa;
     GOTO_ERR_IF(BN_ModMul(enMsg, enMsg, blind->r, n, opt), ret);
@@ -709,7 +709,7 @@ int32_t CRYPT_RSA_Blind(CRYPT_RSA_Ctx *ctx, int32_t algId, const uint8_t *input,
     }
     uint8_t hash[64]; // 64 is max hash len
     uint32_t hashLen = sizeof(hash);
-    ret = CRYPT_EAL_Md(algId, input, inputLen, hash, &hashLen);
+    ret = EAL_Md(algId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx), input, inputLen, hash, &hashLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -960,7 +960,11 @@ int32_t CRYPT_RSA_Sign(CRYPT_RSA_Ctx *ctx, int32_t algId, const uint8_t *data, u
 {
     uint8_t hash[64]; // 64 is max hash len
     uint32_t hashLen = sizeof(hash) / sizeof(hash[0]);
-    int32_t ret = EAL_Md(algId, data, dataLen, hash, &hashLen);
+    if (ctx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    int32_t ret = EAL_Md(algId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx), data, dataLen, hash, &hashLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -1048,11 +1052,11 @@ int32_t CRYPT_RSA_VerifyData(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t d
 #ifdef HITLS_CRYPTO_RSA_EMSA_PSS
         case EMSA_PSS:
             saltLen = (uint32_t)ctx->pad.para.pss.saltLen;
-            if (ctx->pad.para.pss.mdMeth == NULL) {
+            if (ctx->pad.para.pss.mdMeth.id == 0) {
                 ret = CRYPT_NULL_INPUT;
                 goto EXIT;
             }
-            ret = CRYPT_RSA_VerifyPss(ctx, ctx->pad.para.pss.mdMeth, ctx->pad.para.pss.mgfMeth,
+            ret = CRYPT_RSA_VerifyPss(ctx, &ctx->pad.para.pss.mdMeth, &ctx->pad.para.pss.mgfMeth,
                 saltLen, data, dataLen, pad, padLen);
             break;
 #endif
@@ -1071,7 +1075,11 @@ int32_t CRYPT_RSA_Verify(CRYPT_RSA_Ctx *ctx, int32_t algId, const uint8_t *data,
 {
     uint8_t hash[64]; // 64 is max hash len
     uint32_t hashLen = sizeof(hash) / sizeof(hash[0]);
-    int32_t ret = EAL_Md(algId, data, dataLen, hash, &hashLen);
+    if (ctx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    int32_t ret = EAL_Md(algId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx), data, dataLen, hash, &hashLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -1141,7 +1149,7 @@ int32_t CRYPT_RSA_Encrypt(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t data
 #if defined(HITLS_CRYPTO_RSAES_PKCSV15_TLS) || defined(HITLS_CRYPTO_RSAES_PKCSV15)
         case RSAES_PKCSV15_TLS:
         case RSAES_PKCSV15:
-            ret = CRYPT_RSA_SetPkcsV15Type2(ctx->libCtx, data, dataLen, pad, padLen);
+            ret = CRYPT_RSA_SetPkcsV15Type2(LIBCTX_FROM_RSA_CTX(ctx), data, dataLen, pad, padLen);
             if (ret != CRYPT_SUCCESS) {
                 BSL_ERR_PUSH_ERROR(ret);
                 goto EXIT;
@@ -1231,8 +1239,8 @@ int32_t CRYPT_RSA_Decrypt(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t data
     switch (ctx->pad.type) {
 #ifdef HITLS_CRYPTO_RSAES_OAEP
         case RSAES_OAEP:
-            ret = CRYPT_RSA_VerifyPkcs1Oaep(ctx->pad.para.oaep.mdMeth,
-                ctx->pad.para.oaep.mgfMeth, pad, padLen, ctx->label.data, ctx->label.len, out, outLen);
+            ret = CRYPT_RSA_VerifyPkcs1Oaep(&ctx->pad.para.oaep.mdMeth,
+                &ctx->pad.para.oaep.mgfMeth, pad, padLen, ctx->label.data, ctx->label.len, out, outLen);
             break;
 #endif
 #ifdef HITLS_CRYPTO_RSAES_PKCSV15

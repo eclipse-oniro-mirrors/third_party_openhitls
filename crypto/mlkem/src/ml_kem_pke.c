@@ -176,31 +176,31 @@ static int16_t DeCompress(int16_t x, uint8_t bits)
 static int32_t HashFuncH(const uint8_t *in, uint32_t inLen, uint8_t *out, uint32_t outLen)
 {
     uint32_t len = outLen;
-    return EAL_Md(CRYPT_MD_SHA3_256, in, inLen, out, &len);
+    return EAL_Md(CRYPT_MD_SHA3_256, NULL, NULL, in, inLen, out, &len);
 }
 
 static int32_t HashFuncG(const uint8_t *in, uint32_t inLen, uint8_t *out, uint32_t outLen)
 {
     uint32_t len = outLen;
-    return EAL_Md(CRYPT_MD_SHA3_512, in, inLen, out, &len);
+    return EAL_Md(CRYPT_MD_SHA3_512, NULL, NULL, in, inLen, out, &len);
 }
 
 static int32_t HashFuncXOF(const uint8_t *in, uint32_t inLen, uint8_t *out, uint32_t outLen)
 {
     uint32_t len = outLen;
-    return EAL_Md(CRYPT_MD_SHAKE128, in, inLen, out, &len);
+    return EAL_Md(CRYPT_MD_SHAKE128, NULL, NULL, in, inLen, out, &len);
 }
 
 static int32_t HashFuncJ(const uint8_t *in, uint32_t inLen, uint8_t *out, uint32_t outLen)
 {
     uint32_t len = outLen;
-    return EAL_Md(CRYPT_MD_SHAKE256, in, inLen, out, &len);
+    return EAL_Md(CRYPT_MD_SHAKE256, NULL, NULL, in, inLen, out, &len);
 }
 
 static int32_t PRF(uint8_t *extSeed, uint32_t extSeedLen, uint8_t *outBuf, uint32_t bufLen)
 {
     uint32_t len = bufLen;
-    return EAL_Md(CRYPT_MD_SHAKE256, extSeed, extSeedLen, outBuf, &len);
+    return EAL_Md(CRYPT_MD_SHAKE256, NULL, NULL, extSeed, extSeedLen, outBuf, &len);
 }
 
 static int32_t Parse(uint16_t *polyNtt, uint8_t *arrayB, uint32_t arrayLen, uint32_t n)

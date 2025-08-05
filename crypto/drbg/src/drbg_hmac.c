@@ -326,7 +326,7 @@ DRBG_Ctx *DRBG_NewHmacCtx(const EAL_MacMethod *hmacMeth, CRYPT_MAC_AlgId macId,
     ctx = (DRBG_HmacCtx*)(drbg + 1);
     ctx->hmacMeth = hmacMeth;
     ctx->macId = macId;
-    void *macCtx = hmacMeth->newCtx(ctx->macId);
+    void *macCtx = hmacMeth->newCtx(NULL, ctx->macId);
     if (macCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         BSL_SAL_FREE(drbg);

@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 #include "hitls_build.h"
-#ifdef HITLS_CRYPTO_PROVIDER
+#if defined(HITLS_CRYPTO_CODECSKEY) && defined(HITLS_CRYPTO_PROVIDER)
 #include "crypt_eal_implprovider.h"
 #include "crypt_eal_pkey.h"
 #include "crypt_decode_key_impl.h"

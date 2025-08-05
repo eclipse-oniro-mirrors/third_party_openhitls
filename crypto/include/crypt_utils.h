@@ -314,6 +314,23 @@ int32_t CRYPT_FFC_PrvCheck(const void *x, const void *p, const void *q);
 
 #endif // HITLS_CRYPTO_DH_CHECK || HITLS_CRYPTO_DSA_CHECK
 
+#if defined(HITLS_CRYPTO_PROVIDER) && defined(HITLS_CRYPTO_MD)
+/**
+ * @brief Control the MD context.
+ *
+ * @param mdSize [IN] MD size
+ * @param mdBlockSize [IN] MD block size
+ * @param opt [IN] Option
+ * @param val [IN] Value
+ * @param len [IN] Length
+ *
+ * @retval #CRYPT_SUCCESS       initialization succeeded.
+ * @retval #CRYPT_NULL_INPUT    Pointer ctx is NULL
+ * @retval #CRYPT_NOT_SUPPORT   Option is not supported
+ */
+int32_t CRYPT_MdCommonGetParam(uint16_t mdSize, uint16_t mdBlockSize, BSL_Param *param);
+#endif
+
 /* Assumes that x is uint32_t and 0 < n < 32 */
 #define ROTL32(x, n) (((x) << (n)) | ((x) >> (32 - (n))))
 

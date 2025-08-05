@@ -293,8 +293,8 @@ static HITLS_Lib_Ctx *InitProviderLibCtx(char *providerPath, char (*providerName
             return NULL;
         }
         char attrName[512] = {0};
-        memcpy_s(attrName, sizeof(attrName), "provider=", strlen("provider="));
-        memcpy_s(attrName + strlen("provider="), sizeof(attrName) - strlen("provider="), providerNames[i],
+        memcpy_s(attrName, sizeof(attrName), "provider?", strlen("provider?"));
+        memcpy_s(attrName + strlen("provider?"), sizeof(attrName) - strlen("provider?"), providerNames[i],
             strlen(providerNames[i]));
         CRYPT_EAL_ProviderRandInitCtx(libCtx, CRYPT_RAND_SHA256, attrName, NULL, 0, NULL);
     }

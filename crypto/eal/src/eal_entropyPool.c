@@ -138,7 +138,7 @@ static int32_t EAL_CFSetDfMethod(CRYPT_EAL_Es *esCtx, const char *name)
         BSL_ERR_PUSH_ERROR(CRYPT_ENTROPY_ECF_ALG_ERROR);
         return CRYPT_ENTROPY_ECF_ALG_ERROR;
     }
-    const EAL_MdMethod *md = EAL_MdFindMethod(alg);
+    const EAL_MdMethod *md = EAL_MdFindDefaultMethod(alg);
     if (md == NULL) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MD, alg, CRYPT_EAL_ERR_ALGID);
         return CRYPT_ENTROPY_ECF_ALG_ERROR;

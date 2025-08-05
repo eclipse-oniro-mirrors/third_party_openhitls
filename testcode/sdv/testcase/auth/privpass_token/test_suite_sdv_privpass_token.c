@@ -1147,7 +1147,7 @@ void SDV_AUTH_PRIVPASS_CTX_DATA_OBTAIN_TC001(Hex *pki, Hex *nonce)
     ASSERT_EQ(HITLS_AUTH_PrivPassCtxCtrl(ctx, HITLS_AUTH_PRIVPASS_GET_CTX_TRUNCATEDTOKENKEYID, param, 0),
         HITLS_AUTH_SUCCESS);
     ASSERT_COMPARE("compare ctx nonce", nonceBuffer, param[0].useLen, nonce->x, nonce->len);
-    ASSERT_EQ(EAL_Md(CRYPT_MD_SHA256, pki->x, pki->len, hashBuffer, &hashBufferLen), HITLS_AUTH_SUCCESS);
+    ASSERT_EQ(EAL_Md(CRYPT_MD_SHA256, NULL, NULL, pki->x, pki->len, hashBuffer, &hashBufferLen), HITLS_AUTH_SUCCESS);
     ASSERT_COMPARE("compare token key id", hashBuffer, hashBufferLen, tokenKeyIdBuffer, param[1].useLen);
     ASSERT_EQ(truncatedTokenKeyId, hashBuffer[PRIVPASS_TOKEN_SHA256_SIZE - 1]);
 

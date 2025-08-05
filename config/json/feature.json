@@ -175,7 +175,7 @@
                         "xmss": { "deps": ["sha3", "sha2", "obj", "eal", "sha256", "sha512"]},
                         "deps": ["params"]
                     },
-                    "provider": {"deps": ["params"]},
+                    "provider": {"deps": ["params", "hash", "list", "sal_dl", "sal_str"]},
                     "bn": {
                         "bn_basic": null,
                         "bn_rand": null,

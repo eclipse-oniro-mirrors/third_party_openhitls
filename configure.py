@@ -129,6 +129,8 @@ def get_cfg_args():
         parser.add_argument('--del_link_flags', default='', type=str,
                             help='delete some link flags such as --del_link_flags="-shared -Wl,-z,relro"')
 
+        parser.add_argument('--no_config_check', action='store_true', help='disable the configuration check')
+
         parser.add_argument('--hitls_version', default='openHiTLS 0.2.0 15 May 2025', help='%(prog)s version str')
         parser.add_argument('--hitls_version_num', default=0x00200000, help='%(prog)s version num')
         parser.add_argument('--bundle_libs', action='store_true', help='Indicates that multiple libraries are bundled together. By default, it is not bound.\
@@ -592,6 +594,8 @@ class CMakeGenerator:
         compile_flags, link_flags = self._cfg_compile.union_options(self._cfg_custom_compile)
         macros = self._cfg_custom_feature.get_fea_macros()
         macros.sort()
+        if self._args.no_config_check:
+            macros.append('-DHITLS_NO_CONFIG_CHECK')
 
         if '-DHITLS_CRYPTO_CMVP_ISO19790' in compile_flags:
             self._iso_provider = True

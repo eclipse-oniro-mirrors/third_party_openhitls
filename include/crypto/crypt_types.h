@@ -915,6 +915,14 @@ typedef struct {
 
 typedef struct EAL_LibCtx CRYPT_EAL_LibCtx;
 
+/* The hitls framework generates context for each provider */
+typedef struct EAL_ProviderMgrCtx CRYPT_EAL_ProvMgrCtx;
+
+typedef struct {
+    int32_t id;
+    void *func;
+} CRYPT_EAL_Func;
+
 /* Optional parameter set for MLDSA */
 typedef enum {
     CRYPT_MLDSA_TYPE_MLDSA_44 = 0x01,            // MLDSA-44

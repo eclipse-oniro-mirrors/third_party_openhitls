@@ -191,7 +191,6 @@ void CRYPT_EAL_PkeyFreeCtx(CRYPT_EAL_PkeyCtx *pkey);
  */
 int32_t CRYPT_EAL_PkeySetPara(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPara *para);
 
-
 /**
  * @ingroup crypt_eal_pkey
  * @brief   Set the key parameters.

@@ -66,14 +66,14 @@ static int32_t SetEmsaPss(CRYPT_RSA_Ctx *ctx, RSA_PadingPara *pad)
     }
     uint32_t saltLen = (uint32_t)pad->saltLen;
     if (pad->saltLen == CRYPT_RSA_SALTLEN_TYPE_HASHLEN) {
-        saltLen = pad->mdMeth->mdSize;
+        saltLen = pad->mdMeth.mdSize;
     }
     uint32_t bytes = BN_BITS_TO_BYTES(bits);
     // The minimum specification supported by RSA is 1K,
     // and the maximum hash length supported by the hash algorithm is 64 bytes.
     // Therefore, specifying the salt length as the maximum available length is satisfied.
     if (pad->saltLen != CRYPT_RSA_SALTLEN_TYPE_MAXLEN && pad->saltLen != CRYPT_RSA_SALTLEN_TYPE_AUTOLEN &&
-        saltLen > bytes - pad->mdMeth->mdSize - 2) { // maximum length of the salt is padLen-mdMethod->GetDigestSize-2
+        saltLen > bytes - pad->mdMeth.mdSize - 2) { // maximum length of the salt is padLen-mdMethod->GetDigestSize-2
         // The configured salt length does not meet the specification.
         BSL_ERR_PUSH_ERROR(CRYPT_RSA_ERR_PSS_SALT_LEN);
         return CRYPT_RSA_ERR_PSS_SALT_LEN;
@@ -187,13 +187,13 @@ static int32_t SetSalt(CRYPT_RSA_Ctx *ctx, void *val, uint32_t len)
         return CRYPT_RSA_SET_SALT_NOT_PSS_ERROR;
     }
     RSA_PadingPara *pad = &(ctx->pad.para.pss);
-    if (pad->mdMeth == NULL) {
+    if (pad->mdMeth.id == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
     uint32_t bytes = BN_BITS_TO_BYTES(CRYPT_RSA_GetBits(ctx));
     // The maximum salt length is padLen - mdMethod->GetDigestSize - 2
-    if (len > bytes - pad->mdMeth->mdSize - 2) {
+    if (len > bytes - pad->mdMeth.mdSize - 2) {
         // The configured salt length does not meet the specification.
         BSL_ERR_PUSH_ERROR(CRYPT_RSA_ERR_SALT_LEN);
         return CRYPT_RSA_ERR_SALT_LEN;
@@ -224,17 +224,17 @@ static int32_t GetSaltLen(CRYPT_RSA_Ctx *ctx, void *val, uint32_t len)
     int32_t *ret = val;
     int32_t valTmp;
     RSA_PadingPara *pad = &(ctx->pad.para.pss);
-    if (pad->mdMeth == NULL) {
+    if (pad->mdMeth.id == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_RSA_ERR_PSS_PARAMS);
         return CRYPT_RSA_ERR_PSS_PARAMS;
     }
     uint32_t bytes = BN_BITS_TO_BYTES(CRYPT_RSA_GetBits(ctx));
     if (pad->saltLen == CRYPT_RSA_SALTLEN_TYPE_HASHLEN) { // saltLen is -1
-        valTmp = (int32_t)pad->mdMeth->mdSize;
+        valTmp = (int32_t)pad->mdMeth.mdSize;
     } else if (pad->saltLen == CRYPT_RSA_SALTLEN_TYPE_MAXLEN ||
         pad->saltLen == CRYPT_RSA_SALTLEN_TYPE_AUTOLEN) {
         // RFC 8017: Max(salt length) = ceil(bits/8) - mdSize - 2
-        valTmp = (int32_t)(bytes - pad->mdMeth->mdSize - 2);
+        valTmp = (int32_t)(bytes - pad->mdMeth.mdSize - 2);
     } else {
         valTmp = (int32_t)pad->saltLen;
     }
@@ -422,9 +422,11 @@ static int32_t RsaSetOaep(CRYPT_RSA_Ctx *ctx, BSL_Param *param)
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    padPara.mdMeth = EAL_MdFindMethod(padPara.mdId);
-    padPara.mgfMeth = EAL_MdFindMethod(padPara.mgfId);
-    if (padPara.mdMeth == NULL || padPara.mgfMeth == NULL) {
+    EAL_MdMethod *mdMeth = EAL_MdFindMethodEx(padPara.mdId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx),
+        &padPara.mdMeth, NULL);
+    EAL_MdMethod *mgfMeth = EAL_MdFindMethodEx(padPara.mgfId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx),
+        &padPara.mgfMeth, NULL);
+    if (mdMeth == NULL || mgfMeth == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
         return CRYPT_EAL_ERR_ALGID;
     }
@@ -469,9 +471,11 @@ static int32_t RsaSetPss(CRYPT_RSA_Ctx *ctx, BSL_Param *param)
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    padPara.mdMeth = EAL_MdFindMethod(padPara.mdId);
-    padPara.mgfMeth = EAL_MdFindMethod(padPara.mgfId);
-    if (padPara.mdMeth == NULL || padPara.mgfMeth == NULL) {
+    EAL_MdMethod *mdMeth = EAL_MdFindMethodEx(padPara.mdId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx),
+        &padPara.mdMeth, NULL);
+    EAL_MdMethod *mgfMeth = EAL_MdFindMethodEx(padPara.mgfId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx),
+        &padPara.mgfMeth, NULL);
+    if (mdMeth == NULL || mgfMeth == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
         return CRYPT_EAL_ERR_ALGID;
     }

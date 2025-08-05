@@ -611,7 +611,7 @@ static int32_t MLDSAPreHashEncode(CRYPT_ML_DSA_Ctx *ctx, int32_t hashId, const u
     BslOidString *oidInfo = BSL_OBJ_GetOID(hashId);
     RETURN_RET_IF(oidInfo == NULL, CRYPT_ERR_ALGID);
 
-    const EAL_MdMethod *hashMethod = EAL_MdFindMethod(hashId);
+    const EAL_MdMethod *hashMethod = EAL_MdFindDefaultMethod(hashId);
     RETURN_RET_IF(hashMethod == NULL, CRYPT_EAL_ALG_NOT_SUPPORT);
     uint32_t mdSize = MLDSAGetMdSize(hashMethod, hashId);
     msg->len = MLDSA_SIGN_PREFIX_BYTES + ctx->ctxLen + MLDSA_SIGN_PREFIX_BYTES + oidInfo->octetLen + mdSize;
@@ -637,7 +637,7 @@ static int32_t MLDSAPreHashEncode(CRYPT_ML_DSA_Ctx *ctx, int32_t hashId, const u
     (void)memcpy_s(ptr, tmpLen, oidInfo->octs, oidInfo->octetLen);
     ptr += oidInfo->octetLen;
     tmpLen -= oidInfo->octetLen;
-    void *mdCtx = hashMethod->newCtx();
+    void *mdCtx = hashMethod->newCtx(NULL, hashMethod->id);
     if (mdCtx == NULL) {
         BSL_SAL_Free(msg->data);
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);

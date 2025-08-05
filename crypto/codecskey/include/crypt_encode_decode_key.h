@@ -30,6 +30,15 @@
 extern "C" {
 #endif /* __cpluscplus */
 
+typedef struct {
+    int32_t version;
+    BslCid keyType;
+    BSL_ASN1_Buffer keyParam;
+    uint8_t *pkeyRawKey;
+    uint32_t pkeyRawKeyLen;
+    void *attrs; // HITLS_X509_Attrs *
+} CRYPT_ENCODE_DECODE_Pk8PrikeyInfo;
+
 #ifdef HITLS_CRYPTO_KEY_DECODE
 
 typedef struct {
@@ -40,14 +49,6 @@ typedef struct {
 
 int32_t CRYPT_DECODE_SubPubkey(uint8_t *buff, uint32_t buffLen, BSL_ASN1_DecTemplCallBack keyInfoCb,
     CRYPT_DECODE_SubPubkeyInfo *subPubkeyInfo, bool isComplete);
-typedef struct {
-    int32_t version;
-    BslCid keyType;
-    BSL_ASN1_Buffer keyParam;
-    uint8_t *pkeyRawKey;
-    uint32_t pkeyRawKeyLen;
-    void *attrs; // HITLS_X509_Attrs *
-} CRYPT_ENCODE_DECODE_Pk8PrikeyInfo;
 
 int32_t CRYPT_DECODE_Pkcs8Info(uint8_t *buff, uint32_t buffLen, BSL_ASN1_DecTemplCallBack keyInfoCb,
     CRYPT_ENCODE_DECODE_Pk8PrikeyInfo *pk8PrikeyInfo);
@@ -56,7 +57,7 @@ int32_t CRYPT_EAL_ParseRsaPssAlgParam(BSL_ASN1_Buffer *param, CRYPT_RSA_PssPara 
 
 int32_t CRYPT_EAL_PriKeyParseFile(BSL_ParseFormat format, int32_t type,
     const char *path, const BSL_Buffer *pwd, CRYPT_EAL_PkeyCtx **ealPriKey);
-#endif
+#endif // HITLS_CRYPTO_KEY_DECODE
 
 #ifdef HITLS_CRYPTO_KEY_ENCODE
 

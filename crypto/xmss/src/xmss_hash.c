@@ -34,7 +34,7 @@ static int32_t XCalcMultiMsgHash(CRYPT_MD_AlgId mdId, const CRYPT_ConstData *has
 {
     uint8_t tmp[MAX_MDSIZE] = {0};
     uint32_t tmpLen = sizeof(tmp);
-    int32_t ret = CRYPT_CalcHash(EAL_MdFindMethod(mdId), hashData, hashDataLen, tmp, &tmpLen);
+    int32_t ret = CRYPT_CalcHash(EAL_MdFindDefaultMethod(mdId), hashData, hashDataLen, tmp, &tmpLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;

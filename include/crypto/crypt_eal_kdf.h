@@ -51,7 +51,7 @@ bool CRYPT_EAL_KdfIsValidAlgId(CRYPT_KDF_AlgId id);
  * @param libCtx [IN] Library context
  * @param attrName [IN] Specify expected attribute values
  * @param algId [IN] kdf algorithm ID.
- * @retval Success: cipher ctx.
+ * @retval Success: kdf ctx.
  *         Fails: NULL.
  */
 CRYPT_EAL_KdfCTX *CRYPT_EAL_ProviderKdfNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t algId, const char *attrName);
@@ -60,7 +60,7 @@ CRYPT_EAL_KdfCTX *CRYPT_EAL_ProviderKdfNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t 
  * @ingroup crypt_eal_kdf
  * @brief Generate kdf handles
  * @param algId [IN] kdf algorithm ID.
- * @retval Success: cipher ctx.
+ * @retval Success: kdf ctx.
  *         Fails: NULL.
  */
 CRYPT_EAL_KdfCTX *CRYPT_EAL_KdfNewCtx(CRYPT_KDF_AlgId algId);

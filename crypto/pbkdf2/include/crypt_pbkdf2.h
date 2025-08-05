@@ -33,10 +33,21 @@ typedef struct CryptPbkdf2Ctx CRYPT_PBKDF2_Ctx;
  * @ingroup PBKDF2
  * @brief Generate PBKDF2 context.
  *
- * @retval Success: cipher ctx.
+ * @retval Success: PBKDF2 ctx.
  *         Fails: NULL.
  */
 CRYPT_PBKDF2_Ctx* CRYPT_PBKDF2_NewCtx(void);
+
+/**
+ * @ingroup PBKDF2
+ * @brief Generate PBKDF2 context.
+ *
+ * @param libCtx [in] Library context.
+ *
+ * @retval Success: PBKDF2 ctx.
+ *         Fails: NULL.
+ */
+CRYPT_PBKDF2_Ctx *CRYPT_PBKDF2_NewCtxEx(void *libCtx);
 
 /**
  * @ingroup PBKDF2
