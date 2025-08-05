@@ -93,20 +93,6 @@ int32_t CRYPT_EAL_KdfDeInitCtx(CRYPT_EAL_KdfCTX *ctx);
 
  /**
  * @ingroup crypt_eal_kdf
- * @brief get or set kdf param
- *
- * @param ctx [IN] kdf context
- * @param cmd [IN] Option information
- * @param val [IN/OUT] Data to be set/obtained
- * @param valLen [IN] Length of the data marked as "val"
- *
- * @retval  #CRYPT_SUCCESS.
- *          For other error codes, see crypt_errno.h.
- */
-int32_t CRYPT_EAL_KdfCtrl(CRYPT_EAL_KdfCTX *ctx, int32_t cmd, void *val, uint32_t valLen);
-
- /**
- * @ingroup crypt_eal_kdf
  * @brief Free the context of kdf
  *
  * @param ctx [IN] kdf context

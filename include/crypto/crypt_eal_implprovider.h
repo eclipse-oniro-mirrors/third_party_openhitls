@@ -215,7 +215,7 @@ typedef int32_t (*CRYPT_EAL_ImplPkeyKemDecapsulate)(const void *ctx, uint8_t *da
 #define CRYPT_EAL_IMPLMD_FINAL       4
 #define CRYPT_EAL_IMPLMD_DEINITCTX   5
 #define CRYPT_EAL_IMPLMD_DUPCTX      6
-#define CRYPT_EAL_IMPLMD_CTRL        7
+#define CRYPT_EAL_IMPLMD_CTRL        7 // not support
 #define CRYPT_EAL_IMPLMD_FREECTX     8
 #define CRYPT_EAL_IMPLMD_SQUEEZE     9
 
@@ -225,7 +225,7 @@ typedef int32_t (*CRYPT_EAL_ImplMdUpdate)(void *ctx, const uint8_t *input, uint3
 typedef int32_t (*CRYPT_EAL_ImplMdFinal)(void *ctx, uint8_t *out, uint32_t *outLen);
 typedef int32_t (*CRYPT_EAL_ImplMdDeInitCtx)(void *ctx);
 typedef void *(*CRYPT_EAL_ImplMdDupCtx)(const void *ctx);
-typedef int32_t (*CRYPT_EAL_ImplMdCtrl)(void *ctx, int32_t cmd, void *val, uint32_t valLen);
+typedef int32_t (*CRYPT_EAL_ImplMdCtrl)(void *ctx, int32_t cmd, void *val, uint32_t valLen); // not support
 typedef void (*CRYPT_EAL_ImplMdFreeCtx)(void *ctx);
 typedef int32_t (*CRYPT_EAL_ImplMdSqueeze)(void *ctx, uint8_t *out, uint32_t len);
 
@@ -253,14 +253,14 @@ typedef void (*CRYPT_EAL_ImplMacFreeCtx)(void *ctx);
 #define CRYPT_EAL_IMPLKDF_SETPARAM    2
 #define CRYPT_EAL_IMPLKDF_DERIVE      3
 #define CRYPT_EAL_IMPLKDF_DEINITCTX   4
-#define CRYPT_EAL_IMPLKDF_CTRL        5
+#define CRYPT_EAL_IMPLKDF_CTRL        5 // not support
 #define CRYPT_EAL_IMPLKDF_FREECTX     6
 
 typedef void *(*CRYPT_EAL_ImplKdfNewCtx)(void *provCtx, int32_t algId);
 typedef int32_t (*CRYPT_EAL_ImplKdfSetParam)(void *ctx, BSL_Param *param);
 typedef int32_t (*CRYPT_EAL_ImplKdfDerive)(void *ctx, uint8_t *key, uint32_t keyLen);
 typedef int32_t (*CRYPT_EAL_ImplKdfDeInitCtx)(void *ctx);
-typedef int32_t (*CRYPT_EAL_ImplKdfCtrl)(void *ctx, int32_t cmd, void *val, uint32_t valLen);
+typedef int32_t (*CRYPT_EAL_ImplKdfCtrl)(void *ctx, int32_t cmd, void *val, uint32_t valLen); // not support
 typedef void (*CRYPT_EAL_ImplKdfFreeCtx)(void *ctx);
 
 // CRYPT_EAL_OPERAID_RAND

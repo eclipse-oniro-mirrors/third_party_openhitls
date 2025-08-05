@@ -114,8 +114,6 @@ void SDV_CRYPT_EAL_KDF_HKDF_API_TC001(int algId)
     ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), CRYPT_HKDF_PARAM_ERROR);
 
     ASSERT_EQ(CRYPT_EAL_KdfDeInitCtx(ctx), CRYPT_SUCCESS);
-
-    ASSERT_EQ(CRYPT_EAL_KdfCtrl(ctx, 0, NULL, 0), CRYPT_NULL_INPUT);
 EXIT:
     CRYPT_EAL_KdfFreeCtx(ctx);
 }
