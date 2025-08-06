@@ -203,7 +203,7 @@ static int32_t DRBG_Restart(DRBG_Ctx *ctx)
 DRBG_Ctx *DRBG_New(void *libCtx, int32_t algId, BSL_Param *param)
 {
     int32_t ret;
-
+    (void)libCtx;
     CRYPT_RandSeedMethod seedMethArray = {0};
     CRYPT_RandSeedMethod *seedMeth = &seedMethArray;
     void *seedCtx = NULL;
