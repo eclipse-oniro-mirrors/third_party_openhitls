@@ -238,7 +238,7 @@ static int32_t BufferWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t
         while (remain >= ctx->outSize) {
             uint32_t tmpWriteLen = 0;
             int32_t ret = BSL_UIO_Write(uio->next, in, remain, &tmpWriteLen);
-            if (ret != BSL_SUCCESS) {
+            if (ret != BSL_SUCCESS || tmpWriteLen == 0) {
                 uio->flags = uio->next->flags;
                 return ret;
             }
