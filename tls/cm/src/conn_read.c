@@ -543,12 +543,12 @@ int32_t HITLS_DtlsProcessTimeout(HITLS_Ctx *ctx)
     }
 
     if (isTimeout) {
-        /* Receive the message of the last flight when the receiving times out */
-        ret = REC_RetransmitListFlush(ctx);
+        ret = HS_TimeoutProcess(ctx);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
-        ret = HS_TimeoutProcess(ctx);
+        /* Receive the message of the last flight when the receiving times out */
+        ret = REC_RetransmitListFlush(ctx);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
@@ -562,7 +562,7 @@ int32_t HITLS_DtlsGetTimeout(HITLS_Ctx *ctx, uint64_t *remainTimeOut)
     if (ctx == NULL || ctx->hsCtx == NULL || remainTimeOut == NULL) {
         return HITLS_NULL_INPUT;
     }
-    
+
     *remainTimeOut = 0;
     if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP) || ctx->hsCtx->timeoutValue == 0) {
         return HITLS_MSG_HANDLE_ERR_WITHOUT_TIMEOUT_ACTION;
