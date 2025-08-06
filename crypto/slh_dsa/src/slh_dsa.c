@@ -523,7 +523,7 @@ static int32_t MsgEncode(const CryptSlhDsaCtx *ctx, int32_t algId, const uint8_t
         mpLen += 2 + oid->octetLen; // asn1 header length is 2
         prehashLen = GetMdSize(EAL_MdFindDefaultMethod(algId), algId);
         const CRYPT_ConstData constData = {data, dataLen};
-        ret = CRYPT_CalcHash(EAL_MdFindDefaultMethod(algId), &constData, 1, prehash, &prehashLen);
+        ret = CRYPT_CalcHash(NULL, EAL_MdFindDefaultMethod(algId), &constData, 1, prehash, &prehashLen);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             return ret;

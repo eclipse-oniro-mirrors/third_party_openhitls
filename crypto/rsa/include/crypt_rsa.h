@@ -610,8 +610,7 @@ int32_t CRYPT_RSA_SetPkcs1Oaep(CRYPT_RSA_Ctx *ctx, const uint8_t *in, uint32_t i
  * @ingroup rsa
  * @brief Verify the oaep padding.
  *
- * @param hashMethod [IN] Hash method, which supports sha1, sha244, sha256, sha384, and sha512.
- * @param mgfMethod [IN] Hash method required by mgf
+ * @param pad [IN] oaep parameter, which can be null
  * @param in [IN] Data after padding
  * @param inLen [IN] Data length after padding
  * @param param [IN] oaep parameter, which can be null
@@ -625,8 +624,8 @@ int32_t CRYPT_RSA_SetPkcs1Oaep(CRYPT_RSA_Ctx *ctx, const uint8_t *in, uint32_t i
  * @retval CRYPT_SECUREC_FAIL           A security function error occurs.
  * @retval CRYPT_MEM_ALLOC_FAIL         Memory allocation failure
  * */
-int32_t CRYPT_RSA_VerifyPkcs1Oaep(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod, const uint8_t *in,
-    uint32_t inLen, const uint8_t *param, uint32_t paramLen, uint8_t *msg, uint32_t *msgLen);
+int32_t CRYPT_RSA_VerifyPkcs1Oaep(RSA_PadingPara *pad, const uint8_t *in, uint32_t inLen, const uint8_t *param,
+    uint32_t paramLen, uint8_t *msg, uint32_t *msgLen);
 #endif // HITLS_CRYPTO_RSA_DECRYPT
 #endif // HITLS_CRYPTO_RSAES_OAEP
 

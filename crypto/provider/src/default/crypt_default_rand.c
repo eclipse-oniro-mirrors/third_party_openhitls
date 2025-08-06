@@ -49,9 +49,9 @@ static int32_t GetDefaultSeed(BSL_Param *param)
 }
 #endif
 
-void *CRYPT_EAL_DefRandNewCtx(void *provCtx, int32_t algId, BSL_Param *param)
+void *CRYPT_EAL_DefRandNewCtx(CRYPT_EAL_DefProvCtx *provCtx, int32_t algId, BSL_Param *param)
 {
-    (void) provCtx;
+    void *libCtx = provCtx == NULL ? NULL : provCtx->libCtx;
     void *randCtx = NULL;
 #ifdef HITLS_CRYPTO_ASM_CHECK
     if (CRYPT_ASMCAP_Drbg(algId) != CRYPT_SUCCESS) {
@@ -81,13 +81,13 @@ void *CRYPT_EAL_DefRandNewCtx(void *provCtx, int32_t algId, BSL_Param *param)
             BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
             return NULL;
         }
-        return DRBG_New(algId, defaultParam);
+        return DRBG_New(libCtx, algId, defaultParam);
 #else
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return NULL;
 #endif
     }
-    randCtx = DRBG_New(algId, param);
+    randCtx = DRBG_New(libCtx, algId, param);
     if (randCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_PROVIDER_NOT_SUPPORT);
         return NULL;

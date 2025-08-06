@@ -317,7 +317,8 @@ EAL_MacMethod *EAL_MacFindMethodEx(CRYPT_MAC_AlgId id, void *libCtx, const char 
 #endif
 }
 
-int32_t EAL_MacFindDepMethod(CRYPT_MAC_AlgId macId, void *libCtx, const char *attrName, EAL_MacDepMethod *depMeth)
+int32_t EAL_MacFindDepMethod(CRYPT_MAC_AlgId macId, void *libCtx, const char *attrName, EAL_MacDepMethod *depMeth,
+    void **provCtx)
 {
     (void)libCtx;
     (void)attrName;
@@ -332,7 +333,7 @@ int32_t EAL_MacFindDepMethod(CRYPT_MAC_AlgId macId, void *libCtx, const char *at
         case CRYPT_MAC_HMAC:
             depMeth->id.mdId = macAlgMap->mdId;
             // md method is get from global or provider,
-            EAL_MdMethod *mdMethod = EAL_MdFindMethodEx(macAlgMap->mdId, libCtx, attrName, depMeth->method.md, NULL);
+            EAL_MdMethod *mdMethod = EAL_MdFindMethodEx(macAlgMap->mdId, libCtx, attrName, depMeth->method.md, provCtx);
             if (mdMethod == NULL) {
                 BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
                 return CRYPT_EAL_ERR_ALGID;

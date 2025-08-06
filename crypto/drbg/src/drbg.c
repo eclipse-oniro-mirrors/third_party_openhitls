@@ -200,7 +200,7 @@ static int32_t DRBG_Restart(DRBG_Ctx *ctx)
     return CRYPT_SUCCESS;
 }
 
-DRBG_Ctx *DRBG_New(int32_t algId, BSL_Param *param)
+DRBG_Ctx *DRBG_New(void *libCtx, int32_t algId, BSL_Param *param)
 {
     int32_t ret;
 
@@ -243,7 +243,7 @@ DRBG_Ctx *DRBG_New(int32_t algId, BSL_Param *param)
 #endif
 #ifdef HITLS_CRYPTO_DRBG_HMAC
         case RAND_TYPE_MAC:
-            drbg = DRBG_NewHmacCtx((const EAL_MacMethod *)(lu.method), lu.methodId, seedMeth, seedCtx);
+            drbg = DRBG_NewHmacCtx(libCtx, (const EAL_MacMethod *)(lu.method), lu.methodId, seedMeth, seedCtx);
             break;
 #endif
 #ifdef HITLS_CRYPTO_DRBG_CTR

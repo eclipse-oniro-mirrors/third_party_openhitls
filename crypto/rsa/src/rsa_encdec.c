@@ -1239,8 +1239,8 @@ int32_t CRYPT_RSA_Decrypt(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t data
     switch (ctx->pad.type) {
 #ifdef HITLS_CRYPTO_RSAES_OAEP
         case RSAES_OAEP:
-            ret = CRYPT_RSA_VerifyPkcs1Oaep(&ctx->pad.para.oaep.mdMeth,
-                &ctx->pad.para.oaep.mgfMeth, pad, padLen, ctx->label.data, ctx->label.len, out, outLen);
+            ret = CRYPT_RSA_VerifyPkcs1Oaep(&ctx->pad.para.oaep, pad, padLen, ctx->label.data, ctx->label.len,
+                out, outLen);
             break;
 #endif
 #ifdef HITLS_CRYPTO_RSAES_PKCSV15

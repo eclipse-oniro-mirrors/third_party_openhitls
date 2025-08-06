@@ -35,7 +35,7 @@ static int32_t CalcMultiMsgHash(CRYPT_MD_AlgId mdId, const CRYPT_ConstData *hash
 {
     uint8_t tmp[MAX_MDSIZE] = {0};
     uint32_t tmpLen = sizeof(tmp);
-    int32_t ret = CRYPT_CalcHash(EAL_MdFindDefaultMethod(mdId), hashData, hashDataLen, tmp, &tmpLen);
+    int32_t ret = CRYPT_CalcHash(NULL, EAL_MdFindDefaultMethod(mdId), hashData, hashDataLen, tmp, &tmpLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -98,7 +98,7 @@ static int32_t Prfmsg(const CryptSlhDsaCtx *ctx, const uint8_t *rand, const uint
     uint32_t n = ctx->para.n;
     uint8_t tmp[MAX_MDSIZE] = {0};
     uint32_t tmpLen = sizeof(tmp);
-    CRYPT_EAL_MacCtx *mdCtx = CRYPT_EAL_MacNewCtx(macId);
+    CRYPT_EAL_MacCtx *mdCtx = CRYPT_EAL_ProviderMacNewCtx(ctx->libCtx, macId, NULL);
     if (mdCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return CRYPT_MEM_ALLOC_FAIL;
@@ -146,7 +146,7 @@ static int32_t HmsgSha(const CryptSlhDsaCtx *ctx, const uint8_t *r, const uint8_
         return ret;
     }
     tmpSeedLen += tmpLen;
-    return CRYPT_Mgf1(EAL_MdFindDefaultMethod(mdId), tmpSeed, tmpSeedLen, out, m);
+    return CRYPT_Mgf1(NULL, EAL_MdFindDefaultMethod(mdId), tmpSeed, tmpSeedLen, out, m);
 }
 
 static int32_t HmsgSha256(const CryptSlhDsaCtx *ctx, const uint8_t *r, const uint8_t *msg, uint32_t msgLen,

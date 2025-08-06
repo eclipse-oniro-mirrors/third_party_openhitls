@@ -48,12 +48,24 @@
 #include <string.h>
 /* END_HEADER */
 
+#ifdef HITLS_CRYPTO_CMVP_ISO19790_PURE_C
+#define HITLS_CRYPTO_CMVP_ISO19790
+#define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/C/lib"
+#endif
+
+#ifdef HITLS_CRYPTO_CMVP_ISO19790_ARMV8_LE
+#define HITLS_CRYPTO_CMVP_ISO19790
+#define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/armv8_le/lib"
+#endif
+
+#ifdef HITLS_CRYPTO_CMVP_ISO19790_X86_64
+#define HITLS_CRYPTO_CMVP_ISO19790
+#define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/x86_64/lib"
+#endif
+
 #ifdef HITLS_CRYPTO_CMVP_ISO19790
 #define ISO19790_LOG_FILE "iso19790_audit.log"
 #define HITLS_ISO_LIB_NAME "libhitls_iso.so"
-#define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/PURE_C/lib"
-// #define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/X8664/lib"
-// #define HITLS_ISO_PROVIDER_PATH "../../output/CMVP/ARMV8_LE/lib"
 
 static FILE* g_logFile = NULL;
 
@@ -211,6 +223,11 @@ static void GetSeedPool(void **seedPool, void **es)
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
     ret = CRYPT_EAL_EsInit(esTemp);
+
+    do {
+        ret = CRYPT_EAL_EsInit(esTemp);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS);
+
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
     poolTemp = CRYPT_EAL_SeedPoolNew(true);
@@ -256,7 +273,13 @@ static void Iso19790_ProviderLoad(Iso19790_ProviderLoadCtx *ctx)
 
     BSL_Param param[2] = {{0}, BSL_PARAM_END};
     (void)BSL_PARAM_InitValue(&param[0], CRYPT_PARAM_CMVP_LOG_FUNC, BSL_PARAM_TYPE_FUNC_PTR, ISO19790_RunLogCb, 0);
-    ASSERT_EQ(CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_ISO_LIB_NAME, param, NULL), CRYPT_SUCCESS);
+
+    int32_t ret;
+    do {
+        ret = CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_ISO_LIB_NAME, param, NULL);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS);
+
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
 
     GetSeedPool((void **)&pool, (void **)&es);
     ASSERT_TRUE(pool != NULL && es != NULL);
@@ -751,13 +774,18 @@ void SDV_ISO19790_PROVIDER_Get_Status_Test_TC001()
     (void)BSL_PARAM_InitValue(&providerParam[0], CRYPT_PARAM_CMVP_LOG_FUNC, BSL_PARAM_TYPE_FUNC_PTR,
         ISO19790_RunLogCb, 0);
 
-    ASSERT_EQ(CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_ISO_LIB_NAME, providerParam, &providerMgr), CRYPT_SUCCESS);
+    do {
+        ret = CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_ISO_LIB_NAME, providerParam, &providerMgr);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+
     ASSERT_TRUE(providerMgr != NULL);
 
     ret = CRYPT_EAL_ProviderIsLoaded(libCtx, 0, HITLS_ISO_LIB_NAME, &isLoaded);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ASSERT_TRUE(isLoaded);
 
+    providerMgr = NULL;
     ASSERT_EQ(CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_ISO_LIB_NAME, providerParam, &providerMgr), CRYPT_SUCCESS);
     ASSERT_TRUE(providerMgr != NULL);
 

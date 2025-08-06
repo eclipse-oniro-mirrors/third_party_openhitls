@@ -41,7 +41,7 @@
 #endif
 
 static EAL_RandUnitaryMethod g_randMethod = {
-    .newCtx = (RandNewCtx)DRBG_New,
+    .newCtx = (RandDrbgNewCtx)DRBG_New,
     .inst = (RandDrbgInst)DRBG_Instantiate,
     .unInst = (RandDrbgUnInst)DRBG_Uninstantiate,
     .gen = (RandDrbgGen)DRBG_GenerateBytes,

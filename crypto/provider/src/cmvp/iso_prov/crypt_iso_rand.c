@@ -60,7 +60,7 @@ static void *DefaultDrbgNew(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId)
     (void)BSL_PARAM_InitValue(&randParam[index++], CRYPT_PARAM_RAND_SEEDCTX, BSL_PARAM_TYPE_CTX_PTR,
         provCtx->pool, 0);
 
-    randCtx = DRBG_New(algId, randParam);
+    randCtx = DRBG_New(provCtx->libCtx, algId, randParam);
     if (randCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_PROVIDER_NOT_SUPPORT);
         return NULL;
@@ -82,7 +82,7 @@ static void *CRYPT_EAL_IsoRandNewCtx(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algI
     if (param == NULL || getEnt == NULL) {
         return DefaultDrbgNew(provCtx, algId);
     }
-    randCtx = DRBG_New(algId, param);
+    randCtx = DRBG_New(provCtx->libCtx, algId, param);
     if (randCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_PROVIDER_NOT_SUPPORT);
         return NULL;

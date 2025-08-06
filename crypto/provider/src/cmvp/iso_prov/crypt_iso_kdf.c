@@ -196,13 +196,13 @@ static int32_t CheckDeriveKeyLen(IsoKdfCtx *ctx, uint32_t len)
 }
 
 #define KDF_METHOD_FUNC(name)                                                                                  \
-    static void *CRYPT_##name##_NewCtxWrapper(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId)                    \
+    static void *CRYPT_##name##_NewCtxExWrapper(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId)                  \
     {                                                                                                          \
         if (provCtx == NULL) {                                                                                 \
             BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                              \
             return NULL;                                                                                       \
         }                                                                                                      \
-        void *kdfCtx = CRYPT_##name##_NewCtx();                                                                \
+        void *kdfCtx = CRYPT_##name##_NewCtxEx(provCtx->libCtx);                                               \
         if (kdfCtx == NULL) {                                                                                  \
             BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);                                                          \
             return NULL;                                                                                       \
@@ -258,16 +258,6 @@ static int32_t CheckDeriveKeyLen(IsoKdfCtx *ctx, uint32_t len)
         return CRYPT_##name##_Deinit(ctx->ctx);                                                                \
     }                                                                                                          \
                                                                                                                \
-    static int32_t CRYPT_##name##_CtrlWrapper(IsoKdfCtx *ctx, int32_t cmd, void *val, uint32_t valLen)         \
-    {                                                                                                          \
-        (void)ctx;                                                                                             \
-        (void)cmd;                                                                                             \
-        (void)val;                                                                                             \
-        (void)valLen;                                                                                          \
-        BSL_ERR_PUSH_ERROR(CRYPT_NOT_SUPPORT);                                                                 \
-        return CRYPT_NOT_SUPPORT;                                                                              \
-    }                                                                                                          \
-                                                                                                               \
     static void CRYPT_##name##_FreeCtxWrapper(IsoKdfCtx *ctx)                                                  \
     {                                                                                                          \
         if (ctx == NULL) {                                                                                     \
@@ -295,11 +285,10 @@ KDF_METHOD_FUNC(HKDF);
 
 const CRYPT_EAL_Func g_isoKdfScrypt[] = {
 #ifdef HITLS_CRYPTO_SCRYPT
-    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_SCRYPT_NewCtxWrapper},
+    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_SCRYPT_NewCtxExWrapper},
     {CRYPT_EAL_IMPLKDF_SETPARAM, (CRYPT_EAL_ImplKdfSetParam)CRYPT_SCRYPT_SetParamWrapper},
     {CRYPT_EAL_IMPLKDF_DERIVE, (CRYPT_EAL_ImplKdfDerive)CRYPT_SCRYPT_DeriveWrapper},
     {CRYPT_EAL_IMPLKDF_DEINITCTX, (CRYPT_EAL_ImplKdfDeInitCtx)CRYPT_SCRYPT_DeinitWrapper},
-    {CRYPT_EAL_IMPLKDF_CTRL, (CRYPT_EAL_ImplKdfCtrl)CRYPT_SCRYPT_CtrlWrapper},
     {CRYPT_EAL_IMPLKDF_FREECTX, (CRYPT_EAL_ImplKdfFreeCtx)CRYPT_SCRYPT_FreeCtxWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
@@ -307,11 +296,10 @@ const CRYPT_EAL_Func g_isoKdfScrypt[] = {
 
 const CRYPT_EAL_Func g_isoKdfPBKdf2[] = {
 #ifdef HITLS_CRYPTO_PBKDF2
-    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_PBKDF2_NewCtxWrapper},
+    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_PBKDF2_NewCtxExWrapper},
     {CRYPT_EAL_IMPLKDF_SETPARAM, (CRYPT_EAL_ImplKdfSetParam)CRYPT_PBKDF2_SetParamWrapper},
     {CRYPT_EAL_IMPLKDF_DERIVE, (CRYPT_EAL_ImplKdfDerive)CRYPT_PBKDF2_DeriveWrapper},
     {CRYPT_EAL_IMPLKDF_DEINITCTX, (CRYPT_EAL_ImplKdfDeInitCtx)CRYPT_PBKDF2_DeinitWrapper},
-    {CRYPT_EAL_IMPLKDF_CTRL, (CRYPT_EAL_ImplKdfCtrl)CRYPT_PBKDF2_CtrlWrapper},
     {CRYPT_EAL_IMPLKDF_FREECTX, (CRYPT_EAL_ImplKdfFreeCtx)CRYPT_PBKDF2_FreeCtxWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
@@ -319,11 +307,10 @@ const CRYPT_EAL_Func g_isoKdfPBKdf2[] = {
 
 const CRYPT_EAL_Func g_isoKdfKdfTLS12[] = {
 #ifdef HITLS_CRYPTO_KDFTLS12
-    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_KDFTLS12_NewCtxWrapper},
+    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_KDFTLS12_NewCtxExWrapper},
     {CRYPT_EAL_IMPLKDF_SETPARAM, (CRYPT_EAL_ImplKdfSetParam)CRYPT_KDFTLS12_SetParamWrapper},
     {CRYPT_EAL_IMPLKDF_DERIVE, (CRYPT_EAL_ImplKdfDerive)CRYPT_KDFTLS12_DeriveWrapper},
     {CRYPT_EAL_IMPLKDF_DEINITCTX, (CRYPT_EAL_ImplKdfDeInitCtx)CRYPT_KDFTLS12_DeinitWrapper},
-    {CRYPT_EAL_IMPLKDF_CTRL, (CRYPT_EAL_ImplKdfCtrl)CRYPT_KDFTLS12_CtrlWrapper},
     {CRYPT_EAL_IMPLKDF_FREECTX, (CRYPT_EAL_ImplKdfFreeCtx)CRYPT_KDFTLS12_FreeCtxWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
@@ -331,11 +318,10 @@ const CRYPT_EAL_Func g_isoKdfKdfTLS12[] = {
 
 const CRYPT_EAL_Func g_isoKdfHkdf[] = {
 #ifdef HITLS_CRYPTO_HKDF
-    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_HKDF_NewCtxWrapper},
+    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_HKDF_NewCtxExWrapper},
     {CRYPT_EAL_IMPLKDF_SETPARAM, (CRYPT_EAL_ImplKdfSetParam)CRYPT_HKDF_SetParamWrapper},
     {CRYPT_EAL_IMPLKDF_DERIVE, (CRYPT_EAL_ImplKdfDerive)CRYPT_HKDF_DeriveWrapper},
     {CRYPT_EAL_IMPLKDF_DEINITCTX, (CRYPT_EAL_ImplKdfDeInitCtx)CRYPT_HKDF_DeinitWrapper},
-    {CRYPT_EAL_IMPLKDF_CTRL, (CRYPT_EAL_ImplKdfCtrl)CRYPT_HKDF_CtrlWrapper},
     {CRYPT_EAL_IMPLKDF_FREECTX, (CRYPT_EAL_ImplKdfFreeCtx)CRYPT_HKDF_FreeCtxWrapper},
 #endif
     CRYPT_EAL_FUNC_END,

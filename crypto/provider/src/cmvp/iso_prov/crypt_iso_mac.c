@@ -63,7 +63,7 @@ static int32_t CheckMacKeyLen(IsoMacCtx *ctx, uint32_t keyLen)
 }
 
 #define MAC_NewCtx_FUNC(name)                                                                                  \
-    static void *CRYPT_##name##_NewCtxWrapper(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId)                    \
+    static void *CRYPT_##name##_NewCtxExWrapper(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId)                  \
     {                                                                                                          \
         if (CRYPT_ASMCAP_MacCheck(algId) != CRYPT_SUCCESS) {                                                   \
             return NULL;                                                                                       \
@@ -72,7 +72,7 @@ static int32_t CheckMacKeyLen(IsoMacCtx *ctx, uint32_t keyLen)
             BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                              \
             return NULL;                                                                                       \
         }                                                                                                      \
-        void *macCtx = CRYPT_##name##_NewCtx(algId);                                                           \
+        void *macCtx = CRYPT_##name##_NewCtxEx(provCtx->libCtx, algId);                                        \
         if (macCtx == NULL) {                                                                                  \
             BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);                                                          \
             return NULL;                                                                                       \
@@ -162,8 +162,7 @@ static int32_t CheckMacKeyLen(IsoMacCtx *ctx, uint32_t keyLen)
             return CRYPT_NULL_INPUT;                                                                           \
         }                                                                                                      \
         (void)CRYPT_Iso_Log(ctx->provCtx, CRYPT_EVENT_ZERO, CRYPT_ALGO_MAC, ctx->algId);                       \
-        CRYPT_##name##_Deinit(ctx->ctx);                                                                       \
-        return CRYPT_SUCCESS;                                                                                  \
+        return CRYPT_##name##_Deinit(ctx->ctx);                                                                \
     }
 
 #define MAC_REINIT_FUNC(name)                                                                                  \
@@ -173,8 +172,17 @@ static int32_t CheckMacKeyLen(IsoMacCtx *ctx, uint32_t keyLen)
             BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                              \
             return CRYPT_NULL_INPUT;                                                                           \
         }                                                                                                      \
-        CRYPT_##name##_Reinit(ctx->ctx);                                                                       \
-        return CRYPT_SUCCESS;                                                                                  \
+        return CRYPT_##name##_Reinit(ctx->ctx);                                                                \
+    }
+
+#define MAC_SET_PARAM_FUNC(name)                                                                               \
+    static int32_t CRYPT_##name##_SetParamWrapper(IsoMacCtx *ctx, const BSL_Param *param)                      \
+    {                                                                                                          \
+        if (ctx == NULL) {                                                                                     \
+            BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                              \
+            return CRYPT_NULL_INPUT;                                                                           \
+        }                                                                                                      \
+        return CRYPT_##name##_SetParam(ctx->ctx, param);                                                       \
     }
 
 #define MAC_FUNCS(name)     \
@@ -189,6 +197,7 @@ static int32_t CheckMacKeyLen(IsoMacCtx *ctx, uint32_t keyLen)
 #ifdef HITLS_CRYPTO_HMAC
 MAC_FUNCS(HMAC)
 MAC_REINIT_FUNC(HMAC)
+MAC_SET_PARAM_FUNC(HMAC)
 #endif
 
 #ifdef HITLS_CRYPTO_CMAC
@@ -202,7 +211,7 @@ MAC_FUNCS(GMAC)
 
 const CRYPT_EAL_Func g_isoMacHmac[] = {
 #ifdef HITLS_CRYPTO_HMAC
-    {CRYPT_EAL_IMPLMAC_NEWCTX, (CRYPT_EAL_ImplMacNewCtx)CRYPT_HMAC_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMAC_NEWCTX, (CRYPT_EAL_ImplMacNewCtx)CRYPT_HMAC_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMAC_INIT, (CRYPT_EAL_ImplMacInit)CRYPT_HMAC_InitWrapper},
     {CRYPT_EAL_IMPLMAC_UPDATE, (CRYPT_EAL_ImplMacUpdate)CRYPT_HMAC_UpdateWrapper},
     {CRYPT_EAL_IMPLMAC_FINAL, (CRYPT_EAL_ImplMacFinal)CRYPT_HMAC_FinalWrapper},
@@ -210,13 +219,14 @@ const CRYPT_EAL_Func g_isoMacHmac[] = {
     {CRYPT_EAL_IMPLMAC_REINITCTX, (CRYPT_EAL_ImplMacReInitCtx)CRYPT_HMAC_ReinitWrapper},
     {CRYPT_EAL_IMPLMAC_CTRL, (CRYPT_EAL_ImplMacCtrl)CRYPT_HMAC_CtrlWrapper},
     {CRYPT_EAL_IMPLMAC_FREECTX, (CRYPT_EAL_ImplMacFreeCtx)CRYPT_HMAC_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMAC_SETPARAM, (CRYPT_EAL_ImplMacSetParam)CRYPT_HMAC_SetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMacCmac[] = {
 #ifdef HITLS_CRYPTO_CMAC
-    {CRYPT_EAL_IMPLMAC_NEWCTX, (CRYPT_EAL_ImplMacNewCtx)CRYPT_CMAC_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMAC_NEWCTX, (CRYPT_EAL_ImplMacNewCtx)CRYPT_CMAC_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMAC_INIT, (CRYPT_EAL_ImplMacInit)CRYPT_CMAC_InitWrapper},
     {CRYPT_EAL_IMPLMAC_UPDATE, (CRYPT_EAL_ImplMacUpdate)CRYPT_CMAC_UpdateWrapper},
     {CRYPT_EAL_IMPLMAC_FINAL, (CRYPT_EAL_ImplMacFinal)CRYPT_CMAC_FinalWrapper},
@@ -230,7 +240,7 @@ const CRYPT_EAL_Func g_isoMacCmac[] = {
 
 const CRYPT_EAL_Func g_isoMacGmac[] = {
 #ifdef HITLS_CRYPTO_GMAC
-    {CRYPT_EAL_IMPLMAC_NEWCTX, (CRYPT_EAL_ImplMacNewCtx)CRYPT_GMAC_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMAC_NEWCTX, (CRYPT_EAL_ImplMacNewCtx)CRYPT_GMAC_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMAC_INIT, (CRYPT_EAL_ImplMacInit)CRYPT_GMAC_InitWrapper},
     {CRYPT_EAL_IMPLMAC_UPDATE, (CRYPT_EAL_ImplMacUpdate)CRYPT_GMAC_UpdateWrapper},
     {CRYPT_EAL_IMPLMAC_FINAL, (CRYPT_EAL_ImplMacFinal)CRYPT_GMAC_FinalWrapper},

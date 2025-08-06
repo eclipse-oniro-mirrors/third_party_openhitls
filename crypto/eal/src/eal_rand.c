@@ -136,7 +136,7 @@ static int32_t EAL_RandNew(CRYPT_RAND_AlgId id, CRYPT_RandSeedMethod *seedMeth, 
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    ctx->ctx = ctx->meth->newCtx(id, seedParam);
+    ctx->ctx = ctx->meth->newCtx(NULL, id, seedParam);
     if (ctx->ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_DRBG_INIT_FAIL);
         return CRYPT_EAL_ERR_DRBG_INIT_FAIL;
@@ -698,7 +698,7 @@ int32_t CRYPT_EAL_SetRandMethod(CRYPT_EAL_RndCtx *ctx, const CRYPT_EAL_Func *fun
     while (funcs[index].id != 0) {
         switch (funcs[index].id) {
             case CRYPT_EAL_IMPLRAND_DRBGNEWCTX:
-                method->provNewCtx = funcs[index].func;
+                method->newCtx = funcs[index].func;
                 break;
             case CRYPT_EAL_IMPLRAND_DRBGINST:
                 method->inst = funcs[index].func;
@@ -763,12 +763,12 @@ static CRYPT_EAL_RndCtx *EAL_ProvRandInitDrbg(CRYPT_EAL_LibCtx *libCtx, CRYPT_RA
     if (ret != CRYPT_SUCCESS) {
         goto ERR;
     }
-    if (randCtx->meth->provNewCtx == NULL) {
+    if (randCtx->meth->newCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         goto ERR;
     }
 
-    randCtx->ctx = randCtx->meth->provNewCtx(provCtx, id, param);
+    randCtx->ctx = randCtx->meth->newCtx(provCtx, id, param);
     if (randCtx->ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_DRBG_INIT_FAIL);
         goto ERR;

@@ -253,18 +253,20 @@ do {                                         \
 /**
  * @brief Calculate the hash value of the input data.
  *
+ * @param provCtx [IN] Provider context
  * @param hashMethod [IN] Hash method
  * @param hashData [IN] Hash data
  * @param size [IN] Size of hash data
  * @param out [OUT] Output hash value
  */
-int32_t CRYPT_CalcHash(const EAL_MdMethod *hashMethod, const CRYPT_ConstData *hashData, uint32_t size,
+int32_t CRYPT_CalcHash(void *provCtx, const EAL_MdMethod *hashMethod, const CRYPT_ConstData *hashData, uint32_t size,
     uint8_t *out, uint32_t *outlen);
 
 /**
  * @ingroup rsa
  * @brief mgf1 of PKCS1
  *
+ * @param provCtx [IN] Provider context
  * @param hashMethod [IN] Hash method
  * @param seed [IN] Seed
  * @param seedLen [IN] Seed length
@@ -273,7 +275,7 @@ int32_t CRYPT_CalcHash(const EAL_MdMethod *hashMethod, const CRYPT_ConstData *ha
  *
  * @retval CRYPT_SUCCESS on success
  */
-int32_t CRYPT_Mgf1(const EAL_MdMethod *hashMethod, const uint8_t *seed, const uint32_t seedLen,
+int32_t CRYPT_Mgf1(void *provCtx, const EAL_MdMethod *hashMethod, const uint8_t *seed, const uint32_t seedLen,
     uint8_t *mask, uint32_t maskLen);
 
 /**

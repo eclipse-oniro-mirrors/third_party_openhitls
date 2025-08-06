@@ -49,7 +49,7 @@ CRYPT_HMAC_Ctx *CRYPT_HMAC_NewCtx(CRYPT_MAC_AlgId id)
     return ctx;
 }
 
-CRYPT_HMAC_Ctx *CRYPT_HMAC_NewCtxEx(void *provCtx, CRYPT_MAC_AlgId id)
+CRYPT_HMAC_Ctx *CRYPT_HMAC_NewCtxEx(void *libCtx, CRYPT_MAC_AlgId id)
 {
     CRYPT_HMAC_Ctx *ctx = BSL_SAL_Calloc(1, sizeof(CRYPT_HMAC_Ctx));
     if (ctx == NULL) {
@@ -58,9 +58,9 @@ CRYPT_HMAC_Ctx *CRYPT_HMAC_NewCtxEx(void *provCtx, CRYPT_MAC_AlgId id)
     }
     ctx->hmacId = id;
 #ifdef HITLS_CRYPTO_PROVIDER
-    ctx->libCtx = provCtx;
+    ctx->libCtx = libCtx;
 #else
-    (void)provCtx;
+    (void)libCtx;
 #endif
     return ctx;
 }
@@ -84,8 +84,9 @@ static int32_t HmacInitMdCtx(CRYPT_HMAC_Ctx *ctx, const char *attr)
 #else
     void *libCtx = NULL;
 #endif
+    void *provCtx = NULL;
     EAL_MacDepMethod depMeth = {.method = {.md = &ctx->method}};
-    int32_t ret = EAL_MacFindDepMethod(ctx->hmacId, libCtx, attr, &depMeth);
+    int32_t ret = EAL_MacFindDepMethod(ctx->hmacId, libCtx, attr, &depMeth, &provCtx);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -95,17 +96,17 @@ static int32_t HmacInitMdCtx(CRYPT_HMAC_Ctx *ctx, const char *attr)
         return CRYPT_NULL_INPUT;
     }
 
-    ctx->mdCtx = ctx->method.newCtx(libCtx, depMeth.id.mdId);
+    ctx->mdCtx = ctx->method.newCtx(provCtx, depMeth.id.mdId);
     if (ctx->mdCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         goto ERR;
     }
-    ctx->iCtx = ctx->method.newCtx(libCtx, depMeth.id.mdId);
+    ctx->iCtx = ctx->method.newCtx(provCtx, depMeth.id.mdId);
     if (ctx->iCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         goto ERR;
     }
-    ctx->oCtx = ctx->method.newCtx(libCtx, depMeth.id.mdId);
+    ctx->oCtx = ctx->method.newCtx(provCtx, depMeth.id.mdId);
     if (ctx->oCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         goto ERR;

@@ -29,7 +29,7 @@ extern "C" {
 
 typedef struct CryptScryptCtx CRYPT_SCRYPT_Ctx;
 
-typedef int32_t (*PBKDF2_PRF)(const EAL_MacMethod *macMeth, CRYPT_MAC_AlgId macId,
+typedef int32_t (*PBKDF2_PRF)(void *libCtx, const EAL_MacMethod *macMeth, CRYPT_MAC_AlgId macId,
     const EAL_MdMethod *mdMeth, const uint8_t *key, uint32_t keyLen,
     const uint8_t *salt, uint32_t saltLen,
     uint32_t iterCnt, uint8_t *out, uint32_t len);

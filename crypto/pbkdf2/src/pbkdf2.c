@@ -170,7 +170,7 @@ int32_t CRYPT_PBKDF2_GenDk(const CRYPT_PBKDF2_Ctx *pCtx, uint8_t *dk, uint32_t d
     return CRYPT_SUCCESS;
 }
 
-int32_t CRYPT_PBKDF2_HMAC(const EAL_MacMethod *macMeth, CRYPT_MAC_AlgId macId, const EAL_MdMethod *mdMeth,
+int32_t CRYPT_PBKDF2_HMAC(void *libCtx, const EAL_MacMethod *macMeth, CRYPT_MAC_AlgId macId, const EAL_MdMethod *mdMeth,
     const uint8_t *key, uint32_t keyLen,
     const uint8_t *salt, uint32_t saltLen,
     uint32_t iterCnt, uint8_t *out, uint32_t len)
@@ -204,7 +204,7 @@ int32_t CRYPT_PBKDF2_HMAC(const EAL_MacMethod *macMeth, CRYPT_MAC_AlgId macId, c
         return CRYPT_PBKDF2_PARAM_ERROR;
     }
 
-    void *macCtx = macMeth->newCtx(NULL, macId);
+    void *macCtx = macMeth->newCtx(libCtx, macId);
     if (macCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return CRYPT_MEM_ALLOC_FAIL;
@@ -355,7 +355,7 @@ static int32_t Pbkdf2GetMdSize(CRYPT_PBKDF2_Ctx *ctx, const char *mdAttr)
 
     EAL_MdMethod mdMeth = {0};
     EAL_MacDepMethod depMeth = {.method = {.md = &mdMeth}};
-    int32_t ret = EAL_MacFindDepMethod(ctx->macId, libCtx, mdAttr, &depMeth);
+    int32_t ret = EAL_MacFindDepMethod(ctx->macId, libCtx, mdAttr, &depMeth, NULL);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;

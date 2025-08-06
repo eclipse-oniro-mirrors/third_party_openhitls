@@ -29,7 +29,7 @@ CRYPT_CMAC_Ctx *CRYPT_CMAC_NewCtx(CRYPT_MAC_AlgId id)
 {
     int32_t ret;
     EAL_MacDepMethod method = {0};
-    ret = EAL_MacFindDepMethod(id, NULL, NULL, &method);
+    ret = EAL_MacFindDepMethod(id, NULL, NULL, &method, NULL);
     if (ret != CRYPT_SUCCESS) {
         return NULL;
     }

@@ -264,7 +264,7 @@ DRBG_Ctx *DRBG_HmacDup(DRBG_Ctx *drbg)
 
     ctx = (DRBG_HmacCtx*)drbg->ctx;
 
-    return DRBG_NewHmacCtx(ctx->hmacMeth, ctx->macId, &(drbg->seedMeth), drbg->seedCtx);
+    return DRBG_NewHmacCtx(drbg->libCtx, ctx->hmacMeth, ctx->macId, &(drbg->seedMeth), drbg->seedCtx);
 }
 
 void DRBG_HmacFree(DRBG_Ctx *drbg)
@@ -300,7 +300,7 @@ static int32_t DRBG_NewHmacCtxBase(uint32_t hmacSize, DRBG_Ctx *drbg)
     }
 }
 
-DRBG_Ctx *DRBG_NewHmacCtx(const EAL_MacMethod *hmacMeth, CRYPT_MAC_AlgId macId,
+DRBG_Ctx *DRBG_NewHmacCtx(void *libCtx, const EAL_MacMethod *hmacMeth, CRYPT_MAC_AlgId macId,
     const CRYPT_RandSeedMethod *seedMeth, void *seedCtx)
 {
     DRBG_Ctx *drbg = NULL;
@@ -326,7 +326,7 @@ DRBG_Ctx *DRBG_NewHmacCtx(const EAL_MacMethod *hmacMeth, CRYPT_MAC_AlgId macId,
     ctx = (DRBG_HmacCtx*)(drbg + 1);
     ctx->hmacMeth = hmacMeth;
     ctx->macId = macId;
-    void *macCtx = hmacMeth->newCtx(NULL, ctx->macId);
+    void *macCtx = hmacMeth->newCtx(libCtx, ctx->macId);
     if (macCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         BSL_SAL_FREE(drbg);
@@ -368,6 +368,7 @@ DRBG_Ctx *DRBG_NewHmacCtx(const EAL_MacMethod *hmacMeth, CRYPT_MAC_AlgId macId,
     drbg->maxPersLen = DRBG_MAX_LEN;
     drbg->maxAdinLen = DRBG_MAX_LEN;
     drbg->maxRequest = DRBG_MAX_REQUEST;
+    drbg->libCtx = libCtx;
 
     return drbg;
 }

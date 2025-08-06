@@ -138,7 +138,7 @@ static int32_t CRYPT_SIPHASH_GetMacLen(const CRYPT_SIPHASH_Ctx *ctx, void *val, 
 CRYPT_SIPHASH_Ctx *CRYPT_SIPHASH_NewCtx(CRYPT_MAC_AlgId id)
 {
     EAL_MacDepMethod macMethod = {0};
-    int32_t ret = EAL_MacFindDepMethod(id, NULL, NULL, &macMethod);
+    int32_t ret = EAL_MacFindDepMethod(id, NULL, NULL, &macMethod, NULL);
     if (ret != CRYPT_SUCCESS) {
         return NULL;
     }

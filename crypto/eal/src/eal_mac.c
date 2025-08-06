@@ -251,7 +251,7 @@ bool CRYPT_EAL_MacIsValidAlgId(CRYPT_MAC_AlgId id)
     // 1. Check if the dependency method is valid
     EAL_MdMethod mdMethod = {0};
     EAL_MacDepMethod depMeth = {.method = {.md = &mdMethod}};
-    int32_t ret = EAL_MacFindDepMethod(id, NULL, NULL, &depMeth);
+    int32_t ret = EAL_MacFindDepMethod(id, NULL, NULL, &depMeth, NULL);
     if (ret != CRYPT_SUCCESS) {
         return false;
     }

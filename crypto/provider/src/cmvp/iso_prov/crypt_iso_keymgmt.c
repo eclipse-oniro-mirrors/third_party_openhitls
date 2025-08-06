@@ -372,7 +372,7 @@ static int32_t CRYPT_ASMCAP_PkeyCheck(int32_t algId)
         if (ret != CRYPT_SUCCESS) {                                                                          \
             return ret;                                                                                      \
         }                                                                                                    \
-        return CRYPT_##name##_GetPara(ctx->ctx, param);                                                      \
+        return CRYPT_##name##_GetParaEx(ctx->ctx, param);                                                    \
     }
 
 #define PKEY_GEN_KEY_FUNC(name)                                                                              \

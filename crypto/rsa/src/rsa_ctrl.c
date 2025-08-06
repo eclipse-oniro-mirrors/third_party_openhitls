@@ -52,7 +52,7 @@ static int32_t SetEmsaPkcsV15(CRYPT_RSA_Ctx *ctx, void *val, uint32_t len)
 
 #ifdef HITLS_CRYPTO_RSA_EMSA_PSS
 
-static int32_t SetEmsaPss(CRYPT_RSA_Ctx *ctx, RSA_PadingPara *pad)
+static int32_t SetEmsaPss(CRYPT_RSA_Ctx *ctx, RSA_PadingPara *pad, void *mdProvCtx, void *mgfProvCtx)
 {
     uint32_t bits = CRYPT_RSA_GetBits(ctx);
     if (bits == 0) {
@@ -83,6 +83,8 @@ static int32_t SetEmsaPss(CRYPT_RSA_Ctx *ctx, RSA_PadingPara *pad)
     ctx->pad.type = EMSA_PSS;
     ctx->pad.para.pss.mdId = pad->mdId;
     ctx->pad.para.pss.mgfId = pad->mgfId;
+    ctx->pad.para.pss.mdProvCtx = mdProvCtx;
+    ctx->pad.para.pss.mgfProvCtx = mgfProvCtx;
     return CRYPT_SUCCESS;
 }
 #endif // HITLS_CRYPTO_RSA_EMSA_PSS
@@ -422,14 +424,18 @@ static int32_t RsaSetOaep(CRYPT_RSA_Ctx *ctx, BSL_Param *param)
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
+    void *mdProvCtx = NULL;
+    void *mgfProvCtx = NULL;
     EAL_MdMethod *mdMeth = EAL_MdFindMethodEx(padPara.mdId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx),
-        &padPara.mdMeth, NULL);
+        &padPara.mdMeth, &mdProvCtx);
     EAL_MdMethod *mgfMeth = EAL_MdFindMethodEx(padPara.mgfId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx),
-        &padPara.mgfMeth, NULL);
+        &padPara.mgfMeth, &mgfProvCtx);
     if (mdMeth == NULL || mgfMeth == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
         return CRYPT_EAL_ERR_ALGID;
     }
+    padPara.mdProvCtx = mdProvCtx;
+    padPara.mgfProvCtx = mgfProvCtx;
     SetOaep(ctx, &padPara);
 ERR:
     return ret;
@@ -471,15 +477,17 @@ static int32_t RsaSetPss(CRYPT_RSA_Ctx *ctx, BSL_Param *param)
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
+    void *mdProvCtx = NULL;
+    void *mgfProvCtx = NULL;
     EAL_MdMethod *mdMeth = EAL_MdFindMethodEx(padPara.mdId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx),
-        &padPara.mdMeth, NULL);
+        &padPara.mdMeth, &mdProvCtx);
     EAL_MdMethod *mgfMeth = EAL_MdFindMethodEx(padPara.mgfId, LIBCTX_FROM_RSA_CTX(ctx), MDATTR_FROM_RSA_CTX(ctx),
-        &padPara.mgfMeth, NULL);
+        &padPara.mgfMeth, &mgfProvCtx);
     if (mdMeth == NULL || mgfMeth == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
         return CRYPT_EAL_ERR_ALGID;
     }
-    ret = SetEmsaPss(ctx, &padPara);
+    ret = SetEmsaPss(ctx, &padPara, mdProvCtx, mgfProvCtx);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
     }

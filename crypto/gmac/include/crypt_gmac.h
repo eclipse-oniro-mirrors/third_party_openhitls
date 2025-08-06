@@ -30,7 +30,7 @@ extern "C" {
 
 MODES_GCM_Ctx *CRYPT_GMAC_NewCtx(CRYPT_MAC_AlgId id);
 
-MODES_GCM_Ctx *CRYPT_GMAC_NewCtxEx(void *provCtx, CRYPT_MAC_AlgId id);
+MODES_GCM_Ctx *CRYPT_GMAC_NewCtxEx(void *libCtx, CRYPT_MAC_AlgId id);
 
 int32_t CRYPT_GMAC_Init(MODES_GCM_Ctx *ctx, const uint8_t *key, uint32_t len, void *param);
 

@@ -49,7 +49,7 @@ static uint32_t CRYPT_ASMCAP_Test(int32_t algId)
 }
 
 #define MD_METHOD_FUNC(name)                                                                            \
-    static IsoMdCtx *CRYPT_##name##_NewCtxWrapper(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId)         \
+    static IsoMdCtx *CRYPT_##name##_NewCtxExWrapper(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId)       \
     {                                                                                                   \
         int32_t ret = CRYPT_ASMCAP_Test(algId);                                                         \
         if (ret != CRYPT_SUCCESS) {                                                                     \
@@ -59,7 +59,7 @@ static uint32_t CRYPT_ASMCAP_Test(int32_t algId)
             BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                       \
             return NULL;                                                                                \
         }                                                                                               \
-        void *mdCtx = CRYPT_##name##_NewCtx();                                                          \
+        void *mdCtx = CRYPT_##name##_NewCtxEx(provCtx->libCtx, algId);                                  \
         if (mdCtx == NULL) {                                                                            \
             BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);                                                   \
             return NULL;                                                                                \
@@ -113,8 +113,7 @@ static uint32_t CRYPT_ASMCAP_Test(int32_t algId)
             BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                       \
             return CRYPT_NULL_INPUT;                                                                    \
         }                                                                                               \
-        CRYPT_##name##_Deinit(ctx->ctx);                                                                \
-        return CRYPT_SUCCESS;                                                                           \
+        return CRYPT_##name##_Deinit(ctx->ctx);                                                         \
     }                                                                                                   \
                                                                                                         \
     static IsoMdCtx *CRYPT_##name##_DupCtxWrapper(const IsoMdCtx *src)                                  \
@@ -149,6 +148,26 @@ static uint32_t CRYPT_ASMCAP_Test(int32_t algId)
             CRYPT_##name##_FreeCtx(ctx->ctx);                                                           \
         }                                                                                               \
         BSL_SAL_Free(ctx);                                                                              \
+    }                                                                                                   \
+                                                                                                        \
+    static int32_t CRYPT_##name##_GetParamWrapper(IsoMdCtx *ctx, BSL_Param *param)                      \
+    {                                                                                                   \
+        if (ctx == NULL) {                                                                              \
+            BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                       \
+            return CRYPT_NULL_INPUT;                                                                    \
+        }                                                                                               \
+        return CRYPT_##name##_GetParam(ctx->ctx, param);                                                \
+    }                                                                                                   \
+                                                                                                        \
+    static int32_t CRYPT_##name##_CopyCtxWrapper(IsoMdCtx *dst, const IsoMdCtx *src)                    \
+    {                                                                                                   \
+        if (dst == NULL || src == NULL) {                                                               \
+            BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                       \
+            return CRYPT_NULL_INPUT;                                                                    \
+        }                                                                                               \
+        dst->algId = src->algId;                                                                        \
+        dst->provCtx = src->provCtx;                                                                    \
+        return CRYPT_##name##_CopyCtx(dst->ctx, src->ctx);                                              \
     }
 
 MD_METHOD_FUNC(SHA1)
@@ -177,182 +196,184 @@ MD_METHOD_FUNC(SM3)
 MD_SQUEEZE_FUNC(SHAKE128)
 MD_SQUEEZE_FUNC(SHAKE256)
 
-static int32_t CRYPT_EAL_IsoMdCtrl(void *ctx, int32_t cmd, void *val, uint32_t valLen)
-{
-    (void) ctx;
-    (void) cmd;
-    (void) val;
-    (void) valLen;
-    BSL_ERR_PUSH_ERROR(CRYPT_NOT_SUPPORT);
-    return CRYPT_NOT_SUPPORT;
-}
-
 const CRYPT_EAL_Func g_isoMdSha1[] = {
 #ifdef HITLS_CRYPTO_SHA1
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA1_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA1_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA1_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA1_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA1_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA1_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA1_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA1_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA1_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA1_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSha224[] = {
 #ifdef HITLS_CRYPTO_SHA224
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA2_224_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA2_224_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA2_224_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA2_224_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA2_224_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA2_224_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA2_224_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA2_224_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA2_224_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA2_224_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSha256[] = {
 #ifdef HITLS_CRYPTO_SHA256
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA2_256_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA2_256_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA2_256_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA2_256_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA2_256_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA2_256_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA2_256_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA2_256_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA2_256_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA2_256_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSha384[] = {
 #ifdef HITLS_CRYPTO_SHA384
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA2_384_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA2_384_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA2_384_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA2_384_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA2_384_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA2_384_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA2_384_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA2_384_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA2_384_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA2_384_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSha512[] = {
 #ifdef HITLS_CRYPTO_SHA512
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA2_512_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA2_512_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA2_512_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA2_512_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA2_512_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA2_512_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA2_512_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA2_512_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA2_512_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA2_512_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSha3224[] = {
 #ifdef HITLS_CRYPTO_SHA3
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA3_224_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA3_224_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA3_224_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA3_224_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA3_224_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA3_224_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA3_224_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA3_224_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA3_224_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA3_224_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSha3256[] = {
 #ifdef HITLS_CRYPTO_SHA3
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA3_256_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA3_256_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA3_256_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA3_256_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA3_256_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA3_256_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA3_256_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA3_256_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA3_256_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA3_256_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSha3384[] = {
 #ifdef HITLS_CRYPTO_SHA3
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA3_384_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA3_384_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA3_384_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA3_384_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA3_384_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA3_384_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA3_384_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA3_384_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA3_384_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA3_384_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSha3512[] = {
 #ifdef HITLS_CRYPTO_SHA3
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA3_512_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHA3_512_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHA3_512_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHA3_512_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHA3_512_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHA3_512_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHA3_512_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHA3_512_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHA3_512_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHA3_512_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdShake128[] = {
 #ifdef HITLS_CRYPTO_SHA3
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHAKE128_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHAKE128_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHAKE128_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHAKE128_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHAKE128_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHAKE128_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHAKE128_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHAKE128_FreeCtxWrapper},
     {CRYPT_EAL_IMPLMD_SQUEEZE, (CRYPT_EAL_ImplMdSqueeze)CRYPT_SHAKE128_SqueezeWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHAKE128_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHAKE128_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdShake256[] = {
 #ifdef HITLS_CRYPTO_SHA3
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHAKE256_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SHAKE256_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SHAKE256_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SHAKE256_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SHAKE256_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SHAKE256_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SHAKE256_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SHAKE256_FreeCtxWrapper},
     {CRYPT_EAL_IMPLMD_SQUEEZE, (CRYPT_EAL_ImplMdSqueeze)CRYPT_SHAKE256_SqueezeWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SHAKE256_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SHAKE256_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
 
 const CRYPT_EAL_Func g_isoMdSm3[] = {
 #ifdef HITLS_CRYPTO_SM3
-    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SM3_NewCtxWrapper},
+    {CRYPT_EAL_IMPLMD_NEWCTX, (CRYPT_EAL_ImplMdNewCtx)CRYPT_SM3_NewCtxExWrapper},
     {CRYPT_EAL_IMPLMD_INITCTX, (CRYPT_EAL_ImplMdInitCtx)CRYPT_SM3_InitWrapper},
     {CRYPT_EAL_IMPLMD_UPDATE, (CRYPT_EAL_ImplMdUpdate)CRYPT_SM3_UpdateWrapper},
     {CRYPT_EAL_IMPLMD_FINAL, (CRYPT_EAL_ImplMdFinal)CRYPT_SM3_FinalWrapper},
     {CRYPT_EAL_IMPLMD_DEINITCTX, (CRYPT_EAL_ImplMdDeInitCtx)CRYPT_SM3_DeinitWrapper},
     {CRYPT_EAL_IMPLMD_DUPCTX, (CRYPT_EAL_ImplMdDupCtx)CRYPT_SM3_DupCtxWrapper},
-    {CRYPT_EAL_IMPLMD_CTRL, (CRYPT_EAL_ImplMdCtrl)CRYPT_EAL_IsoMdCtrl},
     {CRYPT_EAL_IMPLMD_FREECTX, (CRYPT_EAL_ImplMdFreeCtx)CRYPT_SM3_FreeCtxWrapper},
+    {CRYPT_EAL_IMPLMD_COPYCTX, (CRYPT_EAL_ImplMdCopyCtx)CRYPT_SM3_CopyCtxWrapper},
+    {CRYPT_EAL_IMPLMD_GETPARAM, (CRYPT_EAL_ImplMdGetParam)CRYPT_SM3_GetParamWrapper},
 #endif
     CRYPT_EAL_FUNC_END,
 };
