@@ -277,7 +277,7 @@ static void Iso19790_ProviderLoad(Iso19790_ProviderLoadCtx *ctx)
     int32_t ret;
     do {
         ret = CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_ISO_LIB_NAME, param, NULL);
-    } while (ret == CRYPT_ENTROPY_ES_NO_NS);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
 
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 

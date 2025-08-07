@@ -33,16 +33,6 @@
 #include "bsl_list_internal.h"
 /* END_HEADER */
 
-#if defined(HITLS_PKI_PKCS12_PARSE) && defined(HITLS_PKI_PKCS12_GEN)
-static void BagFree(void *value)
-{
-    HITLS_PKCS12_Bag *bag = (HITLS_PKCS12_Bag *)value;
-    HITLS_X509_CertFree(bag->value.cert);
-    HITLS_X509_AttrsFree(bag->attributes, HITLS_PKCS12_AttributesFree);
-    bag->attributes = NULL;
-    BSL_SAL_FREE(bag);
-}
-#endif
 /**
  * For test parse safeBag-p8shroudkeyBag of correct data.
 */
@@ -835,7 +825,7 @@ void SDV_PKCS12_ENCODE_AUTHSAFE_TC001(Hex *buff)
     param.itCnt = 2048;
     CRYPT_EncodeParam paramEx = {CRYPT_DERIVE_PBKDF2, &param};
 
-    HITLS_PKCS12_Bag *bag = BSL_SAL_Malloc(sizeof(HITLS_PKCS12_Bag));
+    HITLS_PKCS12_Bag *bag = BSL_SAL_Calloc(1u, sizeof(HITLS_PKCS12_Bag));
     bag->attributes = p12->entityCert->attributes;
     bag->value.cert = p12->entityCert->value.cert;
     bag->id = BSL_CID_CERTBAG;
@@ -851,7 +841,7 @@ void SDV_PKCS12_ENCODE_AUTHSAFE_TC001(Hex *buff)
     ret = HITLS_PKCS12_EncodeContentInfo(NULL, NULL, encode1, BSL_CID_PKCS7_ENCRYPTEDDATA, &paramEx, encode2);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    bagKey = BSL_SAL_Malloc(sizeof(HITLS_PKCS12_Bag));
+    bagKey = BSL_SAL_Calloc(1u, sizeof(HITLS_PKCS12_Bag));
     bagKey->attributes = p12->key->attributes;
     bagKey->value = p12->key->value;
     bagKey->id = BSL_CID_PKCS8SHROUDEDKEYBAG;
@@ -1232,7 +1222,7 @@ void SDV_PKCS12_ENCODE_P12_TC003(Hex *buff)
     ret = HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, &p12_1, &encodeParam, true, &output5);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    BSL_LIST_DeleteAll(p12_1.certList, BagFree); // test p12-encode of key attribute = NULL.
+    BSL_LIST_DeleteAll(p12_1.certList, (BSL_LIST_PFUNC_FREE)HITLS_PKCS12_BagFree); // test p12-encode of key attribute = NULL.
     ret = HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, &p12_1, &encodeParam, true, &output6);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 EXIT:
