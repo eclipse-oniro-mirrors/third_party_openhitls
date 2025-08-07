@@ -337,6 +337,7 @@ typedef enum {
     HITLS_CERT_STORE_CTRL_ERR_GET_VERIFY_DEPTH,     /**< Get the certificate verification depth error. */
     HITLS_CERT_CTRL_ERR_IS_SELF_SIGNED,             /** Determine whether the certificate is a self-signed
                                                         certificate */
+    HITLS_CERT_CTRL_ERR_INVALID_CMD,               /**< certificate ctrl invalid command */
 
     HITLS_CRYPT_FAIL_START = 0x020D0001,           /**< Crypt adaptation module error code start bit. */
     HITLS_CRYPT_ERR_GENERATE_RANDOM,               /**< Failed to generate a random number. */

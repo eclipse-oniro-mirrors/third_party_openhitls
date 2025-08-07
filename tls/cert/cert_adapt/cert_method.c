@@ -320,6 +320,10 @@ static uint32_t GetTlsCertCtrlErrorCode(HITLS_CERT_CtrlCmd cmd)
 int32_t SAL_CERT_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store, HITLS_CERT_CtrlCmd cmd, void *in, void *out)
 {
     int32_t ret;
+    if (cmd > CERT_CTRL_BUTT - 1) {
+        BSL_ERR_PUSH_ERROR(HITLS_CERT_CTRL_ERR_INVALID_CMD);
+        return HITLS_CERT_CTRL_ERR_INVALID_CMD;
+    }
 #ifdef HITLS_TLS_FEATURE_PROVIDER
     ret = HITLS_X509_Adapt_StoreCtrl(config, store, cmd, in, out);
 #else
@@ -334,6 +338,10 @@ int32_t SAL_CERT_X509Ctrl(HITLS_Config *config, HITLS_CERT_X509 *cert, HITLS_CER
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16279, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "input null", 0, 0, 0, 0);
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
         return HITLS_NULL_INPUT;
+    }
+    if (cmd > CERT_CTRL_BUTT - 1) {
+        BSL_ERR_PUSH_ERROR(HITLS_CERT_CTRL_ERR_INVALID_CMD);
+        return HITLS_CERT_CTRL_ERR_INVALID_CMD;
     }
     int32_t ret;
 #ifdef HITLS_TLS_FEATURE_PROVIDER
@@ -350,6 +358,10 @@ int32_t SAL_CERT_KeyCtrl(HITLS_Config *config, HITLS_CERT_Key *key, HITLS_CERT_C
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16280, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "input null", 0, 0, 0, 0);
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
         return HITLS_NULL_INPUT;
+    }
+    if (cmd > CERT_CTRL_BUTT - 1) {
+        BSL_ERR_PUSH_ERROR(HITLS_CERT_CTRL_ERR_INVALID_CMD);
+        return HITLS_CERT_CTRL_ERR_INVALID_CMD;
     }
     int32_t ret;
 #ifdef HITLS_TLS_FEATURE_PROVIDER
