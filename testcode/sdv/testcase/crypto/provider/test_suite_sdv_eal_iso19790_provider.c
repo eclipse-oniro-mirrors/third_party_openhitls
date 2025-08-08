@@ -223,8 +223,6 @@ static void GetSeedPool(void **seedPool, void **es)
     ret = CRYPT_EAL_EsCtrl(esTemp, CRYPT_ENTROPY_SET_POOL_SIZE, &size, sizeof(size));
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
-    ret = CRYPT_EAL_EsInit(esTemp);
-
     do {
         ret = CRYPT_EAL_EsInit(esTemp);
     } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
@@ -292,7 +290,10 @@ static void Iso19790_ProviderLoad(Iso19790_ProviderLoadCtx *ctx)
     (void)BSL_PARAM_InitValue(&randParam[3], CRYPT_PARAM_RAND_SEED_CLEANNONCE, BSL_PARAM_TYPE_FUNC_PTR, CleanNonce, 0);
     (void)BSL_PARAM_InitValue(&randParam[4], CRYPT_PARAM_RAND_SEEDCTX, BSL_PARAM_TYPE_CTX_PTR, pool, 0);
 
-    ASSERT_EQ(CRYPT_EAL_ProviderRandInitCtx(libCtx, CRYPT_RAND_SHA256, HITLS_ISO_PROVIDER_ATTR, NULL, 0, randParam), 0);
+    do {
+        ret = CRYPT_EAL_ProviderRandInitCtx(libCtx, CRYPT_RAND_SHA256, HITLS_ISO_PROVIDER_ATTR, NULL, 0, randParam);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
 
     ctx->libCtx = libCtx;
     ctx->es = es;
@@ -477,7 +478,10 @@ void SDV_ISO19790_PROVIDER_DRBG_TEST_TC001()
     ret = CRYPT_EAL_EsCtrl(es, CRYPT_ENTROPY_SET_POOL_SIZE, &size, sizeof(size));
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
-    ret = CRYPT_EAL_EsInit(es);
+    do {
+        ret = CRYPT_EAL_EsInit(es);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
+
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
     pool = CRYPT_EAL_SeedPoolNew(true);

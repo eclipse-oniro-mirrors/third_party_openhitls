@@ -575,7 +575,10 @@ enum CRYPT_ERROR {
     CRYPT_PAILLIER_ERR_INPUT_VALUE,          /**< Some special values, which are used as input errors. */
     CRYPT_PAILLIER_CTRL_NOT_SUPPORT_ERROR,   /**< The Ctrl type is not supported When paillier is used for Ctrl. */
 
-    CRYPT_PROVIDER_ERR_SELFTEST = 0x013A0001,       /**< Selftest error. */
+    CRYPT_XMSS_ERR_INVALID_ALGID = 0x013A0001,         /**< The algorithm id is invalid. */
+    CRYPT_XMSS_ERR_INVALID_SIG_LEN,                    /**< The signature length is invalid. */
+    CRYPT_XMSS_ERR_INVALID_KEYLEN,                     /**< The key length is invalid. */
+    CRYPT_XMSS_ERR_KEY_EXPIRED,                        /**< The key has expired. */
 
     CRYPT_CMVP_COMMON_ERR = 0x013B0001, /**< Common error in CMVP selftest. */
     CRYPT_CMVP_ERR_INTEGRITY,           /**< Integrity error in CMVP selftest. */
@@ -583,11 +586,6 @@ enum CRYPT_ERROR {
     CRYPT_CMVP_ERR_ALGO_SELFTEST,       /**< Algorithm selftest error in CMVP selftest. */
     CRYPT_CMVP_ERR_PAIRWISETEST,        /**< Pairwise test error in CMVP selftest. */
     CRYPT_CMVP_ERR_PARAM_CHECK,         /**< Parameter check error in CMVP selftest. */
-    
-    CRYPT_XMSS_ERR_INVALID_ALGID = 0x013B0001,         /**< The algorithm id is invalid. */
-    CRYPT_XMSS_ERR_INVALID_SIG_LEN,                    /**< The signature length is invalid. */
-    CRYPT_XMSS_ERR_INVALID_KEYLEN,                     /**< The key length is invalid. */
-    CRYPT_XMSS_ERR_KEY_EXPIRED,                        /**< The key has expired. */
 };
 #ifdef __cplusplus
 }
