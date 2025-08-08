@@ -544,31 +544,6 @@ int32_t HITLS_APP_OptToHex(uint8_t *inBuf, uint32_t inBufLen, char *outBuf, uint
     return HITLS_APP_SUCCESS;
 }
 
-int32_t HITLS_APP_OptToBin(uint8_t *inBuf, uint32_t inBufLen, char *outBuf, uint32_t outBufLen)
-{
-    if (inBuf == NULL || outBuf == NULL || inBufLen == 0 || outBufLen == 0) {
-        return -1;
-    }
-    uint32_t requiredLength = inBufLen * 9;
-    if (outBufLen < requiredLength) {
-        return -1;
-    }
-    
-    uint32_t index = 0;
-    for (uint32_t i = 0; i < inBufLen; i++) {
-        uint8_t byte = inBuf[i];
-        for (int j = 7; j >= 0; j--) {
-            outBuf[index++] = (byte >> j) & 1 ? '1' : '0';
-        }
-        if (i < inBufLen - 1) {
-            outBuf[index++] = ' ';
-        }
-    }
-    outBuf[index] = '\0';
-    
-    return 0;
-}
-
 int32_t HITLS_APP_OptWriteUio(BSL_UIO *uio, uint8_t *buf, uint32_t bufLen, int32_t format)
 {
     if (buf == NULL || uio == NULL || bufLen == 0) {

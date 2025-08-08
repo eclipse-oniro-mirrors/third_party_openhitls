@@ -27,12 +27,12 @@
 
 static CRYPT_EAL_LibCtx *g_libCtx = NULL;
 
-CRYPT_EAL_LibCtx *APP_GetCurrent_Libctx(void)
+CRYPT_EAL_LibCtx *APP_GetCurrent_LibCtx(void)
 {
     return g_libCtx;
 }
 
-CRYPT_EAL_LibCtx *APP_Create_Libctx(void)
+CRYPT_EAL_LibCtx *APP_Create_LibCtx(void)
 {
     if (g_libCtx == NULL) {
         g_libCtx = CRYPT_EAL_LibCtxNew();
@@ -45,25 +45,23 @@ int32_t HITLS_APP_LoadProvider(const char *searchPath, const char *providerName)
     CRYPT_EAL_LibCtx *ctx = g_libCtx;
     int32_t ret = HITLS_APP_SUCCESS;
     if (ctx == NULL) {
-        (void)AppPrintError("g_libCtx is NULL\n");
+        (void)AppPrintError("Lib not initialized\n");
         return HITLS_APP_INVALID_ARG;
     }
-
-    ret = CRYPT_EAL_ProviderSetLoadPath(ctx, searchPath);
-    if (ret != HITLS_APP_SUCCESS) {
-        (void)AppPrintError("Load SetLoadPath failed. ERR:%d\n", ret);
-        return ret;
+    if (searchPath != NULL) {
+        ret = CRYPT_EAL_ProviderSetLoadPath(ctx, searchPath);
+        if (ret != HITLS_APP_SUCCESS) {
+            (void)AppPrintError("Load SetSearchPath failed. ERR:%d\n", ret);
+            return ret;
+        }
     }
-    ret = CRYPT_EAL_ProviderLoad(ctx, BSL_SAL_LIB_FMT_OFF, providerName, NULL, NULL);
-    if (ret != HITLS_APP_SUCCESS) {
-        (void)AppPrintError("Load provider failed. ERR:%d\n", ret);
-        return ret;
+    if (providerName != NULL) {
+        ret = CRYPT_EAL_ProviderLoad(ctx, BSL_SAL_LIB_FMT_OFF, providerName, NULL, NULL);
+        if (ret != HITLS_APP_SUCCESS) {
+            (void)AppPrintError("Load provider failed. ERR:%d\n", ret);
+        }
     }
     return ret;
 }
 
-void HITLS_APP_UnloadProvider(CRYPT_EAL_LibCtx *libCtx)
-{
-    CRYPT_EAL_LibCtxFree(libCtx);
-}
 #endif // HITLS_CRYPTO_PROVIDER

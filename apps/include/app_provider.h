@@ -16,7 +16,8 @@
 #ifndef HITLS_APP_PROVIDER_H
 #define HITLS_APP_PROVIDER_H
 #include <stdint.h>
-#include <crypt_types.h>
+#include "crypt_types.h"
+#include "crypt_eal_provider.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,14 +28,13 @@ typedef struct {
     char *providerAttr;
 } AppProvider;
 
-CRYPT_EAL_LibCtx *APP_Create_Libctx(void);
+CRYPT_EAL_LibCtx *APP_Create_LibCtx(void);
 
-CRYPT_EAL_LibCtx *APP_GetCurrent_Libctx(void);
+CRYPT_EAL_LibCtx *APP_GetCurrent_LibCtx(void);
 
 int32_t HITLS_APP_LoadProvider(const char *searchPath, const char *providerName);
 
-void HITLS_APP_UnloadProvider(CRYPT_EAL_LibCtx *libCtx);
-
+#define HITLS_APP_FreeLibCtx CRYPT_EAL_LibCtxFree
 #ifdef __cplusplus
 }
 #endif

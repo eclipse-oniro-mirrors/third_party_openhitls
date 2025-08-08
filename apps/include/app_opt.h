@@ -241,39 +241,26 @@ BSL_UIO* HITLS_APP_UioOpen(const char* filename, char mode, int32_t flag);
  * @brief   Converts a character string to a character string in Base64 format and output the buf to UIO
  *
  * @param   buf     [IN]  content to be encoded
- * @param   outLen  [IN]  the length of content to be encoded
+ * @param   inBufLen  [IN]  the length of content to be encoded
  * @param   outBuf  [IN]  Encoded content
  * @param   outBufLen  [IN] the length of encoded content
  *
  * @retval  int32_t success or not
 */
-int32_t HITLS_APP_OptToBase64(uint8_t *buf, uint32_t outLen, char *outBuf, uint32_t outBufLen);
+int32_t HITLS_APP_OptToBase64(uint8_t *buf, uint32_t inBufLen, char *outBuf, uint32_t outBufLen);
 
 /**
  * @ingroup HITLS_APP
  * @brief   Converts a character string to a hexadecimal character string and output the buf to UIO
  *
  * @param   buf     [IN]  content to be encoded
- * @param   outLen  [IN]  the length of content to be encoded
+ * @param   inBufLen  [IN]  the length of content to be encoded
  * @param   outBuf  [IN]  Encoded content
  * @param   outBufLen  [IN] the length of encoded content
  *
  * @retval  int32_t success or not
 */
-int32_t HITLS_APP_OptToHex(uint8_t *buf, uint32_t outLen, char *outBuf, uint32_t outBufLen);
-
-/**
- * @ingroup HITLS_APP
- * @brief   Converts a character string to a hexadecimal character string and output the buf to UIO
- *
- * @param   buf     [IN]  content to be encoded
- * @param   outLen  [IN]  the length of content to be encoded
- * @param   outBuf  [IN]  Encoded content
- * @param   outBufLen  [IN] the length of encoded content
- *
- * @retval  int32_t success or not
-*/
-int32_t HITLS_APP_OptToBin(uint8_t *inBuf, uint32_t inBufLen, char *outBuf, uint32_t outBufLen);
+int32_t HITLS_APP_OptToHex(uint8_t *buf, uint32_t inBufLen, char *outBuf, uint32_t outBufLen);
 
 /**
  * @ingroup HITLS_APP

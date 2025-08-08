@@ -139,7 +139,7 @@ static const CidInfo g_allMacAlgInfo[] = {
     {CRYPT_MAC_GMAC_AES256, "gmac-aes256"},
     {CRYPT_MAC_SIPHASH64, "siphash64"},
     {CRYPT_MAC_SIPHASH128, "siphash128"},
-    {CRYPT_MAC_CBC_MAC_SM4, "sm4-cbc-mac"},
+    {CRYPT_MAC_CBC_MAC_SM4, "cbc-mac-sm4"},
 };
 
 #define MAC_ALG_CNT (sizeof(g_allMacAlgInfo) / sizeof(CidInfo))

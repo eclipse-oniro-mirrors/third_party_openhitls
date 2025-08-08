@@ -106,8 +106,8 @@ int main(int argc, char *argv[])
         goto end;
     }
 
-    if (APP_GetCurrent_Libctx() == NULL) {
-        if (APP_Create_Libctx() == NULL) {
+    if (APP_GetCurrent_LibCtx() == NULL) {
+        if (APP_Create_LibCtx() == NULL) {
             (void)AppPrintError("Create g_libCtx failed\n");
             ret = HITLS_APP_INVALID_ARG;
             goto end;
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     ret = func.main(newArgc, newArgv);
     FreeNewArgv(newArgv, newArgc);
 end:
-    HITLS_APP_UnloadProvider(APP_GetCurrent_Libctx());
+    HITLS_APP_FreeLibCtx(APP_GetCurrent_LibCtx());
     AppUninit();
     return ret;
 }

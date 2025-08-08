@@ -40,6 +40,7 @@
 #define RSA_PRV_CTX_LEN 8
 #define HEX_TO_BYTE 2
 
+#define APP_HEX_HEAD "0x"
 #define APP_LINESIZE 255
 #define PEM_BEGIN_STR "-----BEGIN "
 #define PEM_END_STR "-----END "
@@ -868,8 +869,13 @@ void HITLS_APP_PrintPassErrlog(void)
 
 int32_t HITLS_APP_HexToByte(const char *hex, uint8_t **bin, uint32_t *len)
 {
-    uint32_t hexLen = strlen(hex);
-    const char *num = hex;
+    uint32_t prefixLen = strlen(APP_HEX_HEAD);
+    if (strncmp(hex, APP_HEX_HEAD, prefixLen) != 0 || strlen(hex) <= prefixLen) {
+        AppPrintError("Invalid hex value, should start with '0x'.\n");
+        return HITLS_APP_OPT_VALUE_INVALID;
+    }
+    const char *num = hex + prefixLen;
+    uint32_t hexLen = strlen(num);
     // Skip the preceding zeros.
     for (uint32_t i = 0; i < hexLen; ++i) {
         if (num[i] != '0' && (i + 1) != hexLen) {
@@ -892,9 +898,9 @@ int32_t HITLS_APP_HexToByte(const char *hex, uint8_t **bin, uint32_t *len)
         if (hexIdx == 0 && hexLen % HEX_TO_BYTE == 1) {
             tmp[0] = '0';
         } else {
-            tmp[0] = hex[hexIdx++];
+            tmp[0] = num[hexIdx++];
         }
-        tmp[1] = hex[hexIdx++];
+        tmp[1] = num[hexIdx++];
         res[binIdx++] = (uint32_t)strtol(tmp, &endptr, 16);  // 16: hex
         if (*endptr != '\0') {
             BSL_SAL_Free(res);

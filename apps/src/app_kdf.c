@@ -32,9 +32,6 @@
 #include "app_provider.h"
 #include "app_utils.h"
 
-#define KDF_HEX_HEAD "0x"
-#define MAC_MAX_FILENAME_LENGTH  PATH_MAX
-
 typedef enum OptionChoice {
     HITLS_APP_OPT_KDF_ERR = -1,
     HITLS_APP_OPT_KDF_EOF = 0,
@@ -48,6 +45,7 @@ typedef enum OptionChoice {
     HITLS_APP_OPT_KDF_SALT,
     HITLS_APP_OPT_KDF_HEXSALT,
     HITLS_APP_OPT_KDF_ITER,
+    HITLS_APP_OPT_KDF_BINARY,
     HITLS_APP_PROV_ENUM
 } HITLSOptType;
 
@@ -56,7 +54,9 @@ const HITLS_CmdOption g_kdfOpts[] = {
     {"mac", HITLS_APP_OPT_KDF_MAC_ALG, HITLS_APP_OPT_VALUETYPE_STRING,
         "Specify MAC algorithm used in KDF (e.g.: hmac-sha256)."},
     {"out", HITLS_APP_OPT_KDF_OUT, HITLS_APP_OPT_VALUETYPE_OUT_FILE,
-        "Set output file for derived key (default: stdout)."},
+        "Set output file for derived key (default: stdout, hex format)."},
+    {"binary", HITLS_APP_OPT_KDF_BINARY, HITLS_APP_OPT_VALUETYPE_NO_VALUE,
+        "Output derived key in binary format."},
     {"keylen", HITLS_APP_OPT_KDF_KEYLEN, HITLS_APP_OPT_VALUETYPE_UINT, "Length of derived key in bytes."},
     {"pass", HITLS_APP_OPT_KDF_PASS, HITLS_APP_OPT_VALUETYPE_STRING, "Input password as a string."},
     {"hexpass", HITLS_APP_OPT_KDF_HEXPASS, HITLS_APP_OPT_VALUETYPE_STRING,
@@ -70,7 +70,6 @@ const HITLS_CmdOption g_kdfOpts[] = {
     {NULL}};
 
 typedef struct {
-    char *macName;
     int32_t macId;
     char *kdfName;
     int32_t kdfId;
@@ -82,6 +81,7 @@ typedef struct {
     char *hexSalt;
     uint32_t iter;
     AppProvider *provider;
+    uint32_t isBinary;
 } KdfOpt;
 
 typedef int32_t (*KdfOptHandleFunc)(KdfOpt *);
@@ -136,27 +136,38 @@ static int32_t HandleKdfHexSalt(KdfOpt *kdfOpt)
 
 static int32_t HandleKdfIter(KdfOpt *kdfOpt)
 {
-    if (HITLS_APP_OptGetUint32(HITLS_APP_OptGetValueStr(), &(kdfOpt->iter)) != HITLS_APP_SUCCESS) {
-        return HITLS_APP_OPT_UNKOWN;
+    int32_t ret = HITLS_APP_OptGetUint32(HITLS_APP_OptGetValueStr(), &(kdfOpt->iter));
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("kdf: Invalid iter value.\n");
     }
-    return HITLS_APP_SUCCESS;
+    return ret;
 }
 
 static int32_t HandleKdfKeyLen(KdfOpt *kdfOpt)
 {
-    if (HITLS_APP_OptGetUint32(HITLS_APP_OptGetValueStr(), &(kdfOpt->keyLen)) != HITLS_APP_SUCCESS) {
-        return HITLS_APP_OPT_UNKOWN;
+    int32_t ret = HITLS_APP_OptGetUint32(HITLS_APP_OptGetValueStr(), &(kdfOpt->keyLen));
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("kdf: Invalid keylen value.\n");
     }
+    return ret;
+}
+
+static int32_t HandleKdfBinary(KdfOpt *kdfOpt)
+{
+    kdfOpt->isBinary = 1;
     return HITLS_APP_SUCCESS;
 }
+
 static int32_t HandleKdfMacAlg(KdfOpt *kdfOpt)
 {
-    kdfOpt->macName = HITLS_APP_OptGetValueStr();
-    if (kdfOpt->macName == NULL) {
+    char *macName = HITLS_APP_OptGetValueStr();
+    if (macName == NULL) {
+        AppPrintError("kdf: MAC algorithm is NULL.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
-    kdfOpt->macId = HITLS_APP_GetCidByName(kdfOpt->macName, HITLS_APP_LIST_OPT_MAC_ALG);
+    kdfOpt->macId = HITLS_APP_GetCidByName(macName, HITLS_APP_LIST_OPT_MAC_ALG);
     if (kdfOpt->macId == BSL_CID_UNKNOWN) {
+        AppPrintError("kdf: Unsupported MAC algorithm: %s\n", macName);
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     return HITLS_APP_SUCCESS;
@@ -173,6 +184,7 @@ static const KdfOptHandleFuncMap g_kdfOptHandleFuncMap[] = {
     {HITLS_APP_OPT_KDF_ITER, HandleKdfIter},
     {HITLS_APP_OPT_KDF_KEYLEN, HandleKdfKeyLen},
     {HITLS_APP_OPT_KDF_MAC_ALG, HandleKdfMacAlg},
+    {HITLS_APP_OPT_KDF_BINARY, HandleKdfBinary},
 };
 
 static int32_t ParseKdfOpt(KdfOpt *kdfOpt)
@@ -208,6 +220,11 @@ static int32_t GetKdfAlg(KdfOpt *kdfOpt)
         AppPrintError("No support KDF algorithm.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
+    if (argc - 1 != 0) {
+        AppPrintError("Extra arguments given.\n");
+        AppPrintError("mac: Use -help for summary.\n");
+        return HITLS_APP_OPT_UNKOWN;
+    }
     return HITLS_APP_SUCCESS;
 }
 
@@ -215,28 +232,33 @@ static int32_t CheckParam(KdfOpt *kdfOpt)
 {
     if (kdfOpt->kdfId == CRYPT_KDF_PBKDF2) {
         if (kdfOpt->pass == NULL && kdfOpt->hexPass == NULL) {
-            AppPrintError("KDF: No pass entered.\n");
+            AppPrintError("kdf: No pass entered.\n");
+            return HITLS_APP_OPT_VALUE_INVALID;
+        }
+        if (kdfOpt->pass != NULL && kdfOpt->hexPass != NULL) {
+            AppPrintError("kdf: Cannot specify both pass and hexpass.\n");
             return HITLS_APP_OPT_VALUE_INVALID;
         }
         if (kdfOpt->salt == NULL && kdfOpt->hexSalt == NULL) {
-            AppPrintError("KDF: No salt entered.\n");
+            AppPrintError("kdf: No salt entered.\n");
+            return HITLS_APP_OPT_VALUE_INVALID;
+        }
+        if (kdfOpt->salt != NULL && kdfOpt->hexSalt != NULL) {
+            AppPrintError("kdf: Cannot specify both salt and hexsalt.\n");
             return HITLS_APP_OPT_VALUE_INVALID;
         }
     }
     if (kdfOpt->keyLen == 0) {
-        AppPrintError("KDF: Input keylen is invalid.\n");
+        AppPrintError("kdf: Input keylen is invalid.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     if (kdfOpt->iter == 0) {
-        AppPrintError("KDF: Input iter is invalid.\n");
+        AppPrintError("kdf: Input iter is invalid.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
-    if (kdfOpt->outFile != NULL && strlen((const char*)kdfOpt->outFile) > MAC_MAX_FILENAME_LENGTH) {
-        AppPrintError("KDF: The output file length is invalid.\n");
+    if (kdfOpt->outFile != NULL && strlen((const char*)kdfOpt->outFile) > PATH_MAX) {
+        AppPrintError("kdf: The output file length is invalid.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
-    }
-    if (kdfOpt->macName == NULL) {
-        AppPrintError("KDF: MAC algorithm not specified; default algorithm(HMAC_SHA256) will be used.\n");
     }
     
     return HITLS_APP_SUCCESS;
@@ -244,14 +266,11 @@ static int32_t CheckParam(KdfOpt *kdfOpt)
 
 static CRYPT_EAL_KdfCTX *InitAlgKdf(KdfOpt *kdfOpt)
 {
-    int32_t ret;
-
-    ret = HITLS_APP_LoadProvider(kdfOpt->provider->providerPath, kdfOpt->provider->providerName);
-    if (ret != HITLS_APP_SUCCESS) {
+    if (HITLS_APP_LoadProvider(kdfOpt->provider->providerPath, kdfOpt->provider->providerName) != HITLS_APP_SUCCESS) {
         return NULL;
     }
-    CRYPT_EAL_KdfCTX *ctx = CRYPT_EAL_ProviderKdfNewCtx(APP_GetCurrent_Libctx(), kdfOpt->kdfId,
-        kdfOpt->provider->providerAttr);  // creating an MAC Context
+    CRYPT_EAL_KdfCTX *ctx = CRYPT_EAL_ProviderKdfNewCtx(APP_GetCurrent_LibCtx(), kdfOpt->kdfId,
+        kdfOpt->provider->providerAttr);
     if (ctx == NULL) {
         (void)AppPrintError("Failed to create the algorithm(%s) context\n", kdfOpt->kdfName);
     }
@@ -260,19 +279,13 @@ static CRYPT_EAL_KdfCTX *InitAlgKdf(KdfOpt *kdfOpt)
 
 static int32_t KdfParsePass(KdfOpt *kdfOpt, uint8_t **pass, uint32_t *passLen)
 {
-    if (kdfOpt->pass != NULL && kdfOpt->hexPass == NULL) {
+    if (kdfOpt->pass != NULL) {
         *passLen = strlen((const char*)kdfOpt->pass);
         *pass = (uint8_t*)kdfOpt->pass;
-    } else if (kdfOpt->pass == NULL && kdfOpt->hexPass != NULL) {
-        uint32_t prefixLen = strlen(KDF_HEX_HEAD);
-        if (strncmp((const char*)kdfOpt->hexPass, KDF_HEX_HEAD, prefixLen) != 0 ||
-            strlen((const char*)kdfOpt->hexPass) <= prefixLen) {
-            AppPrintError("KDF:Invalid hexPass, should start with '0x'.\n");
-            return HITLS_APP_OPT_VALUE_INVALID;
-        }
-        int32_t ret = HITLS_APP_HexToByte(kdfOpt->hexPass + prefixLen, pass, passLen);
-        if (ret == HITLS_APP_OPT_VALUE_INVALID) {
-            AppPrintError("KDF:Invalid pass: %s.\n", kdfOpt->hexPass);
+    } else {
+        int32_t ret = HITLS_APP_HexToByte(kdfOpt->hexPass, pass, passLen);
+        if (ret != HITLS_APP_SUCCESS) {
+            AppPrintError("kdf:Invalid pass: %s.\n", kdfOpt->hexPass);
             return ret;
         }
     }
@@ -281,22 +294,15 @@ static int32_t KdfParsePass(KdfOpt *kdfOpt, uint8_t **pass, uint32_t *passLen)
 
 static int32_t KdfParseSalt(KdfOpt *kdfOpt, uint8_t **salt, uint32_t *saltLen)
 {
-    if (kdfOpt->salt != NULL && kdfOpt->hexSalt == NULL) {
+    if (kdfOpt->salt != NULL) {
         *saltLen = strlen((const char*)kdfOpt->salt);
         *salt = (uint8_t*)kdfOpt->salt;
-    } else if (kdfOpt->salt == NULL && kdfOpt->hexSalt != NULL) {
-        uint32_t prefixLen = strlen(KDF_HEX_HEAD);
-        if (strncmp((const char*)kdfOpt->hexSalt, KDF_HEX_HEAD, prefixLen) != 0 ||
-            strlen((const char*)kdfOpt->hexSalt) <= prefixLen) {
-            AppPrintError("KDF:Invalid hexsalt, should start with '0x'.\n");
-            return HITLS_APP_OPT_VALUE_INVALID;
-        }
-        int32_t ret = HITLS_APP_HexToByte(kdfOpt->hexSalt + prefixLen, salt, saltLen);
-        if (ret == HITLS_APP_OPT_VALUE_INVALID) {
-            AppPrintError("KDF:Invalid salt: %s.\n", kdfOpt->hexSalt);
+    } else {
+        int32_t ret = HITLS_APP_HexToByte(kdfOpt->hexSalt, salt, saltLen);
+        if (ret != HITLS_APP_SUCCESS) {
+            AppPrintError("kdf:Invalid salt: %s.\n", kdfOpt->hexSalt);
             return ret;
         }
-        return HITLS_APP_SUCCESS;
     }
     return HITLS_APP_SUCCESS;
 }
@@ -321,73 +327,85 @@ static int32_t Pbkdf2Params(CRYPT_EAL_KdfCTX *ctx, BSL_Param *params, KdfOpt *kd
         ret = BSL_PARAM_InitValue(&params[index++], CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32,
             &(kdfOpt->macId), sizeof(kdfOpt->macId));
         if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("KDF:Init macId failed. ERROR:%d\n", ret);
+            (void)AppPrintError("kdf:Init macId failed. ERROR:%d\n", ret);
             ret = HITLS_APP_CRYPTO_FAIL;
             break;
         }
         ret = BSL_PARAM_InitValue(&params[index++], CRYPT_PARAM_KDF_PASSWORD, BSL_PARAM_TYPE_OCTETS, pass, passLen);
         if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("KDF:Init pass failed. ERROR:%d\n", ret);
+            (void)AppPrintError("kdf:Init pass failed. ERROR:%d\n", ret);
             ret = HITLS_APP_CRYPTO_FAIL;
             break;
         }
         ret = BSL_PARAM_InitValue(&params[index++], CRYPT_PARAM_KDF_SALT, BSL_PARAM_TYPE_OCTETS, salt, saltLen);
         if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("KDF:Init salt failed. ERROR:%d\n", ret);
+            (void)AppPrintError("kdf:Init salt failed. ERROR:%d\n", ret);
             ret = HITLS_APP_CRYPTO_FAIL;
             break;
         }
         ret = BSL_PARAM_InitValue(&params[index++], CRYPT_PARAM_KDF_ITER, BSL_PARAM_TYPE_UINT32,
             &kdfOpt->iter, sizeof(kdfOpt->iter));
         if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("KDF:Init iter failed. ERROR:%d\n", ret);
+            (void)AppPrintError("kdf:Init iter failed. ERROR:%d\n", ret);
             ret = HITLS_APP_CRYPTO_FAIL;
             break;
         }
         ret = CRYPT_EAL_KdfSetParam(ctx, params);
         if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("KDF:KdfSetParam failed. ERROR:%d\n", ret);
+            (void)AppPrintError("kdf:KdfSetParam failed. ERROR:%d\n", ret);
             ret = HITLS_APP_CRYPTO_FAIL;
         }
     } while (0);
-    BSL_SAL_FREE(salt);
-    BSL_SAL_FREE(pass);
+    if (kdfOpt->salt == NULL) {
+        BSL_SAL_FREE(salt);
+    }
+    if (kdfOpt->pass == NULL) {
+        BSL_SAL_FREE(pass);
+    }
     return ret;
 }
 
 static int32_t PbkdfParamSet(CRYPT_EAL_KdfCTX *ctx, KdfOpt *kdfOpt)
 {
-    int32_t ret = HITLS_APP_SUCCESS;
-    BSL_Param params[5] = {{0}, {0}, {0}, {0}, BSL_PARAM_END};
-    ret = Pbkdf2Params(ctx, params, kdfOpt);
-    if (ret != HITLS_APP_SUCCESS) {
-        return ret;
+    if (kdfOpt->kdfId == CRYPT_KDF_PBKDF2) {
+        BSL_Param params[5] = {{0}, {0}, {0}, {0}, BSL_PARAM_END};
+        return Pbkdf2Params(ctx, params, kdfOpt);
     }
-    return ret;
+    (void)AppPrintError("kdf: Unsupported KDF algorithm: %s\n", kdfOpt->kdfName);
+    return HITLS_APP_OPT_VALUE_INVALID;
 }
 
 static int32_t KdfValToFinal(KdfOpt *kdfOpt, uint8_t *kdfBuf, uint32_t kdfBufLen, uint8_t **buf, uint32_t *bufLen)
 {
-    int32_t outRet = HITLS_APP_SUCCESS;
+    int32_t outRet;
     uint32_t hexBufLen = kdfBufLen * 2 + 1;
     uint8_t *hexBuf = (uint8_t *)BSL_SAL_Calloc(hexBufLen, sizeof(uint8_t));
     if (hexBuf == NULL) {
+        AppPrintError("kdf: Failed to allocate hexBuf.\n");
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
-    outRet = HITLS_APP_OptToHex(kdfBuf, kdfBufLen, (char *)hexBuf, hexBufLen);
-    if (outRet != HITLS_APP_SUCCESS) {
-        BSL_SAL_FREE(hexBuf);
-        return HITLS_APP_ENCODE_FAIL;
+    if (kdfOpt->isBinary == 0) {
+        outRet = HITLS_APP_OptToHex(kdfBuf, kdfBufLen, (char *)hexBuf, hexBufLen);
+        if (outRet != HITLS_APP_SUCCESS) {
+            AppPrintError("kdf: Failed to convert KDF buffer to hex string.\n");
+            BSL_SAL_FREE(hexBuf);
+            return HITLS_APP_ENCODE_FAIL;
+        }
+    } else {
+        if (memcpy_s(hexBuf, hexBufLen, kdfBuf, kdfBufLen) != EOK) {
+            AppPrintError("kdf: Failed to copy KDF buffer to output buffer.\n");
+            BSL_SAL_FREE(hexBuf);
+            return HITLS_APP_SECUREC_FAIL;
+        }
     }
-    uint32_t outBufLen = strlen(kdfOpt->kdfName) + hexBufLen + 5;
+    uint32_t outBufLen = hexBufLen + 5;
     char *outBuf = (char *)BSL_SAL_Calloc(outBufLen, sizeof(char));
     if (outBuf == NULL) {
         (void)AppPrintError("Failed to open the format control content space\n");
         BSL_SAL_FREE(hexBuf);
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
-    outRet = snprintf_s(
-        outBuf, outBufLen, outBufLen - 1, "%s = %s\n", kdfOpt->kdfName, (char *)hexBuf);
+    outRet = snprintf_s(outBuf, outBufLen, outBufLen - 1, "%s\n", (char *)hexBuf);
     uint32_t len = strlen(outBuf);
     BSL_SAL_FREE(hexBuf);
     if (outRet == -1) {
@@ -395,28 +413,19 @@ static int32_t KdfValToFinal(KdfOpt *kdfOpt, uint8_t *kdfBuf, uint32_t kdfBufLen
         (void)AppPrintError("Failed to combine the output content\n");
         return HITLS_APP_SECUREC_FAIL;
     }
-    char *finalOutBuf = (char *)BSL_SAL_Calloc(len, sizeof(char));
-    if (memcpy_s(finalOutBuf, len, outBuf, strlen(outBuf)) != EOK) {
-        BSL_SAL_FREE(outBuf);
-        BSL_SAL_FREE(finalOutBuf);
-        AppPrintError("Failed to copy output content\n");
-        return HITLS_APP_SECUREC_FAIL;
-    }
-    BSL_SAL_FREE(outBuf);
-    *buf = (uint8_t *)finalOutBuf;
+    *buf = (uint8_t *)outBuf;
     *bufLen = len;
     return HITLS_APP_SUCCESS;
 }
 
 static int32_t KdfResult(CRYPT_EAL_KdfCTX *ctx, KdfOpt *kdfOpt)
 {
-    int32_t ret = HITLS_APP_SUCCESS;
     uint8_t *out = NULL;
     uint32_t outLen = kdfOpt->keyLen;
     uint8_t *buf = NULL;
     uint32_t bufLen = 0;
 
-    ret = PbkdfParamSet(ctx, kdfOpt);
+    int32_t ret = PbkdfParamSet(ctx, kdfOpt);
     if (ret != HITLS_APP_SUCCESS) {
         (void)AppPrintError("PbkdfParamSet failed. \n");
         return ret;
@@ -424,7 +433,7 @@ static int32_t KdfResult(CRYPT_EAL_KdfCTX *ctx, KdfOpt *kdfOpt)
 
     out = BSL_SAL_Malloc(outLen);
     if (out == NULL) {
-        (void)AppPrintError("KDF: Allocate memory failed. \n");
+        (void)AppPrintError("kdf: Allocate memory failed. \n");
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
     ret = CRYPT_EAL_KdfDerive(ctx, out, outLen);
@@ -441,21 +450,17 @@ static int32_t KdfResult(CRYPT_EAL_KdfCTX *ctx, KdfOpt *kdfOpt)
     }
 
     BSL_UIO *fileOutUio = NULL;
-    if (kdfOpt->outFile != NULL) {
-        fileOutUio = HITLS_APP_UioOpen(kdfOpt->outFile, 'w', 0);
-    } else {
-        fileOutUio = HITLS_APP_UioOpen(NULL, 'w', 0);
-    }
+    fileOutUio = HITLS_APP_UioOpen(kdfOpt->outFile, 'w', 0);
     if (fileOutUio == NULL) {
         BSL_SAL_FREE(buf);
         BSL_SAL_FREE(out);
-        (void)AppPrintError("KDF:UioOpen failed\n");
+        (void)AppPrintError("kdf:UioOpen failed\n");
         return HITLS_APP_UIO_FAIL;
     }
     ret = HITLS_APP_OptWriteUio(fileOutUio, buf, bufLen, HITLS_APP_FORMAT_TEXT);
     BSL_UIO_Free(fileOutUio);
     if (ret != HITLS_APP_SUCCESS) {
-        (void)AppPrintError("KDF:Failed to output the content to the screen\n");
+        (void)AppPrintError("kdf:Failed to output the content to the screen\n");
     }
     BSL_SAL_FREE(buf);
     BSL_SAL_FREE(out);
@@ -466,23 +471,26 @@ int32_t HITLS_KdfMain(int argc, char *argv[])
 {
     int32_t mainRet = HITLS_APP_SUCCESS;
     AppProvider appProvider = {"default", NULL, "provider=default"};
-    KdfOpt kdfOpt = {
-        NULL, CRYPT_MAC_HMAC_SHA256, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL, 1, &appProvider};
+    KdfOpt kdfOpt = {CRYPT_MAC_HMAC_SHA256, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL, 1000, &appProvider, 0};
     CRYPT_EAL_KdfCTX *ctx = NULL;
     do {
         mainRet = HITLS_APP_OptBegin(argc, argv, g_kdfOpts);
         if (mainRet != HITLS_APP_SUCCESS) {
+            HITLS_APP_OptEnd();
             (void)AppPrintError("error in opt begin.\n");
             break;
         }
         mainRet = ParseKdfOpt(&kdfOpt);
         if (mainRet != HITLS_APP_SUCCESS) {
+            HITLS_APP_OptEnd();
             break;
         }
         mainRet = GetKdfAlg(&kdfOpt);
         if (mainRet != HITLS_APP_SUCCESS) {
+            HITLS_APP_OptEnd();
             break;
         }
+        HITLS_APP_OptEnd();
         mainRet = CheckParam(&kdfOpt);
         if (mainRet != HITLS_APP_SUCCESS) {
             break;

@@ -446,14 +446,9 @@ static int32_t X509OptDays(X509OptCtx *optCtx)
 static int32_t X509OptSetSerial(X509OptCtx *optCtx)
 {
     char *str = HITLS_APP_OptGetValueStr();
-    uint32_t prefixLen = strlen(X509_SET_SERIAL_PREFIX);
-    if (strncmp(str, X509_SET_SERIAL_PREFIX, prefixLen) != 0 || strlen(str) <= prefixLen) {
-        AppPrintError("x509: Invalid serial, should start with '0x'.\n");
-        return HITLS_APP_OPT_VALUE_INVALID;
-    }
 
-    int32_t ret = HITLS_APP_HexToByte(str + prefixLen, &optCtx->certOpts.serial, &optCtx->certOpts.serialLen);
-    if (ret == HITLS_APP_OPT_VALUE_INVALID) {
+    int32_t ret = HITLS_APP_HexToByte(str, &optCtx->certOpts.serial, &optCtx->certOpts.serialLen);
+    if (ret != HITLS_APP_SUCCESS) {
         AppPrintError("x509: Allocate memory of serial failed.\n");
         AppPrintError("x509: Invalid serial: %s.\n", str);
     }
