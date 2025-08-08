@@ -231,7 +231,11 @@ static int32_t ParseTime(uint8_t tag, uint8_t *val, uint32_t len, BSL_TIME *deco
     }
     if (tag == BSL_ASN1_TAG_UTCTIME) {
         decodeData->year = (uint16_t)DecodeAsciiNum(&temp, 2); // 2: YY
-        decodeData->year += 2000; // Currently supported after 2000 year
+        if (decodeData->year < 50) {
+            decodeData->year += 2000;
+        } else {
+            decodeData->year += 1900;
+        }
     } else {
         decodeData->year = (uint16_t)DecodeAsciiNum(&temp, 4); // 4: YYYY
     }

@@ -259,6 +259,42 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void SDV_X509_CERTPEM_PARSE_START_TIME_FUNC_TC001(char *path,
+    int year, int month, int day, int hour, int minute, int second)
+{
+    HITLS_X509_Cert *cert = NULL;
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_PEM, path, &cert), HITLS_PKI_SUCCESS);
+
+    ASSERT_EQ(cert->tbs.validTime.start.year, year);
+    ASSERT_EQ(cert->tbs.validTime.start.month, month);
+    ASSERT_EQ(cert->tbs.validTime.start.day, day);
+    ASSERT_EQ(cert->tbs.validTime.start.hour, hour);
+    ASSERT_EQ(cert->tbs.validTime.start.minute, minute);
+    ASSERT_EQ(cert->tbs.validTime.start.second, second);
+EXIT:
+    HITLS_X509_CertFree(cert);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_X509_CERTPEM_PARSE_END_TIME_FUNC_TC001(char *path,
+    int year, int month, int day, int hour, int minute, int second)
+{
+    HITLS_X509_Cert *cert = NULL;
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_PEM, path, &cert), HITLS_PKI_SUCCESS);
+
+    ASSERT_EQ(cert->tbs.validTime.end.year, year);
+    ASSERT_EQ(cert->tbs.validTime.end.month, month);
+    ASSERT_EQ(cert->tbs.validTime.end.day, day);
+    ASSERT_EQ(cert->tbs.validTime.end.hour, hour);
+    ASSERT_EQ(cert->tbs.validTime.end.minute, minute);
+    ASSERT_EQ(cert->tbs.validTime.end.second, second);
+EXIT:
+    HITLS_X509_CertFree(cert);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void SDV_X509_CERT_PARSE_END_TIME_FUNC_TC001(char *path,
     int year, int month, int day, int hour, int minute, int second)
 {

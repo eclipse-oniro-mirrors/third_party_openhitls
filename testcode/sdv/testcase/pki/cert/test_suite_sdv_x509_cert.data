@@ -1684,6 +1684,12 @@ SDV_X509_CERT_PARSE_START_TIME_FUNC_TC001:"../testdata/cert/asn1/sm2_cert/inter.
 SDV_X509_CERT_PARSE_START_TIME_FUNC_TC001 parse sm2_inter.notCA cert
 SDV_X509_CERT_PARSE_START_TIME_FUNC_TC001:"../testdata/cert/asn1/sm2_cert/inter.notCA.der":2024:4:18:6:47:4
 
+SDV_X509_CERTPEM_PARSE_START_TIME_FUNC_TC001 parse utc 2000 before
+SDV_X509_CERTPEM_PARSE_START_TIME_FUNC_TC001:"../testdata/cert/asn1/cert_utc_time1900~2050.crt":1998:1:1:1:1:1
+
+SDV_X509_CERTPEM_PARSE_END_TIME_FUNC_TC001 parse utc 2000 after
+SDV_X509_CERTPEM_PARSE_END_TIME_FUNC_TC001:"../testdata/cert/asn1/cert_utc_time1900~2050.crt":2020:1:1:1:1:1
+
 SDV_X509_CERT_PARSE_END_TIME_FUNC_TC001 parse ecc p384 v3 ca cert
 SDV_X509_CERT_PARSE_END_TIME_FUNC_TC001:"../testdata/cert/asn1/nist384ca.crt":2034:2:1:7:03:41
 
