@@ -390,6 +390,10 @@ int32_t CRYPT_ECDSA_SignData(const CRYPT_ECDSA_Ctx *ctx, const uint8_t *data, ui
 int32_t CRYPT_ECDSA_Sign(const CRYPT_ECDSA_Ctx *ctx, int32_t algId, const uint8_t *data, uint32_t dataLen,
     uint8_t *sign, uint32_t *signLen)
 {
+    if (ctx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
     uint8_t hash[64]; // 64 is max hash len
     uint32_t hashLen = sizeof(hash) / sizeof(hash[0]);
     int32_t ret = EAL_Md(algId, ctx->libCtx, NULL, data, dataLen, hash, &hashLen);
@@ -515,6 +519,10 @@ ERR:
 int32_t CRYPT_ECDSA_Verify(const CRYPT_ECDSA_Ctx *ctx, int32_t algId, const uint8_t *data, uint32_t dataLen,
     const uint8_t *sign, uint32_t signLen)
 {
+    if (ctx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
     uint8_t hash[64]; // 64 is max hash len
     uint32_t hashLen = sizeof(hash) / sizeof(hash[0]);
     int32_t ret = EAL_Md(algId, ctx->libCtx, NULL, data, dataLen, hash, &hashLen);
