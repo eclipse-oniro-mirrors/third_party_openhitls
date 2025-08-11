@@ -225,7 +225,7 @@ static void GetSeedPool(void **seedPool, void **es)
 
     do {
         ret = CRYPT_EAL_EsInit(esTemp);
-    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY || ret == CRYPT_DRBG_FAIL_GET_NONCE);
 
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
@@ -276,7 +276,7 @@ static void Iso19790_ProviderLoad(Iso19790_ProviderLoadCtx *ctx)
     int32_t ret;
     do {
         ret = CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_ISO_LIB_NAME, param, NULL);
-    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY || ret == CRYPT_DRBG_FAIL_GET_NONCE);
 
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
@@ -292,7 +292,7 @@ static void Iso19790_ProviderLoad(Iso19790_ProviderLoadCtx *ctx)
 
     do {
         ret = CRYPT_EAL_ProviderRandInitCtx(libCtx, CRYPT_RAND_SHA256, HITLS_ISO_PROVIDER_ATTR, NULL, 0, randParam);
-    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY || ret == CRYPT_DRBG_FAIL_GET_NONCE);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
     ctx->libCtx = libCtx;
@@ -480,7 +480,7 @@ void SDV_ISO19790_PROVIDER_DRBG_TEST_TC001()
 
     do {
         ret = CRYPT_EAL_EsInit(es);
-    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY || ret == CRYPT_DRBG_FAIL_GET_NONCE);
 
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
@@ -781,7 +781,7 @@ void SDV_ISO19790_PROVIDER_Get_Status_Test_TC001()
 
     do {
         ret = CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_ISO_LIB_NAME, providerParam, &providerMgr);
-    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY || ret == CRYPT_DRBG_FAIL_GET_NONCE);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
 
     ASSERT_TRUE(providerMgr != NULL);
