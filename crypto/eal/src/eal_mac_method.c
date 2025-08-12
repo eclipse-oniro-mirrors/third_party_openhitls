@@ -322,6 +322,7 @@ int32_t EAL_MacFindDepMethod(CRYPT_MAC_AlgId macId, void *libCtx, const char *at
 {
     (void)libCtx;
     (void)attrName;
+    (void)provCtx;
     const EAL_MacAlgMap *macAlgMap = EAL_FindMacAlgMap(macId);
     if (macAlgMap == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
