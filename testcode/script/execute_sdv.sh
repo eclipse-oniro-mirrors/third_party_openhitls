@@ -273,6 +273,18 @@ run_demos()
         echo "Demo ${e} failed"
         exit 1
     fi
+    # run tlcp server and client in order.
+    ./tlcp_server &
+    if [ $exit_code -ne 0 ]; then
+        echo "Demo ${e} failed"
+        exit 1
+    fi
+    sleep 1
+    ./tlcp_client
+    if [ $exit_code -ne 0 ]; then
+        echo "Demo ${e} failed"
+        exit 1
+    fi
     popd
 }
 
