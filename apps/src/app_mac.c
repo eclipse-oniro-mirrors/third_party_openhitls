@@ -256,99 +256,42 @@ static int32_t CheckParam(MacOpt *macOpt)
     return HITLS_APP_SUCCESS;
 }
 
-static int32_t GetReadBuf(MacOpt *macOpt)
-{
-    uint8_t tmpBuf[MAX_BUFSIZE] = {0};
-    bool isEof = false;
-    int32_t ret;
-    BSL_UIO *readUio = HITLS_APP_UioOpen(macOpt->inFile, 'r', 0);
-    if (readUio == NULL) {
-        if (macOpt->inFile == NULL) {
-            AppPrintError("mac: Failed to open stdin\n");
-        } else {
-            AppPrintError("mac: Failed to open the file <%s>, No such file or directory\n", macOpt->inFile);
-        }
-        return HITLS_APP_UIO_FAIL;
-    }
-    uint64_t readFileLen = 0;
-    if (macOpt->inFile == NULL) {
-        ret = BSL_UIO_Ctrl(readUio, BSL_UIO_FILE_GET_EOF, IS_SUPPORT_GET_EOF, &isEof);
-        if (ret != BSL_SUCCESS) {
-            BSL_UIO_SetIsUnderlyingClosedByUio(readUio, true);
-            BSL_UIO_Free(readUio);
-            AppPrintError("mac:Failed to obtain the content length\n");
-            return HITLS_APP_UIO_FAIL;
-        }
-        readFileLen = MAX_BUFSIZE;
-    } else {
-        ret = BSL_UIO_Ctrl(readUio, BSL_UIO_PENDING, sizeof(readFileLen), &readFileLen);
-        if (ret != BSL_SUCCESS) {
-            BSL_UIO_SetIsUnderlyingClosedByUio(readUio, true);
-            BSL_UIO_Free(readUio);
-            AppPrintError("mac:Failed to obtain the content length\n");
-            return HITLS_APP_UIO_FAIL;
-        }
-        if (readFileLen == 0) {
-            BSL_UIO_SetIsUnderlyingClosedByUio(readUio, true);
-            BSL_UIO_Free(readUio);
-            AppPrintError("mac:Input file is empty\n");
-            return HITLS_APP_UIO_FAIL;
-        }
-    }
-  
-    uint32_t readLen = 0;
-
-    ret = BSL_UIO_Read(readUio, tmpBuf, (readFileLen > MAX_BUFSIZE) ? MAX_BUFSIZE : (uint32_t)readFileLen, &readLen);
-    BSL_UIO_SetIsUnderlyingClosedByUio(readUio, true);
-    BSL_UIO_Free(readUio);
-    if (ret != BSL_SUCCESS || readLen == 0) {
-        AppPrintError("mac:Failed to read the input file\n");
-        return HITLS_APP_UIO_FAIL;
-    }
-    if (memcpy_s(macOpt->readBuf, MAX_BUFSIZE, tmpBuf, readLen) != EOK) {
-        AppPrintError("mac: Failed to copy read buffer.\n");
-        return HITLS_APP_SECUREC_FAIL;
-    }
-    macOpt->readLen = readLen;
-    return HITLS_APP_SUCCESS;
-}
-
 static CRYPT_EAL_MacCtx *InitAlgMac(MacOpt *macOpt)
 {
     uint8_t *key = NULL;
     uint32_t keyLen = MAC_MAX_KEY_LEN;
     int32_t ret;
 
-    if (macOpt->key != NULL && macOpt->hexKey == NULL) {
+    if (macOpt->key != NULL) {
         keyLen = strlen((const char*)macOpt->key);
         key = (uint8_t*)macOpt->key;
-    } else if (macOpt->key == NULL && macOpt->hexKey != NULL) {
+    } else if (macOpt->hexKey != NULL) {
         ret = HITLS_APP_HexToByte(macOpt->hexKey, &key, &keyLen);
         if (ret == HITLS_APP_OPT_VALUE_INVALID) {
             AppPrintError("mac:Invalid key: %s.\n", macOpt->hexKey);
             return NULL;
         }
-    } else {
-        return NULL;
     }
-
-    ret = HITLS_APP_LoadProvider(macOpt->provider->providerPath, macOpt->provider->providerName);
-    if (ret != HITLS_APP_SUCCESS) {
-        return NULL;
-    }
-    CRYPT_EAL_MacCtx *ctx = CRYPT_EAL_ProviderMacNewCtx(APP_GetCurrent_LibCtx(), macOpt->algId,
-        macOpt->provider->providerAttr);  // creating an MAC Context
-    if (ctx == NULL) {
-        (void)AppPrintError("mac:Failed to create the algorithm(%d) context\n", macOpt->algId);
-        return NULL;
-    }
-
-    ret = CRYPT_EAL_MacInit(ctx, key, keyLen);
-    if (ret != CRYPT_SUCCESS) {
-        (void)AppPrintError("mac:Summary context creation failed\n");
-        CRYPT_EAL_MacFreeCtx(ctx);
-        return NULL;
-    }
+    CRYPT_EAL_MacCtx *ctx = NULL;
+    do {
+        ret = HITLS_APP_LoadProvider(macOpt->provider->providerPath, macOpt->provider->providerName);
+        if (ret != HITLS_APP_SUCCESS) {
+            break;
+        }
+        ctx = CRYPT_EAL_ProviderMacNewCtx(APP_GetCurrent_LibCtx(), macOpt->algId,
+            macOpt->provider->providerAttr);  // creating an MAC Context
+        if (ctx == NULL) {
+            (void)AppPrintError("mac:Failed to create the algorithm(%d) context\n", macOpt->algId);
+            break;
+        }
+        ret = CRYPT_EAL_MacInit(ctx, key, keyLen);
+        if (ret != CRYPT_SUCCESS) {
+            (void)AppPrintError("mac:Summary context creation failed, ret=%d\n", ret);
+            CRYPT_EAL_MacFreeCtx(ctx);
+            ctx = NULL;
+            break;
+        }
+    } while (0);
     if (macOpt->hexKey != NULL) {
         BSL_SAL_FREE(key);
     }
@@ -365,7 +308,7 @@ static int32_t MacParamSet(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
     if (macOpt->algId == CRYPT_MAC_CBC_MAC_SM4) {
         ret = CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_CBC_MAC_PADDING, &padding, sizeof(CRYPT_PaddingType));
         if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("mac:Failed to set CBC MAC padding\n");
+            (void)AppPrintError("mac:Failed to set CBC MAC padding, ret=%d\n", ret);
             return HITLS_APP_CRYPTO_FAIL;
         }
     }
@@ -380,125 +323,138 @@ static int32_t MacParamSet(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
                 return ret;
             }
         }
-        ret = CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_IV, macOpt->iv, ivLen);
-        if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("mac:Failed to set CBC MAC padding\n");
-            return HITLS_APP_CRYPTO_FAIL;
-        }
-        ret = CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &(macOpt->tagLen), sizeof(int32_t));
-        if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("mac:Failed to set CBC MAC padding\n");
-            return HITLS_APP_CRYPTO_FAIL;
+        do {
+            ret = CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_IV, macOpt->iv, ivLen);
+            if (ret != CRYPT_SUCCESS) {
+                (void)AppPrintError("mac:Failed to set GMAC IV, ret=%d\n", ret);
+                ret = HITLS_APP_CRYPTO_FAIL;
+                break;
+            }
+            ret = CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &(macOpt->tagLen), sizeof(int32_t));
+            if (ret != CRYPT_SUCCESS) {
+                (void)AppPrintError("mac:Failed to set GMAC TAGLEN, ret=%d\n", ret);
+                ret = HITLS_APP_CRYPTO_FAIL;
+                break;
+            }
+        } while (0);
+        if (macOpt->hexIv != NULL) {
+            BSL_SAL_FREE(iv);
         }
     }
-    if (macOpt->hexIv != NULL) {
-        BSL_SAL_FREE(iv);
-    }
+
     return ret;
 }
 
-static int32_t MacValToFinal(MacOpt *macOpt, uint8_t *macBuf, uint32_t macBufLen, uint8_t **buf, uint32_t *bufLen)
+static int32_t GetReadBuf(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
 {
-    int32_t outRet = HITLS_APP_SUCCESS;
-    uint32_t outBufLen;
-    uint32_t hexBufLen = macBufLen * 9 + 1;
-    uint8_t *hexBuf = (uint8_t *)BSL_SAL_Calloc(hexBufLen, sizeof(uint8_t));
-    if (hexBuf == NULL) {
-        AppPrintError("mac: Failed to allocate hexBuf.\n");
+    int32_t ret;
+    bool isEof = false;
+    uint32_t readLen = 0;
+    uint64_t readFileLen = 0;
+    uint8_t *tmpBuf = (uint8_t *)BSL_SAL_Calloc(MAX_BUFSIZE, sizeof(uint8_t));
+    if (tmpBuf == NULL) {
+        AppPrintError("mac: Failed to allocate read buffer.\n");
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
-    if (macOpt->isBinary == 0) {
-        outRet = HITLS_APP_OptToHex(macBuf, macBufLen, (char *)hexBuf, hexBufLen);
-        if (outRet != HITLS_APP_SUCCESS) {
-            AppPrintError("mac: Failed to convert MAC value to HEX format\n");
-            BSL_SAL_FREE(hexBuf);
-            return HITLS_APP_ENCODE_FAIL;
+    BSL_UIO *readUio = HITLS_APP_UioOpen(macOpt->inFile, 'r', 0);
+    BSL_UIO_SetIsUnderlyingClosedByUio(readUio, true);
+    if (readUio == NULL) {
+        if (macOpt->inFile == NULL) {
+            AppPrintError("mac: Failed to open stdin\n");
+        } else {
+            AppPrintError("mac: Failed to open the file <%s>, No such file or directory\n", macOpt->inFile);
+        }
+        BSL_SAL_FREE(tmpBuf);
+        return HITLS_APP_UIO_FAIL;
+    }
+
+    if (macOpt->inFile == NULL) {
+        while (BSL_UIO_Ctrl(readUio, BSL_UIO_FILE_GET_EOF, IS_SUPPORT_GET_EOF, &isEof) == BSL_SUCCESS && !isEof) {
+            if (BSL_UIO_Read(readUio, tmpBuf, MAX_BUFSIZE, &readLen) != BSL_SUCCESS) {
+                BSL_SAL_FREE(tmpBuf);
+                BSL_UIO_Free(readUio);
+                (void)AppPrintError("Failed to obtain the content from the STDIN\n");
+                return HITLS_APP_STDIN_FAIL;
+            }
+            if (readLen == 0) {
+                break;
+            }
+            ret = CRYPT_EAL_MacUpdate(ctx, tmpBuf, readLen);
+            if (ret != CRYPT_SUCCESS) {
+                BSL_SAL_FREE(tmpBuf);
+                BSL_UIO_Free(readUio);
+                (void)AppPrintError("Failed to continuously summarize the STDIN content\n");
+                return HITLS_APP_CRYPTO_FAIL;
+            }
         }
     } else {
-        if (memcpy_s(hexBuf, hexBufLen, macBuf, macBufLen) != EOK) {
-            AppPrintError("mac: Failed to copy MAC buffer to output buffer.\n");
-            BSL_SAL_FREE(hexBuf);
-            return HITLS_APP_SECUREC_FAIL;
+        ret = BSL_UIO_Ctrl(readUio, BSL_UIO_PENDING, sizeof(readFileLen), &readFileLen);
+        if (ret != BSL_SUCCESS) {
+            BSL_SAL_FREE(tmpBuf);
+            BSL_UIO_Free(readUio);
+            (void)AppPrintError("Failed to obtain the content length\n");
+            return HITLS_APP_UIO_FAIL;
+        }
+        while (readFileLen > 0) {
+            uint32_t bufLen = (readFileLen > MAX_BUFSIZE) ? MAX_BUFSIZE : (uint32_t)readFileLen;
+            ret = BSL_UIO_Read(readUio, tmpBuf, bufLen, &readLen); // read content to memory
+            if (ret != BSL_SUCCESS || bufLen != readLen) {
+                BSL_SAL_FREE(tmpBuf);
+                BSL_UIO_Free(readUio);
+                (void)AppPrintError("Failed to read the input content\n");
+                return HITLS_APP_UIO_FAIL;
+            }
+            ret = CRYPT_EAL_MacUpdate(ctx, tmpBuf, bufLen); // continuously enter summary content
+            if (ret != CRYPT_SUCCESS) {
+                BSL_SAL_FREE(tmpBuf);
+                BSL_UIO_Free(readUio);
+                (void)AppPrintError("mac: Failed to update MAC with file content, error code: %d\n", ret);
+                return HITLS_APP_CRYPTO_FAIL;
+            }
+            readFileLen -= bufLen;
         }
     }
-    outBufLen = hexBufLen + 5;
-    char *outBuf = (char *)BSL_SAL_Calloc(outBufLen, sizeof(char));
-    if (outBuf == NULL) {
-        (void)AppPrintError("Failed to open the format control content space\n");
-        BSL_SAL_FREE(hexBuf);
-        return HITLS_APP_MEM_ALLOC_FAIL;
-    }
-    outRet = snprintf_s(outBuf, outBufLen, outBufLen - 1, "%s\n", (char *)hexBuf);
-
-    uint32_t len = strlen(outBuf);
-    BSL_SAL_FREE(hexBuf);
-    if (outRet == -1) {
-        BSL_SAL_FREE(outBuf);
-        (void)AppPrintError("Failed to combine the output content\n");
-        return HITLS_APP_SECUREC_FAIL;
-    }
-    *buf = (uint8_t *)outBuf;
-    *bufLen = len;
+    BSL_UIO_Free(readUio);
+    BSL_SAL_FREE(tmpBuf);
     return HITLS_APP_SUCCESS;
-}
-
-static int32_t MacFinalToBuf(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt, uint8_t **buf, uint32_t *bufLen)
-{
-    int32_t outRet = HITLS_APP_SUCCESS;
-    if (macOpt->inFile == NULL) {
-        macOpt->inFile = "stdin";
-    }
-    uint32_t macSize = CRYPT_EAL_GetMacLen(ctx);
-    if (macSize <= 0) {
-        AppPrintError("mac: Invalid MAC size: %u\n", macSize);
-        return HITLS_APP_CRYPTO_FAIL;
-    }
-    uint8_t *macBuf = (uint8_t *)BSL_SAL_Calloc(macSize + 1, sizeof(uint8_t));
-    if (macBuf == NULL) {
-        AppPrintError("mac: Failed to allocate MAC buffer.\n");
-        return HITLS_APP_MEM_ALLOC_FAIL;
-    }
-    uint32_t macBufLen = macSize;
-    outRet = CRYPT_EAL_MacFinal(ctx, macBuf, &macBufLen);
-    if (outRet != CRYPT_SUCCESS || macBufLen < macSize) {
-        BSL_SAL_FREE(macBuf);
-        (void)AppPrintError("mac: Failed to complete the final summary. ERR:%d\n", outRet);
-        return HITLS_APP_CRYPTO_FAIL;
-    }
-    outRet = MacValToFinal(macOpt, macBuf, macBufLen, buf, bufLen);
-    BSL_SAL_FREE(macBuf);
-    return outRet;
 }
 
 static int32_t MacResult(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
 {
     uint8_t *outBuf = NULL;
-    uint32_t outBufLen = 0;
-    int32_t ret = CRYPT_EAL_MacUpdate(ctx, macOpt->readBuf, macOpt->readLen);
-    if (ret != CRYPT_SUCCESS) {
-        AppPrintError("mac: Failed to update MAC with file content, error code: %d\n", ret);
-        return HITLS_APP_CRYPTO_FAIL;
-    }
-
     BSL_UIO *fileWriteUio = HITLS_APP_UioOpen(macOpt->outFile, 'w', 0);  // overwrite the original content
+    BSL_UIO_SetIsUnderlyingClosedByUio(fileWriteUio, true);
     if (fileWriteUio == NULL) {
         (void)AppPrintError("Failed to open the outfile\n");
         return HITLS_APP_UIO_FAIL;
     }
 
-    ret = MacFinalToBuf(ctx, macOpt, &outBuf, &outBufLen);  // read the final mac value to the buffer
-    if (ret != HITLS_APP_SUCCESS) {
-        BSL_SAL_FREE(outBuf);
-        BSL_UIO_SetIsUnderlyingClosedByUio(fileWriteUio, true);
+    uint32_t macSize = CRYPT_EAL_GetMacLen(ctx);
+    if (macSize <= 0) {
+        AppPrintError("mac: Invalid MAC size: %u\n", macSize);
         BSL_UIO_Free(fileWriteUio);
-        (void)AppPrintError("Failed to output the final summary value\n");
-        return ret;
+        return HITLS_APP_CRYPTO_FAIL;
     }
-    ret = HITLS_APP_OptWriteUio(fileWriteUio, outBuf, outBufLen, HITLS_APP_FORMAT_TEXT);
+    outBuf = (uint8_t *)BSL_SAL_Calloc(macSize, sizeof(uint8_t));
+    if (outBuf == NULL) {
+        AppPrintError("mac: Failed to allocate MAC buffer.\n");
+        BSL_UIO_Free(fileWriteUio);
+        return HITLS_APP_MEM_ALLOC_FAIL;
+    }
+    uint32_t macBufLen = macSize;
+    int32_t ret = CRYPT_EAL_MacFinal(ctx, outBuf, &macBufLen);
+    if (ret != CRYPT_SUCCESS || macBufLen < macSize) {
+        BSL_SAL_FREE(outBuf);
+        (void)AppPrintError("mac: Failed to complete the final summary. ERR:%d\n", ret);
+        BSL_UIO_Free(fileWriteUio);
+        return HITLS_APP_CRYPTO_FAIL;
+    }
+
+    ret = HITLS_APP_OptWriteUio(fileWriteUio, outBuf, macBufLen,
+        macOpt->isBinary == 1 ? HITLS_APP_FORMAT_TEXT: HITLS_APP_FORMAT_HEX);
     if (ret != HITLS_APP_SUCCESS) {
         (void)AppPrintError("mac:Failed to export data to the outfile path\n");
     }
-    BSL_UIO_SetIsUnderlyingClosedByUio(fileWriteUio, true);
     BSL_UIO_Free(fileWriteUio);
     BSL_SAL_FREE(outBuf);
     return ret;
@@ -527,10 +483,6 @@ int32_t HITLS_MacMain(int argc, char *argv[])
         if (mainRet != HITLS_APP_SUCCESS) {
             break;
         }
-        mainRet = GetReadBuf(&macOpt);
-        if (mainRet != HITLS_APP_SUCCESS) {
-            break;
-        }
         ctx = InitAlgMac(&macOpt);
         if (ctx == NULL) {
             mainRet = HITLS_APP_CRYPTO_FAIL;
@@ -539,6 +491,10 @@ int32_t HITLS_MacMain(int argc, char *argv[])
         mainRet = MacParamSet(ctx, &macOpt);
         if (mainRet != CRYPT_SUCCESS) {
             (void)AppPrintError("mac:Failed to set mac params\n");
+            break;
+        }
+        mainRet = GetReadBuf(ctx, &macOpt);
+        if (mainRet != HITLS_APP_SUCCESS) {
             break;
         }
         mainRet = MacResult(ctx, &macOpt);

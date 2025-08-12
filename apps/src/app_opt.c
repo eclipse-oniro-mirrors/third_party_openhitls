@@ -592,6 +592,7 @@ int32_t HITLS_APP_OptWriteUio(BSL_UIO *uio, uint8_t *buf, uint32_t bufLen, int32
         (void)AppPrintError("Failed to output the content.\n");
         return HITLS_APP_UIO_FAIL;
     }
+    (void)BSL_UIO_Ctrl(uio, BSL_UIO_FLUSH, 0, NULL);
     return HITLS_APP_SUCCESS;
 }
 
