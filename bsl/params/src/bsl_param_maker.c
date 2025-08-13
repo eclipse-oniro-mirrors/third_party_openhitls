@@ -19,6 +19,7 @@
 #include "securec.h"
 #include "bsl_err_internal.h"
 #include "bsl_params.h"
+#include "bsl_list.h"
 
 typedef struct {
     int32_t key;
@@ -91,7 +92,7 @@ static int32_t BSL_PARAM_MAKER_CheckNumberLen(uint32_t type, uint32_t len)
     return BSL_SUCCESS;
 }
 
-static int32_t BSL_PARAM_MAKER_CheckInput(BSL_ParamMaker *maker, void *value, uint32_t len)
+static int32_t BSL_PARAM_MAKER_CheckInput(const BSL_ParamMaker *maker, const void *value, uint32_t len)
 {
     if (maker == NULL || maker->params == NULL || (value == NULL && len != 0)) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
@@ -162,15 +163,13 @@ static int32_t BSL_PARAM_MAKER_NumberConvert(BSL_PARAM_MAKER_DEF *paramMakerDef,
     uint8_t *value = *valueIndex;
     (void)memcpy_s(value, paramMakerDef->len, &paramMakerDef->num, paramMakerDef->len);
     *valueIndex += paramMakerDef->allocLen;
-    int32_t ret = BSL_PARAM_InitValue(&params[i], paramMakerDef->key, paramMakerDef->type, value, paramMakerDef->len);
-    return ret;
+    return BSL_PARAM_InitValue(&params[i], paramMakerDef->key, paramMakerDef->type, value, paramMakerDef->len);
 }
 
 static int32_t BSL_PARAM_MAKER_PointerConvert(BSL_PARAM_MAKER_DEF *paramMakerDef, BSL_Param *params, int32_t i)
 {
     void *value = paramMakerDef->value;
-    int32_t ret = BSL_PARAM_InitValue(&params[i], paramMakerDef->key, paramMakerDef->type, value, paramMakerDef->len);
-    return ret;
+    return BSL_PARAM_InitValue(&params[i], paramMakerDef->key, paramMakerDef->type, value, paramMakerDef->len);
 }
 
 static int32_t BSL_PARAM_MAKER_StringConvert(BSL_PARAM_MAKER_DEF *paramMakerDef, BSL_Param *params,
@@ -186,8 +185,7 @@ static int32_t BSL_PARAM_MAKER_StringConvert(BSL_PARAM_MAKER_DEF *paramMakerDef,
         ((char *)(value))[paramMakerDef->len] = '\0';
     }
     *valueIndex += paramMakerDef->allocLen;
-    int32_t ret = BSL_PARAM_InitValue(&params[i], paramMakerDef->key, paramMakerDef->type, value, paramMakerDef->len);
-    return ret;
+    return BSL_PARAM_InitValue(&params[i], paramMakerDef->key, paramMakerDef->type, value, paramMakerDef->len);
 }
 
 static int32_t BSL_PARAM_MAKER_CalculateSize(BSL_ParamMaker *maker, uint32_t *paramSize)

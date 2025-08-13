@@ -33,7 +33,7 @@
                         "uio_file": {"deps": ["uio_plt", "sal_file"]},
                         "uio_mem": {"deps": ["uio_plt", "sal_mem", "buffer"]}
                     },
-                    "params": null,
+                    "params": {"deps": ["list"]},
                     "print":null,
                     "asn1": {"deps": ["sal_time", "uio_plt"]}
                 }
@@ -1060,9 +1060,10 @@
                     "crypto/provider/src/cmvp/iso_prov/*.c",
                     "crypto/provider/src/cmvp/gm_prov/*.c",
                     "crypto/provider/src/cmvp/fips_prov/*.c"],
-                ".deps": ["bsl::sal", "bsl::hash", "bsl::err", "bsl::params", "crypto::encode"],
+                ".deps": ["bsl::sal", "bsl::hash", "bsl::err", "bsl::params"],
                 ".include": [
                     "crypto/provider/include",
+                    "crypto/encode/include",
                     "crypto/provider/src/cmvp/cmvp_utils",
                     "crypto/ealinit/include",
                     "crypto/sha1/include",
@@ -1100,7 +1101,8 @@
                     "crypto/eal/src",
                     "crypto/include",
                     "crypto/codecskey/include",
-                    "include/tls"
+                    "include/tls",
+                    "bsl/asn1/include"
                 ]
             },
             "bn": {

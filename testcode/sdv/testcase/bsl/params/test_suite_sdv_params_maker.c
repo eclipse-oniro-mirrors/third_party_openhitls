@@ -19,6 +19,7 @@
 #include "bsl_params.h"
 #include "bsl_err.h"
 #include "bsl_list.h"
+#include "crypt_eal_cipher.h"
 /* END_HEADER */
 
 
