@@ -358,7 +358,6 @@ static int32_t ReadEventInTransportingState(HITLS_Ctx *ctx, uint8_t *data, uint3
             if (ctx->state == CM_STATE_ALERTED || ctx->state == CM_STATE_CLOSED) {
                 return ret;
             }
-            continue;
         }
 
         if (ret != HITLS_REC_NORMAL_RECV_UNEXPECT_MSG) {

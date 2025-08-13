@@ -337,6 +337,27 @@ static int32_t SendRecord(TLS_Ctx *ctx, RecCtx *recordCtx, RecConnState *state, 
     RecConnSetSeqNum(state, seq + 1);
     return HITLS_SUCCESS;
 }
+
+int32_t REC_OutBufFlush(TLS_Ctx *ctx)
+{
+    RecBuf *writeBuf = ctx->recCtx->outBuf;
+    if (writeBuf == NULL || writeBuf->start == writeBuf->end) {
+        return HITLS_SUCCESS; // No data to flush
+    }
+    if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
+        return HITLS_SUCCESS;
+    }
+    RecConnState *state = GetWriteConnState(ctx);
+    /* The Recordtype is REC_TYPE_HANDSHAKE to not relase outbuffer in HITLS_MODE_RELEASE_BUFFERS mode */
+    int32_t ret = SendRecord(ctx, ctx->recCtx, state, state->seq, REC_TYPE_HANDSHAKE);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    ctx->recCtx->pendingData = NULL;
+    ctx->recCtx->pendingDataSize = 0;
+    return HITLS_SUCCESS;
+}
+
 static int32_t SequenceCompare(RecConnState *state, uint64_t value)
 {
     if (state->isWrapped == true) {

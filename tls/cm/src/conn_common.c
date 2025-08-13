@@ -698,3 +698,24 @@ int32_t HITLS_GetNegotiateGroup(const HITLS_Ctx *ctx, uint16_t *group)
     return HITLS_SUCCESS;
 }
 #endif
+
+int32_t HITLS_GetOutPendingSize(const HITLS_Ctx *ctx, uint32_t *size)
+{
+    if (ctx == NULL || size == NULL || ctx->recCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    *size = REC_GetOutBufPendingSize(ctx);
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_Flush(HITLS_Ctx *ctx)
+{
+    if (ctx == NULL || ctx->recCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+#ifdef HITLS_TLS_PROTO_TLS
+    return REC_OutBufFlush(ctx);
+#else
+    return HITLS_SUCCESS;
+#endif
+}

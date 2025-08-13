@@ -306,6 +306,26 @@ int32_t REC_RecBufReSet(TLS_Ctx *ctx);
  * @retval  HITLS_REC_ERR_IO_EXCEPTION uio error
  */
 int32_t REC_FlightTransmit(TLS_Ctx *ctx);
+
+/**
+ * @brief   Obtain the out buffer remaining size
+ *
+ * @param   ctx [IN] TLS_Ctx context
+ *
+ * @retval  the out buffer remaining size
+ */
+uint32_t REC_GetOutBufPendingSize(const TLS_Ctx *ctx);
+
+/**
+ * @brief   Flush the record out buffer
+ *
+ * @param   ctx [IN] TLS_Ctx context
+ *
+ * @retval  HITLS_SUCCESS Out buffer is empty or flush success
+ * @retval  HITLS_REC_NORMAL_IO_BUSY Out buffer is not empty, but the IO operation is busy
+ */
+int32_t REC_OutBufFlush(TLS_Ctx *ctx);
+
 #ifdef __cplusplus
 }
 #endif

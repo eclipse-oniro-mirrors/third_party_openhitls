@@ -69,6 +69,15 @@ void RecTryFreeRecBuf(TLS_Ctx *ctx, bool isOut)
 }
 #endif
 
+uint32_t REC_GetOutBufPendingSize(const TLS_Ctx *ctx)
+{
+    RecBuf *writeBuf = ctx->recCtx->outBuf;
+    if (writeBuf == NULL) {
+        return 0;
+    }
+    return writeBuf->start > writeBuf->end ? 0 : writeBuf->end - writeBuf->start;
+}
+
 int32_t RecIoBufInit(TLS_Ctx *ctx, RecCtx *recordCtx, bool isRead)
 {
     RecBuf **ioBuf = isRead ? &recordCtx->inBuf : &recordCtx->outBuf;

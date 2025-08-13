@@ -107,6 +107,14 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
         BSL_ERR_PUSH_ERROR(HITLS_ALERT_NO_WANT_SEND);
         return HITLS_ALERT_NO_WANT_SEND;
     }
+#ifdef HITLS_TLS_PROTO_TLS
+    if (REC_GetOutBufPendingSize(ctx) != 0) {
+        ret = REC_OutBufFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+    }
+#endif
     if (alertCtx->isFlush == false) {
         if (ctx->recCtx != NULL && ctx->recCtx->pendingData != NULL && alertCtx->description == ALERT_CLOSE_NOTIFY) {
             return HITLS_REC_NORMAL_IO_BUSY;
@@ -120,6 +128,9 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
         }
         /** write the record */
         ret = REC_Write(ctx, REC_TYPE_ALERT, data, ALERT_DATA_LEN);
+        if (!IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
+            alertCtx->isFlush = true;
+        }
         if (ret != HITLS_SUCCESS) {
             return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16267, "Write fail");
         }

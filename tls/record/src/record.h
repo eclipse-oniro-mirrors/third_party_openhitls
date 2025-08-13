@@ -87,8 +87,7 @@ typedef struct RecCtx {
  * @param   ctx [IN] TLS_Ctx context
  * @param   isRead [IN] is read buffer
  *
- * @retval  HITLS_SUCCESS
- * @retval  HITLS_INTERNAL_EXCEPTION Access a null pointer
+ * @retval  the size of the buffer for read and write operations
  */
 uint32_t RecGetInitBufferSize(const TLS_Ctx *ctx, bool isRead);
 

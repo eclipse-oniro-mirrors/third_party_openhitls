@@ -1592,6 +1592,26 @@ int32_t HITLS_SetMiddleBoxCompat(HITLS_Ctx *ctx, bool isMiddleBox);
  */
 int32_t HITLS_GetMiddleBoxCompat(HITLS_Ctx *ctx, bool *isMiddleBox);
 
+/**
+ * @brief   Obtain the record out buffer remaining size
+ *
+ * @param   ctx [IN] TLS connection handle
+ * @param   size [OUT] record out buffer remaining size
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_GetOutPendingSize(const HITLS_Ctx *ctx, uint32_t *size);
+
+/**
+ * @brief   Flush the record out buffer
+ *
+ * @param   ctx [IN] TLS connection handle
+ *
+ * @retval  HITLS_SUCCESS Out buffer is empty or flush success
+ * @retval  HITLS_REC_NORMAL_IO_BUSY Out buffer is not empty, but the IO operation is busy
+ */
+int32_t HITLS_Flush(HITLS_Ctx *ctx);
+
 #ifdef __cplusplus
 }
 #endif
