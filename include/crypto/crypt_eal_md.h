@@ -203,20 +203,6 @@ int32_t CRYPT_EAL_Md(CRYPT_MD_AlgId id, const uint8_t *in, uint32_t inLen, uint8
  */
 int32_t CRYPT_EAL_MdDeinit(CRYPT_EAL_MdCTX *ctx);
 
- /**
- * @ingroup crypt_eal_md
- * @brief get or set md param
- *
- * @param ctx [IN] md context
- * @param cmd [IN] Option information
- * @param val [IN/OUT] Data to be set/obtained
- * @param valLen [IN] Length of the data marked as "val"
- *
- * @retval  #CRYPT_SUCCESS.
- *          For other error codes, see crypt_errno.h.
- */
-int32_t CRYPT_EAL_MdCtrl(CRYPT_EAL_MdCTX *ctx, int32_t cmd, void *val, uint32_t valLen);
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus

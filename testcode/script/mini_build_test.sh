@@ -128,7 +128,7 @@ parse_option()
                 fi
                 ;;
             "test")
-                LIB_TYPE="static"
+                LIB_TYPE="static shared"
                 TEST_FEATURE=$value
                 if [[ $value == *cmvp* ]]; then
                     ADD_OPTIONS="$ADD_OPTIONS -DHITLS_CRYPTO_DRBG_GM -DHITLS_CRYPTO_CMVP_INTEGRITY"

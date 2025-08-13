@@ -73,7 +73,6 @@ const uint8_t *HS_GetTls12DowngradeRandom(uint32_t *len)
 uint32_t HS_GetVersion(const TLS_Ctx *ctx)
 {
     if (ctx->negotiatedInfo.version > 0) {
-        /* The version has been negotiated */
         return ctx->negotiatedInfo.version;
     } else {
         /* If the version is not negotiated, the latest version supported by the local is returned */
@@ -130,12 +129,10 @@ static const char *g_stateMachineStr[] = {
 
 const char *HS_GetStateStr(uint32_t state)
 {
-    /** The handshake status is abnormal. */
     if ((state >= (sizeof(g_stateMachineStr) / sizeof(char *))) || (g_stateMachineStr[state] == NULL)) {
         return "unknown";
     }
 
-    /** Status character string */
     return g_stateMachineStr[state];
 }
 
@@ -207,14 +204,12 @@ int32_t HS_CombineRandom(const uint8_t *random1, const uint8_t *random2, uint32_
         return HITLS_MSG_HANDLE_RANDOM_SIZE_ERR;
     }
 
-    /** Copy the first random value */
     if (memcpy_s(dest, destSize, random1, randomSize) != EOK) {
         BSL_ERR_PUSH_ERROR(HITLS_MEMCPY_FAIL);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15575, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "combine random1 fail.", 0, 0, 0, 0);
         return HITLS_MEMCPY_FAIL;
     }
-    /** Copy the second random value */
     if (memcpy_s(&dest[randomSize], destSize - randomSize, random2, randomSize) != EOK) {
         BSL_ERR_PUSH_ERROR(HITLS_MEMCPY_FAIL);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15576, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -235,7 +230,6 @@ uint8_t *HS_PrepareSignDataTlcp(const TLS_Ctx *ctx, const uint8_t *partSignData,
     uint32_t randomLen = HS_RANDOM_SIZE * 2u;
     uint32_t dataLen = randomLen + partSignDataLen + exchParamLen;
 
-    /* Allocate the signature data memory. */
     uint8_t *data = BSL_SAL_Calloc(1u, dataLen);
     if (data == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
@@ -244,9 +238,7 @@ uint8_t *HS_PrepareSignDataTlcp(const TLS_Ctx *ctx, const uint8_t *partSignData,
         return NULL;
     }
 
-    /* Replicate the random number of the client */
     (void)memcpy_s(data, dataLen, ctx->hsCtx->clientRandom, HS_RANDOM_SIZE);
-    /* Replicate the random number on the server */
     (void)memcpy_s(&data[HS_RANDOM_SIZE], dataLen - HS_RANDOM_SIZE, ctx->hsCtx->serverRandom, HS_RANDOM_SIZE);
     /* Fill the length of the key exchange parameter */
     BSL_Uint24ToByte(partSignDataLen, &data[randomLen]);
@@ -266,7 +258,6 @@ uint8_t *HS_PrepareSignData(const TLS_Ctx *ctx, const uint8_t *partSignData,
     uint32_t randomLen = HS_RANDOM_SIZE * 2u;
     uint32_t dataLen = randomLen + partSignDataLen;
 
-    /* Allocate the signature data memory. */
     uint8_t *data = BSL_SAL_Calloc(1u, dataLen);
     if (data == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16813, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "Calloc fail", 0, 0, 0, 0);
@@ -274,9 +265,7 @@ uint8_t *HS_PrepareSignData(const TLS_Ctx *ctx, const uint8_t *partSignData,
         return NULL;
     }
 
-    /* Replicate the random number of the client */
     (void)memcpy_s(data, dataLen, ctx->hsCtx->clientRandom, HS_RANDOM_SIZE);
-    /* Replicate the random number on the server */
     (void)memcpy_s(&data[HS_RANDOM_SIZE], dataLen - HS_RANDOM_SIZE, ctx->hsCtx->serverRandom, HS_RANDOM_SIZE);
     /* Copy key exchange packet data */
     ret = memcpy_s(&data[randomLen], dataLen - randomLen, partSignData, partSignDataLen);
@@ -342,7 +331,6 @@ int32_t CalcSctpAuthKey(const TLS_Ctx *ctx, uint8_t *authKey, uint32_t authKeyLe
 
 int32_t HS_SetSctpAuthKey(TLS_Ctx *ctx)
 {
-    /* If the bottom layer is not SCTP, the auth key does not need to be configured and return HITLS_SUCCESS */
     if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_SCTP)) {
         return HITLS_SUCCESS;
     }
@@ -377,9 +365,6 @@ int32_t HS_SetSctpAuthKey(TLS_Ctx *ctx)
 
 int32_t HS_ActiveSctpAuthKey(TLS_Ctx *ctx)
 {
-    /* If the bottom layer is not SCTP, the auth key does not need to be configured and
-     * return HITLS_SUCCESS.
-     */
     if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_SCTP)) {
         return HITLS_SUCCESS;
     }
@@ -396,14 +381,12 @@ int32_t HS_ActiveSctpAuthKey(TLS_Ctx *ctx)
 
 int32_t HS_DeletePreviousSctpAuthKey(TLS_Ctx *ctx)
 {
-    int32_t ret;
-
     if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_SCTP)) {
         return HITLS_SUCCESS;
     }
 
     /* After the handshake is complete, delete the old sctp auth key */
-    ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_SCTP_DEL_PRE_AUTH_SHARED_KEY, 0, NULL);
+    int32_t ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_SCTP_DEL_PRE_AUTH_SHARED_KEY, 0, NULL);
     if (ret != BSL_SUCCESS) {
         ret = HITLS_UIO_SCTP_DEL_AUTH_KEY_FAIL;
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15584, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -444,7 +427,6 @@ bool IsNeedServerKeyExchange(const TLS_Ctx *ctx)
     return ((kxAlg != HITLS_KEY_EXCH_ECDH) && (kxAlg != HITLS_KEY_EXCH_DH) && (kxAlg != HITLS_KEY_EXCH_RSA));
 }
 
-/* Check whether the certificate needs to be prepared. */
 bool IsNeedCertPrepare(const CipherSuiteInfo *cipherSuiteInfo)
 {
     if (cipherSuiteInfo == NULL) {
@@ -709,10 +691,8 @@ uint16_t *CheckSupportSignAlgorithms(const TLS_Ctx *ctx, const uint16_t *signAlg
         const uint32_t dsaMask = 0x02;
         const uint32_t sha1Mask = 0x0200;
         const uint32_t sha224Mask = 0x0300;
-        // DSA is not allowed in TLS 1.3
         if (ctx->config.tlsConfig.maxVersion == HITLS_VERSION_TLS13 &&
             ctx->config.tlsConfig.minVersion == HITLS_VERSION_TLS13) {
-            // At some point we should fully axe DSA/etc. in ClientHello as per TLS 1.3 spec
             if (ctx->isClient &&
                 (((signAlgorithms[i] & 0xff00) == sha1Mask) ||
                 ((signAlgorithms[i] & 0xff00) == sha224Mask))) {

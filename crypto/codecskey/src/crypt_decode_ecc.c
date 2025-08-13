@@ -389,15 +389,15 @@ int32_t CRYPT_ED25519_ParsePkcs8Key(uint8_t *buffer, uint32_t bufferLen, CRYPT_C
     return ParseEd25519PrikeyAsn1Buff(pk8PrikeyInfo.pkeyRawKey, pk8PrikeyInfo.pkeyRawKeyLen, ed25519PriKey);
 }
 
-int32_t CRYPT_ED25519_ParseSubPubkeyAsn1Buff(uint8_t *buffer, uint32_t bufferLen, CRYPT_CURVE25519_Ctx **pubKey,
+int32_t CRYPT_ED25519_ParseSubPubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, CRYPT_CURVE25519_Ctx **pubKey,
     bool isComplete)
 {
-    if (buffer == NULL || bufferLen == 0 || pubKey == NULL) {
+    if (buff == NULL || buffLen == 0 || pubKey == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
     CRYPT_DECODE_SubPubkeyInfo subPubkeyInfo = {0};
-    int32_t ret = CRYPT_DECODE_SubPubkey(buffer, bufferLen, NULL, &subPubkeyInfo, isComplete);
+    int32_t ret = CRYPT_DECODE_SubPubkey(buff, buffLen, NULL, &subPubkeyInfo, isComplete);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;

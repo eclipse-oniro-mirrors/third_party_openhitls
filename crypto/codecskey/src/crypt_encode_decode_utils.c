@@ -293,7 +293,7 @@ EXIT:
     return ret;
 }
 
-static int32_t PbkdfDeriveKey(CRYPT_EAL_LibCtx *libctx, const char *attrName, int32_t iter, int32_t prfId,
+static int32_t PbkdfDeriveKey(CRYPT_EAL_LibCtx *libctx, const char *attrName, uint32_t iter, int32_t prfId,
     BSL_Buffer *salt, const uint8_t *pwd, uint32_t pwdLen, BSL_Buffer *key)
 {
     CRYPT_EAL_KdfCTX *kdfCtx = CRYPT_EAL_ProviderKdfNewCtx(libctx, CRYPT_KDF_PBKDF2, attrName);
@@ -959,8 +959,8 @@ static int32_t EncodeEncryptedData(CRYPT_EAL_LibCtx *libCtx, const char *attrNam
         }
         BSL_Buffer enData = {unEncrypted->data, unEncrypted->dataLen};
         BSL_Buffer ivData = {asn1[CRYPT_PKCS_ENCPRIKEY_SYMIV_IDX].buff, asn1[CRYPT_PKCS_ENCPRIKEY_SYMIV_IDX].len};
-        ret = CRYPT_ENCODE_DECODE_DecryptEncData(libCtx, attrName, &ivData, &enData, pkcsParam->symId, true, &keyBuff,
-            output, &pkcsDataLen);
+        ret = CRYPT_ENCODE_DECODE_DecryptEncData(libCtx, attrName, &ivData, &enData,
+            (int32_t)pkcsParam->symId, true, &keyBuff, output, &pkcsDataLen);
         if (ret != CRYPT_SUCCESS) {
             break;
         }

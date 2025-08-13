@@ -561,7 +561,8 @@ static int32_t SetCurveInfo(CRYPT_ECDSA_Ctx *ctx, const BSL_Param *curve)
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    int32_t ret = CRYPT_ECDSA_SetParaEx(ctx, CRYPT_ECDSA_NewParaById(*(CRYPT_PKEY_ParaId *)curve->value));
+    CRYPT_PKEY_ParaId paraId = *(CRYPT_PKEY_ParaId *)curve->value;
+    int32_t ret = CRYPT_ECDSA_SetParaEx(ctx, CRYPT_ECDSA_NewParaById((int32_t)paraId));
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
     }

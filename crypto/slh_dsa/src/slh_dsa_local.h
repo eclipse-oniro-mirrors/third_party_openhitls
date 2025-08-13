@@ -90,7 +90,7 @@ typedef void (*AdrsSetTreeIndex)(SlhDsaAdrs *adrs, uint32_t index);
 typedef uint32_t (*AdrsGetTreeHeight)(const SlhDsaAdrs *adrs);
 typedef uint32_t (*AdrsGetTreeIndex)(const SlhDsaAdrs *adrs);
 typedef void (*AdrsCopyKeyPairAddr)(SlhDsaAdrs *adrs, const SlhDsaAdrs *adrs2);
-typedef uint32_t (*AdrsGetAdrsLen)();
+typedef uint32_t (*AdrsGetAdrsLen)(void);
 
 typedef struct {
     AdrsSetLayerAddr setLayerAddr;

@@ -26,8 +26,6 @@
 extern "C" {
 #endif
 
-#define MAX_PASS_LEN 64
-
 HITLS_CERT_Store *HITLS_X509_Adapt_StoreNew(void);
 HITLS_CERT_Store *HITLS_X509_Adapt_StoreDup(HITLS_CERT_Store *store);
 void HITLS_X509_Adapt_StoreFree(HITLS_CERT_Store *store);

@@ -1604,6 +1604,9 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_CRYPT_DRBG_PTHREAD_FUNC_TC002(int agId)
 {
+    if (IsRandAlgDisabled(agId)) {
+        SKIP_TEST();
+    }
     CRYPT_Data data = { 0 };
     CRYPT_RandSeedMethod seedMeth = { 0 };
     DRBG_Vec_t seedCtx = { 0 };

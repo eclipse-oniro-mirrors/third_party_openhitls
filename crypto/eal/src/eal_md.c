@@ -425,21 +425,6 @@ int32_t CRYPT_EAL_MdDeinit(CRYPT_EAL_MdCTX *ctx)
     return CRYPT_SUCCESS;
 }
 
-int32_t CRYPT_EAL_MdCtrl(CRYPT_EAL_MdCTX *ctx, int32_t cmd, void *val, uint32_t valLen)
-{
-    if (ctx == NULL || ctx->method == NULL || ctx->method->ctrl== NULL) {
-        EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MD, CRYPT_MD_MAX, CRYPT_NULL_INPUT);
-        return CRYPT_NULL_INPUT;
-    }
-
-    int32_t ret = ctx->method->ctrl(ctx->data, cmd, val, valLen);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-    }
-    
-    return ret;
-}
-
 uint32_t CRYPT_EAL_MdGetDigestSize(CRYPT_MD_AlgId id)
 {
     const EAL_MdMethod *method = EAL_MdFindMethod(id);

@@ -1497,7 +1497,7 @@ int32_t HITLS_CFG_ClearModeSupport(HITLS_Config *config, uint32_t mode);
  * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
  * @retval  HITLS_SUCCESS, if successful.
  */
-int32_t HITLS_CFG_GetModeSupport(HITLS_Config *config, uint32_t *mode);
+int32_t HITLS_CFG_GetModeSupport(const HITLS_Config *config, uint32_t *mode);
 
 #ifdef __cplusplus
 }

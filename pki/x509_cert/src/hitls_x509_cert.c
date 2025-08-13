@@ -311,15 +311,15 @@ ERR:
     return ret;
 }
 
-int32_t HITLS_X509_ParseAsn1Cert(uint8_t **encode, uint32_t *encodeLen, HITLS_X509_Cert *cert)
+int32_t HITLS_X509_ParseAsn1Cert(uint8_t *encode, uint32_t encodeLen, HITLS_X509_Cert *cert)
 {
-    uint8_t *temp = *encode;
-    uint32_t tempLen = *encodeLen;
+    uint8_t *temp = encode;
+    uint32_t tempLen = encodeLen;
+    cert->rawData = encode; // cert takes over the encode immediately.
     if ((cert->flag & HITLS_X509_CERT_GEN_FLAG) != 0) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
         return HITLS_X509_ERR_INVALID_PARAM;
     }
-
     // template parse
     BSL_ASN1_Buffer asnArr[HITLS_X509_CERT_MAX_IDX] = {0};
     BSL_ASN1_Template templ = {g_certTempl, sizeof(g_certTempl) / sizeof(g_certTempl[0])};
@@ -330,7 +330,7 @@ int32_t HITLS_X509_ParseAsn1Cert(uint8_t **encode, uint32_t *encodeLen, HITLS_X5
         return ret;
     }
     // parse tbs raw data
-    ret = HITLS_X509_ParseTbsRawData(*encode, *encodeLen, &cert->tbs.tbsRawData, &cert->tbs.tbsRawDataLen);
+    ret = HITLS_X509_ParseTbsRawData(encode, encodeLen, &cert->tbs.tbsRawData, &cert->tbs.tbsRawDataLen);
     if (ret != HITLS_PKI_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -354,11 +354,7 @@ int32_t HITLS_X509_ParseAsn1Cert(uint8_t **encode, uint32_t *encodeLen, HITLS_X5
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
     }
-
-    cert->rawData = *encode;
-    cert->rawDataLen = *encodeLen - tempLen;
-    *encode = temp;
-    *encodeLen = tempLen;
+    cert->rawDataLen = encodeLen - tempLen;
     cert->flag |= HITLS_X509_CERT_PARSE_FLAG;
     return HITLS_PKI_SUCCESS;
 ERR:
@@ -628,7 +624,7 @@ static int32_t X509_CertGetCtrl(HITLS_X509_Cert *cert, int32_t cmd, void *val, u
         case HITLS_X509_GET_SIGNALG:
             return HITLS_X509_GetSignAlg(cert->signAlgId.algId, val, valLen);
         case HITLS_X509_GET_SIGN_MDALG:
-            return HITLS_X509_GetSignMdAlg(&cert->signAlgId, val, valLen);
+            return HITLS_X509_GetSignMdAlg(&cert->signAlgId, val, (int32_t)valLen);
         case HITLS_X509_GET_SUBJECT_DN:
             return HITLS_X509_GetList(cert->tbs.subjectName, val, valLen);
         case HITLS_X509_GET_ISSUER_DN:

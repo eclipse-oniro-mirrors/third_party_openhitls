@@ -32,7 +32,7 @@
                     },
                     "usrdata": null,
                     "params": null,
-                    "asn1": {"deps": ["sal_time"]}
+                    "asn1": {"deps": ["sal_time", "uio_plt"]}
                 }
             }
         },

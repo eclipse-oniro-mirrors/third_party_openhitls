@@ -336,7 +336,7 @@ static int32_t ParsePKCS8ShroudedKeyBags(HITLS_PKCS12 *p12, const uint8_t *pwd, 
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    HITLS_PKCS12_Bag *keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, prikey);
+    HITLS_PKCS12_Bag *keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, prikey);
     CRYPT_EAL_PkeyFreeCtx(prikey);
     if (keyBag == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
@@ -488,7 +488,7 @@ static int32_t SetEntityCert(HITLS_PKCS12 *p12)
         BSL_Buffer *certId = FindLocatedId(node->attributes);
         if (certId != NULL && certId->dataLen == keyId->dataLen &&
             memcmp(certId->data, keyId->data, keyId->dataLen) == 0) {
-            HITLS_PKCS12_Bag *certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, node->value.cert);
+            HITLS_PKCS12_Bag *certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, node->value.cert);
             if (certBag == NULL) {
                 BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
                 return BSL_MALLOC_FAIL;
@@ -1605,7 +1605,7 @@ static HITLS_PKCS12_Bag *BagDump(HITLS_PKCS12_Bag *input)
                 BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
                 return NULL;
             }
-            target = HITLS_PKCS12_BagNew(input->type, pkey);
+            target = HITLS_PKCS12_BagNew(input->type, 0, pkey);
             break;
         case BSL_CID_CERTBAG:
             cert = HITLS_X509_CertDup(input->value.cert);
@@ -1613,7 +1613,7 @@ static HITLS_PKCS12_Bag *BagDump(HITLS_PKCS12_Bag *input)
                 BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_CERT_DUP_FAIL);
                 return NULL;
             }
-            target = HITLS_PKCS12_BagNew(input->type, cert);
+            target = HITLS_PKCS12_BagNew(input->type, BSL_CID_X509CERTIFICATE, cert);
             break;
         default:
             BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_INVALID_PARAM);

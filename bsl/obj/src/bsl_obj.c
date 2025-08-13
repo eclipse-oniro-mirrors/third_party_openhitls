@@ -423,7 +423,7 @@ static int32_t CreateOidInfo(const BslOidString *oid, const char *oidName, int32
         return ret;
     }
 
-    oidInfo->oidName = BSL_SAL_Dump(oidName, strlen(oidName) + 1);
+    oidInfo->oidName = BSL_SAL_Dump(oidName, (uint32_t)strlen(oidName) + 1);
     if (oidInfo->oidName == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
         BSL_SAL_Free(oidInfo->strOid.octs);

@@ -252,6 +252,8 @@ endif()
 set(TEST_SHARED_LIBS
     test_suite_sdv_hlt_provider
     test_suite_sdv_frame_provider
+    test_suite_sdv_hlt_base_connect
+    test_suite_sdv_hlt_tlcp_ciphersuite
 )
 
 # Create test cases

@@ -38,11 +38,12 @@
 static int32_t SetDecodePoolParamForKey(CRYPT_DECODER_PoolCtx *poolCtx, char *targetType, char *targetFormat)
 {
     int32_t ret = CRYPT_DECODE_PoolCtrl(poolCtx, CRYPT_DECODE_POOL_CMD_SET_TARGET_FORMAT, targetFormat,
-        strlen(targetFormat));
+        (int32_t)strlen(targetFormat));
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }
-    ret = CRYPT_DECODE_PoolCtrl(poolCtx, CRYPT_DECODE_POOL_CMD_SET_TARGET_TYPE, targetType, strlen(targetType));
+    ret = CRYPT_DECODE_PoolCtrl(poolCtx, CRYPT_DECODE_POOL_CMD_SET_TARGET_TYPE, targetType,
+        (int32_t)strlen(targetType));
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }

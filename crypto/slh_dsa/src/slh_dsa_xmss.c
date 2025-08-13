@@ -94,7 +94,7 @@ int32_t XmssSign(const uint8_t *msg, size_t msgLen, uint32_t idx, SlhDsaAdrs *ad
     ctx->adrsOps.setType(adrs, WOTS_HASH);
     ctx->adrsOps.setKeyPairAddr(adrs, idx);
     uint32_t tmpLen = len * n;
-    ret = WotsSign(sig, &tmpLen, msg, msgLen, adrs, ctx);
+    ret = WotsSign(sig, &tmpLen, msg, (uint32_t)msgLen, adrs, ctx);
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }
@@ -106,7 +106,6 @@ int32_t XmssPkFromSig(uint32_t idx, const uint8_t *sig, uint32_t sigLen, const u
                       SlhDsaAdrs *adrs, const CryptSlhDsaCtx *ctx, uint8_t *pk)
 {
     int32_t ret;
-
     uint32_t n = ctx->para.n;
     uint32_t hp = ctx->para.hp;
     uint32_t len = 2 * n + 3;
@@ -128,11 +127,10 @@ int32_t XmssPkFromSig(uint32_t idx, const uint8_t *sig, uint32_t sigLen, const u
     for (uint32_t k = 0; k < hp; k++) {
         ctx->adrsOps.setTreeHeight(adrs, k + 1);
         uint8_t tmp[SLH_DSA_MAX_N * 2];
-        if ((idx >> k) & 1) {
+        if (((idx >> k) & 1) != 0) {
             (void)memcpy_s(tmp, sizeof(tmp), sig + (len + k) * n, n);
             (void)memcpy_s(tmp + n, sizeof(tmp) - n, node0, n);
             ctx->adrsOps.setTreeIndex(adrs, (ctx->adrsOps.getTreeIndex(adrs) - 1) >> 1);
-
         } else {
             (void)memcpy_s(tmp, sizeof(tmp), node0, n);
             (void)memcpy_s(tmp + n, sizeof(tmp) - n, sig + (len + k) * n, n);

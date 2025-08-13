@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#define MAX_PASS_LEN 256
+
 /* tls.handshake.certificate_length Length of a label */
 #define CERT_LEN_TAG_SIZE 3u
 

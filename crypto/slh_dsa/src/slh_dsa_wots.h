@@ -20,6 +20,7 @@
 #ifdef HITLS_CRYPTO_SLH_DSA
 
 #include <stdint.h>
+#include "crypt_slh_dsa.h"
 
 /**
  * @brief Compute a WOTS+ public key from a private key

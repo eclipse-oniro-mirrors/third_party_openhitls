@@ -1266,12 +1266,12 @@ void SDV_PKCS12_ENCODE_P12_TC004(char *pkeyPath, char *certPath)
 
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, pkeyPath, NULL, 0, &pkey), 0);
 
-    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, pkey);
+    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey);
     ASSERT_NE(keyBag, NULL);
 
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, certPath, &enCert), HITLS_PKI_SUCCESS);
 
-    certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, enCert);
+    certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert);
     ASSERT_NE(certBag, NULL);
 
     ASSERT_EQ(HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_SET_ENTITY_KEYBAG, keyBag, 0), HITLS_PKI_SUCCESS);
@@ -1468,13 +1468,13 @@ void SDV_PKCS12_CTRL_TEST_TC001(char *pkeyPath, char *enCertPath, char *caCertPa
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, caCertPath, &caCert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    caBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, caCert);
+    caBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, caCert);
     ASSERT_NE(caBag, NULL);
 
-    pkeyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, pkey);
+    pkeyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey);
     ASSERT_NE(pkeyBag, NULL);
 
-    encertBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, enCert);
+    encertBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert);
     ASSERT_NE(encertBag, NULL);
 
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_SET_ENTITY_KEYBAG, pkeyBag, 0);
@@ -1564,7 +1564,7 @@ void SDV_PKCS12_CTRL_TEST_TC002(char *enCertPath)
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, enCertPath, &enCert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    entityCertBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, enCert);
+    entityCertBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert);
     ASSERT_NE(entityCertBag, NULL);
 
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_SET_ENTITY_CERTBAG, entityCertBag, 0);
@@ -1617,20 +1617,21 @@ void SDV_PKCS12_BAG_TEST_TC001(char *pkeyPath, char *certPath)
     int32_t ret = CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, pkeyPath, NULL, 0, &pkey);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, pkey);
+    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey);
     ASSERT_NE(keyBag, NULL);
 
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, certPath, &enCert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, enCert);
+    certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert);
     ASSERT_NE(certBag, NULL);
 
     ret = HITLS_PKCS12_BagAddAttr(keyBag, BSL_CID_FRIENDLYNAME, &buffer);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    ret = HITLS_PKCS12_BagAddAttr(certBag, BSL_CID_FRIENDLYNAME, &buffer);
+    ret = HITLS_PKCS12_BagCtrl(certBag, HITLS_PKCS12_BAG_ADD_ATTR, &buffer, BSL_CID_FRIENDLYNAME);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
+
 EXIT:
     HITLS_PKCS12_BagFree(keyBag);
     HITLS_PKCS12_BagFree(certBag);
@@ -1657,9 +1658,9 @@ void SDV_PKCS12_BAG_TEST_TC002(char *pkeyPath)
     int32_t ret = CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, pkeyPath, NULL, 0, &pkey);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    keyBag = HITLS_PKCS12_BagNew(BSL_CID_MAX, pkey); // invalid bag-id.
+    keyBag = HITLS_PKCS12_BagNew(BSL_CID_MAX, 0, pkey); // invalid bag-id.
     ASSERT_EQ(keyBag, NULL);
-    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, pkey);
+    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey);
     ASSERT_NE(keyBag, NULL);
 
     ret = HITLS_PKCS12_BagAddAttr(keyBag, BSL_CID_FRIENDLYNAME, NULL); // Attribute is null.
@@ -1710,13 +1711,13 @@ void SDV_PKCS12_BAG_TEST_TC003(char *pkeyPath, char *certPath)
     int32_t ret = CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, pkeyPath, NULL, 0, &pkey);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, pkey);
+    keyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey);
     ASSERT_NE(keyBag, NULL);
 
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, certPath, &enCert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, enCert);
+    certBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert);
     ASSERT_NE(certBag, NULL);
 
     uint8_t keyId[32] = {0};
@@ -1816,16 +1817,16 @@ void SDV_PKCS12_GEN_FROM_DATA_TC001(char *pkeyPath, char *enCertPath, char *ca1C
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, ca1CertPath, &ca1Cert), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, otherCertPath, &otherCert), HITLS_PKI_SUCCESS);
 
-    pkeyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, pkey); // new a key Bag
+    pkeyBag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, pkey); // new a key Bag
     ASSERT_NE(pkeyBag, NULL);
 
-    ca1Bag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, ca1Cert); // new a cert Bag
+    ca1Bag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, ca1Cert); // new a cert Bag
     ASSERT_NE(ca1Bag, NULL);
 
-    encertBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, enCert); // new a cert Bag
+    encertBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, enCert); // new a cert Bag
     ASSERT_NE(encertBag, NULL);
 
-    otherCertBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, otherCert);
+    otherCertBag = HITLS_PKCS12_BagNew(BSL_CID_CERTBAG, BSL_CID_X509CERTIFICATE, otherCert);
     ASSERT_NE(otherCertBag, NULL);
 
     // Add a attribute to the keyBag.

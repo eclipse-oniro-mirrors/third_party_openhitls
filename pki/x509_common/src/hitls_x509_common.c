@@ -361,12 +361,13 @@ static int32_t X509_ParseAndAddRes(CRYPT_EAL_LibCtx *libCtx, const char *attrNam
         res = parseFun->x509New();
     }
     if (res == NULL) {
+        BSL_SAL_FREE(asn1Buf->data); // must free asn1Buf.data.
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
         return BSL_MALLOC_FAIL;
     }
-    int32_t ret = parseFun->asn1Parse(&(asn1Buf->data), &(asn1Buf->dataLen), res);
+    int32_t ret = parseFun->asn1Parse(asn1Buf->data, asn1Buf->dataLen, res);
     if (ret != HITLS_PKI_SUCCESS) {
-        parseFun->x509Free(res);
+        parseFun->x509Free(res); // The asn1Buf.data is taken over by res->rawData.
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
@@ -397,8 +398,7 @@ static int32_t HITLS_X509_ParseAsn1(CRYPT_EAL_LibCtx *libCtx, const char *attrNa
         }
         ret = X509_ParseAndAddRes(libCtx, attrName, &asn1Buf, parseFun, list);
         if (ret != HITLS_PKI_SUCCESS) {
-            BSL_SAL_Free(asn1Buf.data);
-            return ret;
+            return ret; // asn1Buf.data has beed freed in X509_ParseAndAddRes.
         }
         data += elemLen;
         dataLen -= elemLen;
@@ -422,8 +422,7 @@ static int32_t HITLS_X509_ParsePem(CRYPT_EAL_LibCtx *libCtx, const char *attrNam
             break;
         }
         ret = X509_ParseAndAddRes(libCtx, attrName, &asn1Buf, parseFun, list);
-        if (ret != HITLS_PKI_SUCCESS) {
-            BSL_SAL_Free(asn1Buf.data);
+        if (ret != HITLS_PKI_SUCCESS) { // asn1Buf.data has beed freed in X509_ParseAndAddRes.
             return ret;
         }
     }

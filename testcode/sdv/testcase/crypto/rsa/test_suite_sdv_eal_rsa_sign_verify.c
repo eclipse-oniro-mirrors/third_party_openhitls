@@ -1171,6 +1171,9 @@ void SDV_CRYPTO_RSA_RSABSSA_BLINDING_FUNC_TC001(int mdId, Hex *n, Hex *e, Hex *d
 #ifndef HITLS_CRYPTO_RSA_BSSA
     SKIP_TEST();
 #endif
+    if (IsMdAlgDisabled(mdId)) {
+        SKIP_TEST();
+    }
     TestMemInit();
     uint8_t sign[MAX_CIPHERTEXT_LEN] = {0};
     uint32_t signLen = MAX_CIPHERTEXT_LEN;
