@@ -410,6 +410,18 @@ int32_t HITLS_X509_CertParseBuff(int32_t format, const BSL_Buffer *encode, HITLS
     return ProviderCertParseBuffInternal(NULL, NULL, format, encode, cert);
 }
 
+int32_t HITLS_X509_CertParseBundleBuff(int32_t format, const BSL_Buffer *encode, HITLS_X509_List **certlist)
+{
+    return HITLS_X509_CertMulParseBuff(NULL, NULL, format, encode, certlist);
+}
+
+int32_t HITLS_X509_ProviderCertParseBundleBuff(HITLS_PKI_LibCtx *libCtx, const char *attrName, const char *format,
+    const BSL_Buffer *encode, HITLS_X509_List **certlist)
+{
+    int32_t encodeFormat = CRYPT_EAL_GetEncodeFormat(format);
+    return HITLS_X509_CertMulParseBuff(libCtx, attrName, encodeFormat, encode, certlist);
+}
+
 #ifdef HITLS_BSL_SAL_FILE
 static int32_t ProviderCertParseBundleFileInternal(HITLS_PKI_LibCtx *libCtx, const char *attrName, int32_t format,
     const char *path, HITLS_X509_List **certlist)

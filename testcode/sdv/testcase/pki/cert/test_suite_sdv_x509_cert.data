@@ -3248,5 +3248,23 @@ SDV_X509_CERT_INVALIED_TEST_TC001:BSL_FORMAT_ASN1:"../testdata/cert/asn1/rsa_ecc
 SDV_X509_CERT_INVALIED_TEST_TC001 parse pem
 SDV_X509_CERT_INVALIED_TEST_TC001:BSL_FORMAT_PEM:"../testdata/cert/pem/cert/ca.pem"
 
-SDV_X509_CERT_PARSE_STUB_TC001 v1 cert
-SDV_X509_CERT_PARSE_STUB_TC001:BSL_FORMAT_ASN1:"../testdata/cert/asn1/ecdsa_cert/ca.v1.der":233
+SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001 parse bundle buff with 3 pem certs
+SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001:BSL_FORMAT_PEM:"../testdata/cert/sm2/chain.pem":3
+
+SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001 parse bundle buff with 3 der certs
+SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001:BSL_FORMAT_ASN1:"../testdata/cert/sm2/chain.der":3
+
+SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001 parse bundle buff with 3 unknown(pem) certs
+SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001:BSL_FORMAT_UNKNOWN:"../testdata/cert/sm2/chain.pem":3
+
+SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001 parse bundle buff with 1 der cert
+SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001:BSL_FORMAT_ASN1:"../testdata/cert/asn1/sha256Rsaca.crt":1
+
+SDV_X509_PROVIDER_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001 provider parse bundle buff with 3 pem certs
+SDV_X509_PROVIDER_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001:"PEM":"../testdata/cert/sm2/chain.pem":3
+
+SDV_X509_PROVIDER_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001 provider parse bundle buff with 3 der certs
+SDV_X509_PROVIDER_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001:"ASN1":"../testdata/cert/sm2/chain.der":3
+
+SDV_X509_PROVIDER_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001 provider parse bundle buff with 1 der cert
+SDV_X509_PROVIDER_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001:"ASN1":"../testdata/cert/asn1/sha256Rsaca.crt":1

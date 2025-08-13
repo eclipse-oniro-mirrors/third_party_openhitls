@@ -684,6 +684,46 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void SDV_X509_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001(int format, char *path, int certNum)
+{
+    TestMemInit();
+    HITLS_X509_List *list = NULL;
+    BSL_Buffer encodeData = {0};
+    
+    // Read certificate bundle file into buffer
+    ASSERT_EQ(BSL_SAL_ReadFile(path, &encodeData.data, &encodeData.dataLen), BSL_SUCCESS);
+    
+    // Parse certificates from buffer
+    ASSERT_EQ(HITLS_X509_CertParseBundleBuff(format, &encodeData, &list), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(BSL_LIST_COUNT(list), certNum);
+    
+EXIT:
+    BSL_LIST_FREE(list, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+    BSL_SAL_Free(encodeData.data);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_X509_PROVIDER_CERT_PARSE_BUNDLE_BUFF_FUNC_TC001(char *format, char *path, int certNum)
+{
+    TestMemInit();
+    HITLS_X509_List *list = NULL;
+    BSL_Buffer encodeData = {0};
+    
+    // Read certificate bundle file into buffer
+    ASSERT_EQ(BSL_SAL_ReadFile(path, &encodeData.data, &encodeData.dataLen), BSL_SUCCESS);
+    
+    // Parse certificates from buffer using provider mechanism
+    ASSERT_EQ(HITLS_X509_ProviderCertParseBundleBuff(NULL, NULL, format, &encodeData, &list), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(BSL_LIST_COUNT(list), certNum);
+    
+EXIT:
+    BSL_LIST_FREE(list, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+    BSL_SAL_Free(encodeData.data);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void SDV_X509_CERT_SET_VERIOSN_FUNC_TC001(void)
 {
     TestMemInit();
