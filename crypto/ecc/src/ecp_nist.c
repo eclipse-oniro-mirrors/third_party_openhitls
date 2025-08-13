@@ -248,9 +248,6 @@ int32_t ECP_NistPointAdd(const ECC_Para *para, ECC_Point *r, const ECC_Point *a,
         // If point b is an infinity point, r = a
         return ECC_CopyPoint(r, a);
     }
-    if (BN_Cmp(a->x, b->x) == 0 && BN_Cmp(a->y, b->y) == 0 && BN_Cmp(a->z, b->z) == 0) {
-        return para->method->pointDouble(para, r, a);
-    }
     int32_t ret;
     BN_Optimizer *opt = BN_OptimizerCreate();
     if (opt == NULL) {
@@ -281,8 +278,12 @@ int32_t ECP_NistPointAdd(const ECC_Para *para, ECC_Point *r, const ECC_Point *a,
     GOTO_ERR_IF(para->method->bnModNistEccMul(r->x, t3, b->x, para->p, opt), ret); // U2 = Z1^2 * X2
 
     GOTO_ERR_IF(BN_ModSubQuick(t1, r->x, t5, para->p, opt), ret); // H = U2 - U1
-    GOTO_ERR_IF(para->method->bnModNistEccMul(r->z, t1, r->z, para->p, opt), ret); // r->z = H * Z2*Z1
     GOTO_ERR_IF(BN_ModSubQuick(t2, r->y, t6, para->p, opt), ret); // r = S2 - S1
+    if (BN_IsZero(t1) && BN_IsZero(t2)) {
+        GOTO_ERR_IF(para->method->pointDouble(para, r, b), ret);
+        goto ERR;
+    }
+    GOTO_ERR_IF(para->method->bnModNistEccMul(r->z, t1, r->z, para->p, opt), ret); // r->z = H * Z2*Z1
     GOTO_ERR_IF(para->method->bnModNistEccSqr(t3, t1, para->p, opt), ret); // t3 = H^2
 
     GOTO_ERR_IF(para->method->bnModNistEccMul(t1, t1, t3, para->p, opt), ret); // t1 = H^3
