@@ -24,7 +24,7 @@
 #include "crypt_params_key.h"
 #include "crypt_sm_provider.h"
 
-#define SM_PROVIDER_VERSION "openHiTLS SM Provider Version : V0.2.0"
+#define SM_PROVIDER_VERSION "openHiTLS SM Provider Version : V0.3.0"
 
 typedef struct {
     void *provCtx;
