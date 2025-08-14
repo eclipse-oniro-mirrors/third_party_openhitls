@@ -988,7 +988,7 @@ static int32_t AllocEncodeParam(BSL_ASN1_TemplateItem **items, uint32_t itemNum,
     return HITLS_PKI_SUCCESS;
 }
 
-static int32_t SetExtSan(HITLS_X509_Ext *ext, HITLS_X509_ExtEntry *entry, const void *val)
+static int32_t SetExtGeneralNames(HITLS_X509_Ext *ext, HITLS_X509_ExtEntry *entry, const void *val)
 {
     (void)ext;
     const HITLS_X509_ExtSan *san = (const HITLS_X509_ExtSan *)val;
@@ -1164,7 +1164,8 @@ static int32_t SetExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t 
             return SetExt(ext, BSL_CID_CE_SUBJECTKEYIDENTIFIER, &buff, sizeof(HITLS_X509_ExtSki),
                 (EncodeExtCb)SetExtSki);
         case HITLS_X509_EXT_SET_SAN:
-            return SetExt(ext, BSL_CID_CE_SUBJECTALTNAME, &buff, sizeof(HITLS_X509_ExtSan), (EncodeExtCb)SetExtSan);
+            return SetExt(ext, BSL_CID_CE_SUBJECTALTNAME, &buff, sizeof(HITLS_X509_ExtSan),
+                (EncodeExtCb)SetExtGeneralNames);
         case HITLS_X509_EXT_SET_EXKUSAGE:
             return SetExt(ext, BSL_CID_CE_EXTKEYUSAGE, &buff, sizeof(HITLS_X509_ExtExKeyUsage),
                 (EncodeExtCb)SetExtExKeyUsage);
@@ -1284,6 +1285,15 @@ int32_t HITLS_X509_ExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t
     }
 
     return X509_ExtCtrl(ext, cmd, val, valLen);
+}
+
+int32_t HITLS_X509_SetGeneralNames(HITLS_X509_ExtEntry *extEntry, void *val)
+{
+    if (extEntry == NULL || val == NULL) {
+        return BSL_NULL_INPUT;
+    }
+
+    return SetExtGeneralNames(NULL, extEntry, val);
 }
 
 void HITLS_X509_ExtEntryFree(HITLS_X509_ExtEntry *entry)

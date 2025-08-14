@@ -168,6 +168,8 @@ typedef int32_t (*EncodeExtCb)(void *, HITLS_X509_ExtEntry *, const void *);
 
 int32_t HITLS_X509_SetExtList(void *param, BslList *extList, BslCid cid, BSL_Buffer *val, EncodeExtCb encodeExt);
 
+int32_t HITLS_X509_SetGeneralNames(HITLS_X509_ExtEntry *extEntry, void *val);
+
 int32_t HITLS_X509_EncodeExtEntry(BSL_ASN1_List *list, BSL_ASN1_Buffer *ext);
 
 typedef int32_t (*HITLS_X509_SignCb)(int32_t mdId, CRYPT_EAL_PkeyCtx *prvKey, HITLS_X509_Asn1AlgId *signAlgId,

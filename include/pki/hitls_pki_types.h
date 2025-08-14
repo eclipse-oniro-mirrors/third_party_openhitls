@@ -259,7 +259,7 @@ typedef struct {
 
 typedef struct {
     bool critical;
-    BslList *issuerName;
+    BslList *issuerName; // List of HITLS_X509_GeneralName
 } HITLS_X509_RevokeExtCertIssuer;
 
 typedef enum {
