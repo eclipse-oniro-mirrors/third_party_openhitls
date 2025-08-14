@@ -241,8 +241,14 @@ int32_t ReadHsMessage(TLS_Ctx *ctx, uint32_t length)
         return ret;
     }
     uint32_t readLen = 0;
-    ret = REC_Read(ctx, REC_TYPE_HANDSHAKE, &hsCtx->msgBuf[hsCtx->msgLen], &readLen, length - hsCtx->msgLen);
-    hsCtx->msgLen += readLen;
+    do {
+        readLen = 0;
+        ret = REC_Read(ctx, REC_TYPE_HANDSHAKE, &hsCtx->msgBuf[hsCtx->msgLen], &readLen, length - hsCtx->msgLen);
+        hsCtx->msgLen += readLen;
+        if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
+            break;
+        }
+    } while (ret == HITLS_SUCCESS && hsCtx->msgLen < length && readLen != 0);
     if (ret == HITLS_SUCCESS && hsCtx->msgLen < length) {
         return HITLS_REC_NORMAL_RECV_BUF_EMPTY;
     }
