@@ -235,7 +235,7 @@ void UT_TLS_TLS12_RFC5246_CONSISTENCY_FRAGMENTED_MSG_TC001(void)
     ret = HITLS_Connect(client->ssl);
     ASSERT_TRUE(FRAME_TrasferMsgBetweenLink(client, server) == HITLS_SUCCESS);
     ret = HITLS_Accept(server->ssl);
-    ASSERT_EQ(ret, HITLS_REC_NORMAL_RECV_BUF_EMPTY);
+    ASSERT_EQ(ret, HITLS_REC_NORMAL_IO_BUSY);
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
     ASSERT_TRUE(client->ssl->state == CM_STATE_TRANSPORTING);
 

@@ -120,7 +120,7 @@ static int32_t RecvRenegoReqPreprocess(TLS_Ctx *ctx, uint8_t type)
         // nextSendSeq increases to 1. Then, the hsctx is released and the nextSendSeq is reset to 0.
         // Therefore, the value of nextSendSeq should return to 1 when sending server hello.
 #ifdef HITLS_TLS_PROTO_DTLS12
-        if (ctx->userRenego && IS_DTLS_VERSION(ctx->negotiatedInfo.version)) {
+        if (ctx->userRenego && IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
             ctx->hsCtx->nextSendSeq++;
         }
 #endif
