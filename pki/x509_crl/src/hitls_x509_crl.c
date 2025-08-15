@@ -1341,31 +1341,13 @@ static int32_t SetExtReason(void *param, HITLS_X509_ExtEntry *extEntry, void *va
     }
     return ret;
 }
+#endif // HITLS_PKI_X509_CRL_GEN
 
-static int32_t SetExtCertIssuer(void *param, HITLS_X509_ExtEntry *extEntry, void *val)
+static int32_t SetExtCertificateIssuer(void *param, HITLS_X509_ExtEntry *extEntry, void *val)
 {
     (void)param;
-    HITLS_X509_RevokeExtCertIssuer *certIssuer = (HITLS_X509_RevokeExtCertIssuer *)val;
-    if (certIssuer->issuerName == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
-        return HITLS_X509_ERR_INVALID_PARAM;
-    }
-    BSL_ASN1_Buffer name = {0};
-    int32_t ret = HITLS_X509_EncodeNameList(certIssuer->issuerName, &name);
-    if (ret != HITLS_PKI_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
-    }
-    BSL_ASN1_TemplateItem item =  {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 0};
-    BSL_ASN1_Template templ = {&item, 1};
-    ret = BSL_ASN1_EncodeTemplate(&templ, &name, 1, &extEntry->extnValue.buff, &extEntry->extnValue.len);
-    BSL_SAL_Free(name.buff);
-    if (ret != BSL_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-    }
-    return ret;
+    return HITLS_X509_SetGeneralNames(extEntry, val);
 }
-#endif // HITLS_PKI_X509_CRL_GEN
 
 static int32_t DecodeExtInvalidTime(HITLS_X509_ExtEntry *extEntry, void *val)
 {
@@ -1447,7 +1429,7 @@ static int32_t RevokedSet(HITLS_X509_CrlEntry *revoked, int32_t cmd, void *val, 
                 (EncodeExtCb)SetExtReason);
         case HITLS_X509_CRL_SET_REVOKED_CERTISSUER:
             return X509_CrlSetRevokedExt(revoked, BSL_CID_CE_CERTIFICATEISSUER, &buff,
-                sizeof(HITLS_X509_RevokeExtCertIssuer), (EncodeExtCb)SetExtCertIssuer);
+                sizeof(HITLS_X509_RevokeExtCertIssuer), (EncodeExtCb)SetExtCertificateIssuer);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;

@@ -214,56 +214,6 @@ EXIT:
 }
 #endif
 
-#ifdef HITLS_PKI_X509_CRL_GEN
-static int32_t SetCrlEntry(HITLS_X509_Crl *crl, BslList *issuerDN)
-{
-    int32_t ret = 1;
-    BSL_TIME revokeTime = {2030, 1, 1, 0, 0, 0, 0, 0};
-    uint8_t serialNum[4] = {0x11, 0x22, 0x33, 0x44};
-    HITLS_X509_RevokeExtReason reason = {0, 1};  // keyCompromise
-    BSL_TIME invalidTime = revokeTime;
-    HITLS_X509_RevokeExtTime invalidTimeExt = {false, invalidTime};
-    HITLS_X509_RevokeExtCertIssuer certIssuer = {false, issuerDN};
-    
-    HITLS_X509_CrlEntry *entry = HITLS_X509_CrlEntryNew();
-    ASSERT_NE(entry, NULL);
-    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_SERIALNUM, serialNum, sizeof(serialNum)),0);
-    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_REVOKE_TIME, &revokeTime, sizeof(BSL_TIME)),0);
-    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_REASON, &reason,sizeof(HITLS_X509_RevokeExtReason)), 0);
-    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_INVALID_TIME, &invalidTimeExt,
-        sizeof(HITLS_X509_RevokeExtTime)), 0);
-    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_CERTISSUER, &certIssuer,
-        sizeof(HITLS_X509_RevokeExtCertIssuer)), 0);
-
-    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_CRL_ADD_REVOKED_CERT, entry, 0), 0);
-
-    ret = 0;
-EXIT:
-    HITLS_X509_CrlEntryFree(entry);
-    return ret;
-}
-#endif // HITLS_PKI_X509_CRL_GEN
-
-#ifdef HITLS_PKI_X509_CSR_GEN
-static int32_t FillExt(HITLS_X509_Ext *ext)
-{
-    HITLS_X509_ExtBCons bCons = {true, false, 1};
-    HITLS_X509_ExtKeyUsage ku = {true, HITLS_X509_EXT_KU_DIGITAL_SIGN | HITLS_X509_EXT_KU_NON_REPUDIATION};
-    ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_KUSAGE, &ku, sizeof(HITLS_X509_ExtKeyUsage)), 0);
-    ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_BCONS, &bCons, sizeof(HITLS_X509_ExtBCons)), 0);
-    return 0;
-EXIT:
-    return 1;
-}
-#endif // HITLS_PKI_X509_CSR_GEN
-
-#ifdef HITLS_PKI_X509_CRT_GEN
-static void FreeListData(void *data)
-{
-    (void)data;
-    return;
-}
-
 static BslList* GenGeneralNameList(void)
 {
     char *str = "test";
@@ -315,6 +265,59 @@ EXIT:
     HITLS_X509_FreeGeneralName(ip);
     BSL_LIST_FREE(names, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeGeneralName);
     return NULL;
+}
+
+#ifdef HITLS_PKI_X509_CRL_GEN
+static int32_t SetCrlEntry(HITLS_X509_Crl *crl)
+{
+    int32_t ret = 1;
+    BSL_TIME revokeTime = {2030, 1, 1, 0, 0, 0, 0, 0};
+    uint8_t serialNum[4] = {0x11, 0x22, 0x33, 0x44};
+    HITLS_X509_RevokeExtReason reason = {0, 1};  // keyCompromise
+    BSL_TIME invalidTime = revokeTime;
+    HITLS_X509_RevokeExtTime invalidTimeExt = {false, invalidTime};
+    
+    HITLS_X509_CrlEntry *entry = HITLS_X509_CrlEntryNew();
+    ASSERT_NE(entry, NULL);
+    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_SERIALNUM, serialNum, sizeof(serialNum)),0);
+    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_REVOKE_TIME, &revokeTime, sizeof(BSL_TIME)),0);
+    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_REASON, &reason,
+        sizeof(HITLS_X509_RevokeExtReason)), 0);
+    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_INVALID_TIME, &invalidTimeExt,
+        sizeof(HITLS_X509_RevokeExtTime)), 0);
+    HITLS_X509_RevokeExtCertIssuer certIssuer = {true, NULL};
+    certIssuer.issuerName = GenGeneralNameList();
+    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_CERTISSUER,
+        &certIssuer, sizeof(HITLS_X509_ExtSan)), 0);
+
+    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_CRL_ADD_REVOKED_CERT, entry, 0), 0);
+
+    ret = 0;
+EXIT:
+    HITLS_X509_CrlEntryFree(entry);
+    BSL_LIST_FREE(certIssuer.issuerName, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeGeneralName);
+    return ret;
+}
+#endif // HITLS_PKI_X509_CRL_GEN
+
+#ifdef HITLS_PKI_X509_CSR_GEN
+static int32_t FillExt(HITLS_X509_Ext *ext)
+{
+    HITLS_X509_ExtBCons bCons = {true, false, 1};
+    HITLS_X509_ExtKeyUsage ku = {true, HITLS_X509_EXT_KU_DIGITAL_SIGN | HITLS_X509_EXT_KU_NON_REPUDIATION};
+    ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_KUSAGE, &ku, sizeof(HITLS_X509_ExtKeyUsage)), 0);
+    ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_BCONS, &bCons, sizeof(HITLS_X509_ExtBCons)), 0);
+    return 0;
+EXIT:
+    return 1;
+}
+#endif // HITLS_PKI_X509_CSR_GEN
+
+#ifdef HITLS_PKI_X509_CRT_GEN
+static void FreeListData(void *data)
+{
+    (void)data;
+    return;
 }
 
 static int32_t SetCertExt(HITLS_X509_Cert *cert)
@@ -534,7 +537,7 @@ void SDV_PKI_GEN_CRL_TC001(int algId, int hashId, int curveId)
     ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_VERSION, &version, sizeof(version)), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_BEFORE_TIME, &beforeTime, sizeof(BSL_TIME)), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_AFTER_TIME, &afterTime, sizeof(BSL_TIME)), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(SetCrlEntry(crl, issuer), 0);
+    ASSERT_EQ(SetCrlEntry(crl), 0);
     ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_EXT_SET_CRLNUMBER, &crlNumberExt, sizeof(HITLS_X509_ExtCrlNumber)), 0);
 
     SetSignParam(algId, hashId, &algParam, &pssParam);

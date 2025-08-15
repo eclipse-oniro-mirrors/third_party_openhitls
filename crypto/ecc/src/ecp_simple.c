@@ -796,6 +796,7 @@ int32_t ECP_PointMulFast(ECC_Para *para, ECC_Point *r, const BN_BigNum *k, const
         GOTO_ERR_IF(para->method->pointAdd(para, r, r, windows[offset]), ret);
         GOTO_ERR_IF(para->method->pointMultDouble(para, r, r, codeK->wide[i]), ret);
     }
+    ECC_PointFromMont(para, r);
 ERR:
     for (uint32_t i = 0; i < WINDOW_TABLE_SIZE; i++) {
         // Clear the pre-computation table.
