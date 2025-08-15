@@ -274,7 +274,7 @@ int32_t CRYPT_EAL_ProviderInit(CRYPT_EAL_ProvMgrCtx *mgrCtx, BSL_Param *param, C
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }
-    ret = CRYPT_Sm_Selftest(param);
+    ret = CRYPT_SM_Selftest(param);
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }

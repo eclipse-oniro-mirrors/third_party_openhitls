@@ -31,7 +31,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-int32_t CRYPT_Sm_Selftest(BSL_Param *param);
+int32_t CRYPT_SM_Selftest(BSL_Param *param);
 
 #ifdef __cplusplus
 }

@@ -24,13 +24,13 @@
 #include "cmvp_common.h"
 #include "crypt_sm_selftest.h"
 
-int32_t CRYPT_Sm_Selftest(BSL_Param *param)
+int32_t CRYPT_SM_Selftest(BSL_Param *param)
 {
     CRYPT_EAL_LibCtx *libCtx = NULL;
     if (CMVP_CheckIsInternalLibCtx(param)) {
         return CRYPT_SUCCESS;
     }
-    int32_t ret = CMVP_CreateInternalLibCtx(param, &libCtx, CRYPT_Sm_Selftest);
+    int32_t ret = CMVP_CreateInternalLibCtx(param, &libCtx, CRYPT_SM_Selftest);
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }
