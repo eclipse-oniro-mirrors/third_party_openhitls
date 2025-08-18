@@ -20,97 +20,92 @@
 #include "crypt_eal_pkey.h"
 #include "benchmark.h"
 
-static const char *SlhDsaHeader(BenchCtx *bench)
-{
-    switch (bench->ctxOps->subAlgId) {
-        case CRYPT_SLH_DSA_SHA2_128S:
-            return "SLH-DSA-SHA2-128S";
-        case CRYPT_SLH_DSA_SHAKE_128S:
-            return "SLH-DSA-SHAKE-128S";
-        case CRYPT_SLH_DSA_SHA2_128F:
-            return "SLH-DSA-SHA2-128F";
-        case CRYPT_SLH_DSA_SHAKE_128F:
-            return "SLH-DSA-SHAKE-128F";
-        case CRYPT_SLH_DSA_SHA2_192S:
-            return "SLH-DSA-SHA2-192S";
-        case CRYPT_SLH_DSA_SHAKE_192S:
-            return "SLH-DSA-SHAKE-192S";
-        case CRYPT_SLH_DSA_SHA2_192F:
-            return "SLH-DSA-SHA2-192F";
-        case CRYPT_SLH_DSA_SHAKE_192F:
-            return "SLH-DSA-SHAKE-192F";
-        case CRYPT_SLH_DSA_SHA2_256S:
-            return "SLH-DSA-SHA2-256S";
-        case CRYPT_SLH_DSA_SHAKE_256S:
-            return "SLH-DSA-SHAKE-256S";
-        case CRYPT_SLH_DSA_SHA2_256F:
-            return "SLH-DSA-SHA2-256F";
-        case CRYPT_SLH_DSA_SHAKE_256F:
-            return "SLH-DSA-SHAKE_256F";
-        case CRYPT_SLH_DSA_ALG_ID_MAX:
-            break;
-    }
-    return "";
-}
-
-static int32_t SlhDsaNewCtx(void **ctx, const CtxOps *ops)
+static int32_t SlhDsaSetUp(void **ctx, BenchCtx *bench, const CtxOps *ops, int32_t paraId)
 {
     CRYPT_EAL_PkeyCtx *pkeyCtx = CRYPT_EAL_PkeyNewCtx(ops->algId);
     if (pkeyCtx == NULL) {
         printf("Failed to create pkey context\n");
         return CRYPT_MEM_ALLOC_FAIL;
     }
+    int rc = CRYPT_SUCCESS;
+    CRYPT_SLH_DSA_AlgId algId = paraId;
+    rc = CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_PARA_BY_ID, (void *)&algId, sizeof(algId));
+    if (rc != CRYPT_SUCCESS) {
+        return rc;
+    }
+    rc = CRYPT_EAL_PkeyGen(pkeyCtx);
+    if (rc != CRYPT_SUCCESS) {
+        printf("Failed to gen slhdsa key.\n");
+        return rc;
+    }
     *ctx = pkeyCtx;
     return CRYPT_SUCCESS;
 }
 
-static void SlhDsaFreeCtx(void *ctx)
+static void SlhDsaTearDown(void *ctx)
 {
     CRYPT_EAL_PkeyFreeCtx(ctx);
 }
 
-static int32_t SlhDsaKeyGen(void *ctx, BenchCtx *bench)
+static int32_t SlhDsaKeyGen(void *ctx, BenchCtx *bench, BenchOptions *opts)
 {
     int rc = CRYPT_SUCCESS;
-    CRYPT_SLH_DSA_AlgId algId = bench->ctxOps->subAlgId;
-    rc = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_SLH_DSA_ALG_ID, (void *)&algId, sizeof(algId));
+    CRYPT_SLH_DSA_AlgId paraId = opts->paraId;
+
+    rc = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_PARA_BY_ID, (void *)&paraId, sizeof(paraId));
     if (rc != CRYPT_SUCCESS) {
         return rc;
     }
-    BENCH_TIMES_VA(rc = CRYPT_EAL_PkeyGen(ctx), rc, CRYPT_SUCCESS, bench->times, "%s keyGen", SlhDsaHeader(bench));
+    BENCH_TIMES_VA(CRYPT_EAL_PkeyGen(ctx), rc, CRYPT_SUCCESS, -1, opts->times, "%s keyGen", GetAlgName(paraId));
     return rc;
 }
 
-static int32_t SlhDsaSignInner(void *ctx)
+static int32_t GetHashId(BenchCtx *bench, BenchOptions *opts)
 {
-    uint8_t plainText[32] = {0};
-    uint8_t signature[51200];  // maximum len is 49856
-    uint32_t signatureLen = sizeof(signature);
-    return CRYPT_EAL_PkeySign(ctx, CRYPT_MD_SHA256, plainText, sizeof(plainText), signature, &signatureLen);
+    int32_t hashId = bench->ctxOps->hashId;
+    if (opts->hashId != -1) {
+        hashId = opts->hashId;
+    }
+    return hashId;
 }
 
-static int32_t SlhDsaSign(void *ctx, BenchCtx *bench)
+static int32_t SlhDsaSignInner(void *ctx, int32_t hashId, int32_t len)
+{
+    static uint8_t sign[51200]; // maximum len is 49856
+    uint32_t signLen = sizeof(sign);
+    return CRYPT_EAL_PkeySign(ctx, hashId, g_plain, len, sign, &signLen);
+}
+
+static int32_t SlhDsaSign(void *ctx, BenchCtx *bench, BenchOptions *opts)
 {
     int rc;
-    BENCH_TIMES_VA(SlhDsaSignInner(ctx), rc, CRYPT_SUCCESS, bench->times, "%s sign", SlhDsaHeader(bench));
+    int32_t hashId = GetHashId(bench, opts);
+    BENCH_TIMES_VA(SlhDsaSignInner(ctx, hashId, opts->len), rc, CRYPT_SUCCESS, opts->len, opts->times, "%s sign",
+                   GetAlgName(opts->paraId));
     return rc;
 }
 
-static int32_t SlhDsaVerify(void *ctx, BenchCtx *bench)
+static int32_t SlhDsaVerify(void *ctx, BenchCtx *bench, BenchOptions *opts)
 {
     int rc;
-    uint8_t plainText[32] = {0};
-    uint8_t signature[51200];  // maximum len is 49856
-    uint32_t signatureLen = sizeof(signature);
-    rc = CRYPT_EAL_PkeySign(ctx, CRYPT_MD_SHA256, plainText, sizeof(plainText), signature, &signatureLen);
+    static uint8_t sign[51200]; // maximum len is 49856
+    uint32_t signLen = sizeof(sign);
+    int32_t hashId = GetHashId(bench, opts);
+    rc = CRYPT_EAL_PkeySign(ctx, hashId, g_plain, opts->len, sign, &signLen);
     if (rc != CRYPT_SUCCESS) {
         printf("Failed to sign\n");
         return rc;
     }
-    BENCH_TIMES_VA(CRYPT_EAL_PkeyVerify(ctx, CRYPT_MD_SHA256, plainText, sizeof(plainText), signature, signatureLen), rc,
-                CRYPT_SUCCESS, bench->times, "%s verify", SlhDsaHeader(bench));
+    BENCH_TIMES_VA(CRYPT_EAL_PkeyVerify(ctx, hashId, g_plain, opts->len, sign, signLen), rc, CRYPT_SUCCESS, opts->len,
+                   opts->times, "%s verify", GetAlgName(opts->paraId));
     return rc;
 }
 
-DEFINE_OPS_SIGN_ALG(SlhDsa, CRYPT_PKEY_SLH_DSA, CRYPT_SLH_DSA_SHA2_128S);
-DEFINE_BENCH_CTX_TIMES(SlhDsa, 100);
+static int32_t g_paraIds[] = {
+    CRYPT_SLH_DSA_SHA2_128S, CRYPT_SLH_DSA_SHAKE_128S, CRYPT_SLH_DSA_SHA2_128F, CRYPT_SLH_DSA_SHAKE_128F,
+    CRYPT_SLH_DSA_SHA2_192S, CRYPT_SLH_DSA_SHAKE_192S, CRYPT_SLH_DSA_SHA2_192F, CRYPT_SLH_DSA_SHAKE_192F,
+    CRYPT_SLH_DSA_SHA2_256S, CRYPT_SLH_DSA_SHAKE_256S, CRYPT_SLH_DSA_SHA2_256F, CRYPT_SLH_DSA_SHAKE_256F,
+};
+
+DEFINE_OPS_SIGN(SlhDsa, CRYPT_PKEY_SLH_DSA, CRYPT_MD_SHA256);
+DEFINE_BENCH_CTX_PARA_FIXLEN(SlhDsa, g_paraIds, SIZEOF(g_paraIds));
