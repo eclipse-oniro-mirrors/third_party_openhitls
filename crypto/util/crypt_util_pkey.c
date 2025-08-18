@@ -159,3 +159,24 @@ ERR:
 }
 
 #endif // HITLS_CRYPTO_DH_CHECK || HITLS_CRYPTO_DSA_CHECK
+
+#if defined(HITLS_CRYPTO_PROVIDER) && (defined(HITLS_CRYPTO_RSA) || defined(HITLS_CRYPTO_ECDSA) || \
+    defined(HITLS_CRYPTO_DSA))
+#include "securec.h"
+int32_t CRYPT_PkeySetMdAttr(const char *mdAttr, uint32_t len, char **pkeyMdAttr)
+{
+    if (mdAttr == NULL || len == 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    BSL_SAL_FREE(*pkeyMdAttr);
+    *pkeyMdAttr = BSL_SAL_Malloc(len + 1); // +1 for '\0'
+    if (*pkeyMdAttr == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    (void)memcpy_s(*pkeyMdAttr, len + 1, mdAttr, len);
+    (*pkeyMdAttr)[len] = '\0';
+    return CRYPT_SUCCESS;
+}
+#endif

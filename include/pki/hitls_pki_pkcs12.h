@@ -91,19 +91,6 @@ int32_t HITLS_PKCS12_BagCtrl(HITLS_PKCS12_Bag *bag, int32_t cmd, void *val, uint
  * @ingroup pkcs12
  * @brief Generic function to set a p12 context.
  *
- * @param bag    [IN] bag context.
- * @param cmd    [IN] HITLS_PKCS12_XXX
- * @param val    [IN/OUT] input and output value
- * @param valLen [In] value length
- * @retval #HITLS_PKI_SUCCESS, success.
- *         Error codes can be found in hitls_pki_errno.h
- */
-int32_t HITLS_PKCS12_BagCtrl(HITLS_PKCS12_Bag *bag, int32_t cmd, void *val, uint32_t valType);
-
-/**
- * @ingroup pkcs12
- * @brief Generic function to set a p12 context.
- *
  * @param p12    [IN] p12 context.
  * @param cmd    [IN] HITLS_PKCS12_XXX
  *        cmd                                   val type

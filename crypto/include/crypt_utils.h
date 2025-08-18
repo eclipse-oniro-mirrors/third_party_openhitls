@@ -333,6 +333,18 @@ int32_t CRYPT_FFC_PrvCheck(const void *x, const void *p, const void *q);
 int32_t CRYPT_MdCommonGetParam(uint16_t mdSize, uint16_t mdBlockSize, BSL_Param *param);
 #endif
 
+#if defined(HITLS_CRYPTO_PROVIDER) && (defined(HITLS_CRYPTO_RSA) || defined(HITLS_CRYPTO_ECDSA) || \
+    defined(HITLS_CRYPTO_DSA))
+/**
+ * @brief Set the MD attribute.
+ *
+ * @param mdAttr [IN] MD attribute
+ * @param len [IN] MD attribute length
+ * @param pkeyMdAttr [OUT] Output pkey MD attribute
+ */
+int32_t CRYPT_PkeySetMdAttr(const char *mdAttr, uint32_t len, char **pkeyMdAttr);
+#endif
+
 /* Assumes that x is uint32_t and 0 < n < 32 */
 #define ROTL32(x, n) (((x) << (n)) | ((x) >> (32 - (n))))
 

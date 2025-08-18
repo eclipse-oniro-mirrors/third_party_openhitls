@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include "hitls_crypt_type.h"
 #include "hitls_crypt_reg.h"
+#include "crypt.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -454,6 +455,17 @@ int32_t HITLS_CRYPT_KemEncapsulate(HITLS_Lib_Ctx *libCtx, const char *attrName,
  */
 int32_t HITLS_CRYPT_KemDecapsulate(HITLS_CRYPT_Key *key, const uint8_t *ciphertext, uint32_t ciphertextLen,
     uint8_t *sharedSecret, uint32_t *sharedSecretLen);
+
+/**
+ * @brief PRF function
+ *
+ * @param input [IN] Key derivation parameter
+ * @param out [OUT] Output key
+ * @param outLen [IN] Output key length
+ *
+ * @retval HITLS_SUCCESS succeeded.
+ */
+int32_t HITLS_CRYPT_PRF(CRYPT_KeyDeriveParameters *input, uint8_t *out, uint32_t outLen);
 
 #ifdef __cplusplus
 }

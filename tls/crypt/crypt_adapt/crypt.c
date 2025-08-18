@@ -307,6 +307,7 @@ int32_t SAL_CRYPT_Hmac(HITLS_Lib_Ctx *libCtx, const char *attrName,
     return CheckCallBackRetVal(HITLS_CRYPT_CALLBACK_HMAC, ret, BINLOG_ID15077, HITLS_CRYPT_ERR_HMAC);
 }
 
+#ifndef HITLS_TLS_FEATURE_PROVIDER
 static int32_t IteratorInit(CRYPT_KeyDeriveParameters *input, uint32_t hmacSize,
     uint8_t **iterator, uint32_t *iteratorSize)
 {
@@ -460,6 +461,7 @@ int32_t PRF_MD5_SHA1(CRYPT_KeyDeriveParameters *input, uint8_t *out, uint32_t ou
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_CRYPTO_MD5 && HITLS_CRYPTO_SHA1 */
+#endif /* !HITLS_TLS_FEATURE_PROVIDER */
 
 int32_t SAL_CRYPT_PRF(CRYPT_KeyDeriveParameters *input, uint8_t *out, uint32_t outLen)
 {
@@ -468,8 +470,11 @@ int32_t SAL_CRYPT_PRF(CRYPT_KeyDeriveParameters *input, uint8_t *out, uint32_t o
         /* The PRF function must use the digest algorithm with SHA-256 or higher strength. */
         input->hashAlgo = HITLS_HASH_SHA_256;
     }
-
+#ifdef HITLS_TLS_FEATURE_PROVIDER
+    return HITLS_CRYPT_PRF(input, out, outLen);
+#else
     return P_Hash(input, out, outLen);
+#endif
 }
 
 

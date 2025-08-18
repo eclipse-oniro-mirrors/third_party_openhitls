@@ -19,6 +19,7 @@
 #include "securec.h"
 #include "bsl_log_internal.h"
 #include "bsl_err_internal.h"
+#include "bsl_params.h"
 #include "tls_binlog_id.h"
 #include "crypt_algid.h"
 #include "hitls_crypt_type.h"
@@ -1238,5 +1239,59 @@ int32_t HITLS_CRYPT_KemDecapsulate(HITLS_CRYPT_Key *key, const uint8_t *cipherte
     return CRYPT_EAL_PkeyDecaps(key, (uint8_t *)(uintptr_t)ciphertext, ciphertextLen, sharedSecret, sharedSecretLen);
 }
 #endif /* HITLS_TLS_FEATURE_KEM */
+
+#ifdef HITLS_CRYPTO_KDFTLS12
+static void InitKdfTls12Param(CRYPT_KeyDeriveParameters *input, CRYPT_MAC_AlgId id, BSL_Param *params)
+{
+    (void)BSL_PARAM_InitValue(&params[0], CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32, &id, sizeof(id));
+    (void)BSL_PARAM_InitValue(&params[1], CRYPT_PARAM_KDF_KEY, BSL_PARAM_TYPE_OCTETS,
+        (void *)(uintptr_t)input->secret, input->secretLen);
+    (void)BSL_PARAM_InitValue(&params[2], CRYPT_PARAM_KDF_LABEL, BSL_PARAM_TYPE_OCTETS, // 2: index of label
+        (void *)(uintptr_t)input->label, input->labelLen);
+    (void)BSL_PARAM_InitValue(&params[3], CRYPT_PARAM_KDF_SEED, BSL_PARAM_TYPE_OCTETS, // 3: index of seed
+        (void *)(uintptr_t)input->seed, input->seedLen);
+    if (input->attrName != NULL && strlen(input->attrName) > 0) {
+        (void)BSL_PARAM_InitValue(&params[4], CRYPT_PARAM_MD_ATTR, BSL_PARAM_TYPE_UTF8_STR, // 4: index of md attr
+            (void *)(uintptr_t)input->attrName, strlen(input->attrName));
+    }
+}
+#endif
+
+int32_t HITLS_CRYPT_PRF(CRYPT_KeyDeriveParameters *input, uint8_t *out, uint32_t outLen)
+{
+#ifdef HITLS_CRYPTO_KDFTLS12
+    CRYPT_MAC_AlgId id = GetHmacAlgId(input->hashAlgo);
+    BSL_Param params[6] = {{0}, {0}, {0}, {0}, {0}, BSL_PARAM_END}; // Set 5 parameters for kdftls12
+    InitKdfTls12Param(input, id, params);
+
+    CRYPT_EAL_KdfCTX *ctx = CRYPT_EAL_ProviderKdfNewCtx(input->libCtx, CRYPT_KDF_KDFTLS12, input->attrName);
+    if (ctx == NULL) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17374, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "KdfNewCtx fail", 0, 0, 0, 0);
+        return HITLS_CRYPT_ERR_KDF;
+    }
+
+    int32_t ret = CRYPT_EAL_KdfSetParam(ctx, params);
+    if (ret != CRYPT_SUCCESS) {
+        CRYPT_EAL_KdfFreeCtx(ctx);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17375, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "KdfSetParam fail", 0, 0, 0, 0);
+        return ret;
+    }
+
+    ret = CRYPT_EAL_KdfDerive(ctx, out, outLen);
+    CRYPT_EAL_KdfFreeCtx(ctx);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17376, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "KdfDerive fail", 0, 0, 0, 0);
+    }
+    return ret;
+#else
+    (void)input;
+    (void)out;
+    (void)outLen;
+    return CRYPT_EAL_ALG_NOT_SUPPORT;
+#endif
+}
 
 #endif /* HITLS_TLS_CALLBACK_CRYPT || HITLS_TLS_FEATURE_PROVIDER */

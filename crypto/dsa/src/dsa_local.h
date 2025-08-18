@@ -46,6 +46,8 @@ struct DSA_Ctx {
     CRYPT_DSA_Para *para; // key parameter
     BSL_SAL_RefCount references;
     void *libCtx;
+    char *mdAttr;
+    uint8_t flag;
 };
 
 typedef struct {

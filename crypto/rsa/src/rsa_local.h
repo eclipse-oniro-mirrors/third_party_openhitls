@@ -147,19 +147,12 @@ struct RSA_Ctx {
 #ifdef HITLS_CRYPTO_RSA_BSSA
     RSA_BlindParam *blindParam;
 #endif
-#ifdef HITLS_CRYPTO_PROVIDER
     void *libCtx;
     char *mdAttr;
-#endif
 };
 
-#ifdef HITLS_CRYPTO_PROVIDER
 #define LIBCTX_FROM_RSA_CTX(ctx) ((ctx) == NULL ? NULL : (ctx)->libCtx)
 #define MDATTR_FROM_RSA_CTX(ctx) ((ctx) == NULL ? NULL : (ctx)->mdAttr)
-#else
-#define LIBCTX_FROM_RSA_CTX(ctx) NULL
-#define MDATTR_FROM_RSA_CTX(ctx) NULL
-#endif
 
 CRYPT_RSA_PrvKey *RSA_NewPrvKey(uint32_t bits);
 CRYPT_RSA_PubKey *RSA_NewPubKey(uint32_t bits);

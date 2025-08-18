@@ -353,6 +353,7 @@ typedef enum {
     HITLS_CRYPT_ERR_KEM_ENCAPSULATE,               /**< KEM-Encapsulate calculation error. */
     HITLS_CRYPT_ERR_KEM_DECAPSULATE,               /**< KEM-Decapsulate calculation error. */
     HITLS_CRYPT_ERR_DH,                            /**< DH failure. */
+    HITLS_CRYPT_ERR_KDF,                           /**< KDF failure. */
 
     HITLS_APP_FAIL_START = 0x020E0001,             /**< APP module error code start bit. */
     HITLS_APP_ERR_TOO_LONG_TO_WRITE,               /**< APP Data written is too long. */

@@ -43,11 +43,7 @@ CRYPT_RSA_Ctx *CRYPT_RSA_NewCtxEx(void *libCtx)
     if (keyCtx == NULL) {
         return NULL;
     }
-#ifdef HITLS_CRYPTO_PROVIDER
     keyCtx->libCtx = libCtx;
-#else
-    (void)libCtx;
-#endif
     return keyCtx;
 }
 
@@ -195,6 +191,8 @@ CRYPT_RSA_Ctx *CRYPT_RSA_DupCtx(CRYPT_RSA_Ctx *keyCtx)
     }
 #endif
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->para, keyCtx->para, RSAParaDupCtx(keyCtx->para), CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->mdAttr, keyCtx->mdAttr, BSL_SAL_Dump(keyCtx->mdAttr,
+        strlen(keyCtx->mdAttr) + 1), CRYPT_MEM_ALLOC_FAIL);
     newKeyCtx->libCtx = keyCtx->libCtx;
     BSL_SAL_ReferencesInit(&(newKeyCtx->references));
     return newKeyCtx;
@@ -426,9 +424,7 @@ void CRYPT_RSA_FreeCtx(CRYPT_RSA_Ctx *ctx)
 #endif
     BSL_SAL_CleanseData((void *)(&(ctx->pad)), sizeof(RSAPad));
     BSL_SAL_FREE(ctx->label.data);
-#ifdef HITLS_CRYPTO_PROVIDER
     BSL_SAL_FREE(ctx->mdAttr);
-#endif
     BSL_SAL_FREE(ctx);
 }
 
@@ -617,27 +613,6 @@ static int32_t IsRSASetParamValidEx(const CRYPT_RSA_Para *para)
     return CRYPT_SUCCESS;
 }
 
-#ifdef HITLS_CRYPTO_PROVIDER
-static int32_t SetMdAttr(CRYPT_RSA_Ctx *ctx, const char *mdAttr, uint32_t len)
-{
-    if (len == 0) {
-        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
-        return CRYPT_INVALID_ARG;
-    }
-    if (ctx->mdAttr != NULL) {
-        BSL_SAL_FREE(ctx->mdAttr);
-    }
-    ctx->mdAttr = BSL_SAL_Malloc(len + 1); // +1 for '\0'
-    if (ctx->mdAttr == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-        return CRYPT_MEM_ALLOC_FAIL;
-    }
-    (void)memcpy_s(ctx->mdAttr, len + 1, mdAttr, len);
-    ctx->mdAttr[len] = '\0';
-    return CRYPT_SUCCESS;
-}
-#endif
-
 int32_t CRYPT_RSA_SetParaEx(CRYPT_RSA_Ctx *ctx, const BSL_Param *para)
 {
     if (ctx == NULL || para == NULL) {
@@ -649,7 +624,7 @@ int32_t CRYPT_RSA_SetParaEx(CRYPT_RSA_Ctx *ctx, const BSL_Param *para)
 #ifdef HITLS_CRYPTO_PROVIDER
     const BSL_Param *temp = NULL;
     if ((temp = BSL_PARAM_FindConstParam(para, CRYPT_PARAM_MD_ATTR)) != NULL) {
-        ret = SetMdAttr(ctx, (const char *)(temp->value), temp->valueLen);
+        ret = CRYPT_PkeySetMdAttr((const char *)(temp->value), temp->valueLen, &(ctx->mdAttr));
         if (ret != CRYPT_SUCCESS) {
             return ret;
         }
@@ -1237,9 +1212,7 @@ int32_t CRYPT_RSA_Gen(CRYPT_RSA_Ctx *ctx)
      * due to its low security, our interface does not lift this restriction.
      * Meanwhile, the check of e is not added to ensure compatibility.
      */
-#ifdef HITLS_CRYPTO_PROVIDER
     BN_OptimizerSetLibCtx(ctx->libCtx, optimizer);
-#endif
     ret = GenPQBasedOnProbPrimes(ctx->para, newCtx->prvKey, optimizer);
     if (ret != CRYPT_SUCCESS) {
         BN_OptimizerDestroy(optimizer);

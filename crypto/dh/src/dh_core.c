@@ -288,6 +288,7 @@ CRYPT_DH_Ctx *CRYPT_DH_DupCtx(CRYPT_DH_Ctx *ctx)
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->x, ctx->x, BN_Dup(ctx->x), CRYPT_MEM_ALLOC_FAIL);
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->y, ctx->y, BN_Dup(ctx->y), CRYPT_MEM_ALLOC_FAIL);
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->para, ctx->para, ParaDup(ctx->para), CRYPT_MEM_ALLOC_FAIL);
+    newKeyCtx->libCtx = ctx->libCtx;
     BSL_SAL_ReferencesInit(&(newKeyCtx->references));
     newKeyCtx->libCtx = ctx->libCtx;
     return newKeyCtx;

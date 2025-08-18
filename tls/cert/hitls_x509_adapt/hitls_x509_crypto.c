@@ -27,13 +27,16 @@
 #include "crypt_eal_pkey.h"
 #include "bsl_params.h"
 #include "crypt_params_key.h"
+#include "eal_md_local.h"
 #include "hitls_pki_cert.h"
 #include "tls.h"
 
 #ifdef HITLS_TLS_FEATURE_PROVIDER
-static inline int32_t SetMdAttr(CRYPT_EAL_PkeyCtx *ctx, const char *attrName)
+static int32_t SetMdAttr(CRYPT_EAL_PkeyCtx *ctx, const char *attrName)
 {
-    if (attrName == NULL || CRYPT_EAL_PkeyGetId(ctx) != CRYPT_PKEY_RSA) {
+    CRYPT_PKEY_AlgId id = CRYPT_EAL_PkeyGetId(ctx);
+    bool supportUnloadMd = id == CRYPT_PKEY_RSA || id == CRYPT_PKEY_ECDSA || id == CRYPT_PKEY_DSA;
+    if (attrName == NULL || strlen(attrName) == 0 || supportUnloadMd == false) {
         return CRYPT_SUCCESS;
     }
     BSL_Param param[] = {
@@ -147,13 +150,6 @@ int32_t HITLS_X509_Adapt_CheckPrivateKey(const HITLS_Config *config, HITLS_CERT_
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-#ifdef HITLS_TLS_FEATURE_PROVIDER
-    ret = SetMdAttr(ealPrivKey, config->attrName);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
-    }
-#endif
 
     ret = CRYPT_EAL_PkeyPairCheck(ealPubKey, ealPrivKey);
     CRYPT_EAL_PkeyFreeCtx(ealPubKey);

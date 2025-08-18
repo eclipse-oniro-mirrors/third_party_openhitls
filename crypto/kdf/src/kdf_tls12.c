@@ -34,6 +34,9 @@ static const uint32_t KDFTLS12_ID_LIST[] = {
     CRYPT_MAC_HMAC_SHA256,
     CRYPT_MAC_HMAC_SHA384,
     CRYPT_MAC_HMAC_SHA512,
+    CRYPT_MAC_HMAC_SM3, // for TLCP
+    CRYPT_MAC_HMAC_MD5, // for TLS1.0 and TLS1.1
+    CRYPT_MAC_HMAC_SHA1, // for TLS1.0 and TLS1.1
 };
 
 struct CryptKdfTls12Ctx {
@@ -224,7 +227,7 @@ int32_t CRYPT_KDFTLS12_SetSeed(CRYPT_KDFTLS12_Ctx *ctx, const uint8_t *seed, uin
 #ifdef HITLS_CRYPTO_PROVIDER
 static int32_t CRYPT_KDFTLS12_SetMdAttr(CRYPT_KDFTLS12_Ctx *ctx, const char *mdAttr, uint32_t valLen)
 {
-    if (valLen == 0) {
+    if (mdAttr == NULL || valLen == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_KDFTLS12_PARAM_ERROR);
         return CRYPT_KDFTLS12_PARAM_ERROR;
     }

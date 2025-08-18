@@ -1431,7 +1431,8 @@
                 ".deps": ["tls::crypt", "crypto::eal"],
                 ".include": [
                     "include",
-                    "tls/config/include"
+                    "tls/config/include",
+                    "tls/feature/custom_extensions/include"
                 ]
             },
             "cert": {
@@ -1444,6 +1445,7 @@
                     "include/bsl",
                     "include/pki",
                     "bsl/asn1/include",
+                    "crypto/eal/src",
                     "pki/x509_cert/include",
                     "pki/x509_common/include",
                     "tls/config/include",

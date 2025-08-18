@@ -48,6 +48,7 @@ void ECC_FreeCtx(ECC_Pkey *ctx)
     BN_Destroy(ctx->prvkey);
     ECC_FreePoint(ctx->pubkey);
     ECC_FreePara(ctx->para);
+    BSL_SAL_FREE(ctx->mdAttr);
     BSL_SAL_Free(ctx);
     return;
 }
@@ -73,8 +74,9 @@ ECC_Pkey *ECC_DupCtx(ECC_Pkey *ctx)
     GOTO_ERR_IF_SRC_NOT_NULL(newCtx->pubkey, ctx->pubkey, ECC_DupPoint(ctx->pubkey), CRYPT_MEM_ALLOC_FAIL);
 
     GOTO_ERR_IF_SRC_NOT_NULL(newCtx->para, ctx->para, ECC_DupPara(ctx->para), CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_SRC_NOT_NULL(newCtx->mdAttr, ctx->mdAttr, BSL_SAL_Dump(ctx->mdAttr, strlen(ctx->mdAttr) + 1),
+        CRYPT_MEM_ALLOC_FAIL);
     newCtx->libCtx = ctx->libCtx;
-    newCtx->flags = ctx->flags;
     return newCtx;
 
 ERR:

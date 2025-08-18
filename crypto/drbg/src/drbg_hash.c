@@ -429,14 +429,17 @@ void DRBG_HashUnInstantiate(DRBG_Ctx *drbg)
 
 DRBG_Ctx *DRBG_HashDup(DRBG_Ctx *drbg)
 {
-    DRBG_HashCtx *ctx = NULL;
-
     if (drbg == NULL) {
         return NULL;
     }
 
-    ctx = (DRBG_HashCtx*)drbg->ctx;
-    return DRBG_NewHashCtx(ctx->md, drbg->isGm, &(drbg->seedMeth), drbg->seedCtx);
+    DRBG_HashCtx *ctx = (DRBG_HashCtx*)drbg->ctx;
+    DRBG_Ctx *newDrbg = DRBG_NewHashCtx(ctx->md, drbg->isGm, &(drbg->seedMeth), drbg->seedCtx);
+    if (newDrbg == NULL) {
+        return NULL;
+    }
+    newDrbg->libCtx = drbg->libCtx;
+    return newDrbg;
 }
 
 void DRBG_HashFree(DRBG_Ctx *drbg)

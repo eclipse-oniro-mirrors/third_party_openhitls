@@ -364,7 +364,7 @@ int32_t CRYPT_HKDF_SetOutLen(CRYPT_HKDF_Ctx *ctx, uint32_t *outLen)
 #ifdef HITLS_CRYPTO_PROVIDER
 static int32_t CRYPT_HKDF_SetMdAttr(CRYPT_HKDF_Ctx *ctx, const char *mdAttr, uint32_t valLen)
 {
-    if (valLen == 0) {
+    if (mdAttr == NULL || valLen == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_HKDF_PARAM_ERROR);
         return CRYPT_HKDF_PARAM_ERROR;
     }

@@ -256,15 +256,17 @@ void DRBG_HmacUnInstantiate(DRBG_Ctx *drbg)
 
 DRBG_Ctx *DRBG_HmacDup(DRBG_Ctx *drbg)
 {
-    DRBG_HmacCtx *ctx = NULL;
-
     if (drbg == NULL) {
         return NULL;
     }
 
-    ctx = (DRBG_HmacCtx*)drbg->ctx;
-
-    return DRBG_NewHmacCtx(drbg->libCtx, ctx->hmacMeth, ctx->macId, &(drbg->seedMeth), drbg->seedCtx);
+    DRBG_HmacCtx *ctx = (DRBG_HmacCtx*)drbg->ctx;
+    DRBG_Ctx *newDrbg = DRBG_NewHmacCtx(drbg->libCtx, ctx->hmacMeth, ctx->macId, &(drbg->seedMeth), drbg->seedCtx);
+    if (newDrbg == NULL) {
+        return NULL;
+    }
+    newDrbg->libCtx = drbg->libCtx;
+    return newDrbg;
 }
 
 void DRBG_HmacFree(DRBG_Ctx *drbg)

@@ -368,7 +368,7 @@ static int32_t Pbkdf2GetMdSize(CRYPT_PBKDF2_Ctx *ctx, const char *mdAttr)
 #ifdef HITLS_CRYPTO_PROVIDER
 static int32_t CRYPT_PBKDF2_SetMdAttr(CRYPT_PBKDF2_Ctx *ctx, const char *mdAttr, uint32_t valLen)
 {
-    if (valLen == 0) {
+    if (mdAttr == NULL || valLen == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_PBKDF2_PARAM_ERROR);
         return CRYPT_PBKDF2_PARAM_ERROR;
     }

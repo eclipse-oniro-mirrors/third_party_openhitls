@@ -44,6 +44,7 @@ typedef struct ECC_PkeyCtx {
     uint32_t flags; 
     BSL_SAL_RefCount references;
     void *libCtx;
+    char *mdAttr;
 } ECC_Pkey;
 
 /**
