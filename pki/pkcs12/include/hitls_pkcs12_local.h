@@ -61,10 +61,12 @@ typedef struct _HITLS_PKCS12_Bag {
  */
 typedef struct _HITLS_PKCS12 {
     uint32_t version;
-    HITLS_PKCS12_Bag *key;
-    HITLS_PKCS12_Bag *entityCert;
-    BSL_ASN1_List *secretBags;
-    BSL_ASN1_List *certList;
+    HITLS_PKCS12_Bag *key;         /* for store p8ShroudedKeyBag, only one p8ShroudedKeyBag is supported. */
+    HITLS_PKCS12_Bag *entityCert;  /* for store entity-cert bag. If we find a cert that matches the p8ShroudedKeyBag,
+                                    it will be placed here. */
+    BSL_ASN1_List *secretBags;     /* for store secret-bags, we support multiple secret-bags. */
+    BSL_ASN1_List *certList;       /* for store cert-bags, we support multiple cert-bags. */
+    BSL_ASN1_List *keyList;        /* for store key-bags, we support multiple key-bags. */
     HITLS_PKCS12_MacData *macData;
     HITLS_PKI_LibCtx *libCtx;
     const char *attrName;

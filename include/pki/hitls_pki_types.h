@@ -385,6 +385,8 @@ typedef enum {
     HITLS_PKCS12_ADD_SECRETBAG,                 /** Add secret-Bag to p12-ctx. */
     HITLS_PKCS12_GET_ENTITY_CERTBAG,            /** Obtain entity cert-Bag from p12-ctx. */
     HITLS_PKCS12_GET_ENTITY_KEYBAG,             /** Obtain entity key-Bag from p12-ctx. */
+    HITLS_PKCS12_ADD_KEYBAG,                    /** Add key-Bag to p12-ctx. */
+    HITLS_PKCS12_GET_KEYBAGS,                   /** Get key-Bags from p12-ctx. */
 } HITLS_PKCS12_Cmd;
 
 typedef enum {

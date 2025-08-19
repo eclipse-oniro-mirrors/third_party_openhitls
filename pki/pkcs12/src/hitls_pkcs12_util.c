@@ -108,28 +108,27 @@ HITLS_PKCS12 *HITLS_PKCS12_New(void)
     if (p12 == NULL) {
         return NULL;
     }
-    HITLS_PKCS12_MacData *macData = HITLS_PKCS12_MacDataNew();
-    if (macData == NULL) {
+    p12->macData = HITLS_PKCS12_MacDataNew();
+    if (p12->macData == NULL) {
         BSL_SAL_Free(p12);
         return NULL;
     }
-    BSL_ASN1_List *certList = BSL_LIST_New(sizeof(HITLS_PKCS12_Bag));
-    if (certList == NULL) {
-        BSL_SAL_Free(p12);
-        HITLS_PKCS12_MacDataFree(macData);
+    p12->certList = BSL_LIST_New(sizeof(HITLS_PKCS12_Bag));
+    if (p12->certList == NULL) {
+        HITLS_PKCS12_Free(p12);
         return NULL;
     }
-    BSL_ASN1_List *secretBags = BSL_LIST_New(sizeof(HITLS_PKCS12_Bag));
-    if (secretBags == NULL) {
-        BSL_SAL_Free(p12);
-        HITLS_PKCS12_MacDataFree(macData);
-        BSL_LIST_FREE(certList, NULL);
+    p12->secretBags = BSL_LIST_New(sizeof(HITLS_PKCS12_Bag));
+    if (p12->secretBags == NULL) {
+        HITLS_PKCS12_Free(p12);
+        return NULL;
+    }
+    p12->keyList = BSL_LIST_New(sizeof(HITLS_PKCS12_Bag));
+    if (p12->keyList == NULL) {
+        HITLS_PKCS12_Free(p12);
         return NULL;
     }
     p12->version = 3; // RFC7292 required the version = 3;
-    p12->certList = certList;
-    p12->secretBags = secretBags;
-    p12->macData = macData;
     return p12;
 }
 
@@ -153,12 +152,13 @@ void HITLS_PKCS12_Free(HITLS_PKCS12 *p12)
     HITLS_PKCS12_BagFree(p12->key);
     BSL_LIST_FREE(p12->certList, (BSL_LIST_PFUNC_FREE)HITLS_PKCS12_BagFree);
     BSL_LIST_FREE(p12->secretBags, (BSL_LIST_PFUNC_FREE)HITLS_PKCS12_BagFree);
+    BSL_LIST_FREE(p12->keyList, (BSL_LIST_PFUNC_FREE)HITLS_PKCS12_BagFree);
     HITLS_PKCS12_MacDataFree(p12->macData);
     BSL_SAL_Free(p12);
 }
 
-/* PKCS8ShroudedKeyBag didn't needs to set bagType. */
-static int32_t SetP8ShroudedKeyBag(HITLS_PKCS12_Bag *bag, void *value)
+/* PKCS8ShroudedKeyBag and KeyBag didn't needs to set bagType. */
+static int32_t SetKeyBag(HITLS_PKCS12_Bag *bag, void *value)
 {
     int32_t ret = CRYPT_EAL_PkeyUpRef((CRYPT_EAL_PkeyCtx *)value);
     if (ret != CRYPT_SUCCESS) {
@@ -207,8 +207,9 @@ static int32_t SetSecretBag(HITLS_PKCS12_Bag *bag, void *value, uint32_t bagType
 static int32_t BagSetValue(HITLS_PKCS12_Bag *bag, void *value, uint32_t bagId, uint32_t bagType)
 {
     switch (bagId) {
+        case BSL_CID_KEYBAG:
         case BSL_CID_PKCS8SHROUDEDKEYBAG:
-            return SetP8ShroudedKeyBag(bag, value);
+            return SetKeyBag(bag, value);
         case BSL_CID_CERTBAG:
             return SetCertBag(bag, value, bagType);
         case BSL_CID_SECRETBAG:
@@ -251,6 +252,7 @@ void HITLS_PKCS12_BagFree(HITLS_PKCS12_Bag *bag)
         return;
     }
     switch (bag->id) {
+        case BSL_CID_KEYBAG:
         case BSL_CID_PKCS8SHROUDEDKEYBAG:
             CRYPT_EAL_PkeyFreeCtx(bag->value.key);
             break;

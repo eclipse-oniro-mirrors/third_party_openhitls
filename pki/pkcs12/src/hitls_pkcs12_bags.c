@@ -57,7 +57,7 @@ int32_t BagGetAttr(HITLS_PKCS12_Bag *bag, uint32_t valType, BSL_Buffer *attrValu
     return HITLS_PKCS12_ERR_NO_SAFEBAG_ATTRIBUTES;
 }
 
-static int32_t GetP8ShroudedKeyBagValue(HITLS_PKCS12_Bag *bag, void **value)
+static int32_t GetKeyBagValue(HITLS_PKCS12_Bag *bag, void **value)
 {
     if (value == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_NULL_POINTER);
@@ -135,8 +135,9 @@ int32_t BagGetValue(HITLS_PKCS12_Bag *bag, void *val)
         return HITLS_PKCS12_ERR_NULL_POINTER;
     }
     switch (bag->id) {
+        case BSL_CID_KEYBAG:
         case BSL_CID_PKCS8SHROUDEDKEYBAG:
-            return GetP8ShroudedKeyBagValue(bag, val);
+            return GetKeyBagValue(bag, val);
         case BSL_CID_CERTBAG:
             return GetCertBagValue(bag, val);
         case BSL_CID_SECRETBAG:
