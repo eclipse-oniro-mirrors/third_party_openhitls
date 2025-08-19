@@ -1,0 +1,61 @@
+{
+    "libType":["static", "shared"],
+    "bits":64,
+    "system":"linux",
+    "endian":"little",
+    "asmType":"armv8",
+    "bundleLibs":true,
+    "libs":{
+        "hitls_crypto":{
+            "asm":[
+                "sm3",
+                "modes",
+                "bn",
+                "sm4"
+            ],
+            "c": [
+                "eal",
+                "ealinit",
+                "sm3",
+                "hmac",
+                "cbc_mac",
+                "pbkdf2",
+                "drbg_hash",
+                "drbg_ctr",
+                "entropy",
+                "modes",
+                "sm4",
+                "sm2",
+                "provider",
+                "bn"
+            ]
+        },
+        "hitls_bsl": {
+            "c": [
+                "err",
+                "hash",
+                "init",
+                "base64",
+                "buffer",
+                "pem",
+                "list",
+                "log",
+                "obj",
+                "sal",
+                "sal_mem",
+                "sal_thread",
+                "sal_lock",
+                "sal_time",
+                "sal_file",
+                "sal_net",
+                "sal_str",
+                "sal_dl",
+                "tlv",
+                "uio",
+                "params",
+                "asn1"
+            ]
+        }
+    }
+}
+  

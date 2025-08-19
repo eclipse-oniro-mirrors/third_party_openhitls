@@ -112,6 +112,29 @@ build_hitls_code()
     make -j
 }
 
+build_hitls_provider()
+{
+    # Compile openHiTLS
+    cd ${HITLS_ROOT_DIR}/build
+    if [[ $libname = "libhitls_sm.so" ]] && [[ $get_arch = "armv8_le" ]]; then
+        config_file="${subdir}_sm_feature_config.json"
+        compile_file="${subdir}_sm_compile_config.json"
+    else
+        config_file="${subdir}_feature_config.json"
+        compile_file="${subdir}_compile_config.json"
+    fi
+    python3 ../configure.py --add_options="$add_options" --del_options="$del_options" \
+        --feature_config=./config/json/${subdir}/${get_arch}/${config_file} \
+        --compile=./config/json/${subdir}/${get_arch}/${compile_file} \
+        --lib_type=shared
+    cmake .. -DCMAKE_SKIP_RPATH=TRUE -DCMAKE_INSTALL_PREFIX=../output/${subdir}/${get_arch}
+    make -j
+    make install
+    cd ../output/${subdir}/${get_arch}/lib
+    mv libhitls.so $libname
+    mv libhitls.so.hmac $libname.hmac
+}
+
 parse_option()
 {
     for i in $paramList

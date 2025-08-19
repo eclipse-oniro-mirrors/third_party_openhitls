@@ -29,6 +29,7 @@
 #include "crypt_eal_implprovider.h"
 #include "crypt_slh_dsa.h"
 
+#ifdef HITLS_CRYPTO_MLKEM
 static bool CMVP_MlkemPct(void *ctx)
 {
     bool ret = false;
@@ -59,7 +60,7 @@ EXIT:
     BSL_SAL_Free(ciphertext);
     return ret;
 }
-
+#endif
 
 typedef struct {
     int32_t id;
@@ -69,20 +70,35 @@ typedef struct {
 } PkeyMethodMap;
 
 static const PkeyMethodMap pkey_map[] = {
+#ifdef HITLS_CRYPTO_DSA
     {CRYPT_PKEY_DSA,     (CRYPT_EAL_ImplPkeySign)CRYPT_DSA_Sign,
         (CRYPT_EAL_ImplPkeyVerify)CRYPT_DSA_Verify,        (CRYPT_EAL_ImplPkeyMgmtCtrl)CRYPT_DSA_Ctrl},
+#endif
+#ifdef HITLS_CRYPTO_ED25519
     {CRYPT_PKEY_ED25519, (CRYPT_EAL_ImplPkeySign)CRYPT_CURVE25519_Sign,
         (CRYPT_EAL_ImplPkeyVerify)CRYPT_CURVE25519_Verify, (CRYPT_EAL_ImplPkeyMgmtCtrl)CRYPT_CURVE25519_Ctrl},
+#endif
+#ifdef HITLS_CRYPTO_RSA
     {CRYPT_PKEY_RSA,     (CRYPT_EAL_ImplPkeySign)CRYPT_RSA_Sign,
         (CRYPT_EAL_ImplPkeyVerify)CRYPT_RSA_Verify,        (CRYPT_EAL_ImplPkeyMgmtCtrl)CRYPT_RSA_Ctrl},
+#endif
+#ifdef HITLS_CRYPTO_ECDSA
     {CRYPT_PKEY_ECDSA,   (CRYPT_EAL_ImplPkeySign)CRYPT_ECDSA_Sign,
         (CRYPT_EAL_ImplPkeyVerify)CRYPT_ECDSA_Verify,      (CRYPT_EAL_ImplPkeyMgmtCtrl)CRYPT_ECDSA_Ctrl},
+#endif
+#ifdef HITLS_CRYPTO_SM2
     {CRYPT_PKEY_SM2,     (CRYPT_EAL_ImplPkeySign)CRYPT_SM2_Sign,
         (CRYPT_EAL_ImplPkeyVerify)CRYPT_SM2_Verify,        (CRYPT_EAL_ImplPkeyMgmtCtrl)CRYPT_SM2_Ctrl},
+#endif
+#ifdef HITLS_CRYPTO_SLH_DSA
     {CRYPT_PKEY_SLH_DSA, (CRYPT_EAL_ImplPkeySign)CRYPT_SLH_DSA_Sign,
         (CRYPT_EAL_ImplPkeyVerify)CRYPT_SLH_DSA_Verify,    (CRYPT_EAL_ImplPkeyMgmtCtrl)CRYPT_SLH_DSA_Ctrl},
+#endif
+#ifdef HITLS_CRYPTO_MLDSA
     {CRYPT_PKEY_ML_DSA,  (CRYPT_EAL_ImplPkeySign)CRYPT_ML_DSA_Sign,
         (CRYPT_EAL_ImplPkeyVerify)CRYPT_ML_DSA_Verify,     (CRYPT_EAL_ImplPkeyMgmtCtrl)CRYPT_ML_DSA_Ctrl},
+#endif
+    {CRYPT_PKEY_MAX, NULL, NULL, NULL}
 };
 
 static bool CMVP_SignVerifyPct(void *ctx, int32_t algId)
@@ -130,9 +146,11 @@ bool CRYPT_CMVP_SelftestPkeyPct(void *ctx, int32_t algId)
     if (algId == CRYPT_PKEY_DH || algId == CRYPT_PKEY_ECDH || algId == CRYPT_PKEY_X25519) {
         return true;
     }
+#ifdef HITLS_CRYPTO_MLKEM
     if (algId == CRYPT_PKEY_ML_KEM) {
         return CMVP_MlkemPct(ctx);
     }
+#endif
     return CMVP_SignVerifyPct(ctx, algId);
 }
 

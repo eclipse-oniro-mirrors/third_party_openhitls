@@ -29,6 +29,12 @@
 
 #define CRYPT_ENTROPY_SOURCE_FULL_ENTROPY 8
 
+#ifdef HITLS_CRYPTO_ENTROPY_GM_CF
+#define HITLS_ENTROPY_DEFAULT_CF "sm3_df"
+#else
+#define HITLS_ENTROPY_DEFAULT_CF "sha256_df"
+#endif
+
 #ifdef HITLS_CRYPTO_ENTROPY_SYS
 CRYPT_EAL_Es *CRYPT_EAL_EsNew(void)
 {
@@ -199,7 +205,7 @@ static CRYPT_EAL_Es *EsDefaultCreate(void)
     if (es == NULL) {
         return NULL;
     }
-    char *data = "sha256_df";
+    char *data = HITLS_ENTROPY_DEFAULT_CF;
     int32_t ret = CRYPT_EAL_EsCtrl(es, CRYPT_ENTROPY_SET_CF, data, strlen(data));
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_EsFree(es);
