@@ -108,7 +108,7 @@ typedef struct {
 #define TLS_CAPABILITY_LIST_MALLOC_SIZE 10
 #endif
 
-typedef struct CustomExt_Methods HITLS_CustomExts;
+typedef struct CustomExtMethods HITLS_CustomExts;
 
 /**
  * @brief   TLS Global Configuration

@@ -33,14 +33,14 @@
 #include "custom_extensions.h"
 #include "alert.h"
 
-bool IsPackNeedCustomExtensions(CustomExt_Methods *exts, uint32_t context)
+bool IsPackNeedCustomExtensions(CustomExtMethods *exts, uint32_t context)
 {
     uint32_t i = 0;
 
     if (exts == NULL) {
         return false;
     }
-    CustomExt_Method *meth = exts->meths;
+    CustomExtMethod *meth = exts->meths;
     if (meth == NULL) {
         return false;
     }
@@ -53,7 +53,7 @@ bool IsPackNeedCustomExtensions(CustomExt_Methods *exts, uint32_t context)
     return false;
 }
 
-bool IsParseNeedCustomExtensions(CustomExt_Methods *exts, uint16_t extType, uint32_t context)
+bool IsParseNeedCustomExtensions(CustomExtMethods *exts, uint16_t extType, uint32_t context)
 {
     uint32_t i = 0;
 
@@ -61,7 +61,7 @@ bool IsParseNeedCustomExtensions(CustomExt_Methods *exts, uint16_t extType, uint
         return false;
     }
 
-    CustomExt_Method *meth = exts->meths;
+    CustomExtMethod *meth = exts->meths;
 
     if (meth == NULL) {
         return false;
@@ -75,14 +75,14 @@ bool IsParseNeedCustomExtensions(CustomExt_Methods *exts, uint16_t extType, uint
     return false;
 }
 
-bool IsCustomExtensionTypeAdded(CustomExt_Methods *exts, uint16_t extType)
+bool IsCustomExtensionTypeAdded(CustomExtMethods *exts, uint16_t extType)
 {
     uint32_t i = 0;
 
     if (exts == NULL) {
         return false;
     }
-    CustomExt_Method *meth = exts->meths;
+    CustomExtMethod *meth = exts->meths;
     if (meth == NULL) {
         return false;
     }
@@ -94,7 +94,7 @@ bool IsCustomExtensionTypeAdded(CustomExt_Methods *exts, uint16_t extType)
     return false;
 }
 
-CustomExt_Method *FindCustomExtensions(CustomExt_Methods *exts, uint16_t extType, uint32_t context)
+CustomExtMethod *FindCustomExtensions(CustomExtMethods *exts, uint16_t extType, uint32_t context)
 {
     uint32_t i = 0;
 
@@ -102,7 +102,7 @@ CustomExt_Method *FindCustomExtensions(CustomExt_Methods *exts, uint16_t extType
         return NULL;
     }
 
-    CustomExt_Method *meth = exts->meths;
+    CustomExtMethod *meth = exts->meths;
 
     if (meth == NULL) {
         return NULL;
@@ -118,8 +118,8 @@ CustomExt_Method *FindCustomExtensions(CustomExt_Methods *exts, uint16_t extType
 
 uint32_t HITLS_CFG_AddCustomExtension(HITLS_Config *config, const HITLS_CustomExtParams *params)
 {
-    CustomExt_Method *meth = NULL;
-    CustomExt_Method *tmp = NULL;
+    CustomExtMethod *meth = NULL;
+    CustomExtMethod *tmp = NULL;
 
     if (config == NULL || params == NULL) {
         return HITLS_NULL_INPUT;
@@ -129,7 +129,7 @@ uint32_t HITLS_CFG_AddCustomExtension(HITLS_Config *config, const HITLS_CustomEx
         return HITLS_INVALID_INPUT;
     }
 
-    CustomExt_Methods *exts = config->customExts;
+    CustomExtMethods *exts = config->customExts;
 
     if (IsCustomExtensionTypeAdded(exts, params->extType) ||
         FindCustomExtensions(exts, params->extType, params->context) != NULL) {
@@ -137,7 +137,7 @@ uint32_t HITLS_CFG_AddCustomExtension(HITLS_Config *config, const HITLS_CustomEx
     }
 
     if (exts == NULL) {
-        exts = (CustomExt_Methods *)BSL_SAL_Malloc(sizeof(CustomExt_Methods));
+        exts = (CustomExtMethods *)BSL_SAL_Malloc(sizeof(CustomExtMethods));
         if (exts == NULL) {
             return HITLS_MEMALLOC_FAIL;
         }
@@ -145,9 +145,12 @@ uint32_t HITLS_CFG_AddCustomExtension(HITLS_Config *config, const HITLS_CustomEx
         exts->methsCount = 0;
         config->customExts = exts;
     }
+    if (exts->methsCount >= MAX_LIMIT_CUSTOM_EXT) {
+        return HITLS_CONFIG_ERR_MAX_LIMIT_CUSTOM_EXT;
+    }
 
-    tmp = BSL_SAL_Realloc(exts->meths, (exts->methsCount + 1) * sizeof(CustomExt_Method),
-                          exts->methsCount * sizeof(CustomExt_Method));
+    tmp = BSL_SAL_Realloc(exts->meths, (exts->methsCount + 1) * sizeof(CustomExtMethod),
+                          exts->methsCount * sizeof(CustomExtMethod));
     if (tmp == NULL) {
         return HITLS_MEMALLOC_FAIL;
     }
@@ -155,7 +158,7 @@ uint32_t HITLS_CFG_AddCustomExtension(HITLS_Config *config, const HITLS_CustomEx
     exts->meths = tmp;
     meth = exts->meths + exts->methsCount;
 
-    memset_s(meth, sizeof(*meth), 0, sizeof(*meth));
+    (void)memset_s(meth, sizeof(*meth), 0, sizeof(*meth));
     meth->extType = params->extType;
     meth->context = params->context;
     meth->addCb = params->addCb;
@@ -177,8 +180,8 @@ uint32_t HITLS_AddCustomExtension(HITLS_Ctx *ctx, const HITLS_CustomExtParams *p
     return HITLS_CFG_AddCustomExtension(&(ctx->config.tlsConfig), params);
 }
 
-
-int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *len, uint32_t context, HITLS_X509_Cert *cert, uint32_t certIndex)
+int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *len, uint32_t context,
+    HITLS_CERT_X509 *cert, uint32_t certIndex)
 {
     uint32_t offset = 0u;
     uint32_t alert = 0u;
@@ -187,9 +190,8 @@ int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bu
         return HITLS_NULL_INPUT;
     }
 
-    CustomExt_Methods *exts = CUSTOM_EXT_FROM_CTX(ctx);
-    CustomExt_Method *meth = NULL;
-    int32_t ret = 0;
+    CustomExtMethods *exts = CUSTOM_EXT_FROM_CTX(ctx);
+    CustomExtMethod *meth = NULL;
     if (exts == NULL) {
         *len = 0;
         return HITLS_SUCCESS;
@@ -198,39 +200,41 @@ int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bu
     for (uint32_t i = 0; i < exts->methsCount; i++) {
         uint8_t *out = NULL;
         uint32_t outLen = 0;
+        int32_t ret = HITLS_ADD_CUSTOM_EXTENSION_RET_PASS;
 
         meth = exts->meths + i;
 
-        if ((meth->context & context) == 0) {
+        if ((meth->context & context) == 0 || meth->addCb == NULL) {
             continue;
         }
 
-        if (meth->addCb != NULL) {
-            ret = meth->addCb(ctx, meth->extType, context, &out, &outLen, cert, certIndex, &alert, meth->addArg);
-            if (ret != HITLS_ADD_CUSTOM_EXTENSION_RET_PACK && ret != HITLS_ADD_CUSTOM_EXTENSION_RET_PASS) {
-                ALERT_Send(ctx, ALERT_LEVEL_FATAL, alert);
-                BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17350, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                    "pack custom extension content fail.", 0, 0, 0, 0);
-                return ret;
+        ret = meth->addCb(ctx, meth->extType, context, &out, &outLen, cert, certIndex, &alert, meth->addArg);
+        if (ret != HITLS_ADD_CUSTOM_EXTENSION_RET_PACK && ret != HITLS_ADD_CUSTOM_EXTENSION_RET_PASS) {
+            ALERT_Send(ctx, ALERT_LEVEL_FATAL, alert);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17350, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "pack custom extension content fail.", 0, 0, 0, 0);
+            return ret;
+        }
+        if (ret == HITLS_ADD_CUSTOM_EXTENSION_RET_PASS) {
+            continue;
+        }
+        if (outLen >= UINT16_MAX || (bufLen - offset < outLen + sizeof(uint16_t) + sizeof(uint16_t))) {
+            if (meth->freeCb != NULL) {
+                meth->freeCb(ctx, meth->extType, context, out, meth->addArg);
             }
+            return HITLS_PACK_NOT_ENOUGH_BUF_LENGTH;
         }
 
-        if (ret == HITLS_ADD_CUSTOM_EXTENSION_RET_PACK) {
-            if (bufLen - offset >= outLen + sizeof(uint16_t) + sizeof(uint16_t)) {
-                BSL_Uint16ToByte(meth->extType, &buf[offset]);
-                offset += sizeof(uint16_t);
+        BSL_Uint16ToByte(meth->extType, &buf[offset]);
+        offset += sizeof(uint16_t);
 
                 BSL_Uint16ToByte((uint16_t)outLen, &buf[offset]);
                 offset += sizeof(uint16_t);
 
-                (void)memcpy_s(&buf[offset], bufLen - offset, out, outLen);
-                offset += outLen;
-            } else {
-                return HITLS_PACK_NOT_ENOUGH_BUF_LENGTH;
-            }
-        }
+        (void)memcpy_s(&buf[offset], bufLen - offset, out, outLen);
+        offset += outLen;
 
-        if (meth->freeCb != NULL && out != NULL) {
+        if (meth->freeCb != NULL) {
             meth->freeCb(ctx, meth->extType, context, out, meth->addArg);
         }
     }
@@ -240,14 +244,12 @@ int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bu
 }
 
 int32_t ParseCustomExtensions(const struct TlsCtx *ctx, const uint8_t *buf, uint16_t extType, uint32_t extLen,
-    uint32_t context, HITLS_X509_Cert *cert, uint32_t certIndex)
+    uint32_t context, HITLS_CERT_X509 *cert, uint32_t certIndex)
 {
     uint32_t alert = 0u;
 
-    CustomExt_Methods *exts = CUSTOM_EXT_FROM_CTX(ctx);
-    CustomExt_Method *meth;
-
-    meth = FindCustomExtensions(exts, extType, context);
+    CustomExtMethods *exts = CUSTOM_EXT_FROM_CTX(ctx);
+    CustomExtMethod *meth = FindCustomExtensions(exts, extType, context);
     if (meth == NULL) {
         return HITLS_SUCCESS;
     }
@@ -267,7 +269,7 @@ int32_t ParseCustomExtensions(const struct TlsCtx *ctx, const uint8_t *buf, uint
     return HITLS_SUCCESS;
 }
 
-void FreeCustomExtensions(CustomExt_Methods *exts)
+void FreeCustomExtensions(CustomExtMethods *exts)
 {
     if (exts == NULL) {
         return;
@@ -280,16 +282,16 @@ void FreeCustomExtensions(CustomExt_Methods *exts)
     BSL_SAL_Free(exts);
 }
 
-CustomExt_Methods *DupCustomExtensions(CustomExt_Methods *exts)
+CustomExtMethods *DupCustomExtensions(CustomExtMethods *exts)
 {
     if (exts == NULL) {
         return NULL;
     }
-    CustomExt_Methods *newExts = (CustomExt_Methods *)BSL_SAL_Malloc(sizeof(CustomExt_Methods));
+    CustomExtMethods *newExts = (CustomExtMethods *)BSL_SAL_Malloc(sizeof(CustomExtMethods));
     if (newExts == NULL) {
         return NULL;
     }
-    newExts->meths = (CustomExt_Method *)BSL_SAL_Dump(exts->meths, exts->methsCount * sizeof(CustomExt_Method));
+    newExts->meths = (CustomExtMethod *)BSL_SAL_Dump(exts->meths, exts->methsCount * sizeof(CustomExtMethod));
     if (newExts->meths == NULL) {
         BSL_SAL_Free(newExts);
         return NULL;

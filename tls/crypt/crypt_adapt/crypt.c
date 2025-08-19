@@ -228,7 +228,7 @@ HITLS_HMAC_Ctx *SAL_CRYPT_HmacInit(HITLS_Lib_Ctx *libCtx, const char *attrName,
     return HITLS_CRYPT_HMAC_Init(libCtx, attrName, hashAlgo, key, len);
 #else
     (void)libCtx;
-    (void)attrName;    
+    (void)attrName;
     if (g_cryptBaseMethod.hmacInit == NULL) {
         return NULL;
     }
@@ -625,15 +625,15 @@ void SAL_CRYPT_CipherFree(HITLS_Cipher_Ctx *ctx)
 HITLS_CRYPT_Key *SAL_CRYPT_GenEcdhKeyPair(TLS_Ctx *ctx, const HITLS_ECParameters *curveParams)
 {
 #ifdef HITLS_TLS_FEATURE_PROVIDER
-    return HITLS_CRYPT_GenerateEcdhKey(LIBCTX_FROM_CTX(ctx), ATTRIBUTE_FROM_CTX(ctx), 
-        &ctx->config.tlsConfig, curveParams); 
+    return HITLS_CRYPT_GenerateEcdhKey(LIBCTX_FROM_CTX(ctx), ATTRIBUTE_FROM_CTX(ctx),
+        &ctx->config.tlsConfig, curveParams);
 #else
     (void) ctx;
     if (g_cryptEcdhMethod.generateEcdhKeyPair == NULL) {
         return NULL;
     }
     return g_cryptEcdhMethod.generateEcdhKeyPair(curveParams);
-#endif   
+#endif
 }
 
 void SAL_CRYPT_FreeEcdhKey(HITLS_CRYPT_Key *key)
@@ -679,7 +679,7 @@ int32_t SAL_CRYPT_CalcEcdhSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrNa
         return HITLS_CRYPT_ERR_CALC_SHARED_KEY;
     }
     int32_t ret = g_cryptEcdhMethod.calcEcdhSharedSecret(key, peerPubkey, pubKeyLen, sharedSecret, sharedSecretLen);
-#endif   
+#endif
     return CheckCallBackRetVal(
         HITLS_CRYPT_CALLBACK_CALC_ECDH_SHARED_SECRET, ret, BINLOG_ID15104, HITLS_CRYPT_ERR_CALC_SHARED_KEY);
 }
@@ -691,7 +691,7 @@ int32_t SAL_CRYPT_CalcSm2dhSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrN
 #ifdef HITLS_TLS_FEATURE_PROVIDER
     int32_t ret = HITLS_CRYPT_CalcSM2SharedSecret(libCtx, attrName,
         sm2ShareKeyParam, sharedSecret, sharedSecretLen);
-#else  
+#else
     (void)libCtx;
     (void)attrName;
     if (g_cryptEcdhMethod.sm2CalEcdhSharedSecret == NULL) {
@@ -720,8 +720,7 @@ HITLS_CRYPT_Key *SAL_CRYPT_GenerateDhKeyByParams(HITLS_Lib_Ctx *libCtx,
 #endif
 }
 
-HITLS_CRYPT_Key *SAL_CRYPT_GenerateDhKeyBySecbits(TLS_Ctx *ctx,
-    int32_t secBits)
+HITLS_CRYPT_Key *SAL_CRYPT_GenerateDhKeyBySecbits(TLS_Ctx *ctx, int32_t secBits)
 {
 #ifdef HITLS_TLS_FEATURE_PROVIDER
     return HITLS_CRYPT_GenerateDhKeyBySecbits(LIBCTX_FROM_CTX(ctx), ATTRIBUTE_FROM_CTX(ctx),
@@ -733,7 +732,6 @@ HITLS_CRYPT_Key *SAL_CRYPT_GenerateDhKeyBySecbits(TLS_Ctx *ctx,
     }
     return g_cryptDhMethod.generateDhKeyBySecbits(secBits);
 #endif
-    
 }
 
 #ifdef HITLS_TLS_CONFIG_MANUAL_DH
@@ -804,7 +802,7 @@ int32_t SAL_CRYPT_CalcDhSharedSecret(HITLS_Lib_Ctx *libCtx, const char *attrName
         return HITLS_CRYPT_ERR_CALC_SHARED_KEY;
     }
     int32_t ret = g_cryptDhMethod.calcDhSharedSecret(key, peerPubkey, pubKeyLen, sharedSecret, sharedSecretLen);
-#endif    
+#endif
     return CheckCallBackRetVal(
         HITLS_CRYPT_CALLBACK_CALC_DH_SHARED_SECRET, ret, BINLOG_ID15112, HITLS_CRYPT_ERR_CALC_SHARED_KEY);
 }
@@ -828,7 +826,7 @@ uint32_t SAL_CRYPT_GetCryptLength(const TLS_Ctx *ctx, int32_t cmd, int32_t param
             }
             return groupInfo->ciphertextLen;
         default:
-            return 0;
+            break;
     }
     return 0;
 }

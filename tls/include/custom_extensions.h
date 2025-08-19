@@ -19,7 +19,8 @@
 #include "hitls.h"
 #include "hitls_custom_extensions.h"
 
-// Define CustomExt_Method structure
+#define MAX_LIMIT_CUSTOM_EXT 20
+// Define CustomExtMethod structure
 typedef struct {
     uint16_t extType;
     uint32_t context;
@@ -28,13 +29,13 @@ typedef struct {
     void *addArg;
     HITLS_ParseCustomExtCallback parseCb;
     void *parseArg;
-} CustomExt_Method;
+} CustomExtMethod;
 
-// Define CustomExt_Methods structure
-typedef struct CustomExt_Methods {
-    CustomExt_Method *meths;
+// Define CustomExtMethods structure
+typedef struct CustomExtMethods {
+    CustomExtMethod *meths;
     uint32_t methsCount;
-} CustomExt_Methods;
+} CustomExtMethods;
 
 
 /**
@@ -44,12 +45,12 @@ typedef struct CustomExt_Methods {
  * based on the provided context. It iterates through the list of custom extension methods
  * and evaluates if any of them match the specified context.
  *
- * @param   exts    [IN] Pointer to the CustomExt_Methods structure containing extension methods
+ * @param   exts    [IN] Pointer to the CustomExtMethods structure containing extension methods
  * @param   context [IN] The context to check against the custom extensions
  * @retval  true if there are custom extensions that need to be packed for the given context
  * @retval  false otherwise
  */
-bool IsPackNeedCustomExtensions(CustomExt_Methods *exts, uint32_t context);
+bool IsPackNeedCustomExtensions(CustomExtMethods *exts, uint32_t context);
 
 
 /**
@@ -59,13 +60,13 @@ bool IsPackNeedCustomExtensions(CustomExt_Methods *exts, uint32_t context);
  * based on the provided extension type and context. It iterates through the list of custom
  * extension methods and evaluates if any of them match the specified extension type and context.
  *
- * @param   exts    [IN] Pointer to the CustomExt_Methods structure containing extension methods
+ * @param   exts    [IN] Pointer to the CustomExtMethods structure containing extension methods
  * @param   extType [IN] The extension type to check against the custom extensions
  * @param   context [IN] The context to check against the custom extensions
  * @retval  true if there are custom extensions that need to be parsed for the given extension type and context
  * @retval  false otherwise
  */
-bool IsParseNeedCustomExtensions(CustomExt_Methods *exts, uint16_t extType, uint32_t context);
+bool IsParseNeedCustomExtensions(CustomExtMethods *exts, uint16_t extType, uint32_t context);
 
 /**
  * @brief   Packs custom extensions into the provided buffer for a given context.
@@ -80,32 +81,32 @@ bool IsParseNeedCustomExtensions(CustomExt_Methods *exts, uint16_t extType, uint
  * @param   bufLen  [IN]  Length of the buffer
  * @param   len     [OUT] Pointer to a variable where the total length of packed extensions will be stored
  * @param   context [IN]  The context to check against the custom extensions
- * @param   cert    [IN]  Pointer to the HITLS_X509_Cert structure representing certificate information
+ * @param   cert    [IN]  Pointer to the HITLS_CERT_X509 structure representing certificate information
  * @param   certIndex  [IN]  Certificate index indicating its position in the certificate chain
  * @retval  HITLS_SUCCESS if the custom extensions are successfully packed
  * @retval  An error code if packing fails, see hitls_error.h for details
  */
-int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *len, uint32_t context, HITLS_X509_Cert *cert, uint32_t certIndex);
-
+int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *len, uint32_t context,
+    HITLS_CERT_X509 *cert, uint32_t certIndex);
 
 /**
  * @brief   Frees the custom extension methods in the HITLS configuration.
  *
  * This function frees the custom extension methods in the HITLS configuration.
  *
- * @param   exts    [IN] Pointer to the CustomExt_Methods structure containing extension methods
+ * @param   exts    [IN] Pointer to the CustomExtMethods structure containing extension methods
  */
-void FreeCustomExtensions(CustomExt_Methods *exts);
+void FreeCustomExtensions(CustomExtMethods *exts);
 
 /**
  * @brief   Duplicates the custom extension methods in the HITLS configuration.
  *
  * This function duplicates the custom extension methods in the HITLS configuration.
  *
- * @param   exts    [IN] Pointer to the CustomExt_Methods structure containing extension methods
- * @retval  Pointer to the duplicated CustomExt_Methods structure
+ * @param   exts    [IN] Pointer to the CustomExtMethods structure containing extension methods
+ * @retval  Pointer to the duplicated CustomExtMethods structure
  */
-CustomExt_Methods *DupCustomExtensions(CustomExt_Methods *exts);
+CustomExtMethods *DupCustomExtensions(CustomExtMethods *exts);
 
 /**
  * @brief   Parses custom extensions from the provided buffer for a given extension type and context.
@@ -120,12 +121,12 @@ CustomExt_Methods *DupCustomExtensions(CustomExt_Methods *exts);
  * @param   extType [IN] The extension type to check against the custom extensions
  * @param   extLen  [IN] Length of the extension data in the buffer
  * @param   context [IN] The context to check against the custom extensions
- * @param   cert    [IN] Pointer to the HITLS_X509_Cert structure representing certificate information
+ * @param   cert    [IN] Pointer to the HITLS_CERT_X509 structure representing certificate information
  * @param   certIndex  [IN]  Certificate index indicating its position in the certificate chain
  * @retval  HITLS_SUCCESS if the custom extensions are successfully parsed
  * @retval  An error code if parsing fails, see hitls_error.h for details
  */
 int32_t ParseCustomExtensions(const struct TlsCtx *ctx, const uint8_t *buf, uint16_t extType, uint32_t extLen,
-    uint32_t context, HITLS_X509_Cert *cert, uint32_t certIndex);
+    uint32_t context, HITLS_CERT_X509 *cert, uint32_t certIndex);
 
 #endif // CUSTOM_EXTENSIONS_H

@@ -204,6 +204,17 @@ static int32_t X509_SetParamFlag(HITLS_X509_StoreCtx *storeCtx, uint64_t *val, u
     return HITLS_PKI_SUCCESS;
 }
 
+static int32_t X509_GetParamFlag(HITLS_X509_StoreCtx *storeCtx, uint64_t *val, uint32_t valLen)
+{
+    if (valLen != sizeof(uint64_t)) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
+        return HITLS_X509_ERR_INVALID_PARAM;
+    }
+
+    *val = storeCtx->verifyParam.flags;
+    return HITLS_PKI_SUCCESS;
+}
+
 static int32_t X509_SetVerifyTime(HITLS_X509_StoreCtx *storeCtx, int64_t *val, uint32_t valLen)
 {
     if (valLen != sizeof(int64_t)) {
@@ -409,6 +420,8 @@ int32_t HITLS_X509_StoreCtxCtrl(HITLS_X509_StoreCtx *storeCtx, int32_t cmd, void
 #endif
         case HITLS_X509_STORECTX_GET_PARAM_DEPTH:
             return X509_GetMaxDepth(storeCtx, val, valLen);
+        case HITLS_X509_STORECTX_GET_PARAM_FLAGS:
+            return X509_GetParamFlag(storeCtx, val, valLen);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;

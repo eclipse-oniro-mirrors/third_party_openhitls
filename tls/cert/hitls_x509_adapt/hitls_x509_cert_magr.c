@@ -208,7 +208,7 @@ int32_t HITLS_X509_Adapt_CertCtrl(HITLS_Config *config, HITLS_CERT_X509 *cert, H
             break;
         case CERT_CTRL_GET_SIGN_ALGO:
             return CertCtrlGetSignAlgo(config, cert, (HITLS_SignHashAlgo *)output);
-#ifdef HITLS_TLS_CONFIG_KEY_USAGE
+#if defined(HITLS_TLS_PROTO_TLCP11) || defined(HITLS_TLS_CONFIG_KEY_USAGE)
         case CERT_KEY_CTRL_IS_KEYENC_USAGE:
             return CertCheckKeyUsage(config, cert, HITLS_X509_EXT_KU_KEY_ENCIPHERMENT, (bool *)output);
         case CERT_KEY_CTRL_IS_DIGITAL_SIGN_USAGE:

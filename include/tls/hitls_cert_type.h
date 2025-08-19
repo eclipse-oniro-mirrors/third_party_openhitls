@@ -108,8 +108,8 @@ typedef enum {
     CERT_KEY_CTRL_GET_PARAM_ID,               /**< Obtain the parameter ID. */
     CERT_KEY_CTRL_IS_DATA_ENC_USAGE,          /**< Is it the data encryption permission. */
     CERT_KEY_CTRL_IS_NON_REPUDIATION_USAGE,   /**< Is it the non-repudiation permission. */
-    CERT_STORE_CTRL_GET_VERIFY_DEPTH,   /**< Get the certificate verification depth. */
-    CERT_CTRL_IS_SELF_SIGNED,           /** Determine whether the certificate is a self-signed certificate */
+    CERT_STORE_CTRL_GET_VERIFY_FLAGS,   /**< Get the certificate verification flags. */
+    CERT_STORE_CTRL_SET_VERIFY_FLAGS,   /**< Set the certificate verification flags. */
 
     CERT_CTRL_BUTT,
 } HITLS_CERT_CtrlCmd;

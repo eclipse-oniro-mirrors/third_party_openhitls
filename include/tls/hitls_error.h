@@ -123,6 +123,7 @@ typedef enum {
     HITLS_CONFIG_ERR_LOAD_GROUP_INFO,              /**< Failed to load the group info. */
     HITLS_CONFIG_ERR_LOAD_SIGN_SCHEME_INFO,        /**< Failed to load the signature scheme info. */
     HITLS_CONFIG_DUP_CUSTOM_EXT,                   /**< Duplicate custom extension type detected. */
+    HITLS_CONFIG_ERR_MAX_LIMIT_CUSTOM_EXT,         /**< Exceed the max limit of custom extensions. */
 
     HITLS_CM_FAIL_START = 0x02030001,              /**< Error start bit of the conn module. */
     HITLS_CM_LINK_FATAL_ALERTED,                   /**< link sent fatal alert. */
@@ -338,6 +339,8 @@ typedef enum {
     HITLS_CERT_CTRL_ERR_IS_SELF_SIGNED,             /** Determine whether the certificate is a self-signed
                                                         certificate */
     HITLS_CERT_CTRL_ERR_INVALID_CMD,               /**< certificate ctrl invalid command */
+    HITLS_CERT_STORE_CTRL_ERR_GET_VERIFY_FLAGS,    /**< Failed to obtain the certificate verification flags. */
+    HITLS_CERT_STORE_CTRL_ERR_SET_VERIFY_FLAGS,    /**< Failed to set the certificate verification flags. */
 
     HITLS_CRYPT_FAIL_START = 0x020D0001,           /**< Crypt adaptation module error code start bit. */
     HITLS_CRYPT_ERR_GENERATE_RANDOM,               /**< Failed to generate a random number. */

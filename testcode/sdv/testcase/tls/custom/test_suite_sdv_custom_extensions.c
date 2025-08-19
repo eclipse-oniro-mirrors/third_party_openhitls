@@ -138,8 +138,8 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_API_TC001(void)
     uint32_t context = 1;
 
     // Configure a single custom extension
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meth = {0};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meth = {0};
     meth.extType = extType;
     meth.context = context;
     meth.addCb = NULL;  // No callback
@@ -188,8 +188,8 @@ void SDV_TLS_PARSE_CUSTOM_EXTENSIONS_API_TC001(void)
     uint32_t extLen = 1;
 
     // Configure a single custom extension
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meth = {0};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meth = {0};
     meth.extType = extType;
     meth.parseCb = NULL;  // No callback
     exts.meths = &meth;
@@ -236,8 +236,8 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_MULTIPLE_API_TC001(void)
     uint32_t methsCount = 1;
 
     // Configure multiple custom extensions
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meths[2] = {{0}, {0}};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meths[2] = {{0}, {0}};
     meths[0].extType = CUSTOM_EXTENTIONS_TYPE_1;
     meths[0].context = context;
     meths[0].addCb = NULL;  // No callback
@@ -329,8 +329,8 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_CALLBACK_API_TC001(void)
     uint32_t dataLen = 1;
 
     // Configure a single custom extension with callbacks
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meth = {0};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meth = {0};
     meth.extType = extType;
     meth.context = context;
     meth.addCb = SimpleAddCb;
@@ -384,8 +384,8 @@ void SDV_TLS_PARSE_CUSTOM_EXTENSIONS_CALLBACK_API_TC001(void)
     uint32_t context = 1;
     uint32_t extLen = 1;
     // Configure a single custom extension with parse callback
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meth = {0};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meth = {0};
     meth.extType = extType;
     meth.context = context;
     meth.parseCb = SimpleParseCb;
@@ -450,7 +450,7 @@ void SDV_HITLS_ADD_CUSTOM_EXTENSION_API_TC001(void)
     uint32_t ret = HITLS_CFG_AddCustomExtension(tlsConfig, &params);
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
     ASSERT_EQ(tlsConfig->customExts->methsCount, 1);  // Verify the number of extensions is 1
-    CustomExt_Method *meth = &tlsConfig->customExts->meths[0];
+    CustomExtMethod *meth = &tlsConfig->customExts->meths[0];
     ASSERT_EQ(meth->extType, extType);  // Verify the extension type
     ASSERT_EQ(meth->context, context);    // Verify the context
     ASSERT_EQ(meth->addCb, addCb);      // Verify add_cb
@@ -663,7 +663,7 @@ EXIT:
  * @title Alert Scenario Test for Custom Extensions
  */
 /* BEGIN_CASE */
-void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC002()    
+void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC002()
 {
     FRAME_Init();  // Initialize the test framework
 
@@ -688,7 +688,7 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC002()
     params.parseArg = &serverArg;
     HITLS_CFG_AddCustomExtension(serverConfig, &params);
 
-    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);    
+    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);
     FRAME_LinkObj *server = FRAME_CreateLink(serverConfig, BSL_UIO_TCP);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), -1);
@@ -711,7 +711,7 @@ EXIT:
  * @title Empty Extension Capability Test
  */
 /* BEGIN_CASE */
-void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC003()    
+void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC003()
 {
     FRAME_Init();  // Initialize the test framework
 
@@ -739,7 +739,7 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC003()
     params.parseArg = &serverArg;
     HITLS_CFG_AddCustomExtension(serverConfig, &params);
 
-    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);    
+    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);
     FRAME_LinkObj *server = FRAME_CreateLink(serverConfig, BSL_UIO_TCP);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), 0);
@@ -767,7 +767,7 @@ EXIT:
  * @title Pass Extension Capability Test
  */
 /* BEGIN_CASE */
-void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC004()    
+void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC004()
 {
     FRAME_Init();  // Initialize the test framework
 
@@ -793,7 +793,7 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC004()
     params.parseArg = &serverArg;
     HITLS_CFG_AddCustomExtension(serverConfig, &params);
 
-    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);    
+    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);
     FRAME_LinkObj *server = FRAME_CreateLink(serverConfig, BSL_UIO_TCP);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), 0);

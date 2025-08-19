@@ -1101,3 +1101,54 @@ EXIT:
     FRAME_FreeLink(server);
 }
 /* END_CASE */
+
+/* @
+* @test    UT_TLS_CERT_CM_SetVerifyFlags_API_TC001
+* @title   The input parameter of the HITLS_CFG_SetVerifyFlags interface is replaced.
+* @precon  This test case covers the HITLS_CFG_SetVerifyFlags, HITLS_CFG_GetVerifyFlags
+* @brief   1.Invoke the HITLS_CFG_SetVerifyFlags interface. The value of ctx is empty and the value of flags is 5.
+*            Expected result 1 is obtained.
+*          2.Invoke the HITLS_CFG_SetVerifyFlags interface. The values of ctx and flags are not empty.
+*            Expected result 2 is obtained.
+*          3.Invoke the HITLS_CFG_GetVerifyFlags interface. The ctx field is empty and the ff address is not empty.
+*            Expected result 1 is obtained.
+*          4.Invoke the HITLS_CFG_GetVerifyFlags interface. The values of ctx and ff address are not empty.
+*            Expected result 2 is obtained.
+* @expect  1.Returns HITLS_NULL_INPUT
+*          2.Returns HITLS_SUCCESS
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CERT_CM_SetVerifyFlags_API_TC001(int version)
+{
+    HitlsInit();
+    HITLS_Config *tlsConfig = NULL;
+    HITLS_Ctx *ctx = NULL;
+    uint32_t flags = 5;
+    uint32_t ff = 0;
+
+    tlsConfig = HitlsNewCtx(version);
+    ASSERT_TRUE(tlsConfig != NULL);
+
+    ASSERT_TRUE(HITLS_CFG_SetVerifyFlags(NULL, flags) == HITLS_NULL_INPUT);
+    ASSERT_EQ(HITLS_CFG_SetVerifyFlags(tlsConfig, flags), HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_GetVerifyFlags(tlsConfig, &ff) == HITLS_SUCCESS);
+    ASSERT_EQ(flags, ff);
+    ASSERT_TRUE(HITLS_CFG_GetVerifyFlags(NULL, &ff) == HITLS_NULL_INPUT);
+    ASSERT_TRUE(HITLS_CFG_GetVerifyFlags(tlsConfig, NULL) == HITLS_NULL_INPUT);
+
+    ctx = HITLS_New(tlsConfig);
+    ASSERT_TRUE(ctx != NULL);
+    flags = 10;
+    uint32_t ff2 = 0;
+    ASSERT_TRUE(HITLS_SetVerifyFlags(NULL, flags) == HITLS_NULL_INPUT);
+    ASSERT_EQ(HITLS_SetVerifyFlags(ctx, flags), HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_GetVerifyFlags(ctx, &ff2) == HITLS_SUCCESS);
+    ASSERT_EQ((flags | ff), ff2);
+    ASSERT_TRUE(HITLS_GetVerifyFlags(NULL, &ff2) == HITLS_NULL_INPUT);
+    ASSERT_TRUE(HITLS_GetVerifyFlags(ctx, NULL) == HITLS_NULL_INPUT);
+
+EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
+    HITLS_Free(ctx);
+}
+/* END_CASE */

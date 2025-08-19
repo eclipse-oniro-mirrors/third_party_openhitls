@@ -55,6 +55,8 @@ int32_t HITLS_X509_Adapt_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store
     (void)config;
     (void)output;
     int32_t value1 = 0;
+    uint64_t value2 = 0;
+    int32_t ret = 0;
     switch (cmd) {
         case CERT_STORE_CTRL_SET_VERIFY_DEPTH:
             if (*(int64_t *)input > INT32_MAX) {
@@ -64,6 +66,16 @@ int32_t HITLS_X509_Adapt_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store
             return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_PARAM_DEPTH, &value1, sizeof(int32_t));
         case CERT_STORE_CTRL_GET_VERIFY_DEPTH:
             return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_PARAM_DEPTH, output, sizeof(int32_t));
+        case CERT_STORE_CTRL_SET_VERIFY_FLAGS:
+            if (*(int64_t *)input > UINT32_MAX || *(int64_t *)input < 0) {
+                return HITLS_CERT_SELF_ADAPT_ERR;
+            }
+            return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_PARAM_FLAGS, (int64_t *)input,
+                sizeof(uint64_t));
+        case CERT_STORE_CTRL_GET_VERIFY_FLAGS:
+            ret = HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_PARAM_FLAGS, &value2, sizeof(uint64_t));
+            *(uint32_t *)output = (uint32_t)value2;
+            return ret;
         case CERT_STORE_CTRL_ADD_CERT_LIST:
             return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SHALLOW_COPY_SET_CA, input,
                 sizeof(HITLS_X509_Cert));
@@ -75,7 +87,7 @@ int32_t HITLS_X509_Adapt_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store
             }
             HITLS_X509_Crl *tempCrl = (HITLS_X509_Crl *)BSL_LIST_GET_FIRST(crlList);
             while (tempCrl != NULL) {
-                int32_t ret = HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_CRL, tempCrl, 0);
+                ret = HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_CRL, tempCrl, 0);
                 if (ret != CRYPT_SUCCESS) {
                     return ret;
                 }

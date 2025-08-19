@@ -112,7 +112,6 @@ void CFG_CleanConfig(HITLS_Config *config)
     config->customExts = NULL;
 #endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
     BSL_SAL_ReferencesFree(&(config->references));
-    return;
 }
 
 
@@ -509,57 +508,56 @@ static int32_t CaListDeepCopy(HITLS_Config *destConfig, const HITLS_Config *srcC
 }
 #endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
 
-static int32_t BasicConfigDeepCopy(HITLS_Config *destConfig, const HITLS_Config *srcConfig)
-{
-    int32_t ret = HITLS_SUCCESS;
-    (void)destConfig;
-    (void)srcConfig;
-#ifdef HITLS_TLS_FEATURE_SESSION_ID
-    ret = SessionIdCtxCopy(destConfig, srcConfig);
-    if (ret != HITLS_SUCCESS) {
-        return ret;
-    }
-#endif
-    ret = CertMgrDeepCopy(destConfig, srcConfig);
-    if (ret != HITLS_SUCCESS) {
-        return ret;
-    }
-#ifdef HITLS_TLS_FEATURE_SESSION
-    ret = SessMgrDeepCopy(destConfig, srcConfig);
-    if (ret != HITLS_SUCCESS) {
-        return ret;
-    }
-#endif
-#ifdef HITLS_TLS_FEATURE_ALPN
-    ret = AlpnListDeepCopy(destConfig, srcConfig);
-    if (ret != HITLS_SUCCESS) {
-        return ret;
-    }
-#endif
-#ifdef HITLS_TLS_FEATURE_SNI
-    ret = ServerNameDeepCopy(destConfig, srcConfig);
-    if (ret != HITLS_SUCCESS) {
-        return ret;
-    }
-#endif
-#ifdef HITLS_TLS_CONFIG_MANUAL_DH
-    ret = CryptKeyDeepCopy(destConfig, srcConfig);
-    if (ret != HITLS_SUCCESS) {
-        return ret;
-    }
-#endif /* HITLS_TLS_CONFIG_MANUAL_DH */
 #ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+static int32_t CustomExtsDeepCopy(HITLS_Config *destConfig, const HITLS_Config *srcConfig)
+{
     destConfig->customExts = DupCustomExtensions(srcConfig->customExts);
     if (srcConfig->customExts != NULL && destConfig->customExts == NULL) {
         return HITLS_MEMALLOC_FAIL;
     }
+    return HITLS_SUCCESS;
+}
 #endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
+
+static int32_t BasicConfigDeepCopy(HITLS_Config *destConfig, const HITLS_Config *srcConfig)
+{
+    int32_t ret = HITLS_SUCCESS;
+    const struct {
+        int32_t (*copyFunc)(HITLS_Config *destConfig, const HITLS_Config *srcConfig);
+    } copyFeatures[] = {
+#ifdef HITLS_TLS_FEATURE_SESSION_ID
+        {SessionIdCtxCopy},
+#endif
+        {CertMgrDeepCopy},
+#ifdef HITLS_TLS_FEATURE_SESSION
+        {SessMgrDeepCopy},
+#endif
+#ifdef HITLS_TLS_FEATURE_ALPN
+        {AlpnListDeepCopy},
+#endif
+#ifdef HITLS_TLS_FEATURE_SNI
+        {ServerNameDeepCopy},
+#endif
+#ifdef HITLS_TLS_CONFIG_MANUAL_DH
+        {CryptKeyDeepCopy},
+#endif
 #ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
-    ret = CaListDeepCopy(destConfig, srcConfig);
-    if (ret != HITLS_SUCCESS) {
-        return ret;
+        {CaListDeepCopy},
+#endif
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+        {CustomExtsDeepCopy},
+#endif
+    };
+
+    for (size_t i = 0; i < sizeof(copyFeatures) / sizeof(copyFeatures[0]); i++) {
+        if (copyFeatures[i].copyFunc != NULL) {
+            ret = copyFeatures[i].copyFunc(destConfig, srcConfig);
+            if (ret != HITLS_SUCCESS) {
+                return ret;
+            }
+        }
     }
-#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+
     return HITLS_SUCCESS;
 }
 

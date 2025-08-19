@@ -1266,9 +1266,6 @@ static int32_t PackServerExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t b
     uint32_t listSize = 0u;
     uint32_t exLen = 0u;
     uint32_t offset = 0u;
-#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
-    uint32_t context = 0;
-#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
 #ifdef HITLS_TLS_PROTO_TLS13
     uint32_t version = HS_GetVersion(ctx);
     bool isHrrKeyshare = IsHrrKeyShare(ctx);
@@ -1316,6 +1313,7 @@ static int32_t PackServerExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t b
 #endif /* HITLS_TLS_PROTO_TLS13 */
     };
 #ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+    uint32_t context = 0;
 #ifdef HITLS_TLS_PROTO_TLS13
     if (isTls13) {
         if (isHrrKeyshare) {
