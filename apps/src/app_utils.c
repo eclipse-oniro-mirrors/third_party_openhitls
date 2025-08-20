@@ -129,27 +129,40 @@ int32_t HITLS_APP_DefaultPassCB(BSL_UI *ui, char *buff, uint32_t buffLen, void *
     return BSL_SUCCESS;
 }
 
-static int32_t CopyBufToData(const char *buf, size_t readLen, uint8_t **data, size_t *dataSize, size_t *dataCapacity)
+static int32_t CheckFileSizeByUio(BSL_UIO *uio, uint32_t *fileSize)
 {
-    if ((*dataSize + readLen) > APP_FILE_MAX_SIZE) {
-        AppPrintError("The supports a maximum of %zukb.\n", APP_FILE_MAX_SIZE_KB);
-        return HITLS_APP_STDIN_FAIL;
+    uint64_t getFileSize = 0;
+    int32_t ret = BSL_UIO_Ctrl(uio, BSL_UIO_PENDING, sizeof(getFileSize), &getFileSize);
+    if (ret != BSL_SUCCESS) {
+        AppPrintError("Failed to get the file size: %d.\n", ret);
+        return HITLS_APP_UIO_FAIL;
     }
-    if ((*dataSize + readLen) > *dataCapacity) {
-        size_t newdataCapacity = *dataCapacity << 1; // space is insufficient, expand the capacity by twice
-        // If the space is insufficient for twice the capacity expansion,
-        // expand the capacity based on the actual length.
-        if ((*dataSize + readLen) > newdataCapacity) {
-            newdataCapacity = *dataSize + readLen;
-        }
-        *data = ExpandingMem(*data, newdataCapacity, *dataCapacity);
-        *dataCapacity = newdataCapacity;
+    if (getFileSize > APP_FILE_MAX_SIZE) {
+        AppPrintError("File size exceed limit %zukb.\n", APP_FILE_MAX_SIZE_KB);
+        return HITLS_APP_UIO_FAIL;
     }
-    if (memcpy_s(*data + *dataSize, *dataCapacity - *dataSize, buf, readLen) != 0) {
-        return HITLS_APP_SECUREC_FAIL;
+    if (fileSize != NULL) {
+        *fileSize = (uint32_t)getFileSize;
     }
-    *dataSize += readLen;
-    return HITLS_APP_SUCCESS;
+    return ret;
+}
+
+static int32_t CheckFileSizeByPath(const char *inFilePath, uint32_t *fileSize)
+{
+    size_t getFileSize = 0;
+    int32_t ret = BSL_SAL_FileLength(inFilePath, &getFileSize);
+    if (ret != BSL_SUCCESS) {
+        AppPrintError("Failed to get the file size: %d.\n", ret);
+        return HITLS_APP_UIO_FAIL;
+    }
+    if (getFileSize > APP_FILE_MAX_SIZE) {
+        AppPrintError("File size exceed limit %zukb.\n", APP_FILE_MAX_SIZE_KB);
+        return HITLS_APP_UIO_FAIL;
+    }
+    if (fileSize != NULL) {
+        *fileSize = (uint32_t)getFileSize;
+    }
+    return ret;
 }
 
 static char *GetPemKeyFileName(const char *buf, size_t readLen)
@@ -220,47 +233,47 @@ static int32_t ReadPemKeyFile(const char *inFilePath, uint8_t **inData, uint32_t
         return HITLS_APP_UIO_FAIL;
     }
     BSL_UIO_SetIsUnderlyingClosedByUio(rUio, true);
-    // The system automatically ends when the following words are read:
+    uint32_t fileSize = 0;
+    if (CheckFileSizeByUio(rUio, &fileSize) != HITLS_APP_SUCCESS) {
+        BSL_UIO_Free(rUio);
+        return HITLS_APP_UIO_FAIL;
+    }
+    // End after reading the following two strings in sequence:
     // -----BEGIN XXX-----
     // -----END XXX-----
     bool isParseHeader = false;
-    size_t dataCapacity = DEFAULT_PEM_FILE_SIZE;
-    uint8_t *data = (uint8_t *)BSL_SAL_Calloc(dataCapacity, sizeof(uint8_t));
+    uint8_t *data = (uint8_t *)BSL_SAL_Calloc(fileSize + 1, sizeof(uint8_t)); // +1 for the null terminator
     if (data == NULL) {
         BSL_UIO_Free(rUio);
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
-    size_t dataSize = 0;
-    char buf[APP_LINESIZE + 1] = {};
-    uint32_t readLen = APP_LINESIZE + 1;
-    while (true) {
-        readLen = APP_LINESIZE + 1;
-        (void)memset_s(buf, readLen, 0, readLen);
-        if ((BSL_UIO_Gets(rUio, buf, &readLen) != BSL_SUCCESS) || (readLen == 0)) {
+    char *tmp = (char *)data;
+    uint32_t readLen = 0;
+    while (readLen < fileSize) {
+        uint32_t getsLen = APP_LINESIZE;
+        if ((BSL_UIO_Gets(rUio, tmp, &getsLen) != BSL_SUCCESS) || (getsLen == 0)) {
             break;
         }
-        if (CopyBufToData(buf, readLen, &data, &dataSize, &dataCapacity) != HITLS_APP_SUCCESS) {
-            BSL_SAL_FREE(data);
-            break;
-        }
-
         if (*name == NULL) {
-            *name = GetPemKeyFileName(buf, readLen);
-        } else if ((strncmp(buf, PEM_END_STR, PEM_END_STR_LEN) == 0)) {
-            break;
+            *name = GetPemKeyFileName(tmp, getsLen);
+        } else if (getsLen < PEM_END_STR_LEN && strncmp(tmp, PEM_END_STR, PEM_END_STR_LEN) == 0) {
+            break; // Read the end of the pem.
         } else if (!isParseHeader) {
-            *isEncrypted = IsNeedEncryped(*name, buf, readLen);
+            *isEncrypted = IsNeedEncryped(*name, tmp, getsLen);
             isParseHeader = true;
         }
+        tmp += getsLen;
+        readLen += getsLen;
     }
     BSL_UIO_Free(rUio);
-    if (dataSize == 0 || *name == NULL || data[dataCapacity - 1] != '\0') {
+    if (readLen == 0 || *name == NULL) {
+        AppPrintError("Failed to read the pem file.\n");
         BSL_SAL_FREE(data);
         BSL_SAL_FREE(*name);
         return HITLS_APP_STDIN_FAIL;
     }
     *inData = data;
-    *inDataSize = dataSize;
+    *inDataSize = readLen;
     return HITLS_APP_SUCCESS;
 }
 
@@ -389,9 +402,9 @@ static CRYPT_EAL_PkeyCtx *ReadPemPubKey(BSL_Buffer *encode, const char *name)
 {
     int32_t type = CRYPT_ENCDEC_UNKNOW;
 
-    if (strcmp(name, PEM_RSA_PUBLIC_STR)) {
+    if (strcmp(name, PEM_RSA_PUBLIC_STR) == 0) {
         type = CRYPT_PUBKEY_RSA;
-    } else if (strcmp(name, PEM_PKCS8_PUBLIC_STR)) {
+    } else if (strcmp(name, PEM_PKCS8_PUBLIC_STR) == 0) {
         type = CRYPT_PUBKEY_SUBKEY;
     }
 
@@ -489,6 +502,7 @@ CRYPT_EAL_PkeyCtx *HITLS_APP_LoadPrvKey(const char *inFilePath, BSL_ParseFormat 
 CRYPT_EAL_PkeyCtx *HITLS_APP_LoadPubKey(const char *inFilePath, BSL_ParseFormat informat)
 {
     if (informat != BSL_FORMAT_PEM) {
+        AppPrintError("Reading public key from non-PEM files is not supported.\n");
         return NULL;
     }
     char *pubKeyName = NULL;
@@ -701,15 +715,9 @@ static int32_t ReadPemFromStdin(BSL_BufMem **data, BSL_PEM_Symbol *symbol)
 
 static int32_t ReadFileData(const char *path, BSL_Buffer *data)
 {
-    size_t fileLen = 0;
-    int32_t ret = BSL_SAL_FileLength(path, &fileLen);
-    if (ret != BSL_SUCCESS) {
-        AppPrintError("Failed to get file size: %s.\n", path);
+    int32_t ret = CheckFileSizeByPath(path, NULL);
+    if (ret != HITLS_APP_SUCCESS) {
         return ret;
-    }
-    if (fileLen > APP_FILE_MAX_SIZE) {
-        AppPrintError("File size exceed limit %zukb: %s.\n", APP_FILE_MAX_SIZE_KB, path);
-        return HITLS_APP_UIO_FAIL;
     }
     ret = BSL_SAL_ReadFile(path, &data->data, &data->dataLen);
     if (ret != BSL_SUCCESS) {
