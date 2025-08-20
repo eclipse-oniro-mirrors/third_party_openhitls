@@ -132,6 +132,7 @@ CRYPT_PAILLIER_Ctx *CRYPT_PAILLIER_DupCtx(CRYPT_PAILLIER_Ctx *keyCtx)
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->prvKey, keyCtx->prvKey, PaillierPrvKeyDupCtx(keyCtx->prvKey), CRYPT_MEM_ALLOC_FAIL);
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->pubKey, keyCtx->pubKey, PaillierPubKeyDupCtx(keyCtx->pubKey), CRYPT_MEM_ALLOC_FAIL);
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->para, keyCtx->para, PaillierParaDupCtx(keyCtx->para), CRYPT_MEM_ALLOC_FAIL);
+    newKeyCtx->libCtx = keyCtx->libCtx;
     BSL_SAL_ReferencesInit(&(newKeyCtx->references));
     return newKeyCtx;
 

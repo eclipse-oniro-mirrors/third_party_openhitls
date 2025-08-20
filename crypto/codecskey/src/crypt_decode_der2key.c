@@ -34,6 +34,7 @@
 #include "crypt_curve25519.h"
 #endif
 #include "eal_pkey.h"
+#include "crypt_provider_local.h"
 #include "crypt_errno.h"
 #include "bsl_sal.h"
 #include "bsl_obj.h"
@@ -228,7 +229,8 @@ EXIT:
 int32_t DECODER_##keyType##PrvKeyDer2KeyDecode(void *ctx, const BSL_Param *inParam, BSL_Param **outParam) \
 { \
     DECODER_CHECK_PARAMS(ctx, inParam, outParam); \
-    ret = parseFunc(asn1Encode.data, asn1Encode.dataLen, NULL, (keyStructName **)&key); \
+    ret = parseFunc(decoderCtx->provMgrCtx->libCtx, asn1Encode.data, asn1Encode.dataLen, NULL, \
+        (keyStructName **)&key); \
     if (ret != CRYPT_SUCCESS) { \
         BSL_ERR_PUSH_ERROR(ret); \
         return ret; \
@@ -240,7 +242,8 @@ int32_t DECODER_##keyType##PrvKeyDer2KeyDecode(void *ctx, const BSL_Param *inPar
 int32_t DECODER_##keyType##PubKeyDer2KeyDecode(void *ctx, const BSL_Param *inParam, BSL_Param **outParam) \
 { \
      DECODER_CHECK_PARAMS(ctx, inParam, outParam); \
-    ret = parseFunc(asn1Encode.data, asn1Encode.dataLen, NULL, (keyStructName **)&key, BSL_CID_UNKNOWN); \
+    ret = parseFunc(decoderCtx->provMgrCtx->libCtx, asn1Encode.data, asn1Encode.dataLen, NULL, \
+        (keyStructName **)&key, BSL_CID_UNKNOWN); \
     if (ret != CRYPT_SUCCESS) { \
         BSL_ERR_PUSH_ERROR(ret); \
         return ret; \
@@ -252,7 +255,8 @@ int32_t DECODER_##keyType##PubKeyDer2KeyDecode(void *ctx, const BSL_Param *inPar
 int32_t DECODER_##keyType##SubPubKeyDer2KeyDecode(void *ctx, const BSL_Param *inParam, BSL_Param **outParam) \
 { \
     DECODER_CHECK_PARAMS(ctx, inParam, outParam) \
-    ret = parseFunc(asn1Encode.data, asn1Encode.dataLen, (keyStructName **)&key, true); \
+    ret = parseFunc(decoderCtx->provMgrCtx->libCtx, asn1Encode.data, asn1Encode.dataLen, \
+        (keyStructName **)&key, true); \
     if (ret != CRYPT_SUCCESS) { \
         BSL_ERR_PUSH_ERROR(ret); \
         return ret; \
@@ -265,7 +269,8 @@ int32_t DECODER_##keyType##SubPubKeyWithOutSeqDer2KeyDecode(void *ctx, const BSL
     BSL_Param **outParam) \
 { \
     DECODER_CHECK_PARAMS(ctx, inParam, outParam) \
-    ret = parseFunc(asn1Encode.data, asn1Encode.dataLen, (keyStructName **)&key, false); \
+    ret = parseFunc(decoderCtx->provMgrCtx->libCtx, asn1Encode.data, asn1Encode.dataLen, (keyStructName **)&key, \
+        false); \
     if (ret != CRYPT_SUCCESS) { \
         BSL_ERR_PUSH_ERROR(ret); \
         return ret; \
@@ -277,7 +282,7 @@ int32_t DECODER_##keyType##SubPubKeyWithOutSeqDer2KeyDecode(void *ctx, const BSL
 int32_t DECODER_##keyType##Pkcs8Der2KeyDecode(void *ctx, const BSL_Param *inParam, BSL_Param **outParam) \
 { \
     DECODER_CHECK_PARAMS(ctx, inParam, outParam) \
-    ret = parseFunc(asn1Encode.data, asn1Encode.dataLen, (keyStructName **)&key); \
+    ret = parseFunc(decoderCtx->provMgrCtx->libCtx, asn1Encode.data, asn1Encode.dataLen, (keyStructName **)&key); \
     if (ret != CRYPT_SUCCESS) { \
         BSL_ERR_PUSH_ERROR(ret); \
         return ret; \

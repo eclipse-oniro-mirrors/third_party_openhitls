@@ -106,10 +106,10 @@ static int32_t ProcRsaPssParam(BSL_ASN1_Buffer *rsaPssParam, CRYPT_RSA_Ctx *rsaP
     return CRYPT_RSA_Ctrl(rsaPriKey, CRYPT_CTRL_SET_RSA_EMSA_PSS, param, 0);
 }
 
-static int32_t DecodeRsaPrikeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *rsaPssParam, BslCid cid,
-    CRYPT_RSA_Ctx **rsaPriKey)
+static int32_t DecodeRsaPrikeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *rsaPssParam,
+    BslCid cid, CRYPT_RSA_Ctx **rsaPriKey)
 {
-    CRYPT_RSA_Ctx *pctx = CRYPT_RSA_NewCtx();
+    CRYPT_RSA_Ctx *pctx = CRYPT_RSA_NewCtxEx(libCtx);
     if (pctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return CRYPT_MEM_ALLOC_FAIL;
@@ -135,13 +135,13 @@ static int32_t DecodeRsaPrikeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1
     return ret;
 }
 
-int32_t CRYPT_RSA_ParsePrikeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *rsaPssParam,
+int32_t CRYPT_RSA_ParsePrikeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *rsaPssParam,
     CRYPT_RSA_Ctx **rsaPriKey)
 {
-    return DecodeRsaPrikeyAsn1Buff(buff, buffLen, rsaPssParam, BSL_CID_UNKNOWN, rsaPriKey);
+    return DecodeRsaPrikeyAsn1Buff(libCtx, buff, buffLen, rsaPssParam, BSL_CID_UNKNOWN, rsaPriKey);
 }
 
-int32_t CRYPT_RSA_ParsePubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *param,
+int32_t CRYPT_RSA_ParsePubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *param,
     CRYPT_RSA_Ctx **rsaPubKey, BslCid cid)
 {
     // decode n and e
@@ -151,7 +151,7 @@ int32_t CRYPT_RSA_ParsePubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_
         return ret;
     }
 
-    CRYPT_RSA_Ctx *pctx = CRYPT_RSA_NewCtx();
+    CRYPT_RSA_Ctx *pctx = CRYPT_RSA_NewCtxEx(libCtx);
     if (pctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return CRYPT_MEM_ALLOC_FAIL;
@@ -180,7 +180,8 @@ int32_t CRYPT_RSA_ParsePubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_
     return ret;
 }
 
-int32_t CRYPT_RSA_ParseSubPubkeyAsn1Buff( uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx **pubKey, bool isComplete)
+int32_t CRYPT_RSA_ParseSubPubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx **pubKey,
+    bool isComplete)
 {
     if (pubKey == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
@@ -198,8 +199,8 @@ int32_t CRYPT_RSA_ParseSubPubkeyAsn1Buff( uint8_t *buff, uint32_t buffLen, CRYPT
         return CRYPT_DECODE_ERR_KEY_TYPE_NOT_MATCH;
     }
 
-    ret = CRYPT_RSA_ParsePubkeyAsn1Buff(subPubkeyInfo.pubKey.buff, subPubkeyInfo.pubKey.len, &subPubkeyInfo.keyParam,
-        &pctx, subPubkeyInfo.keyType);
+    ret = CRYPT_RSA_ParsePubkeyAsn1Buff(libCtx, subPubkeyInfo.pubKey.buff, subPubkeyInfo.pubKey.len,
+        &subPubkeyInfo.keyParam, &pctx, subPubkeyInfo.keyType);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -209,7 +210,7 @@ int32_t CRYPT_RSA_ParseSubPubkeyAsn1Buff( uint8_t *buff, uint32_t buffLen, CRYPT
     return ret;
 }
 
-int32_t CRYPT_RSA_ParsePkcs8Key(uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx **rsaPriKey)
+int32_t CRYPT_RSA_ParsePkcs8Key(void *libCtx, uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx **rsaPriKey)
 {
     CRYPT_ENCODE_DECODE_Pk8PrikeyInfo pk8PrikeyInfo = {0};
     int32_t ret = CRYPT_DECODE_Pkcs8Info(buff, buffLen, NULL, &pk8PrikeyInfo);
@@ -221,8 +222,8 @@ int32_t CRYPT_RSA_ParsePkcs8Key(uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx *
         BSL_ERR_PUSH_ERROR(CRYPT_DECODE_ERR_KEY_TYPE_NOT_MATCH);
         return CRYPT_DECODE_ERR_KEY_TYPE_NOT_MATCH;
     }
-    ret = DecodeRsaPrikeyAsn1Buff(pk8PrikeyInfo.pkeyRawKey, pk8PrikeyInfo.pkeyRawKeyLen, &pk8PrikeyInfo.keyParam,
-        pk8PrikeyInfo.keyType, rsaPriKey);
+    ret = DecodeRsaPrikeyAsn1Buff(libCtx, pk8PrikeyInfo.pkeyRawKey, pk8PrikeyInfo.pkeyRawKeyLen,
+        &pk8PrikeyInfo.keyParam, pk8PrikeyInfo.keyType, rsaPriKey);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
     }

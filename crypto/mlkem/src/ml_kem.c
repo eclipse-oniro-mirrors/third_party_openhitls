@@ -137,6 +137,7 @@ CRYPT_ML_KEM_Ctx *CRYPT_ML_KEM_DupCtx(CRYPT_ML_KEM_Ctx *ctx)
         }
         newCtx->dkLen = ctx->dkLen;
     }
+    newCtx->libCtx = ctx->libCtx;
     return newCtx;
 }
 
