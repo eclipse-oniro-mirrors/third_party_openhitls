@@ -1241,9 +1241,9 @@ int32_t HITLS_CRYPT_KemDecapsulate(HITLS_CRYPT_Key *key, const uint8_t *cipherte
 #endif /* HITLS_TLS_FEATURE_KEM */
 
 #ifdef HITLS_CRYPTO_KDFTLS12
-static void InitKdfTls12Param(CRYPT_KeyDeriveParameters *input, CRYPT_MAC_AlgId id, BSL_Param *params)
+static void InitKdfTls12Param(CRYPT_KeyDeriveParameters *input, CRYPT_MAC_AlgId *id, BSL_Param *params)
 {
-    (void)BSL_PARAM_InitValue(&params[0], CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32, &id, sizeof(id));
+    (void)BSL_PARAM_InitValue(&params[0], CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32, id, sizeof(CRYPT_MAC_AlgId));
     (void)BSL_PARAM_InitValue(&params[1], CRYPT_PARAM_KDF_KEY, BSL_PARAM_TYPE_OCTETS,
         (void *)(uintptr_t)input->secret, input->secretLen);
     (void)BSL_PARAM_InitValue(&params[2], CRYPT_PARAM_KDF_LABEL, BSL_PARAM_TYPE_OCTETS, // 2: index of label
@@ -1262,7 +1262,7 @@ int32_t HITLS_CRYPT_PRF(CRYPT_KeyDeriveParameters *input, uint8_t *out, uint32_t
 #ifdef HITLS_CRYPTO_KDFTLS12
     CRYPT_MAC_AlgId id = GetHmacAlgId(input->hashAlgo);
     BSL_Param params[6] = {{0}, {0}, {0}, {0}, {0}, BSL_PARAM_END}; // Set 5 parameters for kdftls12
-    InitKdfTls12Param(input, id, params);
+    InitKdfTls12Param(input, &id, params);
 
     CRYPT_EAL_KdfCTX *ctx = CRYPT_EAL_ProviderKdfNewCtx(input->libCtx, CRYPT_KDF_KDFTLS12, input->attrName);
     if (ctx == NULL) {
