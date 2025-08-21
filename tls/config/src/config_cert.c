@@ -799,3 +799,72 @@ HITLS_TrustedCAList *HITLS_CFG_GetCAList(const HITLS_Config *config)
 }
 
 #endif
+
+static int32_t LoadCrlCommon(HITLS_Config *config, const uint8_t *data, uint32_t dataLen,
+                             HITLS_ParseType parseType, HITLS_ParseFormat format,
+                             uint32_t crlParseFailErr)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    CERT_MgrCtx *mgrCtx = config->certMgrCtx;
+    if (mgrCtx == NULL) {
+        return RETURN_ERROR_NUMBER_PROCESS(HITLS_UNREGISTERED_CALLBACK, BINLOG_ID16566, "unregistered callback");
+    }
+
+    HITLS_CERT_CRLList *crlList = SAL_CERT_CrlParse(config, data, dataLen, parseType, format);
+    if (crlList == NULL) {
+        return crlParseFailErr;
+    }
+
+    HITLS_CERT_Store *certStore = SAL_CERT_GetVerifyStore(mgrCtx) == NULL ?
+        SAL_CERT_GetCertStore(mgrCtx) : SAL_CERT_GetVerifyStore(mgrCtx);
+    if (certStore == NULL) {
+        SAL_CERT_CrlFree(crlList);
+        return RETURN_ERROR_NUMBER_PROCESS(HITLS_CONFIG_NO_CERT, BINLOG_ID16567, "store is null");
+    }
+
+    int32_t ret = SAL_CERT_StoreCtrl(config, certStore, CERT_STORE_CTRL_ADD_CRL_LIST, crlList, NULL);
+    SAL_CERT_CrlFree(crlList);
+    return ret;
+}
+
+int32_t HITLS_CFG_LoadCrlFile(HITLS_Config *config, const char *file, HITLS_ParseFormat format)
+{
+    if (file == NULL || strlen(file) == 0) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return LoadCrlCommon(config, (const uint8_t *)file, (uint32_t)strlen(file),
+                        TLS_PARSE_TYPE_FILE, format, HITLS_CFG_ERR_LOAD_CRL_FILE);
+}
+
+int32_t HITLS_CFG_LoadCrlBuffer(HITLS_Config *config, const uint8_t *buf, uint32_t bufLen, HITLS_ParseFormat format)
+{
+    if (buf == NULL || bufLen == 0) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return LoadCrlCommon(config, buf, bufLen, TLS_PARSE_TYPE_BUFF, format,
+                        HITLS_CFG_ERR_LOAD_CRL_BUFFER);
+}
+
+int32_t HITLS_CFG_ClearVerifyCrls(HITLS_Config *config)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    CERT_MgrCtx *mgrCtx = config->certMgrCtx;
+    if (mgrCtx == NULL) {
+        return RETURN_ERROR_NUMBER_PROCESS(HITLS_UNREGISTERED_CALLBACK, BINLOG_ID16569, "unregistered callback");
+    }
+
+    HITLS_CERT_Store *certStore = SAL_CERT_GetCertStore(mgrCtx);
+    if (certStore == NULL) {
+        return HITLS_SUCCESS; /* No store, nothing to clear */
+    }
+
+    return SAL_CERT_StoreCtrl(config, certStore, CERT_STORE_CTRL_CLEAR_CRL_LIST, NULL, NULL);
+}

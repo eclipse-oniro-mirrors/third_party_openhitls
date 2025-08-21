@@ -798,3 +798,301 @@ EXIT:
     HITLS_SESS_Free(session);
 }
 /* END_CASE */
+
+/* @
+* @test    UT_TLS_CRL_LOAD_FILE_FUNC_TC001
+* @title   HITLS_CFG_LoadCrlFile interface functional test
+* @precon  This test case covers the HITLS_CFG_LoadCrlFile interface
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CRL_LOAD_FILE_FUNC_TC001(void)
+{
+    HitlsInit();
+    HITLS_Config *config = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(config != NULL);
+
+    const char *crlPath = "../testdata/tls/certificate/der/ed25519/ed25519.crl.der";
+
+    // Test successful CRL file loading
+    int32_t ret = HITLS_CFG_LoadCrlFile(config, crlPath, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Test invalid parameters
+    ret = HITLS_CFG_LoadCrlFile(NULL, crlPath, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+    ret = HITLS_CFG_LoadCrlFile(config, NULL, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+    ret = HITLS_CFG_LoadCrlFile(config, "", TLS_PARSE_FORMAT_ASN1);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test    UT_TLS_CRL_LOAD_BUFFER_FUNC_TC001
+* @title   HITLS_CFG_LoadCrlBuffer interface functional test
+* @precon  This test case covers the HITLS_CFG_LoadCrlBuffer interface
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CRL_LOAD_BUFFER_FUNC_TC001(void)
+{
+    HitlsInit();
+    HITLS_Config *config = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(config != NULL);
+
+    const char *crlPath = "../testdata/tls/certificate/der/ed25519/ed25519.crl.der";
+
+    // Read CRL file content
+    FILE *file = fopen(crlPath, "rb");
+    ASSERT_TRUE(file != NULL);
+
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    ASSERT_TRUE(fileSize > 0);
+
+    uint8_t *crlData = (uint8_t *)BSL_SAL_Malloc(fileSize);
+    ASSERT_TRUE(crlData != NULL);
+
+    size_t bytesRead = fread(crlData, 1, fileSize, file);
+    fclose(file);
+    ASSERT_EQ(bytesRead, (size_t)fileSize);
+
+    // Test successful CRL buffer loading
+    int32_t ret = HITLS_CFG_LoadCrlBuffer(config, crlData, fileSize, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Test invalid parameters
+    ret = HITLS_CFG_LoadCrlBuffer(NULL, crlData, fileSize, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+    ret = HITLS_CFG_LoadCrlBuffer(config, NULL, fileSize, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+    ret = HITLS_CFG_LoadCrlBuffer(config, crlData, 0, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+EXIT:
+    BSL_SAL_Free(crlData);
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test    UT_TLS_CRL_CTX_LOAD_FILE_FUNC_TC001
+* @title   HITLS_LoadCrlFile interface functional test
+* @precon  This test case covers the HITLS_LoadCrlFile runtime context interface
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CRL_CTX_LOAD_FILE_FUNC_TC001(void)
+{
+    HitlsInit();
+    HITLS_Config *config = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(config != NULL);
+
+    HITLS_Ctx *ctx = HITLS_New(config);
+    ASSERT_TRUE(ctx != NULL);
+
+    const char *crlPath = "../testdata/tls/certificate/der/ed25519/ed25519.crl.der";
+
+    // Test successful CRL file loading in context
+    int32_t ret = HITLS_LoadCrlFile(ctx, crlPath, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Test invalid parameters
+    ret = HITLS_LoadCrlFile(NULL, crlPath, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+EXIT:
+    HITLS_Free(ctx);
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test    UT_TLS_CRL_CTX_LOAD_BUFFER_FUNC_TC001
+* @title   HITLS_LoadCrlBuffer interface functional test
+* @precon  This test case covers the HITLS_LoadCrlBuffer runtime context interface
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CRL_CTX_LOAD_BUFFER_FUNC_TC001(void)
+{
+    HitlsInit();
+    HITLS_Config *config = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(config != NULL);
+
+    HITLS_Ctx *ctx = HITLS_New(config);
+    ASSERT_TRUE(ctx != NULL);
+
+    const char *crlPath = "../testdata/tls/certificate/der/ed25519/ed25519.crl.der";
+
+    // Read CRL file content
+    FILE *file = fopen(crlPath, "rb");
+    ASSERT_TRUE(file != NULL);
+
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    ASSERT_TRUE(fileSize > 0);
+
+    uint8_t *crlData = (uint8_t *)BSL_SAL_Malloc(fileSize);
+    ASSERT_TRUE(crlData != NULL);
+
+    size_t bytesRead = fread(crlData, 1, fileSize, file);
+    fclose(file);
+    ASSERT_EQ(bytesRead, (size_t)fileSize);
+
+    // Test successful CRL buffer loading in context
+    int32_t ret = HITLS_LoadCrlBuffer(ctx, crlData, fileSize, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Test invalid parameters
+    ret = HITLS_LoadCrlBuffer(NULL, crlData, fileSize, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+EXIT:
+    BSL_SAL_Free(crlData);
+    HITLS_Free(ctx);
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test    UT_TLS_CRL_CFG_CLEAR_FUNC_TC001
+* @title   HITLS_CFG_ClearVerifyCrls interface functional test
+* @precon  This test case covers the HITLS_CFG_ClearVerifyCrls interface
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CRL_CFG_CLEAR_FUNC_TC001(void)
+{
+    HitlsInit();
+    HITLS_Config *config = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(config != NULL);
+
+    const char *crlPath = "../testdata/tls/certificate/der/ed25519/ed25519.crl.der";
+
+    // Load CRL file first
+    int32_t ret = HITLS_CFG_LoadCrlFile(config, crlPath, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Test successful CRL clearing
+    ret = HITLS_CFG_ClearVerifyCrls(config);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Load CRL again to verify clearing worked
+    ret = HITLS_CFG_LoadCrlFile(config, crlPath, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Test invalid parameter
+    ret = HITLS_CFG_ClearVerifyCrls(NULL);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test    UT_TLS_CRL_CTX_CLEAR_FUNC_TC001
+* @title   HITLS_ClearVerifyCrls interface functional test
+* @precon  This test case covers the HITLS_ClearVerifyCrls runtime context interface
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CRL_CTX_CLEAR_FUNC_TC001(void)
+{
+    HitlsInit();
+    HITLS_Config *config = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(config != NULL);
+
+    HITLS_Ctx *ctx = HITLS_New(config);
+    ASSERT_TRUE(ctx != NULL);
+
+    const char *crlPath = "../testdata/tls/certificate/der/ed25519/ed25519.crl.der";
+
+    // Load CRL file first
+    int32_t ret = HITLS_LoadCrlFile(ctx, crlPath, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Test successful CRL clearing
+    ret = HITLS_ClearVerifyCrls(ctx);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Load CRL again to verify clearing worked
+    ret = HITLS_LoadCrlFile(ctx, crlPath, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    // Test invalid parameter
+    ret = HITLS_ClearVerifyCrls(NULL);
+    ASSERT_NE(ret, HITLS_SUCCESS);
+
+EXIT:
+    HITLS_Free(ctx);
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+
+/* @
+* @test    UT_TLS_CRL_VERIFICATION_HANDSHAKE_TC001
+* @title   CRL verification in TLS handshake functional test
+* @precon  This test case covers CRL functionality during TLS handshake process
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CRL_VERIFICATION_HANDSHAKE_TC001(void)
+{
+    HitlsInit();
+    FRAME_Init();
+
+    // Test data paths
+    const char *serverCertPath = "../testdata/tls/certificate/der/ed25519/ed25519.end.der";
+    const char *serverKeyPath = "../testdata/tls/certificate/der/ed25519/ed25519.end.key.der";
+    const char *intCaPath = "../testdata/tls/certificate/der/ed25519/ed25519.intca.der";
+    const char *caCertPath = "../testdata/tls/certificate/der/ed25519/ed25519.ca.der";
+    const char *crlPath = "../testdata/tls/certificate/der/ed25519/ed25519.crl.der";
+
+    // Test 1: Handshake without CRL - should succeed
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    // Configure server with certificate and key
+    ASSERT_EQ(HITLS_CFG_LoadCertFile(config, serverCertPath, TLS_PARSE_FORMAT_ASN1), HITLS_SUCCESS);
+    ASSERT_EQ(HITLS_CFG_LoadKeyFile(config, serverKeyPath, TLS_PARSE_FORMAT_ASN1), HITLS_SUCCESS);
+
+    HITLS_CERT_X509 *caCert = HITLS_CFG_ParseCert(config, (const uint8_t *)caCertPath, strlen(caCertPath), TLS_PARSE_TYPE_FILE, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_TRUE(caCert != NULL);
+    ASSERT_EQ(HITLS_CFG_AddCertToStore(config, caCert, TLS_CERT_STORE_TYPE_DEFAULT, false), HITLS_SUCCESS);
+
+    caCert = HITLS_CFG_ParseCert(config, (const uint8_t *)intCaPath, strlen(intCaPath), TLS_PARSE_TYPE_FILE, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_TRUE(caCert != NULL);
+    ASSERT_EQ(HITLS_CFG_AddCertToStore(config, caCert, TLS_CERT_STORE_TYPE_DEFAULT, false), HITLS_SUCCESS);
+
+    FRAME_LinkObj *client = FRAME_CreateLinkBase(config, BSL_UIO_TCP, false);
+    ASSERT_TRUE(client != NULL);
+    FRAME_LinkObj *server = FRAME_CreateLinkBase(config, BSL_UIO_TCP, false);
+    ASSERT_TRUE(server != NULL);
+
+    // Attempt handshake without CRL - should succeed
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+
+    server = FRAME_CreateLinkBase(config, BSL_UIO_TCP, false);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_EQ(HITLS_CFG_LoadCrlFile(config, crlPath, TLS_PARSE_FORMAT_ASN1), HITLS_SUCCESS);
+
+    client = FRAME_CreateLinkBase(config, BSL_UIO_TCP, false);
+    ASSERT_TRUE(client != NULL);
+
+    ASSERT_NE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */

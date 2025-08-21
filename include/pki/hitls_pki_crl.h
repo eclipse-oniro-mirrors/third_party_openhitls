@@ -78,6 +78,21 @@ int32_t HITLS_X509_CrlParseBuff(int32_t format, const BSL_Buffer *encode, HITLS_
 
 /**
  * @ingroup pki
+ * @brief Parse multiple CRLs from a buffer.
+ * @par Description: Parse multiple CRLs from a buffer.
+ *  If parsing is successful, memory for the CRL list is allocated internally,
+ *  and the user needs to free it after use.
+ * @attention None
+ * @param format [IN] Encoding format: BSL_FORMAT_PEM/BSL_FORMAT_ASN1/BSL_FORMAT_UNKNOWN.
+ * @param encode [IN] CRL data buffer.
+ * @param crlList [OUT] List of parsed CRL objects.
+ * @return #HITLS_PKI_SUCCESS, success.
+ *         Error codes can be found in hitls_pki_errno.h
+ */
+int32_t HITLS_X509_CrlParseBundleBuff(int32_t format, const BSL_Buffer *encode, HITLS_X509_List **crlList);
+
+/**
+ * @ingroup pki
  * @brief Parse the CRL in the file.
  * @par Description: Parse the CRL in the file.
  *  If the parsing is successful, the memory for the crl is requested from within the function,

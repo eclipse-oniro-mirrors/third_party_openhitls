@@ -71,6 +71,10 @@ int32_t HITLS_X509_Adapt_Decrypt(HITLS_Ctx *ctx, HITLS_CERT_Key *key, const uint
     uint8_t *out, uint32_t *outLen);
 int32_t HITLS_X509_Adapt_CheckPrivateKey(const HITLS_Config *config, HITLS_CERT_X509 *cert, HITLS_CERT_Key *key);
 
+HITLS_CERT_CRLList *HITLS_X509_Adapt_CrlParse(HITLS_Config *config, const uint8_t *buf, uint32_t len,
+    HITLS_ParseType type, HITLS_ParseFormat format);
+void HITLS_X509_Adapt_CrlFree(HITLS_CERT_CRLList *crlList);
+
 #ifdef __cplusplus
 }
 #endif
