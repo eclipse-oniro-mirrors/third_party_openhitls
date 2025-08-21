@@ -8,9 +8,9 @@
     "libs":{
         "hitls_crypto":{
             "asm":[
-                "sm3",
-                "modes",
                 "bn",
+                "gcm",
+                "sm3",
                 "sm4"
             ],
             "c": [
@@ -23,7 +23,13 @@
                 "drbg_hash",
                 "drbg_ctr",
                 "entropy",
-                "modes",
+                "cbc",
+                "ecb",
+                "gcm",
+                "ofb",
+                "cfb",
+                "ctr",
+                "xts",
                 "sm4",
                 "sm2",
                 "provider",
@@ -32,30 +38,20 @@
         },
         "hitls_bsl": {
             "c": [
+                "asn1",
                 "err",
                 "hash",
                 "init",
-                "base64",
-                "buffer",
-                "pem",
                 "list",
-                "log",
                 "obj",
-                "sal",
-                "sal_mem",
-                "sal_thread",
-                "sal_lock",
-                "sal_time",
-                "sal_file",
-                "sal_net",
-                "sal_str",
-                "sal_dl",
-                "tlv",
-                "uio",
                 "params",
-                "asn1"
+                "sal",
+                "sal_dl",
+                "sal_mem",
+                "sal_str",
+                "sal_time",
+                "uio_plt"
             ]
         }
     }
 }
-  
