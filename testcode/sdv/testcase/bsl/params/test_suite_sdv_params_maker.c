@@ -100,7 +100,7 @@ void SDV_BSL_BSL_PARAM_MAKER_ToParam_API_TC001()
     ASSERT_EQ(*((uint8_t *)temp->value), u8);
     temp = BSL_PARAM_FindParam(params, key++);
     ASSERT_EQ(temp->value, (&params[index++])->value);
-    ASSERT_EQ(*((uint8_t *)temp->value), u16);
+    ASSERT_EQ(*((uint16_t *)temp->value), u16);
 EXIT:
     if (maker) {
         BSL_PARAM_MAKER_Free(maker);
@@ -159,7 +159,7 @@ void SDV_BSL_BSL_PARAM_MAKER_ToParam_API_TC002()
     temp = BSL_PARAM_FindParam(params, key);
     ASSERT_EQ(temp->value, params->value);
     ASSERT_TRUE(memcmp((char *)temp->value, str, sizeof(str) - 2) == 0);
-    ASSERT_TRUE(memcmp((char *)temp->value, str, sizeof(str)) != 0);
+    ASSERT_TRUE(memcmp((char *)temp->value, str, sizeof(str)) == 0);
 
 EXIT:
     if (maker) {

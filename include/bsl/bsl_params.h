@@ -177,6 +177,23 @@ BSL_ParamMaker *BSL_PARAM_MAKER_New(void);
 int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, uint32_t type, void *value, uint32_t len);
 
 /**
+ * @brief Push value to BSL parameter maker
+ *
+ * @param maker [IN] Pointer to the BSL_ParamMaker structure
+ * @param key [IN] Parameter key value, refer to crypt_params_key.h
+ * @param type [IN] Parameter value type, refer to BSL_PARAM_VALUE_TYPE enum
+ * @param value [IN] Pointer to the new parameter value
+ * @param len [IN] Length of the new parameter value
+ *
+ * @return int32_t Returns the operation result
+ *         - BSL_SUCCESS indicates successful setting
+ *         - Other values indicate setting failure
+ * @note The value will be depth copy.
+ */
+int32_t BSL_PARAM_MAKER_DeepPushValue(BSL_ParamMaker *maker, int32_t key, uint32_t type, void *value,
+    uint32_t len);
+
+/**
  * @brief BSL parameter maker to BSL parameter
  *
  * @param param [IN] Pointer to the BSL_Param structure array

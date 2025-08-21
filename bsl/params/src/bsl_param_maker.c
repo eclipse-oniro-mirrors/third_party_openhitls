@@ -35,12 +35,26 @@ typedef struct {
         uint32_t u32;
         uint64_t u64;
     } num;
+    int32_t flag;
 } BSL_PARAM_MAKER_DEF;
+
+#define PARAM_MAKER_MALLOCED_VALUE 1
 
 struct BslParamMaker {
     uint32_t valueLen;
     BslList *params;
 };
+
+static void PARAM_MAKER_DEF_Free(BSL_PARAM_MAKER_DEF *paramMakerDef)
+{
+    if (paramMakerDef == NULL) {
+        return;
+    }
+    if ((paramMakerDef->flag & PARAM_MAKER_MALLOCED_VALUE) != 0) {
+        BSL_SAL_FREE(paramMakerDef->value);
+    }
+    BSL_SAL_Free(paramMakerDef);
+}
 
 BSL_ParamMaker *BSL_PARAM_MAKER_New(void)
 {
@@ -139,9 +153,12 @@ int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, uint32_t t
             paramMakerDef->allocLen = 0;
             break;
         case BSL_PARAM_TYPE_UTF8_STR:
-        case BSL_PARAM_TYPE_OCTETS:
             paramMakerDef->value = value;
             paramMakerDef->allocLen = len + 1;
+            break;
+        case BSL_PARAM_TYPE_OCTETS:
+            paramMakerDef->value = value;
+            paramMakerDef->allocLen = len;
             break;
         default:
             ret = BSL_PARAMS_INVALID_TYPE;
@@ -152,7 +169,52 @@ int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, uint32_t t
 exit:
     if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
-        BSL_SAL_Free(paramMakerDef);
+        PARAM_MAKER_DEF_Free(paramMakerDef);
+    }
+    return ret;
+}
+
+int32_t BSL_PARAM_MAKER_DeepPushValue(BSL_ParamMaker *maker, int32_t key, uint32_t type, void *value, uint32_t len)
+{
+    int32_t ret = BSL_PARAM_MAKER_CheckInput(maker, value, len);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+    BSL_PARAM_MAKER_DEF *paramMakerDef = BSL_SAL_Calloc(1, sizeof(BSL_PARAM_MAKER_DEF));
+    if (paramMakerDef == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
+        return BSL_MALLOC_FAIL;
+    }
+    paramMakerDef->key = key;
+    paramMakerDef->type = type;
+    paramMakerDef->len = len;
+    uint32_t allocLen = 0;
+    switch (type) {
+        case BSL_PARAM_TYPE_UTF8_STR:
+            allocLen = len + 1;
+            break;
+        case BSL_PARAM_TYPE_OCTETS:
+            allocLen = len;
+            break;
+        default:
+            ret = BSL_PARAMS_INVALID_TYPE;
+            BSL_ERR_PUSH_ERROR(ret);
+            goto exit;
+    }
+    paramMakerDef->value = BSL_SAL_Malloc(len);
+    if (paramMakerDef->value == NULL) {
+        ret = BSL_MALLOC_FAIL;
+        BSL_ERR_PUSH_ERROR(ret);
+        goto exit;
+    }
+    paramMakerDef->flag |= PARAM_MAKER_MALLOCED_VALUE;
+    (void)memcpy_s(paramMakerDef->value, len, value, len);
+    paramMakerDef->allocLen = allocLen;
+    maker->valueLen += paramMakerDef->allocLen;
+    ret = BSL_LIST_AddElement(maker->params, paramMakerDef, BSL_LIST_POS_END);
+exit:
+    if (ret != BSL_SUCCESS) {
+        PARAM_MAKER_DEF_Free(paramMakerDef);
     }
     return ret;
 }
@@ -253,7 +315,6 @@ BSL_Param *BSL_PARAM_MAKER_ToParam(BSL_ParamMaker *maker)
         }
         paramMakerDef = BSL_LIST_Next(list);
     }
-    BSL_LIST_DeleteAll(list, NULL);
     return params;
 }
 
@@ -262,7 +323,7 @@ void BSL_PARAM_MAKER_Free(BSL_ParamMaker *maker)
     if (maker == NULL) {
         return;
     }
-    BSL_LIST_FREE(maker->params, NULL);
+    BSL_LIST_FREE(maker->params, (BSL_LIST_PFUNC_FREE)PARAM_MAKER_DEF_Free);
     BSL_SAL_Free(maker);
     maker = NULL;
 }
