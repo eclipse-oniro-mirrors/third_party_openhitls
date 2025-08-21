@@ -1919,6 +1919,20 @@ static int32_t PKCS12_GetSecretBags(HITLS_PKCS12 *p12, void **val)
     return HITLS_PKI_SUCCESS;
 }
 
+static int32_t PKCS12_GetCertBags(HITLS_PKCS12 *p12, void **val)
+{
+    if (p12->certList == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_NULL_POINTER);
+        return HITLS_PKCS12_ERR_NULL_POINTER;
+    }
+    if (val == NULL || *val != NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_PKCS12_ERR_INVALID_PARAM);
+        return HITLS_PKCS12_ERR_INVALID_PARAM;
+    }
+    *val = p12->certList;
+    return HITLS_PKI_SUCCESS;
+}
+
 int32_t HITLS_PKCS12_Ctrl(HITLS_PKCS12 *p12, int32_t cmd, void *val, uint32_t valType)
 {
 #ifndef HITLS_PKI_PKCS12_GEN
@@ -1947,6 +1961,8 @@ int32_t HITLS_PKCS12_Ctrl(HITLS_PKCS12 *p12, int32_t cmd, void *val, uint32_t va
         case HITLS_PKCS12_GET_ENTITY_KEY:
         case HITLS_PKCS12_GET_ENTITY_KEYBAG:
             return PKCS12_GetEntityKey(p12, cmd, val);
+        case HITLS_PKCS12_GET_CERTBAGS:
+            return PKCS12_GetCertBags(p12, val);
         case HITLS_PKCS12_GET_SECRETBAGS:
             return PKCS12_GetSecretBags(p12, val);
         case HITLS_PKCS12_GET_KEYBAGS:

@@ -164,7 +164,9 @@ void SDV_PKCS12_GEN_KEYBAGS_TC001(char *pkeyPath, char *enCertPath, char *ca1Cer
     HITLS_PKCS12 *p12 = HITLS_PKCS12_New();
     ASSERT_NE(p12, NULL);
     HITLS_PKCS12 *p12_1 = NULL;
-
+    BSL_ASN1_List *certList = NULL;
+    BSL_ASN1_List *keyList = NULL;
+    BSL_ASN1_List *secretBags = NULL;
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, pkeyPath, NULL, 0, &pkey), 0);
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, enCertPath, &enCert), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, ca1CertPath, &ca1Cert), HITLS_PKI_SUCCESS);
@@ -188,13 +190,18 @@ void SDV_PKCS12_GEN_KEYBAGS_TC001(char *pkeyPath, char *enCertPath, char *ca1Cer
     
 #ifdef HITLS_PKI_PKCS12_PARSE
     ASSERT_EQ(HITLS_PKCS12_ParseBuff(BSL_FORMAT_ASN1, &output, &pwdParam, &p12_1, true), 0);
-    ASSERT_EQ(BSL_LIST_COUNT(p12_1->certList), 2);
-    ASSERT_EQ(BSL_LIST_COUNT(p12_1->keyList), 2);
-    ASSERT_EQ(BSL_LIST_COUNT(p12_1->secretBags), 1);
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12_1, HITLS_PKCS12_GET_CERTBAGS, &certList, 0), 0);
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12_1, HITLS_PKCS12_GET_KEYBAGS, &keyList, 0), 0);
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12_1, HITLS_PKCS12_GET_SECRETBAGS, &secretBags, 0), 0);
+    ASSERT_EQ(BSL_LIST_COUNT(certList), 2);
+    ASSERT_EQ(BSL_LIST_COUNT(keyList), 2);
+    ASSERT_EQ(BSL_LIST_COUNT(secretBags), 1);
     ASSERT_NE(p12_1->entityCert, NULL);
     ASSERT_NE(p12_1->key, NULL);
 #endif
-
+    certList = NULL;
+    keyList = NULL;
+    secretBags = NULL;
     BSL_SAL_FREE(output.data);
     output.dataLen = 0;
     ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, false, &output), 0);
@@ -202,9 +209,12 @@ void SDV_PKCS12_GEN_KEYBAGS_TC001(char *pkeyPath, char *enCertPath, char *ca1Cer
     p12_1 = NULL;
 #ifdef HITLS_PKI_PKCS12_PARSE
     ASSERT_EQ(HITLS_PKCS12_ParseBuff(BSL_FORMAT_ASN1, &output, &pwdParam, &p12_1, false), 0);
-    ASSERT_EQ(BSL_LIST_COUNT(p12_1->certList), 2);
-    ASSERT_EQ(BSL_LIST_COUNT(p12_1->keyList), 2);
-    ASSERT_EQ(BSL_LIST_COUNT(p12_1->secretBags), 1);
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12_1, HITLS_PKCS12_GET_CERTBAGS, &certList, 0), 0);
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12_1, HITLS_PKCS12_GET_KEYBAGS, &keyList, 0), 0);
+    ASSERT_EQ(HITLS_PKCS12_Ctrl(p12_1, HITLS_PKCS12_GET_SECRETBAGS, &secretBags, 0), 0);
+    ASSERT_EQ(BSL_LIST_COUNT(certList), 2);
+    ASSERT_EQ(BSL_LIST_COUNT(keyList), 2);
+    ASSERT_EQ(BSL_LIST_COUNT(secretBags), 1);
     ASSERT_NE(p12_1->entityCert, NULL);
     ASSERT_NE(p12_1->key, NULL);
 #endif
