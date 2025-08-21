@@ -542,6 +542,8 @@ DRBG_Ctx *DRBG_NewHashCtx(const EAL_MdMethod *md, bool isGm, const CRYPT_RandSee
     drbg->maxAdinLen = DRBG_MAX_LEN;
     drbg->maxRequest = (drbg->isGm) ? DRBG_MAX_REQUEST_SM3 : DRBG_MAX_REQUEST;
 
+    drbg->predictionResistance = false;
+
     return drbg;
 }
 #endif

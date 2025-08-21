@@ -74,6 +74,7 @@ struct DrbgCtx {
     void *seedCtx; /* Seed context */
 
     void *libCtx; /* Library context */
+    bool predictionResistance;
 };
 
 #ifdef HITLS_CRYPTO_DRBG_HMAC

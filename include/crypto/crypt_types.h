@@ -719,6 +719,7 @@ typedef enum {
     CRYPT_CTRL_SET_GM_LEVEL,    /**<  Set the authentication level of gm drbg */
     CRYPT_CTRL_SET_RESEED_INTERVAL,
     CRYPT_CTRL_SET_RESEED_TIME,
+    CRYPT_CTRL_SET_PREDICTION_RESISTANCE,
     CRYPT_CTRL_RAND_MAX = 0xff,
 } CRYPT_RandCtrl;
 

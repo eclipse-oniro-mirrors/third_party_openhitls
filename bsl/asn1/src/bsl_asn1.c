@@ -21,7 +21,6 @@
 #include "bsl_asn1_local.h"
 #include "bsl_sal.h"
 #include "sal_time.h"
-#include "bsl_asn1.h"
 
 #define BSL_ASN1_INDEFINITE_LENGTH  0x80
 #define BSL_ASN1_DEFINITE_MAX_CONTENT_OCTET_NUM 0x7F // 127

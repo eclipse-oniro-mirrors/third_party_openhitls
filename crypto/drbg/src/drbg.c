@@ -475,7 +475,7 @@ int32_t DRBG_GenerateBytes(DRBG_Ctx *ctx, uint8_t *out, uint32_t outLen,
         return CRYPT_NULL_INPUT;
     }
     int32_t ret;
-    bool pr = false;
+    bool pr = ctx->predictionResistance;
     const BSL_Param *temp = NULL;
     if ((temp = BSL_PARAM_FindConstParam(param, CRYPT_PARAM_RAND_PR)) != NULL) {
         uint32_t boolSize = sizeof(bool);
@@ -554,6 +554,16 @@ static int32_t DRBG_SetReseedInterval(DRBG_Ctx *ctx, const void *val, uint32_t l
     return CRYPT_SUCCESS;
 }
 
+static int32_t DRBG_SetPredictionResistance(DRBG_Ctx *ctx, const void *val, uint32_t len)
+{
+    if (val == NULL || len != sizeof(bool)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    ctx->predictionResistance = *(const bool *)val;
+    return CRYPT_SUCCESS;
+}
+
 int32_t DRBG_Ctrl(DRBG_Ctx *ctx, int32_t opt, void *val, uint32_t len)
 {
     if (ctx == NULL) {
@@ -569,6 +579,8 @@ int32_t DRBG_Ctrl(DRBG_Ctx *ctx, int32_t opt, void *val, uint32_t len)
 #endif // HITLS_CRYPTO_DRBG_GM
         case CRYPT_CTRL_SET_RESEED_INTERVAL:
             return DRBG_SetReseedInterval(ctx, val, len);
+        case CRYPT_CTRL_SET_PREDICTION_RESISTANCE:
+            return DRBG_SetPredictionResistance(ctx, val, len);
         default:
             break;
     }

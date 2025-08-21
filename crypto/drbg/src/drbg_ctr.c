@@ -650,6 +650,8 @@ DRBG_Ctx *DRBG_NewCtrCtx(const EAL_SymMethod *ciphMeth, const uint32_t keyLen, b
         drbg->nonceRange.max = 0;
     }
 
+    drbg->predictionResistance = false;
+
     return drbg;
 }
 #endif

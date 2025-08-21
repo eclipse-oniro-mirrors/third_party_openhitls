@@ -22,7 +22,7 @@
 #include "bsl_obj.h"
 #include "bsl_err.h"
 #include "bsl_params.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj_internal.h"
 #include "crypt_encode_decode_key.h"
 #include "crypt_errno.h"

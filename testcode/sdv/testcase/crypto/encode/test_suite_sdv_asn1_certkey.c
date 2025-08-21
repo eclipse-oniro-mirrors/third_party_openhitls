@@ -22,7 +22,7 @@
 
 #include "securec.h"
 #include "bsl_sal.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_err.h"
 #include "bsl_log.h"
 #include "bsl_init.h"

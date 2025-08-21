@@ -19,7 +19,7 @@
 #include "hitls_build.h"
 #ifdef HITLS_PKI_X509
 #include <stdint.h>
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj.h"
 #include "crypt_eal_pkey.h"
 #include "sal_atomic.h"

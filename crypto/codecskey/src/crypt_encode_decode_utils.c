@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include "securec.h"
 #include "bsl_types.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj_internal.h"
 #include "bsl_err_internal.h"
 #include "crypt_params_key.h"

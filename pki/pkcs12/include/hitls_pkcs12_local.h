@@ -19,7 +19,7 @@
 #include "hitls_build.h"
 #ifdef HITLS_PKI_PKCS12
 #include <stdint.h>
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj.h"
 #include "sal_atomic.h"
 #include "hitls_x509_local.h"

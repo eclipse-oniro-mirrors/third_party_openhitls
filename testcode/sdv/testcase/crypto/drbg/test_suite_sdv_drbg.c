@@ -2235,3 +2235,43 @@ EXIT:
 }
 /* END_CASE */
 
+/* BEGIN_CASE */
+void SDV_CRYPTO_DRBG_SET_PREDICTION_RESISTANCE_API_TC001()
+{
+    uint8_t *output = NULL;
+    void *drbgCtx = NULL;
+    CRYPT_Data data = { 0 };
+    CRYPT_RandSeedMethod seedMeth = { 0 };
+    DRBG_Vec_t seedCtx = { 0 };
+    bool pr = true;
+
+    TestMemInit();
+    regSeedMeth(&seedMeth);
+    drbgDataInit(&data, TEST_DRBG_DATA_SIZE);
+
+    seedCtx.entropy = &data;
+    seedCtx.nonce = &data;
+
+    drbgCtx = CRYPT_EAL_DrbgNew(CRYPT_RAND_SHA256, &seedMeth, &seedCtx);
+    ASSERT_TRUE(drbgCtx != NULL);
+    ASSERT_TRUE(CRYPT_EAL_DrbgInstantiate(drbgCtx, NULL, 0) == CRYPT_SUCCESS);
+
+    output = malloc(sizeof(uint8_t) * DRBG_OUTPUT_SIZE);
+    ASSERT_TRUE(output != NULL);
+    (void)memset_s(output, sizeof(uint8_t) * DRBG_OUTPUT_SIZE, 0, sizeof(uint8_t) * DRBG_OUTPUT_SIZE);
+    ASSERT_EQ(CRYPT_EAL_DrbgbytesWithAdin(drbgCtx, output, DRBG_OUTPUT_SIZE, NULL, 0), CRYPT_SUCCESS);
+
+    CRYPT_EAL_DrbgDeinit(drbgCtx);
+    drbgCtx = CRYPT_EAL_DrbgNew(CRYPT_RAND_SHA256, &seedMeth, &seedCtx);
+    ASSERT_TRUE(drbgCtx != NULL);
+    ASSERT_EQ(CRYPT_EAL_DrbgCtrl(drbgCtx, CRYPT_CTRL_SET_PREDICTION_RESISTANCE, &pr, sizeof(pr)), CRYPT_SUCCESS);
+    ASSERT_TRUE(CRYPT_EAL_DrbgInstantiate(drbgCtx, NULL, 0) == CRYPT_SUCCESS);
+
+    ASSERT_EQ(CRYPT_EAL_DrbgbytesWithAdin(drbgCtx, output, DRBG_OUTPUT_SIZE, NULL, 0), CRYPT_SUCCESS);
+
+EXIT:
+    CRYPT_EAL_DrbgDeinit(drbgCtx);
+    drbgDataFree(&data);
+    free(output);
+}
+/* END_CASE */

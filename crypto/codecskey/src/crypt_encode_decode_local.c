@@ -17,7 +17,7 @@
 #ifdef HITLS_CRYPTO_CODECSKEY
 
 #include "securec.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_params.h"
 #include "bsl_err_internal.h"
 #include "bsl_obj_internal.h"

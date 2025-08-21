@@ -178,22 +178,27 @@ int32_t BSL_PRINT_Time(uint32_t layer, const BSL_TIME *time, BSL_UIO *uio)
  */
 int32_t BSL_PRINT_Number(uint32_t layer, const char *title, const uint8_t *data, uint32_t dataLen, BSL_UIO *uio)
 {
-    if (title == NULL || data == NULL || dataLen == 0 || uio == NULL) {
+    if (data == NULL || dataLen == 0 || uio == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
         return BSL_INVALID_ARG;
     }
 
     if (dataLen > (sizeof(uint64_t))) {
-        if (BSL_PRINT_Fmt(layer, uio, "%s:\n", title) != 0) {
-            BSL_ERR_PUSH_ERROR(BSL_PRINT_ERR_NUMBER);
-            return BSL_PRINT_ERR_NUMBER;
+        if (title != NULL) {
+            if (BSL_PRINT_Fmt(layer++, uio, "%s:\n", title) != 0) {
+                BSL_ERR_PUSH_ERROR(BSL_PRINT_ERR_NUMBER);
+                return BSL_PRINT_ERR_NUMBER;
+            }
         }
-        return BSL_PRINT_Hex(layer + 1, false, data, dataLen, uio);
+        return BSL_PRINT_Hex(layer, false, data, dataLen, uio);
     }
 
     uint64_t num = 0;
     for (uint32_t i = 0; i < dataLen; i++) {
         num |= (uint64_t)data[i] << (8 * (dataLen - i - 1));  // 8: bits
     }
-    return BSL_PRINT_Fmt(layer, uio, "%s: %"PRIu64" (0x%"PRIX64")\n", title, num, num);
+    if (title != NULL) {
+        return BSL_PRINT_Fmt(layer, uio, "%s: %"PRIu64" (0x%"PRIX64")\n", title, num, num);
+    }
+    return BSL_PRINT_Fmt(layer, uio, "%"PRIu64" (0x%"PRIX64")\n", num, num);
 }

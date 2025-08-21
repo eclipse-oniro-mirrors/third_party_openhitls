@@ -17,10 +17,6 @@
 #define BSL_ASN1_H
 
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include "bsl_list.h"
-#include "bsl_uio.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,17 +68,19 @@ extern "C" {
 /* The implied values are of the same type */
 #define BSL_ASN1_FLAG_SAME 8
 
-#define BSL_ASN1_MAX_TEMPLATE_DEPTH 6
-
-#define BSL_ASN1_UTCTIME_LEN 13         // YYMMDDHHMMSSZ
-#define BSL_ASN1_GENERALIZEDTIME_LEN 15 // YYYYMMDDHHMMSSZ
-
 #define BSL_ASN1_List BslList
 
-typedef enum {
-    BSL_ASN1_TYPE_GET_ANY_TAG = 0,
-    BSL_ASN1_TYPE_CHECK_CHOICE_TAG = 1
-} BSL_ASN1_CALLBACK_TYPE;
+typedef struct _BSL_ASN1_Buffer {
+    uint8_t tag;
+    uint32_t len;
+    uint8_t *buff;
+} BSL_ASN1_Buffer;
+
+typedef struct _BSL_ASN1_BitString {
+    uint8_t *buff;
+    uint32_t len;
+    uint8_t unusedBits;
+} BSL_ASN1_BitString;
 
 typedef struct _BSL_ASN1_TemplateItem {
     /* exptect tag */
@@ -97,17 +95,10 @@ typedef struct _BSL_ASN1_Template {
     uint32_t templNum;
 } BSL_ASN1_Template;
 
-typedef struct _BSL_ASN1_Buffer {
-    uint8_t tag;
-    uint32_t len;
-    uint8_t *buff;
-} BSL_ASN1_Buffer;
-
-typedef struct _BSL_ASN1_BitString {
-    uint8_t *buff;
-    uint32_t len;
-    uint8_t unusedBits;
-} BSL_ASN1_BitString;
+typedef struct _BSL_ASN1_DecodeListParam {
+    uint32_t layer;
+    uint8_t *expTag;
+} BSL_ASN1_DecodeListParam;
 
 /**
  * @ingroup bsl_asn1
@@ -131,24 +122,6 @@ typedef int32_t(*BSL_ASN1_DecTemplCallBack)(int32_t type, uint32_t idx, void *da
  */
 typedef int32_t(*BSL_ASN1_ParseListAsnItem)(uint32_t layer, BSL_ASN1_Buffer *asn, void *cbParam, BSL_ASN1_List *list);
 
-typedef struct _BSL_ASN1_DecodeListParam {
-    uint32_t layer;
-    uint8_t *expTag;
-} BSL_ASN1_DecodeListParam;
-
-/**
- * @ingroup bsl_asn1
- * @brief Obtain the length of V or LV in an ASN1 TLV structure.
- *
- * @param encode [IN/OUT] Data to be decoded. Update the offset after decoding.
- * @param encLen [IN/OUT] The length of the data to be decoded.
- * @param completeLen [IN] True: Get the length of L+V; False: Get the length of V.
- * @param len [OUT] Output.
- * @retval  BSL_SUCCESS, success.
- *          Other error codes see the bsl_errno.h.
- */
-int32_t BSL_ASN1_DecodeLen(uint8_t **encode, uint32_t *encLen, bool completeLen, uint32_t *len);
-
 /**
  * @ingroup bsl_asn1
  * @brief Decode the tag and length fields of an ASN.1 TLV structure and validate against expected tag.
@@ -164,71 +137,6 @@ int32_t BSL_ASN1_DecodeLen(uint8_t **encode, uint32_t *encLen, bool completeLen,
  *         Other error codes see bsl_errno.h.
  */
 int32_t BSL_ASN1_DecodeTagLen(uint8_t tag, uint8_t **encode, uint32_t *encLen, uint32_t *valLen);
-
-/**
- * @ingroup bsl_asn1
- * @brief Decoding data of type 'SEQUENCE OF' or 'SET OF'.
- *
- * @param param [IN] The parameters of the data to be decoded.
- * @param asn [IN] The data to be decoded.
- * @param parseListItemCb [IN] User defined callback function used to convert an ASN item into a list.
- * @param cbParam [IN/OUT] The parameters in the callback function.
- * @param list [OUT] Decoding result.
- * @retval  BSL_SUCCESS, success.
- *          Other error codes see the bsl_errno.h.
- */
-int32_t BSL_ASN1_DecodeListItem(BSL_ASN1_DecodeListParam *param, BSL_ASN1_Buffer *asn,
-    BSL_ASN1_ParseListAsnItem parseListItemCb, void *cbParam, BSL_ASN1_List *list);
-
-/**
- * @ingroup bsl_asn1
- * @brief Decoding of primitive type data.
- *
- * @param asn [IN] The data to be decoded.
- * @param decodeData [OUT] Decoding result.
- * @retval  BSL_SUCCESS, success.
- *          Other error codes see the bsl_errno.h.
- */
-int32_t BSL_ASN1_DecodePrimitiveItem(BSL_ASN1_Buffer *asn, void *decodeData);
-
-/**
- * @ingroup bsl_asn1
- * @brief Template decoding method.
- *
- * @param templ [IN] Encoding template.
- * @param decTemlCb [IN] Function for handling uncertain types of data.
- * @param encode [IN/OUT] Data to be decoded. Update the offset after decoding.
- * @param encLen [IN/OUT] The length of the data to be decoded.
- * @param asnArr [OUT] List of data to be decoded.
- * @param arrNum [IN] The number of data to be encoded, which is determined by the template.
- * @retval  BSL_SUCCESS, success.
- *          Other error codes see the bsl_errno.h.
- */
-int32_t BSL_ASN1_DecodeTemplate(BSL_ASN1_Template *templ, BSL_ASN1_DecTemplCallBack decTemlCb,
-    uint8_t **encode, uint32_t *encLen, BSL_ASN1_Buffer *asnArr, uint32_t arrNum);
-
-/**
- * @ingroup bsl_asn1
- * @brief Decode one asn1 item.
- *
- * @param encode [IN/OUT] Data to be decoded. Update the offset after decoding.
- * @param encLen [IN/OUT] The length of the data to be decoded.
- * @param asnItem [OUT] Output.
- * @retval  BSL_SUCCESS, success.
- *          Other error codes see the bsl_errno.h.
- */
-int32_t BSL_ASN1_DecodeItem(uint8_t **encode, uint32_t *encLen, BSL_ASN1_Buffer *asnItem);
-
-/**
- * @ingroup bsl_asn1
- * @brief Obtain the length of an ASN1 TLV structure.
- *
- * @param data [IN] Data to be decoded. Update the offset after decoding.
- * @param dataLen [OUT] Decoding result.
- * @retval  BSL_SUCCESS, success.
- *          Other error codes see the bsl_errno.h.
- */
-int32_t BSL_ASN1_GetCompleteLen(uint8_t *data, uint32_t *dataLen);
 
 /**
  * @ingroup bsl_asn1
@@ -254,6 +162,22 @@ int32_t BSL_ASN1_EncodeTemplate(BSL_ASN1_Template *templ, BSL_ASN1_Buffer *asnAr
 
 /**
  * @ingroup bsl_asn1
+ * @brief Template decoding method.
+ *
+ * @param templ [IN] Encoding template.
+ * @param decTemlCb [IN] Function for handling uncertain types of data.
+ * @param encode [IN/OUT] Data to be decoded. Update the offset after decoding.
+ * @param encLen [IN/OUT] The length of the data to be decoded.
+ * @param asnArr [OUT] List of data to be decoded.
+ * @param arrNum [IN] The number of data to be encoded, which is determined by the template.
+ * @retval  BSL_SUCCESS, success.
+ *          Other error codes see the bsl_errno.h.
+ */
+int32_t BSL_ASN1_DecodeTemplate(BSL_ASN1_Template *templ, BSL_ASN1_DecTemplCallBack decTemlCb,
+    uint8_t **encode, uint32_t *encLen, BSL_ASN1_Buffer *asnArr, uint32_t arrNum);
+
+/**
+ * @ingroup bsl_asn1
  * @brief Encoding data of type 'SEQUENCE OF' or 'SET OF'.
  *
  * @attention
@@ -275,27 +199,18 @@ int32_t BSL_ASN1_EncodeListItem(uint8_t tag, uint32_t listSize, BSL_ASN1_Templat
 
 /**
  * @ingroup bsl_asn1
- * @brief Encode the smaller positive integer.
+ * @brief Decoding data of type 'SEQUENCE OF' or 'SET OF'.
  *
- * @param tag [IN] BSL_ASN1_TAG_INTEGER or BSL_ASN1_TAG_ENUMERATED
- * @param limb [IN] Positive integer.
- * @param asn [OUT] Encoding result.
+ * @param param [IN] The parameters of the data to be decoded.
+ * @param asn [IN] The data to be decoded.
+ * @param parseListItemCb [IN] User defined callback function used to convert an ASN item into a list.
+ * @param cbParam [IN/OUT] The parameters in the callback function.
+ * @param list [OUT] Decoding result.
  * @retval  BSL_SUCCESS, success.
  *          Other error codes see the bsl_errno.h.
  */
-int32_t BSL_ASN1_EncodeLimb(uint8_t tag, uint64_t limb, BSL_ASN1_Buffer *asn);
-
-/**
- * @ingroup bsl_asn1
- * @brief Calculate the total encoding length for a ASN.1 type through the content length.
- *
- * @param contentLen [IN] The length of the content to be encoded.
- * @param encodeLen [OUT] The total number of bytes needed for DER encoding.
- * @retval  BSL_SUCCESS, success.
- *          Other error codes see the bsl_errno.h.
- */
-int32_t BSL_ASN1_GetEncodeLen(uint32_t contentLen, uint32_t *encodeLen);
-
+int32_t BSL_ASN1_DecodeListItem(BSL_ASN1_DecodeListParam *param, BSL_ASN1_Buffer *asn,
+    BSL_ASN1_ParseListAsnItem parseListItemCb, void *cbParam, BSL_ASN1_List *list);
 #ifdef __cplusplus
 }
 #endif

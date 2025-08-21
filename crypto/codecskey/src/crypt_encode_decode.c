@@ -23,7 +23,7 @@
 #include "sal_file.h"
 #endif
 #include "bsl_types.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 
 #ifdef HITLS_BSL_PEM
 #include "bsl_pem_internal.h"

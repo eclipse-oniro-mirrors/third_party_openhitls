@@ -372,6 +372,8 @@ DRBG_Ctx *DRBG_NewHmacCtx(void *libCtx, const EAL_MacMethod *hmacMeth, CRYPT_MAC
     drbg->maxRequest = DRBG_MAX_REQUEST;
     drbg->libCtx = libCtx;
 
+    drbg->predictionResistance = false;
+
     return drbg;
 }
 #endif

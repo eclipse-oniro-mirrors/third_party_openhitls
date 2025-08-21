@@ -16,6 +16,7 @@
 #include "hitls_build.h"
 #ifdef HITLS_BSL_OBJ
 #include <stddef.h>
+#include <stdio.h>
 #include "securec.h"
 #include "bsl_sal.h"
 #include "bsl_obj.h"
@@ -101,6 +102,7 @@ BslOidInfo g_oidTable[] = {
     {{3, "\125\35\17", BSL_OID_GLOBAL}, "KeyUsage", BSL_CID_CE_KEYUSAGE},
     {{3, "\125\35\21", BSL_OID_GLOBAL}, "SubjectAltName", BSL_CID_CE_SUBJECTALTNAME},
     {{3, "\125\35\23", BSL_OID_GLOBAL}, "BasicConstraints", BSL_CID_CE_BASICCONSTRAINTS},
+    {{3, "\125\35\37", BSL_OID_GLOBAL}, "CRLDistributionPoints", BSL_CID_CE_CRLDISTRIBUTIONPOINTS},
     {{3, "\125\35\45", BSL_OID_GLOBAL}, "ExtendedKeyUsage", BSL_CID_CE_EXTKEYUSAGE},
     {{8, "\53\6\1\5\5\7\3\1", BSL_OID_GLOBAL}, "ServerAuth", BSL_CID_KP_SERVERAUTH},
     {{8, "\53\6\1\5\5\7\3\2", BSL_OID_GLOBAL}, "ClientAuth", BSL_CID_KP_CLIENTAUTH},
@@ -165,6 +167,8 @@ BslOidInfo g_oidTable[] = {
     {{9, "\53\44\3\3\2\10\1\1\15", BSL_OID_GLOBAL}, "BRAINPOOLP512R1", BSL_CID_ECC_BRAINPOOLP512R1},
     {{7, "\52\206\110\316\75\2\1", BSL_OID_GLOBAL}, "EC-PUBLICKEY", BSL_CID_EC_PUBLICKEY}, // ecc subkey
     {{10, "\11\222\46\211\223\362\54\144\1\1", BSL_OID_GLOBAL}, "UID", BSL_CID_AT_USERID},
+    {{3, "\125\35\22", BSL_OID_GLOBAL}, "IssuerAlternativeName", BSL_CID_CE_ISSUERALTERNATIVENAME},
+    {{8, "\53\6\1\5\5\7\1\1", BSL_OID_GLOBAL}, "AuthorityInformationAccess", BSL_CID_CE_AUTHORITYINFORMATIONACCESS},
 };
 
 uint32_t g_tableSize = (uint32_t)sizeof(g_oidTable)/sizeof(g_oidTable[0]);
@@ -576,99 +580,63 @@ void BSL_OBJ_FreeHashTable(void)
 }
 #endif // HITLS_BSL_HASH
 
-static void BslEncodeOidPart(uint64_t num, uint8_t *output, uint32_t *offset)
+/*
+* Conversion Rules:
+* The first byte represents the first two nodes: X.Y, where X = first byte / 40, Y = first byte % 40.
+* Subsequent nodes use variable length encoding (Base 128), where the highest bit of each byte indicates
+* whether there are subsequent bytes (1 indicates continuation, 0 indicates end).
+* Detailed conversion process:
+* 1、Split the first two nodes, the first byte is decomposed into two numbers: first_node and second_node,
+* first_node = byte_value / 40, second_node = byte_value % 40.
+* 2、Decoding subsequent nodes, Each node may be composed of multiple bytes, with the most significant bit (MSB)
+* of each byte being the continuation flag and the remaining 7 bits being a part of the actual value,
+* Multiple 7-bit groups are combined in big endian order.
+*/
+char *BSL_OBJ_GetOidNumericString(const uint8_t *oid, uint32_t len)
 {
-    if (num < 0x80) {
-        output[*offset] = num &0x7F;
-        (*offset)++;
-    } else {
-        uint8_t temp[10]; // The data of uint64_t requires up to 10 bytes when encode in ASN1.
-        int32_t i = 0;
-        uint64_t t = num;
-        while (t > 0) {
-            temp[i] = (t & 0x7F) | 0x80;
-            i++;
-            t >>= 7; // Process 7 bits each time.
-        }
-
-        temp[0] &= 0x7F;
-        for (int32_t j = i - 1; j >= 0; j--) {
-            output[*offset] = temp[j];
-            (*offset)++;
-        }
-    }
-}
-
-static bool BslEncodeOidValueCheck(uint64_t *parts, uint32_t count)
-{
-    // At least 2 pieces of data are required.
-    if (count < 2 || parts[0] > BSL_OBJ_ARCS_X_MAX) {
-        return false;
-    }
-    if (parts[1] >= BSL_OBJ_ARCS_Y_MAX) {
-        return false;
-    }
-    return true;
-}
-
-#define MAX_OID_PARTS_LEN 128
-uint8_t *BSL_OBJ_GetOidFromNumericString(const char *oid, uint32_t len, uint32_t *outLen)
-{
-    if (len == 0 || oid == NULL || oid[0] == '.' || outLen == NULL || oid[len - 1] == '.') {
-        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
-        return NULL;
-    }
-    uint64_t parts[MAX_OID_PARTS_LEN];
-    uint32_t count = 0;
-    parts[count] = 0;
-
-    for (uint32_t i = 0; i < len; i++) {
-        if (oid[i] > '9' || (oid[i] < '0' && oid[i] != '.')) {
-            BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
-            return NULL;
-        }
-        if ((i < len - 1) && oid[i] == '.' && oid[i + 1] == '.') {
-            BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
-            return NULL;
-        }
-        if (oid[i] != '.') {
-            // Convert decimal string to number.
-            if (parts[count] > (UINT64_MAX - (oid[i] - '0')) / 10) {
-                BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
-                return NULL;
-            }
-            parts[count] = parts[count] * 10 + (oid[i] - '0');
-        } else {
-            count++;
-            if (count >= MAX_OID_PARTS_LEN) {
-                BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
-                return NULL;
-            }
-            parts[count] = 0;
-        }
-    }
-    count++;
-
-    if (BslEncodeOidValueCheck(parts, count) != true) {
+    if (oid == NULL || len < 1 || oid[0] > BSL_OBJ_ARCS_MAX) {
         BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
         return NULL;
     }
 
-    uint32_t offset = 0;
-    // The data of uint64_t requires up to 10 bytes when encode in ASN1.
-    uint8_t *outBuf = BSL_SAL_Malloc(count * 10);
-    if (outBuf == NULL) {
-        BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
+    char buffer[256] = {0};
+    if (snprintf_s(buffer, sizeof(buffer) + 1, sizeof(buffer), "%d.%d", oid[0] / BSL_OBJ_ARCS_Y_MAX,
+        oid[0] % BSL_OBJ_ARCS_Y_MAX) < 0) {
         return NULL;
     }
-    outBuf[0] = (uint8_t)(parts[0] * BSL_OBJ_ARCS_Y_MAX + parts[1]);
-    offset++;
 
-    for (uint32_t i = 2; i < count; i++) {
-        BslEncodeOidPart(parts[i], outBuf, &offset);
+    uint64_t value = 0;
+    for (uint32_t i = 1; i < len; i++) {
+        if (value > (UINT64_MAX >> 7)) {
+            /* Overflow check */
+            BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+            return NULL;
+        }
+        if ((value == 0) && ((oid[i]) == 0x80)) {
+            /* Any value must be encoded with the minimum number of bytes.
+              No unnecessary or meaningless leading bytes are allowed */
+            BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+            return NULL;
+        }
+
+        value = (value << 7) | (oid[i] & 0x7F);
+        if (!(oid[i] & 0x80)) {
+            char temp[20];
+            if (snprintf_s(temp, sizeof(temp) + 1, sizeof(temp), ".%lu", value) < 0) {
+                BSL_ERR_PUSH_ERROR(BSL_INTERNAL_EXCEPTION);
+                return NULL;
+            }
+            strcat(buffer, temp);
+            value = 0;
+        }
     }
-    *outLen = offset;
-    return outBuf;
+
+    if (value != 0) {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        return NULL;
+    }
+
+    return strdup(buffer);
 }
 
 #endif

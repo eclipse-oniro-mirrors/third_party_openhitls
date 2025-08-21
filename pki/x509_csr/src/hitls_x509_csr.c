@@ -17,7 +17,7 @@
 #ifdef HITLS_PKI_X509_CSR
 #include "securec.h"
 #include "bsl_sal.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj_internal.h"
 #include "bsl_err_internal.h"
 #ifdef HITLS_BSL_PEM

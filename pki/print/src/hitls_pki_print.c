@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include "bsl_sal.h"
 #include "bsl_list.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj_internal.h"
 #include "bsl_err_internal.h"
 #include "bsl_print.h"
@@ -26,6 +27,10 @@
 #endif
 #ifdef HITLS_PKI_X509_CSR
 #include "hitls_csr_local.h"
+#endif
+#ifdef HITLS_PKI_X509_CRL
+#include "hitls_crl_local.h"
+#include "hitls_pki_crl.h"
 #endif
 #include "hitls_pki_utils.h"
 #include "hitls_print_local.h"
@@ -268,7 +273,7 @@ int32_t HITLS_PKI_PrintDnName(uint32_t layer, BslList *list, bool newLine, BSL_U
     return HITLS_PKI_SUCCESS;
 }
 
-#if defined(HITLS_PKI_X509_CRT) || defined(HITLS_PKI_X509_CSR)
+#if defined(HITLS_PKI_X509_CRT) || defined(HITLS_PKI_X509_CSR) || defined(HITLS_PKI_X509_CRL)
 static int32_t PrintBCons(HITLS_X509_Ext *ext, uint32_t layer, BSL_UIO *uio)
 {
     HITLS_X509_CertExt *certExt = ext->extData;
@@ -492,6 +497,17 @@ static int32_t PrintExtendedKeyUsage(HITLS_X509_ExtEntry *entry, uint32_t layer,
                : HITLS_PRINT_ERR_EXT_EXTKU;
 }
 
+static int32_t PrintCrlNumber(HITLS_X509_Ext *ext, uint32_t layer, BSL_UIO *uio)
+{
+    HITLS_X509_ExtCrlNumber number = {0};
+    int32_t ret = X509_ExtCtrl(ext, HITLS_X509_EXT_GET_CRLNUMBER, &number, sizeof(HITLS_X509_ExtCrlNumber));
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    return BSL_PRINT_Number(layer, NULL, number.crlNumber.data, number.crlNumber.dataLen, uio);
+}
+
 static int32_t PrintExt(HITLS_X509_Ext *ext, HITLS_X509_ExtEntry *entry, uint32_t layer, BSL_UIO *uio)
 {
     switch (entry->cid) {
@@ -507,6 +523,8 @@ static int32_t PrintExt(HITLS_X509_Ext *ext, HITLS_X509_ExtEntry *entry, uint32_
             return PrintSan(entry, layer, uio);
         case BSL_CID_CE_EXTKEYUSAGE:
             return PrintExtendedKeyUsage(entry, layer, uio);
+        case BSL_CID_CE_CRLNUMBER:
+            return PrintCrlNumber(ext, layer, uio);
         default:
             return BSL_PRINT_Buff(layer, uio, HITLS_X509_UNSUPPORT_N, strlen(HITLS_X509_UNSUPPORT_N)) == 0
                        ? HITLS_PKI_SUCCESS
@@ -812,6 +830,195 @@ static int32_t PrintCsr(void *val, BSL_UIO *uio)
 }
 #endif
 
+#ifdef HITLS_PKI_X509_CRL
+static int32_t CmpExtByCid(const void *pExt, const void *pCid)
+{
+    const HITLS_X509_ExtEntry *ext = pExt;
+    BslCid cid = *(const BslCid *)pCid;
+
+    return cid == ext->cid ? 0 : 1;
+}
+
+static int32_t PrintCrlReason(HITLS_X509_ExtEntry *extEntry, uint32_t layer, BSL_UIO *uio)
+{
+    HITLS_X509_RevokeExtReason reason = {0};
+    int32_t ret = HITLS_X509ParseCrlReason(extEntry, &reason);
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+
+    RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "X509v3 CRL Reason Code: %s\n", extEntry->critical ? "critical" : "") != 0,
+        HITLS_PRINT_ERR_CRL_TBS);
+    RETURN_RET_IF(BSL_PRINT_Fmt(layer + 1, uio, "%d\n", reason.reason) != 0, HITLS_PRINT_ERR_CRL_TBS);
+
+    return HITLS_PKI_SUCCESS;
+}
+
+static int32_t PrintInvalidTime(HITLS_X509_ExtEntry *extEntry, uint32_t layer, BSL_UIO *uio)
+{
+    HITLS_X509_RevokeExtTime revokeExtTime = {0};
+    int32_t ret = HITLS_X509ParseInvalidTime(extEntry, &revokeExtTime);
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+
+    RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "Invalidity Date: %s\n", extEntry->critical ? "critical" : "") != 0,
+        HITLS_PRINT_ERR_CRL_TBS);
+    RETURN_RET_IF(BSL_PRINT_Time(layer + 1, &revokeExtTime.time, uio) != 0, HITLS_PRINT_ERR_CRL_TBS);
+
+    return HITLS_PKI_SUCCESS;
+}
+
+static int32_t PrintCertificateIssuer(HITLS_X509_ExtEntry *extEntry, uint32_t layer, BSL_UIO *uio)
+{
+    HITLS_X509_RevokeExtCertIssuer issuer = {0};
+    int32_t ret = HITLS_X509_ParseSubjectAltName(extEntry, (HITLS_X509_ExtSan *)&issuer);
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    if (BSL_LIST_COUNT(issuer.issuerName) == 0) {
+        HITLS_X509_ClearSubjectAltName((HITLS_X509_ExtSan *)&issuer);
+        return HITLS_PKI_SUCCESS;
+    }
+    RETURN_RET_IF(
+        BSL_PRINT_Fmt(layer, uio, "X509v3 Certificate Issuer: %s\n", extEntry->critical ? "critical" : "") != 0,
+        HITLS_PRINT_ERR_CRL_TBS);
+    ret = PrintGeneralNames(issuer.issuerName, layer + 1, uio);
+    HITLS_X509_ClearSubjectAltName((HITLS_X509_ExtSan *)&issuer);
+    return ret;
+}
+
+static int32_t PrintCrlEntry(uint32_t layer, HITLS_X509_CrlEntry *crlEntry, BSL_UIO *uio)
+{
+    int32_t ret;
+    BslCid cid = BSL_CID_CE_CRLREASONS;
+    HITLS_X509_ExtEntry *extEntry = BSL_LIST_Search(crlEntry->extList, &cid, CmpExtByCid, NULL);
+    if (extEntry != NULL) {
+        ret = PrintCrlReason(extEntry, layer, uio);
+        if (ret != HITLS_PKI_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(ret);
+            return ret;
+        }
+    }
+
+    cid = BSL_CID_CE_INVALIDITYDATE;
+    extEntry = BSL_LIST_Search(crlEntry->extList, &cid, CmpExtByCid, NULL);
+    if (extEntry != NULL) {
+        ret = PrintInvalidTime(extEntry, layer, uio);
+        if (ret != HITLS_PKI_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(ret);
+            return ret;
+        }
+    }
+
+    cid = BSL_CID_CE_CERTIFICATEISSUER;
+    extEntry = BSL_LIST_Search(crlEntry->extList, &cid, CmpExtByCid, NULL);
+    if (extEntry != NULL) {
+        ret = PrintCertificateIssuer(extEntry, layer, uio);
+        if (ret != HITLS_PKI_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(ret);
+            return ret;
+        }
+    }
+    
+    return HITLS_PKI_SUCCESS;
+}
+
+static int32_t PrintRevokedCertificates(uint32_t layer, BSL_ASN1_List *revokedCerts, BSL_UIO *uio)
+{
+    int32_t ret;
+    HITLS_X509_CrlEntry *crlEntry = BSL_LIST_GET_FIRST(revokedCerts);
+    while (crlEntry != NULL) {
+        /* serial number */
+        RETURN_RET_IF(BSL_PRINT_Number(
+            layer, "Serial Number", crlEntry->serialNumber.buff, crlEntry->serialNumber.len, uio) != 0,
+            HITLS_PRINT_ERR_CRL_TBS);
+        RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "Revocation Date: ") != 0 ||
+            BSL_PRINT_Time(0, &crlEntry->time, uio) != 0,
+            HITLS_PRINT_ERR_CRL_TBS);
+        if (crlEntry->extList != NULL) {
+            RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "CRL entry extensions:\n") != 0, HITLS_PRINT_ERR_CRL_TBS);
+            ret = PrintCrlEntry(layer + 1, crlEntry, uio);
+            if (ret != HITLS_PKI_SUCCESS) {
+                return ret;
+            }
+        }
+        crlEntry = BSL_LIST_GET_NEXT(revokedCerts);
+    }
+    return HITLS_PKI_SUCCESS;
+}
+
+static int32_t PrintCrlTbs(uint32_t layer, HITLS_X509_CrlTbs *tbs, BSL_UIO *uio)
+{
+    /* version */
+    RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "Version: %d (0x%02x)\n", tbs->version + 1, tbs->version) != 0,
+        HITLS_PRINT_ERR_CRL_TBS);
+    /* signature algorithm */
+    int32_t ret = PrintSignAlgInfo(layer, &tbs->signAlgId, uio);
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    /* issuer */
+    RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio,
+        g_nameFlag == HITLS_PKI_PRINT_DN_MULTILINE ? "Issuer: \n" : "Issuer: ") != 0,
+        HITLS_PRINT_ERR_DNNAME);
+    ret = HITLS_PKI_PrintDnName(layer + 1, tbs->issuerName, true, uio);
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+
+    RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "Last Update: ") != 0 ||
+        BSL_PRINT_Time(0, &tbs->validTime.start, uio) != 0,
+        HITLS_PRINT_ERR_CRL_TBS);
+    RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "Next Update: ") != 0 ||
+        BSL_PRINT_Time(0, &tbs->validTime.end, uio) != 0,
+        HITLS_PRINT_ERR_CRL_TBS);
+
+    if (tbs->revokedCerts != NULL) {
+        RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "Revoked Certificates:\n") != 0, HITLS_PRINT_ERR_CRL_TBS);
+        ret = PrintRevokedCertificates(layer + 1, tbs->revokedCerts, uio);
+        if (ret != HITLS_PKI_SUCCESS) {
+            return ret;
+        }
+    }
+
+    /* CRL extensions */
+    ret = PrintX509Ext(&tbs->crlExt, true, layer, uio);
+    if (ret != HITLS_PKI_SUCCESS) {
+        return ret;
+    }
+
+    /* signature algorithm */
+    ret = PrintSignAlgInfo(layer, &tbs->signAlgId, uio);
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    
+    return HITLS_PKI_SUCCESS;
+}
+
+static int32_t PrintCrl(void *val, BSL_UIO *uio)
+{
+    uint32_t layer = 0;
+    HITLS_X509_Crl *crl = (HITLS_X509_Crl *)val;
+    if (BSL_PRINT_Fmt(layer, uio, "Certificate Revocation List (CRL):\n") != 0) {
+        BSL_ERR_PUSH_ERROR(HITLS_PRINT_ERR_CRL);
+        return HITLS_PRINT_ERR_CRL;
+    }
+    int32_t ret = PrintCrlTbs(layer + 1, &crl->tbs, uio);
+    if (ret != HITLS_PKI_SUCCESS) {
+        return ret;
+    }
+    return BSL_PRINT_Number(layer + 1, "Signature Value", crl->signature.buff, crl->signature.len, uio);
+}
+#endif
+
 static int32_t PrintDnNameHash(uint32_t layer, BslList *list, BSL_UIO *uio)
 {
     BSL_ASN1_Buffer name = {0};
@@ -882,6 +1089,14 @@ int32_t HITLS_PKI_PrintCtrl(int32_t cmd, void *val, uint32_t valLen, BSL_UIO *ui
                 return HITLS_X509_ERR_INVALID_PARAM;
             }
             return PrintCsr(val, uio);
+#endif
+#ifdef HITLS_PKI_X509_CRL
+        case HITLS_PKI_PRINT_CRL:
+            if (valLen != sizeof(HITLS_X509_Crl *)) {
+                BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
+                return HITLS_X509_ERR_INVALID_PARAM;
+            }
+            return PrintCrl(val, uio);
 #endif
         default:
             return HITLS_X509_ERR_INVALID_PARAM;

@@ -18,7 +18,7 @@
 
 #include "hitls_build.h"
 #include "bsl_types.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "crypt_bn.h"
 #include "crypt_eal_pkey.h"
 

@@ -1578,7 +1578,8 @@
                 ".include": [
                     "pki/print/include",
                     "pki/x509_cert/include",
-                    "pki/x509_csr/include"
+                    "pki/x509_csr/include",
+                    "pki/x509_crl/include"
                 ]
             },
             "x509_verify" : {

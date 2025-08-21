@@ -1546,6 +1546,30 @@ int32_t HITLS_X509_CrlEntryCtrl(HITLS_X509_CrlEntry *revoked, int32_t cmd, void 
     return RevokedGet(revoked, cmd, val, valLen);
 }
 
+int32_t HITLS_X509ParseCrlReason(HITLS_X509_ExtEntry *extEntry, HITLS_X509_RevokeExtReason *reason)
+{
+    int32_t tmp = -1;
+    int32_t ret = DecodeExtReason(extEntry, &tmp);
+    if (ret != BSL_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    reason->critical = extEntry->critical;
+    reason->reason = tmp;
+    return BSL_SUCCESS;
+}
+
+int32_t HITLS_X509ParseInvalidTime(HITLS_X509_ExtEntry *extEntry, HITLS_X509_RevokeExtTime *revokeExtTime)
+{
+    int32_t ret = DecodeExtInvalidTime(extEntry, &revokeExtTime->time);
+    if (ret != BSL_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    revokeExtTime->critical = extEntry->critical;
+    return BSL_SUCCESS;
+}
+
 #ifdef HITLS_PKI_X509_CRL_GEN
 static int32_t CrlSignCb(int32_t mdId, CRYPT_EAL_PkeyCtx *prvKey, HITLS_X509_Asn1AlgId *signAlgId, HITLS_X509_Crl *crl)
 {

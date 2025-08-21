@@ -17,7 +17,7 @@
 #ifdef HITLS_PKI_PKCS12
 #include "securec.h"
 #include "bsl_err_internal.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj_internal.h"
 #include "crypt_eal_codecs.h"
 #include "crypt_eal_md.h"

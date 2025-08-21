@@ -19,7 +19,7 @@
 #include "hitls_build.h"
 #ifdef HITLS_PKI_X509_CRL
 #include <stdint.h>
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj.h"
 #include "sal_atomic.h"
 #include "hitls_x509_local.h"
@@ -73,6 +73,10 @@ typedef struct _HITLS_X509_Crl {
 
     BSL_SAL_RefCount references;
 } HITLS_X509_Crl;
+
+int32_t HITLS_X509ParseCrlReason(HITLS_X509_ExtEntry *extEntry, HITLS_X509_RevokeExtReason *reason);
+
+int32_t HITLS_X509ParseInvalidTime(HITLS_X509_ExtEntry *extEntry, HITLS_X509_RevokeExtTime *time);
 
 #ifdef __cplusplus
 }

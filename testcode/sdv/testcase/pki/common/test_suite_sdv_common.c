@@ -1548,76 +1548,21 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
-void SDV_X509_CRL_PARSE_NAME_LIST_TC001(Hex *buff)
+void SDV_HITLS_X509_PrintCrl_TC001(char *certPath, int format, int printFlag, char *expectFile)
 {
     TestMemInit();
-    BSL_ASN1_Buffer name = {0};
-    name.buff = buff->x;
-    name.len = buff->len;
-    BSL_ASN1_List *list = BSL_LIST_New(sizeof(HITLS_X509_NameNode));
-    ASSERT_TRUE(list != NULL);
-    ASSERT_EQ(HITLS_X509_ParseNameList(&name, list), BSL_ASN1_ERR_DECODE_LEN);
-EXIT:
-    BSL_LIST_FreeWithoutData(list);
-}
-/* END_CASE */
-
-/* BEGIN_CASE */
-void SDV_X509_CERT_WITH_CUSTOM_EXT_PARSE_TEST_TC001(char *path, Hex *customExtValue1, Hex *customExtValue2,
-    Hex *expectKeyUsage)
-{
-    HITLS_X509_Cert *parsedCert = NULL;
-    BslCid keyUsageCid = BSL_CID_CE_KEYUSAGE;
-    char *customOid1 = "1.2.3.4.5.6.7.8.9.1";
-    char *customOid2 = "1.2.3.4.5.6.7.8.9.2";
-    uint8_t *customOidData = NULL;
-    uint32_t customOidLen = 0;
-    BslOidString *keyUsageOid = NULL;
-    HITLS_X509_ExtGeneric customExt = {0};
-    HITLS_X509_ExtGeneric keyUsageExt = {0};
-
-    TestMemInit();
-
-    // SetUp
-    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, path, &parsedCert), HITLS_PKI_SUCCESS);
-
-    // Get and check custom ext 1
-    customOidData = BSL_OBJ_GetOidFromNumericString(customOid1, strlen(customOid1), &customOidLen);
-    ASSERT_NE(customOidData, NULL);
-    customExt.oid.data = customOidData;
-    customExt.oid.dataLen = customOidLen;
-    ASSERT_EQ(HITLS_X509_CertCtrl(parsedCert, HITLS_X509_EXT_GET_GENERIC, &customExt, sizeof(HITLS_X509_ExtGeneric)),
-        HITLS_PKI_SUCCESS);
-    ASSERT_COMPARE("custom ext1", customExt.value.data, customExt.value.dataLen, customExtValue1->x,
-        customExtValue1->len);
-    ASSERT_EQ(customExt.critical, true);
-    BSL_SAL_FREE(customOidData);
-    BSL_SAL_FREE(customExt.value.data);
-
-    // Get and check custom ext 2
-    customOidData = BSL_OBJ_GetOidFromNumericString(customOid2, strlen(customOid2), &customOidLen);
-    ASSERT_NE(customOidData, NULL);
-    customExt.oid.data = customOidData;
-    customExt.oid.dataLen = customOidLen;
-    ASSERT_EQ(HITLS_X509_CertCtrl(parsedCert, HITLS_X509_EXT_GET_GENERIC, &customExt, sizeof(HITLS_X509_ExtGeneric)),
-        HITLS_PKI_SUCCESS);
-    ASSERT_COMPARE("custom ext2", customExt.value.data, customExt.value.dataLen, customExtValue2->x,
-        customExtValue2->len);
-    ASSERT_EQ(customExt.critical, false);
-
-    // Get keyusage byt HITLS_X509_EXT_GET_GENERIC
-    keyUsageOid = BSL_OBJ_GetOID(keyUsageCid);
-    keyUsageExt.oid.data = (uint8_t *)keyUsageOid->octs;
-    keyUsageExt.oid.dataLen = keyUsageOid->octetLen;
-    ASSERT_EQ(HITLS_X509_CertCtrl(parsedCert, HITLS_X509_EXT_GET_GENERIC, &keyUsageExt, sizeof(HITLS_X509_ExtGeneric)),
-        HITLS_PKI_SUCCESS);
-    ASSERT_COMPARE("key usage", keyUsageExt.value.data, keyUsageExt.value.dataLen, expectKeyUsage->x,
-        expectKeyUsage->len);
+    HITLS_X509_Crl *crl = NULL;
+    int32_t *version = NULL;
+    Hex expect = { (uint8_t *)expectFile, 0};
+    
+    ASSERT_EQ(HITLS_X509_CrlParseFile(format, certPath, &crl), HITLS_PKI_SUCCESS);
+    ASSERT_NE(crl, NULL);
+    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_GET_VERSION, &version, sizeof(int32_t)), HITLS_PKI_SUCCESS);
+    BSL_Buffer data = {(uint8_t *)crl, sizeof(HITLS_X509_Crl *)};
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, &printFlag, sizeof(int), NULL), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(PrintBuffTest(HITLS_PKI_PRINT_CRL, &data, "Print crl file", &expect, true), 0);
 
 EXIT:
-    HITLS_X509_CertFree(parsedCert);
-    BSL_SAL_FREE(customOidData);
-    BSL_SAL_FREE(customExt.value.data);
-    BSL_SAL_FREE(keyUsageExt.value.data);
+    HITLS_X509_CrlFree(crl);
 }
 /* END_CASE */

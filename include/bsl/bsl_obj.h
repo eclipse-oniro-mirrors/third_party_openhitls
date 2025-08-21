@@ -549,25 +549,8 @@ typedef enum {
     BSL_CID_ECDH_NISTP521_MLKEM768 = 2116,
     BSL_CID_ECDH_NISTP521_MLKEM1024 = 2117,
 
-    BSL_CID_ML_DSA_44 = 2120,
-    BSL_CID_ML_DSA_65 = 2121,
-    BSL_CID_ML_DSA_87 = 2122,
-    BSL_CID_ML_KEM_512 = 2123,
-    BSL_CID_ML_KEM_768 = 2124,
-    BSL_CID_ML_KEM_1024 = 2125,
-
-    BSL_CID_SLH_DSA_SHA2_128S = 2126,
-    BSL_CID_SLH_DSA_SHAKE_128S = 2127,
-    BSL_CID_SLH_DSA_SHA2_128F = 2128,
-    BSL_CID_SLH_DSA_SHAKE_128F = 2129,
-    BSL_CID_SLH_DSA_SHA2_192S = 2130,
-    BSL_CID_SLH_DSA_SHAKE_192S = 2131,
-    BSL_CID_SLH_DSA_SHA2_192F = 2132,
-    BSL_CID_SLH_DSA_SHAKE_192F = 2133,
-    BSL_CID_SLH_DSA_SHA2_256S = 2134,
-    BSL_CID_SLH_DSA_SHAKE_256S = 2135,
-    BSL_CID_SLH_DSA_SHA2_256F = 2136,
-    BSL_CID_SLH_DSA_SHAKE_256F = 2137,
+    BSL_CID_CE_ISSUERALTERNATIVENAME = 2200,
+    BSL_CID_CE_AUTHORITYINFORMATIONACCESS = 2201,
 
     BSL_CID_SM9 = 5201,
     BSL_CID_ECC_SM9 = 5202,
@@ -631,13 +614,12 @@ BslCid BSL_OBJ_GetCID(const BslOidString *oidStr);
 
 /**
  * @ingroup bsl_obj
- * @brief Get oid hex string from the number string
- * @param[in] oid The number string
- * @param[in] len The number string length
- * @param[out] outLen The length of hex string
- * @return Oid hex number
+ * @brief Get oid number string from the hex string
+ * @param[in] oid The hex string
+ * @param[in] len The hex string length
+ * @return Oid number string
  */
-uint8_t *BSL_OBJ_GetOidFromNumericString(const char *oid, uint32_t len, uint32_t *outLen);
+char *BSL_OBJ_GetOidNumericString(const uint8_t *oid, uint32_t len);
 
 #ifdef __cplusplus
 }
