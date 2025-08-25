@@ -72,13 +72,13 @@ typedef struct {
     char *name;           // group name
     int32_t paraId;             // parameter id CRYPT_PKEY_ParaId
     int32_t algId;              // algorithm id CRYPT_PKEY_AlgId
-    int32_t secBits;           // security bits
+    int32_t secBits;            // security bits
     uint16_t groupId;           // iana group id, HITLS_NamedGroup
-    int32_t pubkeyLen;         // public key length(CH keyshare / SH keyshare)
-    int32_t sharedkeyLen;      // shared key length
-    int32_t ciphertextLen;     // ciphertext length(SH keyshare)
+    uint32_t pubkeyLen;         // public key length(CH keyshare / SH keyshare)
+    uint32_t sharedkeyLen;      // shared key length
+    uint32_t ciphertextLen;     // ciphertext length(SH keyshare)
     uint32_t versionBits;       // TLS_VERSION_MASK
-    bool isKem;                // true: KEM, false: KEX
+    bool isKem;                 // true: KEM, false: KEX
 } TLS_GroupInfo;
 
 /**

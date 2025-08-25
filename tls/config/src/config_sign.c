@@ -545,10 +545,10 @@ int32_t ConfigLoadSignatureSchemeInfo(HITLS_Config *config)
     return UpdateSignAlgorithmsArray(config);
 }
 
-const TLS_SigSchemeInfo *ConfigGetSignatureSchemeInfo(const HITLS_Config *config, uint16_t signScheme)
+const TLS_SigSchemeInfo *ConfigGetSignatureSchemeInfo(const HITLS_Config *config, uint16_t signatureScheme)
 {
     for (uint32_t i = 0; i < config->sigSchemeInfolen; i++) {
-        if (config->sigSchemeInfo[i].signatureScheme == signScheme) {
+        if (config->sigSchemeInfo[i].signatureScheme == signatureScheme) {
             return &config->sigSchemeInfo[i];
         }
     }

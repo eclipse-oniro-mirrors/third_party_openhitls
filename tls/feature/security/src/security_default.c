@@ -147,7 +147,30 @@ int32_t SECURITY_DefaultCb(const HITLS_Ctx *ctx, const HITLS_Config *config, int
         case HITLS_SECURITY_SECOP_CIPHER_SHARED:
         case HITLS_SECURITY_SECOP_CIPHER_CHECK:
             /* Check the algorithm suite. */
-            return CheckCipherSuite(other, level);
+            ret = CheckCipherSuite(other, level);
+            break;
+        case HITLS_SECURITY_SECOP_SIGALG_SUPPORTED:
+        case HITLS_SECURITY_SECOP_SIGALG_SHARED:
+        case HITLS_SECURITY_SECOP_SIGALG_CHECK:
+            /* Check the signature algorithm. */
+            schemeInfo = ConfigGetSignatureSchemeInfo(config, (uint16_t)id);
+            if (schemeInfo != NULL && schemeInfo->secBits >= g_minBits[level - 1]) {
+                ret = SECURITY_SUCCESS;
+            } else {
+                ret = SECURITY_ERR;
+            }
+            break;
+        case HITLS_SECURITY_SECOP_CURVE_SUPPORTED:
+        case HITLS_SECURITY_SECOP_CURVE_SHARED:
+        case HITLS_SECURITY_SECOP_CURVE_CHECK:
+            /* Check the group. */
+            groupInfo = ConfigGetGroupInfo(config, (uint16_t)id);
+            if (groupInfo != NULL && groupInfo->secBits >= g_minBits[level - 1]) {
+                ret = SECURITY_SUCCESS;
+            } else {
+                ret = SECURITY_ERR;
+            }
+            break;
         case HITLS_SECURITY_SECOP_TICKET:
             /* Check the session ticket. */
             ret = CheckSessionTicket(level);

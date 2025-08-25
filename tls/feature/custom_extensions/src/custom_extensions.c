@@ -29,7 +29,6 @@
 #include "hs_ctx.h"
 #include "hs.h"
 #include "securec.h"
-#include "bsl_errno.h"
 #include "bsl_sal.h"
 #include "custom_extensions.h"
 #include "alert.h"
@@ -190,7 +189,7 @@ int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bu
 
     CustomExt_Methods *exts = CUSTOM_EXT_FROM_CTX(ctx);
     CustomExt_Method *meth = NULL;
-    uint32_t ret = 0;
+    int32_t ret = 0;
     if (exts == NULL) {
         *len = 0;
         return HITLS_SUCCESS;
@@ -221,7 +220,7 @@ int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bu
                 BSL_Uint16ToByte(meth->extType, &buf[offset]);
                 offset += sizeof(uint16_t);
 
-                BSL_Uint16ToByte(outLen, &buf[offset]);
+                BSL_Uint16ToByte((uint16_t)outLen, &buf[offset]);
                 offset += sizeof(uint16_t);
 
                 (void)memcpy_s(&buf[offset], bufLen - offset, out, outLen);
@@ -255,7 +254,8 @@ int32_t ParseCustomExtensions(const struct TlsCtx *ctx, const uint8_t *buf, uint
 
     // Create a local pointer starting from the position after the type byte
     if (meth->parseCb != NULL) {
-        uint32_t ret = meth->parseCb(ctx, meth->extType, context, &buf, &extLen, cert, certIndex, &alert, meth->parseArg);
+        int32_t ret = meth->parseCb(ctx, meth->extType, context, &buf, &extLen, cert, certIndex, &alert,
+            meth->parseArg);
         if (ret != HITLS_SUCCESS) {
             ALERT_Send(ctx, ALERT_LEVEL_FATAL, alert);
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17351, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,

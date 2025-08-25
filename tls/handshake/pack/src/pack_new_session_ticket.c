@@ -113,7 +113,7 @@ int32_t Tls13PackNewSessionTicket(const TLS_Ctx *ctx, uint8_t *buf, uint32_t buf
     if (bufLen < (offset + sizeof(uint16_t) + exLen)) {
         return PackBufLenError(BINLOG_ID16049, BINGLOG_STR("NewSessionTicket"));
     }
-    BSL_Uint16ToByte(exLen, &buf[offset]);
+    BSL_Uint16ToByte((uint16_t)exLen, &buf[offset]);
     offset += exLen + sizeof(uint16_t);
 
     *usedLen = offset;

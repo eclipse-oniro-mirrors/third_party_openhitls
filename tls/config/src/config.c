@@ -963,7 +963,8 @@ int32_t HITLS_CFG_SetVersionForbid(HITLS_Config *config, uint32_t noVersion)
     }
     // Now only DTLS1.2 is supported, so single version is not supported (disable to version 0)
     if ((config->originVersionMask & TLS_VERSION_MASK) == TLS_VERSION_MASK) {
-        uint32_t noVersionBit = MapVersion2VersionBit(IS_SUPPORT_DATAGRAM(config->originVersionMask), noVersion);
+        uint32_t noVersionBit = MapVersion2VersionBit(IS_SUPPORT_DATAGRAM(config->originVersionMask),
+            (uint16_t)noVersion);
         if ((config->version & (~noVersionBit)) == 0) {
             return HITLS_SUCCESS; // Not all is disabled but the return value is SUCCESS
         }
