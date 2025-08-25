@@ -223,6 +223,13 @@ static void AppPrintList(void)
     }
 }
 
+static void ResetPrintAlgFuncList(void)
+{
+    for (size_t i = 0; i < PRINT_ALG_FUNC_LIST_CNT; ++i) {
+        g_printAlgFuncList[i] = NULL;
+    }
+}
+
 static BSL_UIO *g_stdout = NULL;
 
 static int32_t AppPrintStdoutUioInit(void)
@@ -424,6 +431,7 @@ static int32_t ParseListOpt(void)
 // List main function
 int32_t HITLS_ListMain(int argc, char *argv[])
 {
+    ResetPrintAlgFuncList();
     int32_t ret = HITLS_APP_SUCCESS;
     do {
         ret = AppPrintStdoutUioInit();

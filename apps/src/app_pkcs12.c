@@ -533,9 +533,6 @@ static int32_t ParseAndAddCertChain(Pkcs12OptCtx *opt)
         AppPrintError("pkcs12: Failed to check cert issued, errCode = 0x%x.\n", ret);
         return HITLS_APP_X509_FAIL;
     }
-    if (selfSigned) {
-        return HITLS_APP_SUCCESS;
-    }
 
     opt->store = HITLS_X509_StoreCtxNew();
     if (opt->store == NULL) {

@@ -45,6 +45,8 @@
 #define X509_DAY_SECONDS (24 * 60 * 60)
 #define X509_SET_SERIAL_PREFIX "0x"
 #define X509_MAX_MD_LEN 64
+#define X509_SHAKE128_DIGEST_LEN 16
+#define X509_SHAKE256_DIGEST_LEN 32
 
 typedef enum {
     HITLS_APP_OPT_IN = 2,
@@ -214,6 +216,13 @@ static int32_t AppPrintX509(const X509OptCtx *optCtx)
     return ret;
 }
 
+static void ResetPrintX509FuncList(void)
+{
+    for (size_t i = 0; i < PRINT_X509_FUNC_LIST_CNT; ++i) {
+        g_printX509FuncList[i] = NULL;
+    }
+}
+
 static int32_t PrintIssuer(const X509OptCtx *optCtx)
 {
     BslList *issuer = NULL;
@@ -278,6 +287,11 @@ static int32_t PrintFingerPrint(const X509OptCtx *optCtx)
 {
     uint8_t md[X509_MAX_MD_LEN] = {0};
     uint32_t mdLen = X509_MAX_MD_LEN;
+    if (optCtx->printOpts.mdId == CRYPT_MD_SHAKE128) {
+        mdLen = X509_SHAKE128_DIGEST_LEN;
+    } else if (optCtx->printOpts.mdId == CRYPT_MD_SHAKE256) {
+        mdLen = X509_SHAKE256_DIGEST_LEN;
+    }
     int32_t ret = HITLS_X509_CertDigest(optCtx->cert, optCtx->printOpts.mdId, md, &mdLen);
     if (ret != 0) {
         AppPrintError("x509: Get cert digest failed, errCode=%d.\n", ret);
@@ -1306,6 +1320,7 @@ static void UnInitX509OptCtx(X509OptCtx *optCtx)
 // x509 main function
 int32_t HITLS_X509Main(int argc, char *argv[])
 {
+    ResetPrintX509FuncList();
     X509OptCtx optCtx = {0};
     InitX509OptCtx(&optCtx);
     int32_t ret = HITLS_APP_SUCCESS;
