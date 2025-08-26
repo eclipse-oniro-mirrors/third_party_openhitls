@@ -222,6 +222,13 @@ static int32_t SCRYPT_CheckParam(uint32_t n, uint32_t r, uint32_t p, const uint8
         BSL_ERR_PUSH_ERROR(CRYPT_SCRYPT_PARAM_ERROR);
         return CRYPT_SCRYPT_PARAM_ERROR;
     }
+    /* malloc size:p * 128 * r + n * 128 * r + 128 *r */
+    if ((uint64_t)p * 128 * r + n * 128 * r + 128 * r > UINT32_MAX)
+    {
+        BSL_ERR_PUSH_ERROR(CRYPT_SCRYPT_PARAM_ERROR);
+        return CRYPT_SCRYPT_PARAM_ERROR;
+    }
+
     if (out == NULL || len == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_SCRYPT_PARAM_ERROR);
         return CRYPT_SCRYPT_PARAM_ERROR;
