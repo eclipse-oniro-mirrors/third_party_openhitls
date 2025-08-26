@@ -24,6 +24,7 @@
 #include "bsl_err_internal.h"
 #include "crypt_utils.h"
 #include "crypt_util_rand.h"
+#include "crypt_algid.h"
 #include "securec.h"
 #include "bsl_sal.h"
 

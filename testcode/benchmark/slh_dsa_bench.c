@@ -28,7 +28,7 @@ static int32_t SlhDsaSetUp(void **ctx, BenchCtx *bench, const CtxOps *ops, int32
         return CRYPT_MEM_ALLOC_FAIL;
     }
     int rc = CRYPT_SUCCESS;
-    CRYPT_SLH_DSA_AlgId algId = paraId;
+    CRYPT_PKEY_ParaId algId = paraId;
     rc = CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_PARA_BY_ID, (void *)&algId, sizeof(algId));
     if (rc != CRYPT_SUCCESS) {
         return rc;
@@ -50,7 +50,7 @@ static void SlhDsaTearDown(void *ctx)
 static int32_t SlhDsaKeyGen(void *ctx, BenchCtx *bench, BenchOptions *opts)
 {
     int rc = CRYPT_SUCCESS;
-    CRYPT_SLH_DSA_AlgId paraId = opts->paraId;
+    CRYPT_PKEY_ParaId paraId = opts->paraId;
 
     rc = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_PARA_BY_ID, (void *)&paraId, sizeof(paraId));
     if (rc != CRYPT_SUCCESS) {

@@ -20,6 +20,7 @@
 #include "bsl_sal.h"
 #include "eal_md_local.h"
 #include "crypt_xmss.h"
+#include "crypt_algid.h"
 #include "xmss_hash.h"
 #include "slh_dsa_local.h"
 
@@ -275,7 +276,7 @@ int32_t XmssInitHashFuncs(CryptXmssCtx *ctx)
         .prfmsg = PrfmsgShake256_192,
         .hmsg = HmsgShake256_192,
     };
-    CRYPT_XMSS_AlgId algId = ctx->para.algId;
+    CRYPT_PKEY_ParaId algId = ctx->para.algId;
 
     switch (algId) {
         case CRYPT_XMSS_SHA2_10_256:

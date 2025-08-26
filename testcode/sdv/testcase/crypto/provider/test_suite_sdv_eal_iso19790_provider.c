@@ -18,6 +18,7 @@
 #include "securec.h"
 #include "bsl_sal.h"
 #include "crypt_errno.h"
+#include "crypt_algid.h"
 #include "crypt_eal_init.h"
 #include "crypt_eal_provider.h"
 #include "crypt_provider_local.h"

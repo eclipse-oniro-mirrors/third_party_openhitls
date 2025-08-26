@@ -18,6 +18,7 @@
 #include "securec.h"
 #include "bsl_sal.h"
 #include "crypt_errno.h"
+#include "crypt_algid.h"
 #include "crypt_util_rand.h"
 #include "eal_md_local.h"
 #include "crypt_xmss.h"
@@ -27,6 +28,7 @@
 #include "xmss_hash.h"
 
 #define XMSS_ADRS_LEN SLH_DSA_ADRS_LEN
+
 typedef SlhDsaPara XmssPara;
 
 typedef struct {
@@ -210,7 +212,7 @@ CryptXmssCtx *CRYPT_XMSS_NewCtx(void)
         return NULL;
     }
     ctx->isXmss = true;
-    ctx->para.algId = CRYPT_XMSS_ALG_ID_MAX;
+    ctx->para.algId = 0;
     return ctx;
 }
 
@@ -234,6 +236,14 @@ void CRYPT_XMSS_FreeCtx(CryptXmssCtx *ctx)
     BSL_SAL_Free(ctx);
 }
 
+static bool CheckNotXmssAlgId(int32_t algId)
+{
+    if (algId > CRYPT_XMSSMT_SHAKE256_60_12_192 || algId < CRYPT_XMSS_SHA2_10_256) {
+        return true;
+    }
+    return false;
+}
+
 int32_t CRYPT_XMSS_Gen(CryptXmssCtx *ctx)
 {
     int32_t ret;
@@ -241,7 +251,7 @@ int32_t CRYPT_XMSS_Gen(CryptXmssCtx *ctx)
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    if (ctx->para.algId >= CRYPT_XMSS_ALG_ID_MAX) {
+    if (CheckNotXmssAlgId(ctx->para.algId)) {
         BSL_ERR_PUSH_ERROR(CRYPT_XMSS_ERR_INVALID_ALGID);
         return CRYPT_XMSS_ERR_INVALID_ALGID;
     }
@@ -465,17 +475,17 @@ int32_t CRYPT_XMSS_Verify(const CryptXmssCtx *ctx, int32_t algId, const uint8_t 
     return CRYPT_SUCCESS;
 }
 
-static const XmssPara *FindXmssPara(CRYPT_XMSS_AlgId algId)
+static const XmssPara *FindXmssPara(CRYPT_PKEY_ParaId algId)
 {
     for (uint32_t i = 0; i < sizeof(XmssParaTable)/sizeof(XmssParaTable[0]); i++) {
-        if ((CRYPT_XMSS_AlgId)XmssParaTable[i].algId == algId) {
+        if ((CRYPT_PKEY_ParaId)XmssParaTable[i].algId == algId) {
             return &XmssParaTable[i];
         }
     }
     return NULL;
 }
 
-static int32_t XmssSetAlgId(CryptXmssCtx *ctx, CRYPT_XMSS_AlgId algId)
+static int32_t XmssSetAlgId(CryptXmssCtx *ctx, CRYPT_PKEY_ParaId algId)
 {
     int32_t ret;
     const XmssPara *para = NULL;
@@ -520,12 +530,12 @@ int32_t CRYPT_XMSS_Ctrl(CryptXmssCtx *ctx, int32_t opt, void *val, uint32_t len)
     }
     switch (opt) {
         case CRYPT_CTRL_SET_PARA_BY_ID:
-            if (val == NULL || len != sizeof(CRYPT_XMSS_AlgId)) {
+            if (val == NULL || len != sizeof(int32_t)) {
                 BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
                 return CRYPT_INVALID_ARG;
             }
-            CRYPT_XMSS_AlgId algId = *(CRYPT_XMSS_AlgId *)val;
-            if (algId >= CRYPT_XMSS_ALG_ID_MAX) {
+            CRYPT_PKEY_ParaId algId = *(CRYPT_PKEY_ParaId *)val;
+            if (CheckNotXmssAlgId(algId)) {
                 BSL_ERR_PUSH_ERROR(CRYPT_XMSS_ERR_INVALID_ALGID);
                 return CRYPT_XMSS_ERR_INVALID_ALGID;
             }

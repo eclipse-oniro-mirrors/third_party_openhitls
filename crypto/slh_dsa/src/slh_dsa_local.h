@@ -123,7 +123,7 @@ typedef struct {
 void BaseB(const uint8_t *x, uint32_t xLen, uint32_t b, uint32_t *out, uint32_t outLen);
 
 typedef struct {
-    int algId; // CRYPT_SLH_DSA_AlgId or CRYPT_XMSS_AlgId
+    int algId; // CRYPT_PKEY_ParaId (SLH_DSA_AlgId or XMSS_AlgId)
     bool isCompressed;
     uint32_t n;
     uint32_t h;

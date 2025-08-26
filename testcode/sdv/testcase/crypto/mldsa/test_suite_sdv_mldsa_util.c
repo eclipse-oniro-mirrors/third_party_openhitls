@@ -24,6 +24,7 @@
 #include "bsl_sal.h"
 #include "crypt_errno.h"
 #include "crypt_eal_pkey.h"
+#include "crypt_algid.h"
 #include "crypt_mldsa.h"
 #include "ml_dsa_local.h"
 #include "crypt_eal_pkey.h"

@@ -19,6 +19,7 @@
 #include "cmvp_common.h"
 #include "err.h"
 #include "crypt_errno.h"
+#include "crypt_algid.h"
 #include "crypt_eal_pkey.h"
 #include "bsl_err_internal.h"
 #include "crypt_utils.h"

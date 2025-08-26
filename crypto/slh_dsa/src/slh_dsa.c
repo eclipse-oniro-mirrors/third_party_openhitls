@@ -608,12 +608,12 @@ int32_t CRYPT_SLH_DSA_Verify(const CryptSlhDsaCtx *ctx, int32_t algId, const uin
 
 static int32_t SlhDsaSetAlgId(CryptSlhDsaCtx *ctx, void *val, uint32_t len)
 {
-    if (val == NULL || len != sizeof(CRYPT_SLH_DSA_AlgId)) {
+    if (val == NULL || len != sizeof(int32_t)) {
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
     }
-    CRYPT_SLH_DSA_AlgId algId = *(CRYPT_SLH_DSA_AlgId *)val;
-    if (algId >= CRYPT_SLH_DSA_ALG_ID_MAX) {
+    CRYPT_PKEY_ParaId algId = *(CRYPT_PKEY_ParaId *)val;
+    if (CheckNotSlhDsaAlgId(algId)) {
         BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
         return CRYPT_SLHDSA_ERR_INVALID_ALGID;
     }
@@ -941,7 +941,7 @@ static int32_t SlhDsaKeyPairCheck(const CryptSlhDsaCtx *pubKey, const CryptSlhDs
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    if (pubKey->para.algId >= CRYPT_SLH_DSA_ALG_ID_MAX || prvKey->para.algId >= CRYPT_SLH_DSA_ALG_ID_MAX) {
+    if (CheckNotSlhDsaAlgId(pubKey->para.algId) || CheckNotSlhDsaAlgId(prvKey->para.algId)) {
         BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
         return CRYPT_SLHDSA_ERR_INVALID_ALGID;
     }
@@ -978,7 +978,7 @@ static int32_t SlhDsaPrvKeyCheck(const CryptSlhDsaCtx *prvKey)
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    if (prvKey->para.algId >= CRYPT_SLH_DSA_ALG_ID_MAX) {
+    if (CheckNotSlhDsaAlgId(prvKey->para.algId)) {
         BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
         return CRYPT_SLHDSA_ERR_INVALID_ALGID;
     }
