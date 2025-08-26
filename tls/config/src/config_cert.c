@@ -841,32 +841,28 @@ int32_t HITLS_CFG_SetCAList(HITLS_Config *config, HITLS_TrustedCAList *list)
     return HITLS_SUCCESS;
 }
 
-static int32_t ParseAndGetSubjectDN(HITLS_Config *config, const char *input, uint32_t len, HITLS_ParseFormat format,
-                                    HITLS_ParseType type, BSL_Buffer *nodeBufferOut)
+static int32_t CreateAndAddTrustedCANode(HITLS_Config *config, HITLS_CERT_X509 *cert, HITLS_TrustedCANode *caNode,
+                                         HITLS_TrustedCAList *list)
 {
-    if (config == NULL || input == NULL || len == 0 || nodeBufferOut == NULL) {
-        return HITLS_NULL_INPUT;
-    }
-    int32_t ret;
-    HITLS_CERT_X509 *cert = SAL_CERT_X509Parse(LIBCTX_FROM_CONFIG(config),
-        ATTRIBUTE_FROM_CONFIG(config), config, (const uint8_t *)input, len,
-        type, format);
-    if (cert == NULL) {
-        return HITLS_CFG_ERR_LOAD_CERT_FILE;
-    }
+    int32_t ret = HITLS_SUCCESS;
+    BSL_Buffer nodeBuffer = {0};
 #ifdef HITLS_TLS_FEATURE_SECURITY
     ret = CheckCertSecuritylevel(config, cert, false);
     if (ret != HITLS_SUCCESS) {
-        SAL_CERT_X509Free(cert);
         return ret;
     }
 #endif
-    ret = SAL_CERT_X509Ctrl(config, cert, CERT_CTRL_GET_ENCODE_SUBJECT_DN, NULL, (void *)nodeBufferOut);
+    ret = SAL_CERT_X509Ctrl(config, cert, CERT_CTRL_GET_ENCODE_SUBJECT_DN, NULL, (void *)&nodeBuffer);
     if (ret != HITLS_SUCCESS) {
-        SAL_CERT_X509Free(cert);
         return ret;
     }
-    SAL_CERT_X509Free(cert);
+    caNode->caType = HITLS_TRUSTED_CA_X509_NAME;
+    caNode->data = nodeBuffer.data;
+    caNode->dataSize = nodeBuffer.dataLen;
+    ret = BSL_LIST_AddElement(list, caNode, BSL_LIST_POS_END);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
     return HITLS_SUCCESS;
 }
 
@@ -878,21 +874,18 @@ int32_t HITLS_CFG_ParseCAList(HITLS_Config *config, const char *input, uint32_t 
     }
     int32_t ret;
     HITLS_TrustedCAList *list = NULL;
-    HITLS_TrustedCANode *newCaNode = BSL_SAL_Calloc(1u, sizeof(HITLS_TrustedCANode));
-    if (newCaNode == NULL) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17367, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "Calloc fail", 0, 0, 0, 0);
-        ret = HITLS_MEMALLOC_FAIL;
-        goto ERR;
+    HITLS_TrustedCANode *newCaNode = NULL;
+    HITLS_CERT_Chain *certList =
+        SAL_CERT_X509ParseBundleFile(LIBCTX_FROM_CONFIG(config), ATTRIBUTE_FROM_CONFIG(config), config,
+                                     (const uint8_t *)input, inputLen, inputType, format);
+    if (certList == NULL) {
+        return HITLS_CFG_ERR_LOAD_CERT_FILE;
     }
-    BSL_Buffer nodeBuffer = {0};
-    ret = ParseAndGetSubjectDN(config, input, inputLen, format, inputType, &nodeBuffer);
-    if (ret != HITLS_SUCCESS) {
-        goto ERR;
+    HITLS_CERT_X509 *tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_FIRST(certList);
+    if (tempCert == NULL) {
+        SAL_CERT_ChainFree(certList);
+        return HITLS_CFG_ERR_LOAD_CERT_FILE;
     }
-
-    newCaNode->caType = HITLS_TRUSTED_CA_X509_NAME;
-    newCaNode->data = nodeBuffer.data;
-    newCaNode->dataSize = nodeBuffer.dataLen;
     list = BSL_LIST_New(sizeof(HITLS_TrustedCANode *));
     if (list == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17366, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -900,13 +893,25 @@ int32_t HITLS_CFG_ParseCAList(HITLS_Config *config, const char *input, uint32_t 
         ret = HITLS_MEMALLOC_FAIL;
         goto ERR;
     }
-    ret = BSL_LIST_AddElement(list, newCaNode, BSL_LIST_POS_END);
-    if (ret != BSL_SUCCESS) {
-        goto ERR;
+    while (tempCert != NULL) {
+        newCaNode = BSL_SAL_Calloc(1u, sizeof(HITLS_TrustedCANode));
+        if (newCaNode == NULL) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17367, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "Calloc fail", 0, 0, 0,
+                                  0);
+            ret = HITLS_MEMALLOC_FAIL;
+            goto ERR;
+        }
+        ret = CreateAndAddTrustedCANode(config, tempCert, newCaNode, list);
+        if (ret != HITLS_SUCCESS) {
+            goto ERR;
+        }
+        tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_NEXT(certList);
     }
     *caList = list;
+    SAL_CERT_ChainFree(certList);
     return ret;
 ERR:
+    SAL_CERT_ChainFree(certList);
     BSL_LIST_FREE(list, HitlsTrustedCANodeFree);
     if (newCaNode != NULL) {
         BSL_SAL_Free(newCaNode->data);
@@ -1167,6 +1172,7 @@ int32_t HITLS_CFG_UseCertificateChainFile(HITLS_Config *config, const char *file
     return ret;
 }
 
+#ifdef HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION
 int32_t HITLS_CFG_LoadVerifyFile(HITLS_Config *config, const char *file)
 {
     if (config == NULL || file == NULL || strlen(file) == 0 || config->certMgrCtx == NULL) {
@@ -1194,8 +1200,10 @@ int32_t HITLS_CFG_LoadVerifyFile(HITLS_Config *config, const char *file)
     }
     return ret;
 }
+#endif /* HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION */
 #endif /* HITLS_TLS_CONFIG_CERT_LOAD_FILE */
 
+#ifdef HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION
 static int32_t LoadVerifyDirAddPath(HITLS_Config *config, HITLS_CERT_Store *store,
     const char *start, size_t len)
 {
@@ -1254,4 +1262,25 @@ int32_t HITLS_CFG_LoadVerifyDir(HITLS_Config *config, const char *path)
     }
 
     return ret;
+}
+#endif /* HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION */
+
+int32_t HITLS_CFG_FreeCert(HITLS_Config *config, HITLS_CERT_X509 *cert)
+{
+    if (config == NULL || config->certMgrCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    SAL_CERT_X509Free(cert);
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_CFG_FreeKey(HITLS_Config *config, HITLS_CERT_Key *key)
+{
+    if (config == NULL || config->certMgrCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    SAL_CERT_KeyFree(config->certMgrCtx, key);
+    return HITLS_SUCCESS;
 }

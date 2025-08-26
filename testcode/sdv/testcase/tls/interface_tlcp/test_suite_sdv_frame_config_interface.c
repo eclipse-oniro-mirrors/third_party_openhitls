@@ -635,7 +635,7 @@ void UT_TLS_CFG_SET_GET_VERSION_API_TC001(void)
     ASSERT_TRUE(HITLS_CFG_GetMaxVersion(config, NULL) == HITLS_NULL_INPUT);
 
     ASSERT_TRUE(HITLS_CFG_SetVersion(config, 0, 0) == HITLS_SUCCESS);
-    ASSERT_TRUE(config->version == 0);
+    ASSERT_TRUE(config->version == TLS_VERSION_MASK);
 
     ASSERT_TRUE(HITLS_CFG_SetVersion(config, HITLS_VERSION_TLS12, HITLS_VERSION_TLS13) == HITLS_SUCCESS);
     ASSERT_TRUE(HITLS_CFG_GetMinVersion(config, &minVersion) == HITLS_SUCCESS);
@@ -887,7 +887,7 @@ EXIT:
 @ */
 
 /* BEGIN_CASE */
-void UT_TLS_CFG_SET_GET_VERSIONSUPPORT_API_TC001(int tlsVersion)
+void UT_TLS_CFG_SET_GET_VERSIONSUPPORT_API_TC001()
 {
     FRAME_Init();
     HITLS_Config *config = NULL;
@@ -895,17 +895,8 @@ void UT_TLS_CFG_SET_GET_VERSIONSUPPORT_API_TC001(int tlsVersion)
 
     ASSERT_TRUE(HITLS_CFG_SetVersionSupport(config, version) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetVersionSupport(config, &version) == HITLS_NULL_INPUT);
-    switch (tlsVersion) {
-        case HITLS_VERSION_TLS12:
-            config = HITLS_CFG_NewTLS12Config();
-            break;
-        case HITLS_VERSION_TLS13:
-            config = HITLS_CFG_NewTLS13Config();
-            break;
-        default:
-            config = NULL;
-            break;
-    }
+
+    config = HITLS_CFG_NewTLSConfig();
 
     ASSERT_TRUE(HITLS_CFG_GetVersionSupport(config, NULL) == HITLS_NULL_INPUT);
 

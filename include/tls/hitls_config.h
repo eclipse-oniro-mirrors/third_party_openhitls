@@ -1582,6 +1582,17 @@ int32_t HITLS_CFG_SetMiddleBoxCompat(HITLS_Config *config, bool isMiddleBox);
  */
 int32_t HITLS_CFG_GetMiddleBoxCompat(HITLS_Config *config, bool *isMiddleBox);
 
+/**
+ * @ingroup hitls_config
+ * @brief   Set whether the current configuration is a client configuration.
+ *
+ * @param   config [OUT] Config context.
+ * @param   isClient [IN] Indicates whether it is a client configuration.
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_SetEndPoint(HITLS_Config *config, bool isClient);
+
 #ifdef __cplusplus
 }
 #endif

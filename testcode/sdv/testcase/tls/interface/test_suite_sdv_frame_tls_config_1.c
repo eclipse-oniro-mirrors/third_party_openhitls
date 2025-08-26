@@ -257,44 +257,84 @@ void UT_TLS_CFG_SET_GET_VERSIONFORBID_API_TC001(void)
     HITLS_CFG_FreeConfig(config);
 
     config = HITLS_CFG_NewTLS12Config();
-    version = HITLS_VERSION_TLS12;
+    version = TLS12_VERSION_BIT;
+    ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
+    ASSERT_TRUE(config->version == 0);
+    ASSERT_TRUE(config->minVersion == 0 && config->maxVersion == 0);
+    HITLS_CFG_FreeConfig(config);
+    config = HITLS_CFG_NewTLS12Config();
+    version = DTLS12_VERSION_BIT;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
     ASSERT_TRUE(config->version == TLS12_VERSION_BIT);
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS12);
 
-    version = HITLS_VERSION_DTLS12;
-    ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
-    ASSERT_TRUE(config->version == TLS12_VERSION_BIT);
-    ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS12);
-
-    version = 0x0305u;
+    version = 0x10000000U;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
     ASSERT_TRUE(config->version == TLS12_VERSION_BIT);
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS12);
     HITLS_CFG_FreeConfig(config);
+
     config = HITLS_CFG_NewTLSConfig();
-    version = HITLS_VERSION_DTLS12;
+    version = DTLS12_VERSION_BIT;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
     ASSERT_TRUE(config->version == TLS_VERSION_MASK);
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS13);
 
-    version = 0x0305u;
+    version = 0x10000000U;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
     ASSERT_TRUE(config->version == TLS_VERSION_MASK);
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS13);
     HITLS_CFG_FreeConfig(config);
 
     config = HITLS_CFG_NewTLSConfig();
-    version = HITLS_VERSION_TLS13;
+    version = TLS13_VERSION_BIT;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
     ASSERT_TRUE(config->version == TLS12_VERSION_BIT);
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS12);
 
     HITLS_CFG_FreeConfig(config);
     config = HITLS_CFG_NewTLSConfig();
-    version = HITLS_TLS_ANY_VERSION;
+    version = STREAM_VERSION_BITS;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
-    ASSERT_TRUE(config->version == TLS_VERSION_MASK);
+    ASSERT_TRUE(config->version == 0);
+    ASSERT_TRUE(config->minVersion == 0 && config->maxVersion == 0);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/** @
+* @test UT_TLS_CFG_SET_GET_VERSIONFORBID_API_TC002
+* @title Test the HITLS_CFG_SetVersionForbid interface.
+* @precon nan
+* @brief HITLS_CFG_SetVersionForbid
+* 1. Use HITLS_CFG_SetVersionForbid disable all version. Expected result 1.
+* 2. Use HITLS_CFG_SetVersionSupport to set tls12 version. Expected result 2.
+* 3. Use HITLS_CFG_GetVersionSupport to set tls13 version.
+* @expect
+* 1. config->version is 0, config->minVersion and config->maxVersion are 0.
+* 2. config->version is TLS12_VERSION_BIT, config->minVersion and config->maxVersion are HITLS_VERSION_TLS12.
+* 3. config->version is (TLS12_VERSION_BIT | TLS13_VERSION_BIT),
+     config->minVersion is HITLS_VERSION_TLS12 and config->maxVersion is HITLS_VERSION_TLS13.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_SET_GET_VERSIONFORBID_API_TC002(void)
+{
+    FRAME_Init();
+    uint32_t version = TLS_VERSION_MASK;
+    HITLS_Config *config = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
+    ASSERT_TRUE(config->version == 0);
+    ASSERT_TRUE(config->minVersion == 0 && config->maxVersion == 0);
+
+    version = TLS12_VERSION_BIT;
+    ASSERT_TRUE(HITLS_CFG_SetVersionSupport(config, version) == HITLS_SUCCESS);
+    ASSERT_TRUE(config->version == TLS12_VERSION_BIT);
+    ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS12);
+
+    version = TLS13_VERSION_BIT;
+    ASSERT_TRUE(HITLS_CFG_SetVersionSupport(config, version) == HITLS_SUCCESS);
+    ASSERT_TRUE(config->version == (TLS12_VERSION_BIT | TLS13_VERSION_BIT));
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS13);
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -548,7 +588,7 @@ EXIT:
 @ */
 
 /* BEGIN_CASE */
-void UT_TLS_CFG_SET_GET_VERSIONSUPPORT_API_TC001(int tlsVersion)
+void UT_TLS_CFG_SET_GET_VERSIONSUPPORT_API_TC001()
 {
     FRAME_Init();
     HITLS_Config *config = NULL;
@@ -556,18 +596,7 @@ void UT_TLS_CFG_SET_GET_VERSIONSUPPORT_API_TC001(int tlsVersion)
 
     ASSERT_TRUE(HITLS_CFG_SetVersionSupport(config, version) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetVersionSupport(config, &version) == HITLS_NULL_INPUT);
-    switch (tlsVersion) {
-        case HITLS_VERSION_TLS12:
-            config = HITLS_CFG_NewTLS12Config();
-            break;
-        case HITLS_VERSION_TLS13:
-            config = HITLS_CFG_NewTLS13Config();
-            break;
-        default:
-            config = NULL;
-            break;
-    }
-
+    config = HITLS_CFG_NewTLSConfig();
     ASSERT_TRUE(HITLS_CFG_GetVersionSupport(config, NULL) == HITLS_NULL_INPUT);
 
     version = (TLS13_VERSION_BIT << 1) | TLS13_VERSION_BIT | TLS12_VERSION_BIT;

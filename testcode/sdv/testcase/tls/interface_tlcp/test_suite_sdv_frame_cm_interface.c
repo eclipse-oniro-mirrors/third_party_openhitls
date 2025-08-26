@@ -2090,7 +2090,7 @@ EXIT:
  */
 
 /* BEGIN_CASE */
-void UT_TLS_CM_HITLS_SetVersionSupport_HITLS_GetVersionSupport_API_TC001(int tlsVersion)
+void UT_TLS_CM_HITLS_SetVersionSupport_HITLS_GetVersionSupport_API_TC001()
 {
     FRAME_Init();
     HITLS_Config *config = NULL;
@@ -2099,7 +2099,7 @@ void UT_TLS_CM_HITLS_SetVersionSupport_HITLS_GetVersionSupport_API_TC001(int tls
 
     ASSERT_TRUE(HITLS_SetVersionSupport(ctx, version) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_GetVersionSupport(ctx, &version) == HITLS_NULL_INPUT);
-    config = GetHitlsConfigViaVersion(tlsVersion);
+    config = HITLS_CFG_NewTLSConfig();
     ASSERT_TRUE(config != NULL);
     ctx = HITLS_New(config);
     ASSERT_TRUE(ctx != NULL);
@@ -2550,7 +2550,7 @@ void UT_TLS_CM_HITLS_GetRenegotiationState_FUNC_TC001(void)
 
     client = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(client != NULL);
-
+    client->ssl->config.tlsConfig.endpoint = HITLS_ENDPOINT_CLIENT;
     server = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
     HITLS_SetRenegotiationSupport(client->ssl, true);
@@ -2567,7 +2567,7 @@ void UT_TLS_CM_HITLS_GetRenegotiationState_FUNC_TC001(void)
 
     ASSERT_TRUE(SendHelloReq(server->ssl) == HITLS_SUCCESS);
     ASSERT_TRUE(FRAME_TrasferMsgBetweenLink(server, client) == HITLS_SUCCESS);
-    ASSERT_EQ(HITLS_Connect(client->ssl), HITLS_REC_NORMAL_RECV_BUF_EMPTY);
+    ASSERT_EQ(HITLS_Accept(client->ssl), HITLS_REC_NORMAL_RECV_BUF_EMPTY);
     ASSERT_TRUE(HITLS_GetRenegotiationState(server->ssl, &isRenegotiation) == HITLS_SUCCESS);
     ASSERT_TRUE(isRenegotiation == true);
 

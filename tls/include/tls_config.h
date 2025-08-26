@@ -65,6 +65,10 @@ typedef struct TlsSessionManager TLS_SessionMgr;
 /* max cert list is 100k */
 #define HITLS_MAX_CERT_LIST_DEFAULT (1024 * 100)
 
+#define HITLS_ENDPOINT_UNDEFINED 0
+#define HITLS_ENDPOINT_CLIENT 1
+#define HITLS_ENDPOINT_SERVER 2
+
 /**
  * @brief Group information
  */
@@ -125,6 +129,7 @@ typedef struct TlsConfig {
     uint32_t sigSchemeInfolen;
     uint32_t sigSchemeInfoSize;
 #endif
+    uint32_t endpoint;                  /* client or server */
     uint32_t version;                   /* supported proto version */
     uint32_t originVersionMask;         /* the original supported proto version mask */
     uint16_t minVersion;                /* min supported proto version */

@@ -299,9 +299,47 @@ int32_t HITLS_SetEndPoint(HITLS_Ctx *ctx, bool isClient)
     return HITLS_SUCCESS;
 }
 
+static void SetTlsMinMaxVersion(TLS_Config *config)
+{
+    uint32_t versionBits[] = { TLS12_VERSION_BIT, TLS13_VERSION_BIT };
+    uint16_t versions[] = { HITLS_VERSION_TLS12, HITLS_VERSION_TLS13 };
+    uint32_t versionBitsSize = sizeof(versionBits) / sizeof(uint32_t);
+    for (uint32_t i = 0; i < versionBitsSize; i++) {
+        if ((config->version & versionBits[i]) == versionBits[i]) {
+            config->minVersion = versions[i];
+            break;
+        }
+    }
+    for (int32_t i = versionBitsSize - 1; i >= 0; i--) {
+        if ((config->version & versionBits[i]) == versionBits[i]) {
+            config->maxVersion = versions[i];
+            break;
+        }
+    }
+    if ((config->version & DTLS12_VERSION_BIT) == DTLS12_VERSION_BIT) {
+        config->maxVersion = HITLS_VERSION_DTLS12;
+        config->minVersion = HITLS_VERSION_DTLS12;
+    }
+}
+
 static int32_t ProcessEvent(HITLS_Ctx *ctx, ManageEventProcess proc)
 {
     return proc(ctx);
+}
+static int32_t SetConnState(HITLS_Ctx *ctx, bool isClient)
+{
+    TLS_Config *config = &ctx->config.tlsConfig;
+    if (config->endpoint == HITLS_ENDPOINT_UNDEFINED) {
+        config->endpoint = isClient ? HITLS_ENDPOINT_CLIENT : HITLS_ENDPOINT_SERVER;
+    }
+    if (config->endpoint == HITLS_ENDPOINT_CLIENT) {
+        return HITLS_SetEndPoint(ctx, true);
+    }
+    if (config->endpoint == HITLS_ENDPOINT_SERVER) {
+        SetTlsMinMaxVersion(config);
+        return HITLS_SetEndPoint(ctx, false);
+    }
+    return HITLS_SUCCESS;
 }
 
 int32_t HITLS_Connect(HITLS_Ctx *ctx)
@@ -312,6 +350,12 @@ int32_t HITLS_Connect(HITLS_Ctx *ctx)
         return ret;
     }
     ctx->allowAppOut = false;
+    if (GetConnState(ctx) == CM_STATE_IDLE) {
+        ret = SetConnState(ctx, true);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+    }
 
     ManageEventProcess connectEventProcess[CM_STATE_END] = {
         ConnectEventInIdleState,
@@ -334,11 +378,19 @@ int32_t HITLS_Accept(HITLS_Ctx *ctx)
         return ret;
     }
     ctx->allowAppOut = false;
+
+    if (GetConnState(ctx) == CM_STATE_IDLE) {
+        ret = SetConnState(ctx, false);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+    }
 #ifdef HITLS_TLS_FEATURE_PHA
     ret = CommonCheckPostHandshakeAuth(ctx);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
+
 #endif
     ManageEventProcess acceptEventProcess[CM_STATE_END] = {
         AcceptEventInIdleState,

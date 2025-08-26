@@ -261,7 +261,6 @@ int32_t DefaultConfig(HITLS_Lib_Ctx *libCtx, const char *attrName, uint16_t vers
     // Static settings
     config->minVersion = version;
     config->maxVersion = version;
-
     config->libCtx = libCtx;
     config->attrName = attrName;
 
@@ -320,7 +319,6 @@ int32_t DefaultTLS13Config(HITLS_Config *config)
     // Static settings
     config->minVersion = HITLS_VERSION_TLS13;
     config->maxVersion = HITLS_VERSION_TLS13;
-
     InitConfig(config);
 
     // Dynamic setting. By default, only the cipher suite and point format are set. For details, see the comments in
@@ -438,7 +436,6 @@ int32_t DefaultDtlsAllConfig(HITLS_Config *config)
     config->minVersion =
         HITLS_VERSION_DTLS12;  // does not support DTLS 1.0. Therefore, the minimum version number is set to DTLS 1.2.
     config->maxVersion = HITLS_VERSION_DTLS12;
-
     InitConfig(config);
 
     // Dynamic setting

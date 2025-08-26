@@ -345,7 +345,7 @@ EXIT:
 }
 #endif
 
-#ifdef HITLS_PKI_INFO
+#if defined(HITLS_PKI_INFO) || defined(HITLS_PKI_X509_VFY_LOCATION)
 static HITLS_X509_NameNode *NameNodeDup(HITLS_X509_NameNode *node)
 {
     uint32_t size = sizeof(HITLS_X509_NameNode) + node->nameType.len + node->nameValue.len;

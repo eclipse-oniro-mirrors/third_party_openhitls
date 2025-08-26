@@ -142,6 +142,7 @@ static void ShallowCopy(HITLS_Ctx *ctx, const HITLS_Config *srcConfig)
     destConfig->isKeepPeerCert = srcConfig->isKeepPeerCert;
     destConfig->version = srcConfig->version;
     destConfig->originVersionMask = srcConfig->originVersionMask;
+    destConfig->endpoint = srcConfig->endpoint;
 #ifdef HITLS_TLS_PROTO_TLS13
     destConfig->isMiddleBoxCompat = srcConfig->isMiddleBoxCompat;
 #endif
@@ -742,7 +743,12 @@ HITLS_Config *HITLS_CFG_ProviderNewTLSConfig(HITLS_Lib_Ctx *libCtx, const char *
     if (newConfig == NULL) {
         return NULL;
     }
-    newConfig->version |= TLS_VERSION_MASK;
+#ifdef HITLS_TLS_PROTO_TLS12
+    newConfig->version |= TLS12_VERSION_BIT;
+#endif
+#ifdef HITLS_TLS_PROTO_TLS13
+    newConfig->version |= TLS13_VERSION_BIT;
+#endif
 
     newConfig->libCtx = libCtx;
     newConfig->attrName = attrName;
@@ -843,48 +849,65 @@ uint32_t MapVersion2VersionBit(bool isDatagram, uint16_t version)
     return ret;
 }
 
-#ifdef HITLS_TLS_PROTO_ALL
+static void ChangeMinMaxVersion(uint32_t versionMask, uint32_t originVersionMask, uint16_t *minVersion,
+    uint16_t *maxVersion)
+{
+    /* The original supported version is disabled. This is abnormal and packets cannot be sent */
+    if ((versionMask & ~originVersionMask) != 0 && versionMask != 0) {
+        return;
+    }
+    /* Currently, only DTLS1.2 is supported. DTLS1.0 is not supported */
+    if ((versionMask & DTLS12_VERSION_BIT) == DTLS12_VERSION_BIT) {
+        *maxVersion = HITLS_VERSION_DTLS12;
+        *minVersion = HITLS_VERSION_DTLS12;
+        return;
+    }
+    uint32_t versionBits[] = {TLS12_VERSION_BIT, TLS13_VERSION_BIT};
+    uint16_t versions[] = {HITLS_VERSION_TLS12, HITLS_VERSION_TLS13};
+    uint32_t versionBitsSize = sizeof(versionBits) / sizeof(uint32_t);
+    uint32_t minIdx = 0;
+    uint32_t maxIdx = 0;
+    bool found = false;
+    uint32_t intersection = versionMask & originVersionMask;
+    for (uint32_t i = 0; i < versionBitsSize; i++) {
+        if ((intersection & versionBits[i]) == versionBits[i]) {
+            if (!found) {
+                minIdx = i;
+                found = true;
+            }
+            maxIdx = i;
+        } else if (found) {
+            break;
+        }
+    }
+    if (found == false) {
+        // No version is supported
+        *minVersion = 0;
+        *maxVersion = 0;
+        return;
+    }
+    *minVersion = versions[minIdx];
+    *maxVersion = versions[maxIdx];
+}
+
 static int ChangeVersionMask(HITLS_Config *config, uint16_t minVersion, uint16_t maxVersion)
 {
     uint32_t originVersionMask = config->originVersionMask;
     uint32_t versionMask = 0;
     uint32_t versionBit = 0;
-
-    /* Creating a DTLS version but setting a TLS version is invalid. */
-    if (originVersionMask == DTLS_VERSION_MASK) {
-        if (IS_DTLS_VERSION(minVersion) == 0) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16596, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "Config min version [0x%x] err.", minVersion, 0, 0, 0);
-            BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_VERSION);
-            return HITLS_CONFIG_INVALID_VERSION;
-        }
+    uint16_t begin = IS_DTLS_VERSION(minVersion) ? maxVersion : minVersion;
+    uint16_t end = IS_DTLS_VERSION(maxVersion) ? minVersion : maxVersion;
+    for (uint16_t version = begin; version <= end; version++) {
+        versionBit = MapVersion2VersionBit(IS_SUPPORT_DATAGRAM(originVersionMask), version);
+        versionMask |= versionBit;
     }
-
-    if (originVersionMask == TLS_VERSION_MASK) {
-        /* Creating a TLS version but setting a DTLS version is invalid. */
-        if (IS_DTLS_VERSION(minVersion)) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16597, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "minVersion err", 0, 0, 0, 0);
-            BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_VERSION);
-            return HITLS_CONFIG_INVALID_VERSION;
-        }
-
-        for (uint16_t version = minVersion; version <= maxVersion; version++) {
-            versionBit = MapVersion2VersionBit(IS_SUPPORT_DATAGRAM(originVersionMask), version);
-            versionMask |= versionBit;
-        }
-
-        if ((versionMask & originVersionMask) == 0) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16598, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "Config version err", 0, 0, 0, 0);
-            BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_VERSION);
-            return HITLS_CONFIG_INVALID_VERSION;
-        }
-
-        config->version = versionMask;
-        return HITLS_SUCCESS;
+    if ((versionMask & originVersionMask) == 0) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16598, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "Config version err", 0, 0, 0, 0);
+        BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_VERSION);
+        return HITLS_CONFIG_INVALID_VERSION;
     }
-
+    config->version = (versionMask & originVersionMask);
     return HITLS_SUCCESS;
 }
 
@@ -903,22 +926,25 @@ static int32_t CheckVersionValid(HITLS_Config *config, uint16_t minVersion, uint
 
 static void ChangeTmpVersion(HITLS_Config *config, uint16_t *tmpMinVersion, uint16_t *tmpMaxVersion)
 {
+    uint16_t minVersion = 0;
+    uint16_t maxVersion = 0;
+    ChangeMinMaxVersion(config->originVersionMask, config->originVersionMask, &minVersion, &maxVersion);
     if (*tmpMinVersion == 0) {
         if (config->originVersionMask == DTLS_VERSION_MASK) {
             *tmpMinVersion = HITLS_VERSION_DTLS12;
         } else {
-            *tmpMinVersion = HITLS_VERSION_TLS12;
+            *tmpMinVersion = minVersion;
         }
-    } else if (*tmpMaxVersion == 0) {
+    }
+    if (*tmpMaxVersion == 0) {
         if (config->originVersionMask == DTLS_VERSION_MASK) {
             *tmpMaxVersion = HITLS_VERSION_DTLS12;
         } else {
-            *tmpMaxVersion = HITLS_VERSION_TLS13;
+            *tmpMaxVersion = maxVersion;
         }
     }
     return;
 }
-#endif
 
 int32_t HITLS_CFG_SetVersion(HITLS_Config *config, uint16_t minVersion, uint16_t maxVersion)
 {
@@ -926,7 +952,6 @@ int32_t HITLS_CFG_SetVersion(HITLS_Config *config, uint16_t minVersion, uint16_t
         return HITLS_NULL_INPUT;
     }
     int32_t ret = 0;
-#ifdef HITLS_TLS_PROTO_ALL
     if (config->minVersion == minVersion && config->maxVersion == maxVersion && minVersion != 0 && maxVersion != 0) {
         return HITLS_SUCCESS;
     }
@@ -939,72 +964,33 @@ int32_t HITLS_CFG_SetVersion(HITLS_Config *config, uint16_t minVersion, uint16_t
         return ret;
     }
 
-    config->minVersion = 0;
-    config->maxVersion = 0;
-
-    /* If both the latest version and the earliest version supported are 0, clear the versionMask. */
-    if (minVersion == maxVersion && minVersion == 0) {
-        config->version = 0;
-        return HITLS_SUCCESS;
-    }
-#endif
     uint16_t tmpMinVersion = minVersion;
     uint16_t tmpMaxVersion = maxVersion;
-#ifdef HITLS_TLS_PROTO_ALL
     ChangeTmpVersion(config, &tmpMinVersion, &tmpMaxVersion);
-#endif
     ret = CheckVersion(tmpMinVersion, tmpMaxVersion);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
 
-#ifdef HITLS_TLS_PROTO_ALL
     /* In invalid cases, both maxVersion and minVersion are 0 */
-    if (ChangeVersionMask(config, tmpMinVersion, tmpMaxVersion) == HITLS_SUCCESS) {
-#endif
-        config->minVersion = tmpMinVersion;
-        config->maxVersion = tmpMaxVersion;
-#ifdef HITLS_TLS_PROTO_ALL
+    ret = ChangeVersionMask(config, tmpMinVersion, tmpMaxVersion);
+    if (ret != HITLS_SUCCESS) {
+        ChangeMinMaxVersion(config->version, config->originVersionMask, &config->minVersion, &config->maxVersion);
     }
-#endif
+    
     return HITLS_SUCCESS;
 }
 
-#ifdef HITLS_TLS_PROTO_ALL
 int32_t HITLS_CFG_SetVersionForbid(HITLS_Config *config, uint32_t noVersion)
 {
     if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
     // Now only DTLS1.2 is supported, so single version is not supported (disable to version 0)
-    if ((config->originVersionMask & TLS_VERSION_MASK) == TLS_VERSION_MASK) {
-        uint32_t noVersionBit = MapVersion2VersionBit(IS_SUPPORT_DATAGRAM(config->originVersionMask),
-            (uint16_t)noVersion);
-        if ((config->version & (~noVersionBit)) == 0) {
-            return HITLS_SUCCESS; // Not all is disabled but the return value is SUCCESS
-        }
-        config->version &= ~noVersionBit;
-        uint32_t versionBits[] = {
-            TLS12_VERSION_BIT, TLS13_VERSION_BIT};
-        uint16_t versions[] = {
-            HITLS_VERSION_TLS12, HITLS_VERSION_TLS13};
-        uint32_t versionBitsSize = sizeof(versionBits) / sizeof(uint32_t);
-        for (uint32_t i = 0; i < versionBitsSize; i++) {
-            if ((config->version & versionBits[i]) == versionBits[i]) {
-                config->minVersion = versions[i];
-                break;
-            }
-        }
-        for (int i = (int)versionBitsSize - 1; i >= 0; i--) {
-            if ((config->version & versionBits[i]) == versionBits[i]) {
-                config->maxVersion = versions[i];
-                break;
-            }
-        }
-    }
+    config->version &= ~noVersion;
+    ChangeMinMaxVersion(config->version, config->originVersionMask, &config->minVersion, &config->maxVersion);
     return HITLS_SUCCESS;
 }
-#endif
 
 static void GetCipherSuitesCnt(const uint16_t *cipherSuites, uint32_t cipherSuitesSize,
     uint32_t *tls13CipherSize, uint32_t *tlsCipherSize)
@@ -1912,40 +1898,6 @@ int32_t HITLS_CFG_GetVersionSupport(const HITLS_Config *config, uint32_t *versio
     return HITLS_SUCCESS;
 }
 
-static void ChangeSupportVersion(HITLS_Config *config)
-{
-    uint32_t versionMask = config->version;
-    uint32_t originVersionMask = config->originVersionMask;
-
-    config->maxVersion = 0;
-    config->minVersion = 0;
-    /* The original supported version is disabled. This is abnormal and packets cannot be sent */
-    if ((versionMask & originVersionMask) == 0) {
-        return;
-    }
-
-    /* Currently, only DTLS1.2 is supported. DTLS1.0 is not supported */
-    if ((versionMask & DTLS12_VERSION_BIT) == DTLS12_VERSION_BIT) {
-        config->maxVersion = HITLS_VERSION_DTLS12;
-        config->minVersion = HITLS_VERSION_DTLS12;
-        return;
-    }
-
-    /* Description TLS_ANY_VERSION */
-    uint32_t versionBits[] = {TLS12_VERSION_BIT, TLS13_VERSION_BIT};
-    uint16_t versions[] = {HITLS_VERSION_TLS12, HITLS_VERSION_TLS13};
-
-    uint32_t versionBitsSize = sizeof(versionBits) / sizeof(uint32_t);
-    for (uint32_t i = 0; i < versionBitsSize; i++) {
-        if ((versionMask & versionBits[i]) == versionBits[i]) {
-            config->maxVersion = versions[i];
-            if (config->minVersion == 0) {
-                config->minVersion = versions[i];
-            }
-        }
-    }
-}
-
 int32_t HITLS_CFG_SetVersionSupport(HITLS_Config *config, uint32_t version)
 {
     if (config == NULL) {
@@ -1955,10 +1907,10 @@ int32_t HITLS_CFG_SetVersionSupport(HITLS_Config *config, uint32_t version)
     if ((version & SSLV3_VERSION_BIT) == SSLV3_VERSION_BIT) {
         return HITLS_CONFIG_INVALID_VERSION;
     }
-
-    config->version = version;
+    uint32_t tmp = version & config->originVersionMask;
+    config->version |= tmp;
     /* Update the maximum supported version */
-    ChangeSupportVersion(config);
+    ChangeMinMaxVersion(config->version, config->originVersionMask, &config->minVersion, &config->maxVersion);
     return HITLS_SUCCESS;
 }
 
@@ -2253,3 +2205,13 @@ int32_t HITLS_CFG_GetMiddleBoxCompat(HITLS_Config *config, bool *isMiddleBox)
     return HITLS_SUCCESS;
 }
 #endif
+
+int32_t HITLS_CFG_SetEndPoint(HITLS_Config *config, bool isClient)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    config->endpoint = isClient ? HITLS_ENDPOINT_CLIENT : HITLS_ENDPOINT_SERVER;
+    return HITLS_SUCCESS;
+}
