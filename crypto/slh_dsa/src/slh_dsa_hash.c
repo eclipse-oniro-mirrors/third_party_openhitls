@@ -19,6 +19,7 @@
 #include "securec.h"
 #include "bsl_err_internal.h"
 #include "crypt_errno.h"
+#include "crypt_algid.h"
 #include "crypt_types.h"
 #include "crypt_eal_md.h"
 #include "crypt_eal_mac.h"
@@ -215,7 +216,7 @@ static int32_t TlSha512(const CryptSlhDsaCtx *ctx, const SlhDsaAdrs *adrs, const
 
 void SlhDsaInitHashFuncs(CryptSlhDsaCtx *ctx)
 {
-    CRYPT_SLH_DSA_AlgId algId = ctx->para.algId;
+    CRYPT_PKEY_ParaId algId = ctx->para.algId;
     SlhDsaHashFuncs *hashFuncs = &ctx->hashFuncs;
     if (algId == CRYPT_SLH_DSA_SHA2_128S || algId == CRYPT_SLH_DSA_SHA2_128F || algId == CRYPT_SLH_DSA_SHA2_192S ||
         algId == CRYPT_SLH_DSA_SHA2_192F || algId == CRYPT_SLH_DSA_SHA2_256S || algId == CRYPT_SLH_DSA_SHA2_256F) {
