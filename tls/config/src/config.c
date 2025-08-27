@@ -257,10 +257,12 @@ static int32_t GroupCfgDeepCopy(HITLS_Config *destConfig, const HITLS_Config *sr
     }
 #ifdef HITLS_TLS_FEATURE_PROVIDER
     if (srcConfig->groupInfo != NULL) {
-        if (destConfig->groupInfo != NULL) {
-            BSL_SAL_FREE(destConfig->groupInfo->name);
-            BSL_SAL_FREE(destConfig->groupInfo);
+        for (uint32_t i = 0; i < destConfig->groupInfolen; i++) {
+            BSL_SAL_FREE(destConfig->groupInfo[i].name);
         }
+        BSL_SAL_FREE(destConfig->groupInfo);
+        destConfig->groupInfoSize = 0;
+        destConfig->groupInfolen = 0;
         destConfig->groupInfo= BSL_SAL_Calloc(srcConfig->groupInfolen, sizeof(TLS_GroupInfo));
         if (destConfig->groupInfo == NULL) {
             return HITLS_MEMALLOC_FAIL;
@@ -307,7 +309,12 @@ static int32_t SignAlgorithmsCfgDeepCopy(HITLS_Config *destConfig, const HITLS_C
     }
 #ifdef HITLS_TLS_FEATURE_PROVIDER
     if (srcConfig->sigSchemeInfo != NULL) {
+        for (uint32_t i = 0; i < destConfig->sigSchemeInfolen; i++) {
+            BSL_SAL_FREE(destConfig->sigSchemeInfo[i].name);
+        }
         BSL_SAL_FREE(destConfig->sigSchemeInfo);
+        destConfig->sigSchemeInfoSize = 0;
+        destConfig->sigSchemeInfolen = 0;
         destConfig->sigSchemeInfo = BSL_SAL_Calloc(srcConfig->sigSchemeInfolen, sizeof(TLS_SigSchemeInfo));
         if (destConfig->sigSchemeInfo == NULL) {
             return HITLS_MEMALLOC_FAIL;

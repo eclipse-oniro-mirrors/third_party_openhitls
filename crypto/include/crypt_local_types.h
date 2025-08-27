@@ -120,7 +120,7 @@ typedef int32_t (*PkeyCopyParam)(const void *src, void *dest);
 typedef int32_t (*PkeyGetSecBits)(const void *key);
 typedef int32_t (*PkeyEncapsulate)(const void *key, uint8_t *cipher, uint32_t *cipherLen,
     uint8_t *share, uint32_t *shareLen);
-typedef int32_t (*PkeyDecapsulate)(const void *key, uint8_t *cipher, uint32_t cipherLen,
+typedef int32_t (*PkeyDecapsulate)(const void *key, const uint8_t *cipher, uint32_t cipherLen,
     uint8_t *share, uint32_t *shareLen);
 
 typedef int32_t (*PkeyEncapsulateInit)(const void *key, const BSL_Param *params);

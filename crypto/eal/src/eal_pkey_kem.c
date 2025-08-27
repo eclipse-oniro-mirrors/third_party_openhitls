@@ -83,8 +83,8 @@ int32_t CRYPT_EAL_PkeyEncaps(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *cipher, uin
     return ret;
 }
 
-int32_t CRYPT_EAL_PkeyDecaps(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *cipher, uint32_t cipherLen, uint8_t *sharekey,
-    uint32_t *shareKeyLen)
+int32_t CRYPT_EAL_PkeyDecaps(const CRYPT_EAL_PkeyCtx *pkey, const uint8_t *cipher, uint32_t cipherLen,
+    uint8_t *sharekey, uint32_t *shareKeyLen)
 {
     if (pkey == NULL) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_PKEY, CRYPT_PKEY_MAX, CRYPT_NULL_INPUT);

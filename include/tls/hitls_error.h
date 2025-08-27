@@ -299,7 +299,7 @@ typedef enum {
     HITLS_CERT_KEY_CTRL_ERR_GET_POINT_FORMAT,      /**< Failed to obtain the point format. */
     HITLS_CERT_KEY_CTRL_ERR_GET_SECBITS,           /**< Failed to obtain security bits. */
     HITLS_CERT_KEY_CTRL_ERR_IS_ENC_USAGE,          /**< Determine whether the certificate fails to be encrypted,
-                                                        Applicable to TCLP scenarios. */
+                                                        Applicable to TLCP scenarios. */
     HITLS_CERT_KEY_CTRL_ERR_IS_DIGITAL_SIGN_USAGE,  /**< Determine whether the certificate fails to be digital sign. */
     HITLS_CERT_KEY_CTRL_ERR_IS_KEY_CERT_SIGN_USAGE, /**< Determine whether the certificate fails to be cert sign. */
     HITLS_CERT_KEY_CTRL_ERR_IS_KEY_AGREEMENT_USAGE, /**< Determine whether the certificate fails to be agreement. */

@@ -47,12 +47,6 @@
 #define HS_MAX_BINDER_SIZE 64
 #endif
 #endif
-#ifdef HITLS_TLS_PROTO_DTLS12
-#define COOKIE_GEN_SUCCESS    1
-#define COOKIE_GEN_ERROR      0
-#define COOKIE_VERIFY_SUCCESS 1
-#define COOKIE_VERIFY_ERROR   0
-#endif
 #ifdef HITLS_TLS_SUITE_KX_ECDHE
 /**
 * @brief Check the extension of the client hello point format.
@@ -568,7 +562,7 @@ static int32_t ServerSelectAlpnProtocol(TLS_Ctx *ctx, const ClientHelloMsg *clie
 static int32_t ServerDealServerName(TLS_Ctx *ctx, const ClientHelloMsg *clientHello)
 {
     int32_t ret = 0;
-    int32_t alert = ALERT_UNRECOGNIZED_NAME;
+    int alert = ALERT_UNRECOGNIZED_NAME;
     uint32_t serverNameSize = clientHello->extension.content.serverNameSize;
 
     if (clientHello->extension.flag.haveServerName == false) {

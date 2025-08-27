@@ -89,7 +89,7 @@ HITLS_CERT_MgrMethod *HITLS_CERT_GetMgrMethod(void)
 
 #endif /* HITLS_TLS_FEATURE_PROVIDER */
 
-int32_t CheckCertCallBackRetVal(char *logStr, int32_t callBackRet, uint32_t bingLogId, uint32_t hitlsRet)
+int32_t CheckCertCallBackRetVal(const char *logStr, int32_t callBackRet, uint32_t bingLogId, uint32_t hitlsRet)
 {
     if (callBackRet != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(bingLogId, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,

@@ -1236,7 +1236,7 @@ int32_t HITLS_CRYPT_KemEncapsulate(HITLS_Lib_Ctx *libCtx, const char *attrName,
 int32_t HITLS_CRYPT_KemDecapsulate(HITLS_CRYPT_Key *key, const uint8_t *ciphertext, uint32_t ciphertextLen,
     uint8_t *sharedSecret, uint32_t *sharedSecretLen)
 {
-    return CRYPT_EAL_PkeyDecaps(key, (uint8_t *)(uintptr_t)ciphertext, ciphertextLen, sharedSecret, sharedSecretLen);
+    return CRYPT_EAL_PkeyDecaps(key, ciphertext, ciphertextLen, sharedSecret, sharedSecretLen);
 }
 #endif /* HITLS_TLS_FEATURE_KEM */
 

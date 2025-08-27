@@ -166,7 +166,7 @@ static int32_t CertCtrlGetSignAlgo(HITLS_Config *config, HITLS_CERT_X509 *cert, 
     *algSign = BslCid2SignHashAlgo(config, signAlgCid, hashCid);
     return HITLS_SUCCESS;
 }
-
+#if defined(HITLS_TLS_PROTO_TLCP11) || defined(HITLS_TLS_CONFIG_KEY_USAGE)
 static int32_t CertCheckKeyUsage(HITLS_Config *config, HITLS_CERT_X509 *cert, uint32_t inKeyUsage, bool *res)
 {
     (void)config;
@@ -193,7 +193,7 @@ static int32_t CertCheckKeyUsage(HITLS_Config *config, HITLS_CERT_X509 *cert, ui
     *res = (keyUsage & inKeyUsage) != 0;
     return HITLS_SUCCESS;
 }
-
+#endif
 int32_t HITLS_X509_Adapt_CertCtrl(HITLS_Config *config, HITLS_CERT_X509 *cert, HITLS_CERT_CtrlCmd cmd,
     void *input, void *output)
 {

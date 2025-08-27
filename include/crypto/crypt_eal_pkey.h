@@ -733,8 +733,8 @@ int32_t CRYPT_EAL_PkeyEncaps(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *cipher, uin
  * @retval  #CRYPT_SUCCESS.
  *          For other error codes see crypt_errno.h.
  */
-int32_t CRYPT_EAL_PkeyDecaps(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *cipher, uint32_t cipherLen, uint8_t *sharekey,
-    uint32_t *shareKeyLen);
+int32_t CRYPT_EAL_PkeyDecaps(
+    const CRYPT_EAL_PkeyCtx *pkey, const uint8_t *cipher, uint32_t cipherLen, uint8_t *sharekey, uint32_t *shareKeyLen);
 
 typedef bool (*CRYPT_EAL_PCT)(CRYPT_EAL_PkeyCtx *pkey);
 void CRYPT_EAL_RegPct(CRYPT_EAL_PCT func);

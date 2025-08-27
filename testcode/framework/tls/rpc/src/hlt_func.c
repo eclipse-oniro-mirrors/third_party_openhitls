@@ -728,6 +728,7 @@ void HLT_FreeAllProcess(void)
     // Clearing HLT_Tls_Res and Threads
     for (int i = 0; i < localProcess->hltTlsResNum; i++) {
         tlsRes = localProcess->hltTlsResArray[i];
+        alarm(60); // Avoid long waits
         if ((tlsRes->acceptId > 0) && (tlsRes->ctx != NULL)) {
             pthread_join(tlsRes->acceptId, NULL);
         }

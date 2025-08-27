@@ -470,10 +470,8 @@ static int32_t SelectCertByInfo(HITLS_Ctx *ctx, CERT_ExpectInfo *info)
     BSL_HASH_Iterator it = BSL_HASH_IterBegin(certPairs);
     while (it != BSL_HASH_IterEnd(certPairs)) {
         uint32_t keyType = (uint32_t)BSL_HASH_HashIterKey(certPairs, it);
-        uintptr_t ptr = BSL_HASH_IterValue(certPairs, it);
-        CERT_Pair *certPair = (CERT_Pair *)ptr;
-        if (certPair == NULL || certPair->cert == NULL || certPair->privateKey == NULL ||
-            CheckCertType(info->certType, keyType) != HITLS_SUCCESS) {
+        CERT_Pair *certPair = (CERT_Pair *)BSL_HASH_IterValue(certPairs, it);
+        if (certPair == NULL || certPair->cert == NULL || certPair->privateKey == NULL) {
             it = BSL_HASH_IterNext(certPairs, it);
             continue;
         }

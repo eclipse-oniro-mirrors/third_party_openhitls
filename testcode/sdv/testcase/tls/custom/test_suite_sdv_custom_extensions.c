@@ -48,7 +48,7 @@
 
 // Simple add_cb function, allocates buffer with 1 byte length and 1 byte data
 int SimpleAddCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, uint8_t **out, uint32_t *outLen,
-    HITLS_X509_Cert *cert, uint32_t certId, uint32_t *alert, void *addArg)
+    HITLS_CERT_X509 *cert, uint32_t certId, uint32_t *alert, void *addArg)
 {
     (void)ctx;
     (void)extType;
@@ -80,7 +80,7 @@ void SimpleFreeCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, 
 
 // Simple parse_cb function, reads the length and data, checks the data
 int SimpleParseCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, const uint8_t **in, uint32_t *inLen,
-    HITLS_X509_Cert *cert, uint32_t certId, uint32_t *alert, void *parseArg)
+    HITLS_CERT_X509 *cert, uint32_t certId, uint32_t *alert, void *parseArg)
 {
     (void)ctx;
     (void)extType;
@@ -506,7 +506,7 @@ typedef struct {
 } CustomExtensionArg;
 
 int CustomExtensionAddCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, uint8_t **out, uint32_t *outLen,
-    HITLS_X509_Cert *cert, uint32_t certId, uint32_t *alert, void *addArg)
+    HITLS_CERT_X509 *cert, uint32_t certId, uint32_t *alert, void *addArg)
 {
     (void)ctx;
     (void)extType;
@@ -556,7 +556,7 @@ void CustomExtensionFreeCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t 
 
 // Simple parse_cb function, reads the length and data, checks the data
 int CustomExtensionParseCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, const uint8_t **in, uint32_t *inLen,
-    HITLS_X509_Cert *cert, uint32_t certId, uint32_t *alert, void *parseArg)
+    HITLS_CERT_X509 *cert, uint32_t certId, uint32_t *alert, void *parseArg)
 {
     (void)ctx;
     (void)extType;

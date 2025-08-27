@@ -174,7 +174,7 @@ static int32_t RecvCertPreprocess(TLS_Ctx *ctx)
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
         return HITLS_MSG_HANDLE_UNEXPECTED_MESSAGE;
     }
-
+    SAL_CRYPT_DigestFree(ctx->hsCtx->verifyCtx->hashCtx);
     ctx->hsCtx->verifyCtx->hashCtx = ctx->phaCurHash;
     ctx->phaCurHash = NULL;
 

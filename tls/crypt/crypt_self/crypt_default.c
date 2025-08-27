@@ -31,7 +31,6 @@
 #include "crypt_eal_kdf.h"
 #include "crypt_errno.h"
 #include "hitls_error.h"
-#include "hitls_build.h"
 
 #include "crypt_default.h"
 #include "bsl_params.h"

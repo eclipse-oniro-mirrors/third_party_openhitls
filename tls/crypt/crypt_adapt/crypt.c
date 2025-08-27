@@ -944,7 +944,7 @@ int32_t SAL_CRYPT_HkdfExpandLabel(CRYPT_KeyDeriveParameters *deriveInfo, uint8_t
     expandInput.infoLen = hkdfLabelLen;
     return SAL_CRYPT_HkdfExpand(deriveInfo->libCtx, deriveInfo->attrName, &expandInput, outSecret, outLen);
 }
-
+#endif /* HITLS_TLS_PROTO_TLS13 */
 #ifdef HITLS_TLS_FEATURE_KEM
 int32_t SAL_CRYPT_KemEncapsulate(TLS_Ctx *ctx, HITLS_KemEncapsulateParams *params)
 {
@@ -984,4 +984,4 @@ int32_t SAL_CRYPT_KemDecapsulate(HITLS_CRYPT_Key *key, const uint8_t *ciphertext
         HITLS_CRYPT_ERR_KEM_DECAPSULATE);
 }
 #endif /* HITLS_TLS_FEATURE_KEM */
-#endif /* HITLS_TLS_PROTO_TLS13 */
+
