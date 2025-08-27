@@ -300,6 +300,7 @@ SM3_CompressAsm:
     EOR v8, r3
     STMDB ip, {v1-v8}
     POP {r0-r2}
+    ADD r1, r1, #0x40
 	B .Lloop_start
 	.Lloop_end:
     POP {v1-ip, lr}
