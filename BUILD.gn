@@ -281,6 +281,11 @@ ohos_shared_library("openhitls_bsl") {
     deps = [":bsl_source"]
     innerapi_tags = [ "ndk" ]
     public_configs = [ ":bsl_public_config" ]
+    
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
 
 config("crypto_config") {
@@ -773,6 +778,11 @@ ohos_shared_library("openhitls_crypto") {
     ]
     innerapi_tags = [ "ndk" ]
     public_configs = [ ":crypto_public_config" ]
+
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
 
 config("pki_config") {
@@ -852,6 +862,11 @@ ohos_shared_library("openhitls_pki") {
     ]
     innerapi_tags = [ "ndk" ]
     public_configs = [ ":pki_public_config" ]
+
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
 
 
@@ -1074,6 +1089,11 @@ ohos_shared_library("openhitls_tls") {
     ]
     innerapi_tags = [ "ndk" ]
     public_configs = [ ":tls_public_config" ]
+
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
 
 
@@ -1126,4 +1146,8 @@ ohos_shared_library("openhitls_auth") {
         ":auth_source"
     ]
     innerapi_tags = [ "ndk" ]
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
