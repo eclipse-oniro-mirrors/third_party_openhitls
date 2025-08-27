@@ -173,6 +173,9 @@ SM3_CompressAsm:
     LDR r0, =0x79cc4519
     LDR r1, [sp, #(68 << 2)]
     LDM r1, {v1-v8}
+    // Note: Since the LDR offset relative to the current PC value cannot exceed 4KB in ARMV7,
+    // and there are approximately 2000 lines of instructions inside this function that are out of the offset range,
+    // we declare the literal pool here and skip it.
     B 1f
     .ltorg
 1:  // 0-15
