@@ -223,8 +223,7 @@ static int32_t SCRYPT_CheckParam(uint32_t n, uint32_t r, uint32_t p, const uint8
         return CRYPT_SCRYPT_PARAM_ERROR;
     }
     /* malloc size:p * 128 * r + n * 128 * r + 128 *r */
-    if ((uint64_t)p * 128 * r + n * 128 * r + 128 * r > UINT32_MAX)
-    {
+    if ((uint64_t)p * 128 * r + n * 128 * r + 128 * r > UINT32_MAX) {
         BSL_ERR_PUSH_ERROR(CRYPT_SCRYPT_PARAM_ERROR);
         return CRYPT_SCRYPT_PARAM_ERROR;
     }
@@ -278,10 +277,6 @@ int32_t CRYPT_SCRYPT(PBKDF2_PRF pbkdf2Prf, const EAL_MacMethod *macMeth,  CRYPT_
     bLen = blockSize * p;
 
     sumLen = bLen + blockSize * n + blockSize;
-    if (sumLen < bLen) {
-        BSL_ERR_PUSH_ERROR(CRYPT_SCRYPT_DATA_TOO_MAX);
-        return CRYPT_SCRYPT_DATA_TOO_MAX;
-    }
     b = BSL_SAL_Malloc(sumLen);
     if (b == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
