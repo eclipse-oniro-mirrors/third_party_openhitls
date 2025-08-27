@@ -803,7 +803,7 @@
                     "no_asm": ["crypto/sm3/src/noasm_sm3.c"],
                     "armv8": ["crypto/sm3/src/asm/*armv8.S", "crypto/sm3/src/asm_sm3.c"],
                     "x8664": ["crypto/sm3/src/asm/*x86_64.s", "crypto/sm3/src/asm_sm3.c"],
-                    "armv7": ["crypto/sm3/src/noasm_sm3.c"]
+                    "armv7": ["crypto/sm3/src/asm/*armv7.S", "crypto/sm3/src/asm_sm3.c"]
                 },
                 ".deps": ["platform::Secure_C"]
             },
