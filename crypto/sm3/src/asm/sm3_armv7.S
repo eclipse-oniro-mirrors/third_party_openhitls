@@ -117,16 +117,30 @@ SM3_CompressAsm:
     PUSH {v1-ip, lr}
 	.Lloop_start:
 	SUBS r2, r2, 1
-	BCC .LLloop_end
+	BCC .Lloop_end
 	PUSH {r0-r2}
     SUB sp, sp, #(52<<2)
     ADD r1, #0x40
-    LDMDB r1!, {v1-v3}
+    LDR v3, [r1, #-4]!
+    LDR v2, [r1, #-4]!
+    LDR v1, [r1, #-4]!
     REV v1, v1
     REV v2, v2
     REV v3, v3
     PUSH {v1-v3}
-    LDMDB r1, {r0-r12}
+    LDR r12, [r1, #-4]!
+    LDR r11, [r1, #-4]!
+    LDR r10, [r1, #-4]!
+    LDR r9, [r1, #-4]!
+    LDR r8, [r1, #-4]!
+    LDR r7, [r1, #-4]!
+    LDR r6, [r1, #-4]!
+    LDR r5, [r1, #-4]!
+    LDR r4, [r1, #-4]!
+    LDR r3, [r1, #-4]!
+    LDR r2, [r1, #-4]!
+    LDR r0, [r1, #-8]!
+    LDR r1, [r1, #4]
     REV r0, r0
     REV r1, r1
     REV r2, r2
@@ -287,7 +301,7 @@ SM3_CompressAsm:
     STMDB ip, {v1-v8}
     POP {r0-r2}
 	B .Lloop_start
-	.LLloop_end:
+	.Lloop_end:
     POP {v1-ip, lr}
     MOV pc, lr
 .end
