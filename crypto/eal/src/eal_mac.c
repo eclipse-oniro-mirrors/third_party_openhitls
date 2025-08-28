@@ -36,8 +36,9 @@
 
 #define MAC_TYPE_INVALID 0
 
-static CRYPT_EAL_MacCtx *MacNewCtxInner(int32_t algId, CRYPT_EAL_LibCtx *libCtx, const char *attrName)
+static CRYPT_EAL_MacCtx *MacNewCtxInner(int32_t algId, CRYPT_EAL_LibCtx *libCtx, const char *attrName, bool isProvider)
 {
+    EAL_MacMethod *method = NULL;
     CRYPT_EAL_MacCtx *macCtx = BSL_SAL_Malloc(sizeof(CRYPT_EAL_MacCtx));
     if (macCtx == NULL) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MAC, algId, CRYPT_MEM_ALLOC_FAIL);
@@ -45,7 +46,11 @@ static CRYPT_EAL_MacCtx *MacNewCtxInner(int32_t algId, CRYPT_EAL_LibCtx *libCtx,
     }
     (void)memset_s(macCtx, sizeof(CRYPT_EAL_MacCtx), 0, sizeof(CRYPT_EAL_MacCtx));
     void *provCtx = NULL;
-    EAL_MacMethod *method = EAL_MacFindMethodEx(algId, libCtx, attrName, &macCtx->macMeth, &provCtx);
+    if (!isProvider) {
+        method = EAL_MacFindMethod(algId, &macCtx->macMeth);
+    } else {
+        method = EAL_MacFindMethodEx(algId, libCtx, attrName, &macCtx->macMeth, &provCtx);
+    }
     if (method == NULL) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MAC, algId, CRYPT_EAL_ERR_METH_NULL_MEMBER);
         BSL_SAL_Free(macCtx);
@@ -72,7 +77,7 @@ static CRYPT_EAL_MacCtx *MacNewCtxInner(int32_t algId, CRYPT_EAL_LibCtx *libCtx,
 
 CRYPT_EAL_MacCtx *CRYPT_EAL_ProviderMacNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t algId, const char *attrName)
 {
-    return MacNewCtxInner(algId, libCtx, attrName);
+    return MacNewCtxInner(algId, libCtx, attrName, true);
 }
 
 CRYPT_EAL_MacCtx *CRYPT_EAL_MacNewCtx(CRYPT_MAC_AlgId id)
@@ -83,7 +88,7 @@ CRYPT_EAL_MacCtx *CRYPT_EAL_MacNewCtx(CRYPT_MAC_AlgId id)
         return NULL;
     }
 #endif
-    return MacNewCtxInner(id, NULL, NULL);
+    return MacNewCtxInner(id, NULL, NULL, false);
 }
 
 void CRYPT_EAL_MacFreeCtx(CRYPT_EAL_MacCtx *ctx)

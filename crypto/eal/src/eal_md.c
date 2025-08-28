@@ -34,8 +34,9 @@
 #include "crypt_provider.h"
 #endif
 
-static CRYPT_EAL_MdCTX *MdNewCtxInner(CRYPT_MD_AlgId id, CRYPT_EAL_LibCtx *libCtx, const char *attrName)
+static CRYPT_EAL_MdCTX *MdNewCtxInner(CRYPT_MD_AlgId id, CRYPT_EAL_LibCtx *libCtx, const char *attrName, bool isProvider)
 {
+    EAL_MdMethod *method = NULL;
     CRYPT_EAL_MdCTX *ctx = BSL_SAL_Malloc(sizeof(CRYPT_EAL_MdCTX));
     if (ctx == NULL) {
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MD, id, CRYPT_MEM_ALLOC_FAIL);
@@ -44,7 +45,11 @@ static CRYPT_EAL_MdCTX *MdNewCtxInner(CRYPT_MD_AlgId id, CRYPT_EAL_LibCtx *libCt
     void *provCtx = NULL;
     // The ctx->method will be overwritten if the method is found.
     (void)memset_s(&ctx->method, sizeof(ctx->method), 0, sizeof(ctx->method));
-    EAL_MdMethod *method = EAL_MdFindMethodEx(id, libCtx, attrName, &ctx->method, &provCtx);
+    if (!isProvider) {
+        method = EAL_MdFindMethod(id, &ctx->method);
+    } else {
+        method = EAL_MdFindMethodEx(id, libCtx, attrName, &ctx->method, &provCtx);
+    }
     if (method == NULL) {
         BSL_SAL_Free(ctx);
         return NULL;
@@ -70,7 +75,7 @@ static CRYPT_EAL_MdCTX *MdNewCtxInner(CRYPT_MD_AlgId id, CRYPT_EAL_LibCtx *libCt
 
 CRYPT_EAL_MdCTX *CRYPT_EAL_ProviderMdNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t algId, const char *attrName)
 {
-    return MdNewCtxInner(algId, libCtx, attrName);
+    return MdNewCtxInner(algId, libCtx, attrName, true);
 }
 
 CRYPT_EAL_MdCTX *CRYPT_EAL_MdNewCtx(CRYPT_MD_AlgId id)
@@ -82,7 +87,7 @@ CRYPT_EAL_MdCTX *CRYPT_EAL_MdNewCtx(CRYPT_MD_AlgId id)
     }
 #endif
 
-    return MdNewCtxInner(id, NULL, NULL);
+    return MdNewCtxInner(id, NULL, NULL, false);
 }
 
 bool CRYPT_EAL_MdIsValidAlgId(CRYPT_MD_AlgId id)

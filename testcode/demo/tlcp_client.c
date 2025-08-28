@@ -25,19 +25,10 @@
 
 static int32_t HiTLSInit()
 {
-    /* Register BSL memory capacity, for reference only */
-    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC, malloc);
-    BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE, free);
-    BSL_ERR_Init();
     // Registration certificate, crypto callback
-    int32_t ret = CRYPT_EAL_Init(CRYPT_EAL_INIT_CPU | CRYPT_EAL_INIT_PROVIDER);
+    int32_t ret = CRYPT_EAL_Init(CRYPT_EAL_INIT_ALL);
     if (ret != CRYPT_SUCCESS) {
         printf("CRYPT_EAL_Init: error code is %x\n", ret);
-        return -1;
-    }
-    ret = CRYPT_EAL_ProviderRandInitCtx(NULL, CRYPT_RAND_SHA256, "provider=default", NULL, 0, NULL);
-    if (ret != CRYPT_SUCCESS) {
-        printf("Init rand failed.\n");
         return -1;
     }
     HITLS_CertMethodInit();
