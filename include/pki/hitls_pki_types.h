@@ -302,8 +302,18 @@ typedef enum {
     HITLS_X509_VFY_FLAG_CRL_DEV = 2
 } HITLS_X509_VFY_FLAGS;
 
+/**
+ * @ingroup hitls_pki_types
+ * @brief Commands for manipulating the X509 store context
+ * Enumeration Value Segmentation Principle:
+ *  0x0~0x0100: Enumeration values must be set before constructing a certificate chain or verification.
+ *  0x0100~0x0200: Enumeration values corresponding to capabilities can be uesd at any time.
+ *  0x0200~0x0300: Enumeration values corresponding to capabilities can only be during signature verification or
+ *                 certificate chain construction.
+ *  Others: To be determined.
+ */
 typedef enum {
-    HITLS_X509_STORECTX_SET_PARAM_DEPTH,
+    HITLS_X509_STORECTX_SET_PARAM_DEPTH = 0x0,
     HITLS_X509_STORECTX_SET_PARAM_FLAGS,
     HITLS_X509_STORECTX_SET_TIME,
     HITLS_X509_STORECTX_SET_SECBITS,
@@ -313,11 +323,28 @@ typedef enum {
     HITLS_X509_STORECTX_SHALLOW_COPY_SET_CA,
     HITLS_X509_STORECTX_SET_CRL,
     HITLS_X509_STORECTX_CLEAR_CRL,
-    HITLS_X509_STORECTX_REF_UP,
     HITLS_X509_STORECTX_SET_VFY_SM2_USERID,
-    HITLS_X509_STORECTX_GET_PARAM_DEPTH,
+    HITLS_X509_STORECTX_SET_VERIFY_CB,
+    HITLS_X509_STORECTX_SET_USR_DATA,
     HITLS_X509_STORECTX_GET_PARAM_FLAGS,
     HITLS_X509_STORECTX_ADD_CA_PATH,       /**< Add additional CA path for on-demand loading */
+
+    HITLS_X509_STORECTX_REF_UP = 0x0100,
+    HITLS_X509_STORECTX_GET_PARAM_DEPTH,
+    HITLS_X509_STORECTX_GET_VERIFY_CB,
+    HITLS_X509_STORECTX_GET_USR_DATA,
+
+    /* New commands for the added fields */
+    HITLS_X509_STORECTX_SET_ERROR = 0x0200,
+    HITLS_X509_STORECTX_GET_ERROR,
+    HITLS_X509_STORECTX_GET_CUR_CERT,
+    /*
+     * Indicates the depth of certificate chain verification, starting from 0, representing the entity certificate,
+     * CA certificate,..., root certificate respectively.
+     */
+    HITLS_X509_STORECTX_SET_CUR_DEPTH,
+    HITLS_X509_STORECTX_GET_CUR_DEPTH,
+    HITLS_X509_STORECTX_GET_CERT_CHAIN,
     HITLS_X509_STORECTX_MAX
 } HITLS_X509_StoreCtxCmd;
 

@@ -51,6 +51,12 @@ struct _HITLS_X509_StoreCtx {
     BslList *caPaths;                 // List of CA directory paths for on-demand loading (char*)
     CRYPT_EAL_LibCtx *libCtx;         // Provider context
     const char *attrName;             // Provider attribute name
+    int32_t error;                    // Error code
+    HITLS_X509_Cert *curCert;         // Current certificate being verified
+    X509_STORECTX_VerifyCb verifyCb;  // Verification callback function
+    int32_t curDepth;                 // Current verification depth
+    void *usrData;                    // user data
+    HITLS_X509_List *certChain;       // Certificate chain built during verification
 };
 
 
