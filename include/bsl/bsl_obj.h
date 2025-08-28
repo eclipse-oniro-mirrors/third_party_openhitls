@@ -656,13 +656,14 @@ typedef enum {
     BSL_CID_PAILLIER = 5203,
     BSL_CID_ELGAMAL = 5204,
     BSL_CID_SLH_DSA = 5205,         /**< Identifies SLH-DSA algorithm */
-    BSL_CID_XMSS = 5206,
+    BSL_CID_RSASSAPSAE = 5206,       /**< Identifies RSASSAPSAE algorithm */
+    BSL_CID_XMSS = 5207,
 
     BSL_CID_MAC_AEAD = 5300,
 
     BSL_CID_AES128_CCM8,
     BSL_CID_AES256_CCM8,
-
+    BSL_CID_PBKDF1, /* identifies PBKDF1 */
     BSL_CID_MAX,
     BSL_CID_EXTEND = 0x60000000,
 } BslCid;

@@ -38,7 +38,7 @@
 #define ASN1_HEADER_LEN    2
 #define SPLIT_CEIL(a, b)   (((a) + (b) - 1) / (b))
 #define SPLIT_BYTES(a)     SPLIT_CEIL(a, BYTE_BITS)
-#define NUM_OF_CRYPT_SLH_DSA_ALGId 12
+#define NUM_OF_CRYPT_SLH_DSA_ALGID 12
 
 typedef struct {
     BSL_Param *pubSeed;
@@ -53,15 +53,15 @@ typedef struct {
 } SlhDsaPrvKeyParam;
 
 // reference to FIPS-205, table 2
-static uint32_t g_slhDsaN[NUM_OF_CRYPT_SLH_DSA_ALGId] = {16, 16, 16, 16, 24, 24, 24, 24, 32, 32, 32, 32};
-static uint32_t g_slhDsaH[NUM_OF_CRYPT_SLH_DSA_ALGId] = {63, 63, 66, 66, 63, 63, 66, 66, 64, 64, 68, 68};
-static uint32_t g_slhDsaD[NUM_OF_CRYPT_SLH_DSA_ALGId] = {7, 7, 22, 22, 7, 7, 22, 22, 8, 8, 17, 17};
-static uint32_t g_slhDsaHp[NUM_OF_CRYPT_SLH_DSA_ALGId] = {9, 9, 3, 3, 9, 9, 3, 3, 8, 8, 4, 4}; // xmss height
-static uint32_t g_slhDsaA[NUM_OF_CRYPT_SLH_DSA_ALGId] = {12, 12, 6, 6, 14, 14, 8, 8, 14, 14, 9, 9};
-static uint32_t g_slhDsaK[NUM_OF_CRYPT_SLH_DSA_ALGId] = {14, 14, 33, 33, 17, 17, 33, 33, 22, 22, 35, 35};
-static uint32_t g_slhDsaM[NUM_OF_CRYPT_SLH_DSA_ALGId] = {30, 30, 34, 34, 39, 39, 42, 42, 47, 47, 49, 49};
-static uint32_t g_slhDsaPkBytes[NUM_OF_CRYPT_SLH_DSA_ALGId] = {32, 32, 32, 32, 48, 48, 48, 48, 64, 64, 64, 64};
-static uint32_t g_slhDsaSigBytes[NUM_OF_CRYPT_SLH_DSA_ALGId] = {7856,  7856,  17088, 17088, 16224, 16224,
+static uint32_t g_slhDsaN[NUM_OF_CRYPT_SLH_DSA_ALGID] = {16, 16, 16, 16, 24, 24, 24, 24, 32, 32, 32, 32};
+static uint32_t g_slhDsaH[NUM_OF_CRYPT_SLH_DSA_ALGID] = {63, 63, 66, 66, 63, 63, 66, 66, 64, 64, 68, 68};
+static uint32_t g_slhDsaD[NUM_OF_CRYPT_SLH_DSA_ALGID] = {7, 7, 22, 22, 7, 7, 22, 22, 8, 8, 17, 17};
+static uint32_t g_slhDsaHp[NUM_OF_CRYPT_SLH_DSA_ALGID] = {9, 9, 3, 3, 9, 9, 3, 3, 8, 8, 4, 4}; // xmss height
+static uint32_t g_slhDsaA[NUM_OF_CRYPT_SLH_DSA_ALGID] = {12, 12, 6, 6, 14, 14, 8, 8, 14, 14, 9, 9};
+static uint32_t g_slhDsaK[NUM_OF_CRYPT_SLH_DSA_ALGID] = {14, 14, 33, 33, 17, 17, 33, 33, 22, 22, 35, 35};
+static uint32_t g_slhDsaM[NUM_OF_CRYPT_SLH_DSA_ALGID] = {30, 30, 34, 34, 39, 39, 42, 42, 47, 47, 49, 49};
+static uint32_t g_slhDsaPkBytes[NUM_OF_CRYPT_SLH_DSA_ALGID] = {32, 32, 32, 32, 48, 48, 48, 48, 64, 64, 64, 64};
+static uint32_t g_slhDsaSigBytes[NUM_OF_CRYPT_SLH_DSA_ALGID] = {7856,  7856,  17088, 17088, 16224, 16224,
                                                                 35664, 35664, 29792, 29792, 49856, 49856};
 static uint8_t g_secCategory[] = {1, 1, 1, 1, 3, 3, 3, 3, 5, 5, 5, 5};
 
