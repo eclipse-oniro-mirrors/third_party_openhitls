@@ -70,7 +70,6 @@ int32_t CheckPointFormat(HITLS_Config *config, const uint8_t *ecPointFormatList,
 /* These functions can be stored in a separate header file. */
 HITLS_CERT_Chain *SAL_CERT_ChainNew(void);
 int32_t SAL_CERT_ChainAppend(HITLS_CERT_Chain *chain, HITLS_CERT_X509 *cert);
-void SAL_CERT_ChainFree(HITLS_CERT_Chain *chain);
 HITLS_CERT_Chain *SAL_CERT_ChainDup(CERT_MgrCtx *mgrCtx, HITLS_CERT_Chain *chain);
 
 #define LIBCTX_FROM_CERT_MGR_CTX(mgrCtx) ((mgrCtx == NULL) ? NULL : (mgrCtx)->libCtx)

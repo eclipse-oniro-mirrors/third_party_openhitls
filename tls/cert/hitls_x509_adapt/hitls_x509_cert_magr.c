@@ -113,6 +113,33 @@ HITLS_CERT_X509 *HITLS_X509_Adapt_CertParse(HITLS_Config *config, const uint8_t 
 }
 #endif
 
+HITLS_CERT_Chain *HITLS_X509_Adapt_BundleCertParse(HITLS_Lib_Ctx *libCtx, const char *attrName, const uint8_t *buf,
+    uint32_t len, HITLS_ParseType type, const char *format)
+{
+    BSL_Buffer encodedCert = { NULL, 0 };
+    int ret;
+    HITLS_X509_List *certlist = NULL;
+    switch (type) {
+        case TLS_PARSE_TYPE_FILE:
+            ret = HITLS_X509_ProviderCertParseBundleFile(libCtx, attrName, format, (const char *)buf, &certlist);
+            break;
+        case TLS_PARSE_TYPE_BUFF:
+            encodedCert.data = (uint8_t *)(uintptr_t)buf;
+            encodedCert.dataLen = len;
+            ret = HITLS_X509_ProviderCertParseBundleBuff(libCtx, attrName, format, &encodedCert, &certlist);
+            break;
+        default:
+            BSL_ERR_PUSH_ERROR(HITLS_CERT_SELF_ADAPT_UNSUPPORT_FORMAT);
+            return NULL;
+    }
+    if (ret != HITLS_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return NULL;
+    }
+
+    return certlist;
+}
+
 void HITLS_X509_Adapt_CertFree(HITLS_CERT_X509 *cert)
 {
     HITLS_X509_CertFree(cert);

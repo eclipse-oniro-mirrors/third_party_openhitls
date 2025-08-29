@@ -93,6 +93,23 @@ int32_t SAL_CERT_VerifyChain(HITLS_Ctx *ctx, HITLS_CERT_Store *store, HITLS_CERT
 int32_t SAL_CERT_X509Encode(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, uint8_t *buf, uint32_t len, uint32_t *usedLen);
 
 /**
+ * @brief Parse the bundle certificate to list.
+ *
+ * @param libCtx [IN] library context for provider
+ * @param attrName [IN] attribute name of the provider, maybe NULL
+ * @param config [IN] TLS link configuration
+ * @param buf    [IN] Certificate encoding data
+ * @param len    [IN] Data length
+ * @param type   [IN] Data type
+ * @param format [IN] Data format
+ *
+ * @return certificate list
+ */
+HITLS_CERT_Chain *SAL_CERT_X509ParseBundleFile(HITLS_Lib_Ctx *libCtx, const char *attrName,
+    HITLS_Config *config, const uint8_t *buf, uint32_t len,
+    HITLS_ParseType type, HITLS_ParseFormat format);
+
+/**
  * @brief Parse the certificate.
  *
  * @param libCtx [IN] library context for provider

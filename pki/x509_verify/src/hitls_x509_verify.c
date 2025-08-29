@@ -332,7 +332,7 @@ static int32_t X509_AddCAPath(HITLS_X509_StoreCtx *storeCtx, const void *val, ui
 
     char *existPath = BSL_LIST_GET_FIRST(storeCtx->caPaths);
     while (existPath != NULL) {
-        if (strlen(existPath) == valLen && memcmp(existPath, caPath, valLen) == 0) {
+        if (memcmp(existPath, caPath, valLen) == 0 && strlen(existPath) == valLen) {
             return HITLS_PKI_SUCCESS;
         }
         existPath = BSL_LIST_GET_NEXT(storeCtx->caPaths);
@@ -422,6 +422,8 @@ int32_t HITLS_X509_StoreCtxCtrl(HITLS_X509_StoreCtx *storeCtx, int32_t cmd, void
             return X509_GetMaxDepth(storeCtx, val, valLen);
         case HITLS_X509_STORECTX_GET_PARAM_FLAGS:
             return X509_GetParamFlag(storeCtx, val, valLen);
+        case HITLS_X509_STORECTX_ADD_CA_PATH:
+            return X509_AddCAPath(storeCtx, val, valLen);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;
@@ -496,7 +498,6 @@ int32_t X509_GetIssueFromChain(HITLS_X509_List *certChain, HITLS_X509_Cert *cert
     return HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND;
 }
 
-#ifdef HITLS_PKI_X509_VFY_LOCATION
 static int32_t CheckAndAddIssuerCert(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_Cert *candidateCert,
                                      HITLS_X509_Cert *cert, HITLS_X509_Cert **issue, bool *issueInTrust)
 {
@@ -594,7 +595,6 @@ static int32_t FindIssuerByDer(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_Cert *c
     }
     return HITLS_PKI_SUCCESS;
 }
-#endif
 
 int32_t X509_FindIssueCert(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *certChain, HITLS_X509_Cert *cert,
     HITLS_X509_Cert **issue, bool *issueInTrust)
@@ -606,15 +606,7 @@ int32_t X509_FindIssueCert(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *certC
         *issueInTrust = true;
         return ret;
     }
-#ifdef HITLS_PKI_X509_VFY_LOCATION
-    // If we have CA paths set, try on-demand loading based on issuer DER-encoded DN
-    if (BSL_LIST_COUNT(storeCtx->caPaths) > 0) {
-        ret = FindIssuerByDer(storeCtx, cert, issue, issueInTrust);
-        if (ret == HITLS_PKI_SUCCESS) {
-            return HITLS_PKI_SUCCESS;
-        }
-    }
-#endif
+
     // Then try the certificate chain if provided
     if (certChain != NULL) {
         ret = X509_GetIssueFromChain(certChain, cert, issue);
@@ -623,8 +615,16 @@ int32_t X509_FindIssueCert(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *certC
             return ret;
         }
     }
+    // If we have CA paths set, try on-demand loading based on issuer DER-encoded DN
+    if (BSL_LIST_COUNT(storeCtx->caPaths) > 0) {
+        ret = FindIssuerByDer(storeCtx, cert, issue, issueInTrust);
+        if (ret == HITLS_PKI_SUCCESS) {
+            return HITLS_PKI_SUCCESS;
+        }
+    }
+    
     BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND);
-    return ret;
+    return HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND;
 }
 
 int32_t X509_BuildChain(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *certChain, HITLS_X509_Cert *cert,

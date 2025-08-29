@@ -20,6 +20,7 @@
 #ifdef HITLS_PKI_X509_VFY
 #include <stdint.h>
 #include "bsl_asn1_internal.h"
+#include "bsl_list.h"
 #include "hitls_pki_x509.h"
 #include "sal_atomic.h"
 
@@ -60,6 +61,7 @@ int32_t HITLS_X509_VerifyParamAndExt(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_L
  * You can configure not to verify or only verify the terminal certificate
  */
 int32_t HITLS_X509_VerifyCrl(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *chain);
+
 
 int32_t HITLS_X509_GetIssuerFromStore(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_Cert *cert, HITLS_X509_Cert **issuer);
 

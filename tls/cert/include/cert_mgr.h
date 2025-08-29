@@ -364,6 +364,12 @@ HITLS_VerifyCb SAL_CERT_GetVerifyCb(CERT_MgrCtx *mgrCtx);
  */
 int32_t SAL_CERT_SetCertCb(CERT_MgrCtx *mgrCtx, HITLS_CertCb certCb, void *arg);
 
+/**
+ * @brief   Free the certificate chain.
+ *
+ * @param   chain [IN] Certificate chain
+ */
+void SAL_CERT_ChainFree(HITLS_CERT_Chain *chain);
 #ifdef __cplusplus
 }
 #endif

@@ -44,6 +44,8 @@ HITLS_CERT_X509 *HITLS_X509_Adapt_CertParse(HITLS_Config *config, const uint8_t 
 HITLS_CERT_X509 *HITLS_CERT_ProviderCertParse(HITLS_Lib_Ctx *libCtx, const char *attrName, const uint8_t *buf,
     uint32_t len, HITLS_ParseType type, const char *format);
 #endif
+HITLS_CERT_Chain *HITLS_X509_Adapt_BundleCertParse(HITLS_Lib_Ctx *libCtx, const char *attrName, const uint8_t *buf,
+    uint32_t len, HITLS_ParseType type, const char *format);
 HITLS_CERT_X509 *HITLS_X509_Adapt_CertDup(HITLS_CERT_X509 *cert);
 HITLS_CERT_X509 *HITLS_X509_Adapt_CertRef(HITLS_CERT_X509 *cert);
 void HITLS_X509_Adapt_CertFree(HITLS_CERT_X509 *cert);

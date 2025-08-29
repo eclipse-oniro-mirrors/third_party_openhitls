@@ -1165,6 +1165,48 @@ int32_t HITLS_ClearVerifyCrls(HITLS_Ctx *ctx);
 #define HITLS_GetVerifyFlags(ctx, verifyFlags) \
     HITLS_CtrlGetVerifyParams(ctx, NULL, CERT_STORE_CTRL_GET_VERIFY_FLAGS, verifyFlags)
 
+/**
+ * @ingroup hitls_cert
+ * @brief   Use the certificate chain file to set the certificate chain.
+ *
+ * @param   ctx [OUT] TLS link configuration
+ * @param   file [IN] Certificate chain file name
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_UseCertificateChainFile(HITLS_Ctx *ctx, const char *file);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Use the certificate chain file to set the certificate chain.
+ *
+ * @param   config [OUT] TLS link configuration
+ * @param   file [IN] Certificate chain file name
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_UseCertificateChainFile(HITLS_Config *config, const char *file);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Load the verification file from the file.
+ *
+ * @param   config  [OUT] TLS link configuration
+ * @param   file  [IN] File name
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_LoadVerifyFile(HITLS_Config *config, const char *file);
+/**
+ * @ingroup hitls_cert
+ * @brief   Load the verification file from the directory.
+ *
+ * @param   config  [OUT] TLS link configuration
+ * @param   path  [IN] Directory path
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_LoadVerifyDir(HITLS_Config *config, const char *path);
 #ifdef __cplusplus
 }
 #endif

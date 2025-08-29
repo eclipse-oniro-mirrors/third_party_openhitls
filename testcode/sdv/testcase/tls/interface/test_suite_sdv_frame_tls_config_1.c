@@ -1749,3 +1749,217 @@ EXIT:
     FRAME_FreeLink(server);
 }
 /* END_CASE */
+
+
+/* @
+* @test  UT_TLS_CFG_LOADVERIFYDIR_MULTI_PATH_TC001
+* @title  Test HITLS_CFG_LoadVerifyDir with multiple CA paths
+* @brief
+*   1. Create a config object.
+*   2. Pass in a string containing multiple paths (such as "/tmp/ca1:/tmp/ca2:/tmp/ca3").
+*   3. Call HITLS_CFG_LoadVerifyDir.
+*   4. Check that the number and content of caPaths in the cert store are consistent with the input.
+* @expect
+*   1. The interface returns success.
+*   2. The number and content of paths in the cert store are consistent with the input.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_LOADVERIFYDIR_MULTI_PATH_TC001(void)
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    const char *multi_path = "/tmp/ca1:/tmp/ca2:/tmp/ca3:/tmp/ca3";
+    int32_t ret = HITLS_CFG_LoadVerifyDir(config, multi_path);
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+
+    HITLS_CERT_Store *store = SAL_CERT_GetCertStore(config->certMgrCtx);
+    ASSERT_TRUE(store != NULL);
+
+    HITLS_X509_StoreCtx *storeCtx = (HITLS_X509_StoreCtx *)store;
+    BslList *caPaths = storeCtx->caPaths;
+    ASSERT_TRUE(caPaths != NULL);
+
+    int expect_count = 3;
+    int actual_count = BSL_LIST_COUNT(caPaths);
+    ASSERT_TRUE(actual_count == expect_count);
+
+    const char *expect_paths[] = {"/tmp/ca1", "/tmp/ca2", "/tmp/ca3"};
+    for (int i = 0; i < expect_count; ++i) {
+        const char *path = (const char *)BSL_LIST_GetIndexNode(i, caPaths);
+        ASSERT_TRUE(path != NULL);
+        ASSERT_TRUE(strcmp(path, expect_paths[i]) == 0);
+    }
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_CFG_LOADVERIFYFILE_TC001
+* @title  Test HITLS_CFG_LoadVerifyFile with a single CA path
+* @brief
+*   1. Create a config object.
+*   2. Pass in a string containing a single path.
+*   3. Call HITLS_CFG_LoadVerifyFile.
+*   4. Load a client certificate signed by the CA in the specified path.
+*   5. Call HITLS_CFG_BuildCertChain to verify the client certificate.
+* @expect
+*   1. The interface returns success.
+*   2. The client certificate is successfully verified.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_LOADVERIFYFILE_TC001(void)
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    const char *path = "../testdata/tls/certificate/pem/rsa_sha256/inter.pem";
+    int32_t ret = HITLS_CFG_LoadVerifyFile(config, path);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    const char *path1 = "../testdata/tls/certificate/pem/rsa_sha256/ca.pem";
+    ret = HITLS_CFG_LoadVerifyFile(config, path1);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    const char *certToVerify = "../testdata/tls/certificate/pem/rsa_sha256/client.pem";
+    ret = HITLS_CFG_LoadCertFile(config, certToVerify, TLS_PARSE_FORMAT_PEM);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    ASSERT_EQ(HITLS_CFG_BuildCertChain(config, HITLS_BUILD_CHAIN_FLAG_NO_ROOT), HITLS_SUCCESS);
+    HITLS_CERT_Chain *chain = HITLS_CFG_GetChainCerts(config);
+    ASSERT_TRUE(chain != NULL);
+    ASSERT_TRUE(chain->count == 1);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_CFG_LOADVERIFYFILE_TC002
+* @title  Test HITLS_CFG_LoadVerifyFile with a single CA path
+* @brief
+*   1. Create a config object.
+*   2. Pass in a string containing a single path.
+*   3. Call HITLS_CFG_LoadVerifyFile.
+*   4. Load a client certificate signed by the CA in the specified path.
+*   5. Call HITLS_CFG_BuildCertChain to verify the client certificate.
+* @expect
+*   1. The interface returns success.
+*   2. The client certificate verification fails.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_LOADVERIFYFILE_TC002(void)
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    const char *path = "../testdata/tls/certificate/pem/ecdsa_sha256/inter.pem";
+    int32_t ret = HITLS_CFG_LoadVerifyFile(config, path);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    const char *certToVerify = "../testdata/tls/certificate/pem/rsa_sha256/client.pem";
+    ret = HITLS_CFG_LoadCertFile(config, certToVerify, TLS_PARSE_FORMAT_PEM);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    ASSERT_EQ(HITLS_CFG_BuildCertChain(config, HITLS_BUILD_CHAIN_FLAG_NO_ROOT), HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_GetChainCerts(config) == NULL);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_CFG_USECERTCHAINFILE_TC001
+* @title  Test HITLS_CFG_UseCertificateChainFile with a single file path
+* @brief
+*   1. Create a config object.
+*   2. Pass in a string containing a single path.
+*   3. Call HITLS_CFG_UseCertificateChainFile.
+*   4. Load a client certificate signed by the CA in the specified path.
+*   5. Call HITLS_CFG_BuildCertChain to verify the client certificate.
+* @expect
+*   1. The interface returns success.
+*   2. The client certificate verification verified.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_USECERTCHAINFILE_TC001(void)
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    const char *path = "../testdata/tls/certificate/pem/rsa_sha256/cert_chain.pem";
+    int32_t ret = HITLS_CFG_UseCertificateChainFile(config, path);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    ASSERT_EQ(HITLS_CFG_BuildCertChain(config, HITLS_BUILD_CHAIN_FLAG_CHECK), HITLS_SUCCESS);
+    HITLS_CERT_Chain *chain = HITLS_CFG_GetChainCerts(config);
+    ASSERT_TRUE(chain != NULL);
+    ASSERT_TRUE(chain->count == 1);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_CFG_USECERTCHAINFILE_TC002
+* @title  Test HITLS_CFG_UseCertificateChainFile with a single CA path
+* @brief
+*   1. Create a config object.
+*   2. Pass in a string containing a single path.
+*   3. Call HITLS_CFG_UseCertificateChainFile.
+*   4. Load a client certificate signed by the CA in the specified path.
+*   5. Call HITLS_CFG_BuildCertChain to verify the client certificate.
+* @expect
+*   1. The interface returns success.
+*   2. The client certificate verification fails.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_USECERTCHAINFILE_TC002(void)
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    const char *path = "../testdata/tls/certificate/pem/rsa_sha256/cert_chain_damaged_ca.pem";
+    int32_t ret = HITLS_CFG_UseCertificateChainFile(config, path);
+    ASSERT_EQ(ret, HITLS_CFG_ERR_LOAD_CERT_FILE);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_CFG_USECERTCHAINFILE_TC003
+* @title  Test HITLS_CFG_LoadVerifyFile with a single CA path
+* @brief
+*   1. Create a config object.
+*   2. Pass in a string containing a single path.
+*   3. Call HITLS_CFG_UseCertificateChainFile.
+*   4. Load a client certificate signed by the CA in the specified path.
+*   5. Call HITLS_CFG_BuildCertChain to verify the client certificate.
+* @expect
+*   1. The interface returns success.
+*   2. The client certificate verification fails.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_USECERTCHAINFILE_TC003(void)
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    const char *path = "../testdata/tls/certificate/pem/rsa_sha256/cert_chain_duplicate_ca.pem";
+    int32_t ret = HITLS_CFG_UseCertificateChainFile(config, path);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    ASSERT_EQ(HITLS_CFG_BuildCertChain(config, HITLS_BUILD_CHAIN_FLAG_CHECK), HITLS_CERT_STORE_CTRL_ERR_ADD_CERT_LIST);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */

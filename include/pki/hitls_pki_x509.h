@@ -71,6 +71,7 @@ void HITLS_X509_StoreCtxFree(HITLS_X509_StoreCtx *storeCtx);
  *        HITLS_X509_STORECTX_SET_VFY_SM2_USERID        buffer              > 0
  *        HITLS_X509_STORECTX_GET_PARAM_DEPTH           int32_t *             sizeof(int32_t)
  *        HITLS_X509_STORECTX_GET_PARAM_FLAGS           uint64_t *            sizeof(uint64_t)
+ *        HITLS_X509_STORECTX_ADD_CA_PATH              char *              string length
  * @param val [IN/OUT] input and output value.
  * @param valLen [IN] value length.
  * @retval #HITLS_PKI_SUCCESS, success.

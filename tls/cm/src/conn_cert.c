@@ -270,3 +270,14 @@ int32_t HITLS_ClearVerifyCrls(HITLS_Ctx *ctx)
 
     return HITLS_CFG_ClearVerifyCrls(&(ctx->config.tlsConfig));
 }
+
+#ifdef HITLS_TLS_CONFIG_CERT_LOAD_FILE
+int32_t HITLS_UseCertificateChainFile(HITLS_Ctx *ctx,  const char *file)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_UseCertificateChainFile(&(ctx->config.tlsConfig), file);
+}
+#endif /* HITLS_TLS_CONFIG_CERT_LOAD_FILE */
