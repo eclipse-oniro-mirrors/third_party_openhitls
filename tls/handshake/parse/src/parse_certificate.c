@@ -27,6 +27,7 @@
 #include "parse_common.h"
 #include "hs_extensions.h"
 #include "parse_extensions.h"
+#include "custom_extensions.h"
 
 /**
  * @brief   Parse the certificate signature

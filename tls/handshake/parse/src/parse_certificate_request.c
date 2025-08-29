@@ -30,6 +30,7 @@
 #include "hs_extensions.h"
 #include "parse_extensions.h"
 #include "parse_common.h"
+#include "custom_extensions.h"
 
 #if defined(HITLS_TLS_PROTO_TLS12) || defined(HITLS_TLS_PROTO_DTLS12) || defined(HITLS_TLS_PROTO_TLS13)
 

@@ -262,7 +262,7 @@ int32_t ServerSendServerKeyExchangeProcess(TLS_Ctx *ctx)
             return ret;
         }
 
-        ret = HS_PackMsg(ctx, SERVER_KEY_EXCHANGE, hsCtx->msgBuf, REC_MAX_PLAIN_LENGTH, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, SERVER_KEY_EXCHANGE);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15749, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "Fail to pack Server Key Exchange Message, HS_PackMsg ret = %d", ret, 0, 0, 0);

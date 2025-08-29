@@ -18,6 +18,7 @@
 #include "hitls_build.h"
 #include "hitls.h"
 #include "hitls_custom_extensions.h"
+#include "tls.h"
 
 #define MAX_LIMIT_CUSTOM_EXT 20
 // Define CustomExtMethod structure
@@ -77,16 +78,14 @@ bool IsParseNeedCustomExtensions(CustomExtMethods *exts, uint16_t extType, uint3
  * it uses the associated add callback to pack the extension data into the buffer.
  *
  * @param   ctx     [IN]  Pointer to the TLS context containing custom extension methods
- * @param   buf     [OUT] Buffer where the packed custom extensions will be stored
- * @param   bufLen  [IN]  Length of the buffer
- * @param   len     [OUT] Pointer to a variable where the total length of packed extensions will be stored
+ * @param   pkt     [IN/OUT] Context for packing
  * @param   context [IN]  The context to check against the custom extensions
  * @param   cert    [IN]  Pointer to the HITLS_CERT_X509 structure representing certificate information
  * @param   certIndex  [IN]  Certificate index indicating its position in the certificate chain
  * @retval  HITLS_SUCCESS if the custom extensions are successfully packed
  * @retval  An error code if packing fails, see hitls_error.h for details
  */
-int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *len, uint32_t context,
+int32_t PackCustomExtensions(const struct TlsCtx *ctx, PackPacket *pkt, uint32_t context,
     HITLS_CERT_X509 *cert, uint32_t certIndex);
 
 /**

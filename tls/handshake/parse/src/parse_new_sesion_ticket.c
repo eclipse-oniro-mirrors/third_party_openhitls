@@ -28,6 +28,8 @@
 #include "parse_msg.h"
 #include "parse_common.h"
 #include "parse_extensions.h"
+#include "custom_extensions.h"
+
 #ifdef HITLS_TLS_PROTO_TLS13
 static int32_t ParseTicketNonce(ParsePacket *pkt, NewSessionTicketMsg *msg)
 {

@@ -800,6 +800,14 @@ int32_t TlsCheckRecordHeader(TLS_Ctx *ctx, const RecHdr *recordHdr)
             "get a record with invalid length", 0, 0, 0, 0);
         return RecordSendAlertMsg(ctx, ALERT_LEVEL_FATAL, ALERT_RECORD_OVERFLOW);
     }
+
+    if (recordHdr->bodyLen + REC_TLS_RECORD_HEADER_LEN > ctx->recCtx->inBuf->bufSize) {
+        ret = RecBufResize(ctx->recCtx->inBuf, recordHdr->bodyLen + REC_TLS_RECORD_HEADER_LEN);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+    }
+
 #ifdef HITLS_TLS_PROTO_TLS13
     if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13 && recordHdr->bodyLen > REC_MAX_TLS13_ENCRYPTED_LEN) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16125, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,

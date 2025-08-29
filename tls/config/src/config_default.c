@@ -175,6 +175,9 @@ static void BasicInitConfig(HITLS_Config *config)
 #ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
     config->maxSendFragment = HITLS_MAX_SEND_FRAGMENT_DEFAULT;
 #endif
+#ifdef HITLS_TLS_FEATURE_REC_INBUFFER_SIZE
+    config->recInbufferSize = 0;
+#endif
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
     config->allowLegacyRenegotiate = false;
 #endif

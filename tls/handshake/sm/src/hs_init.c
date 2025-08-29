@@ -149,7 +149,7 @@ int32_t HS_Init(TLS_Ctx *ctx)
     ctx->hsCtx = hsCtx;
     hsCtx->clientRandom = ctx->negotiatedInfo.clientRandom;
     hsCtx->serverRandom = ctx->negotiatedInfo.serverRandom;
-    hsCtx->bufferLen = REC_MAX_PLAIN_DECRYPTO_MAX_LENGTH;
+    hsCtx->bufferLen = HITLS_HS_INIT_BUFFER_SIZE;
     hsCtx->msgBuf = BSL_SAL_Malloc(hsCtx->bufferLen);
     if (hsCtx->msgBuf == NULL) {
         (void)RETURN_ERROR_NUMBER_PROCESS(HITLS_MEMALLOC_FAIL, BINLOG_ID17177, "Malloc fail");

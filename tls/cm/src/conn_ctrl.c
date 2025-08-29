@@ -496,6 +496,24 @@ int32_t HITLS_GetMaxSendFragment(const HITLS_Ctx *ctx, uint16_t *maxSendFragment
 }
 #endif
 
+#ifdef HITLS_TLS_FEATURE_REC_INBUFFER_SIZE
+int32_t HITLS_SetRecInbufferSize(HITLS_Ctx *ctx, uint32_t recInbufferSize)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    return HITLS_CFG_SetRecInbufferSize(&(ctx->config.tlsConfig), recInbufferSize);
+}
+
+int32_t HITLS_GetRecInbufferSize(const HITLS_Ctx *ctx, uint32_t *recInbufferSize)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    return HITLS_CFG_GetRecInbufferSize(&(ctx->config.tlsConfig), recInbufferSize);
+}
+#endif
+
 #ifdef HITLS_TLS_FEATURE_SESSION_TICKET
 int32_t HITLS_SetTicketNums(HITLS_Ctx *ctx, uint32_t ticketNums)
 {

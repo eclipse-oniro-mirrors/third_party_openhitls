@@ -116,7 +116,7 @@ int32_t APP_Write(TLS_Ctx *ctx, const uint8_t *data, uint32_t dataLen, uint32_t 
         return ret;
     }
 #endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
-    ret = REC_RecBufReSet(ctx);
+    ret = REC_RecOutBufReSet(ctx);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }

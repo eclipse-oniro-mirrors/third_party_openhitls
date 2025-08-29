@@ -82,7 +82,11 @@ int32_t RecIoBufInit(TLS_Ctx *ctx, RecCtx *recordCtx, bool isRead)
 {
     RecBuf **ioBuf = isRead ? &recordCtx->inBuf : &recordCtx->outBuf;
     if (*ioBuf == NULL) {
-        *ioBuf = RecBufNew(RecGetInitBufferSize(ctx, isRead));
+        uint32_t initSize = RecGetInitBufferSize(ctx, isRead);
+        if (isRead && ctx->config.tlsConfig.recInbufferSize != 0) {
+            initSize = ctx->config.tlsConfig.recInbufferSize;
+        }
+        *ioBuf = RecBufNew(initSize);
         if (*ioBuf == NULL) {
             BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15532, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -591,13 +595,9 @@ static uint32_t REC_GetRecordSizeLimitWriteLen(const TLS_Ctx *ctx)
     return defaultLen;
 }
 
-int32_t REC_RecBufReSet(TLS_Ctx *ctx)
+int32_t REC_RecOutBufReSet(TLS_Ctx *ctx)
 {
     RecCtx *recCtx = ctx->recCtx;
-    int32_t ret = RecBufResize(recCtx->inBuf, RecGetReadBufferSize(ctx));
-    if (ret != HITLS_SUCCESS) {
-        return ret;
-    }
     return RecBufResize(recCtx->outBuf, RecGetWriteBufferSize(ctx));
 }
 

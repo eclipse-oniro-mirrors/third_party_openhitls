@@ -190,7 +190,8 @@ typedef struct TlsConfig {
     uint8_t sessionIdCtx[HITLS_SESSION_ID_CTX_MAX_SIZE];  /* the sessionId context */
 
     uint32_t ticketNums;                /* TLS1.3 ticket number */
-    uint16_t maxSendFragment;           /* max send fragment to restrict the amount of plaintext bytes in any record  */
+    uint16_t maxSendFragment;           /* max send fragment to restrict the amount of plaintext bytes in any record */
+    uint32_t recInbufferSize;           /* Rec inbuffer inital size */
     TLS_SessionMgr *sessMgr;            /* session management */
 
     void *userData;                     /* user data */

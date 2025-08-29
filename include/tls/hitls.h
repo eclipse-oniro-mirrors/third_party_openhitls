@@ -1437,6 +1437,29 @@ int32_t HITLS_GetMaxSendFragment(const HITLS_Ctx *ctx, uint16_t *maxSendFragment
 
 /**
  * @ingroup hitls
+ * @brief   Set the rec inbuffer inital size
+ *
+ * @param   ctx [IN/OUT] TLS connection handle.
+ * @param   recInbufferSize [IN] Indicates the rec inbuffer inital size
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_CONFIG_INVALID_LENGTH, the recInbufferSize is less than 512 or greater than 18432.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_SetRecInbufferSize(HITLS_Ctx *ctx, uint32_t recInbufferSize);
+
+/**
+ * @ingroup hitls
+ * @brief   Obtain the rec inbuffer inital size
+ *
+ * @param   ctx [IN] TLS connection handle.
+ * @param   recInbufferSize [OUT] Indicates the rec inbuffer inital size
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_GetRecInbufferSize(const HITLS_Ctx *ctx, uint32_t *recInbufferSize);
+
+/**
+ * @ingroup hitls
  * @brief   Sets the maximum size of the certificate chain that can be sent from the peer end.
  *
  * @param   ctx [IN/OUT] TLS connection handle.

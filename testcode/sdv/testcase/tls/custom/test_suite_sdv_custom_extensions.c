@@ -148,9 +148,12 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_API_TC001(void)
     exts.methsCount = 1;
     ctx->config.tlsConfig.customExts = &exts;
 
+    uint32_t bufOffset = 0;
+    uint8_t *buffAddr = &buf[0];
+    PackPacket pkt = {.buf = &buffAddr, .bufLen = &bufLen, .bufOffset = &bufOffset};
     // Call the interface under test
     // Verify the return value is success
-    ASSERT_EQ(PackCustomExtensions(ctx, buf, bufLen, &len, context, NULL, 0), HITLS_SUCCESS);
+    ASSERT_EQ(PackCustomExtensions(ctx, &pkt, context, NULL, 0), HITLS_SUCCESS);
     ctx->config.tlsConfig.customExts = NULL;
     ASSERT_EQ(len, 0);  // No data packed without add_cb
 
@@ -250,8 +253,11 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_MULTIPLE_API_TC001(void)
     exts.methsCount = methsCount;
     ctx->config.tlsConfig.customExts = &exts;
 
+    uint32_t bufOffset = 0;
+    uint8_t *buffAddr = &buf[0];
+    PackPacket pkt = {.buf = &buffAddr, .bufLen = &bufLen, .bufOffset = &bufOffset};
     // Call the interface under test
-    int32_t ret = PackCustomExtensions(ctx, buf, bufLen, &len, context, NULL, 0);
+    int32_t ret = PackCustomExtensions(ctx, &pkt, context, NULL, 0);
     ctx->config.tlsConfig.customExts = NULL;
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
     ASSERT_EQ(len, 0);             // No data packed without add_cb
@@ -290,8 +296,11 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_EMPTY_API_TC001(void)
 
     ctx->config.tlsConfig.customExts = NULL;  // No extensions
 
+    uint32_t bufOffset = 0;
+    uint8_t *buffAddr = &buf[0];
+    PackPacket pkt = {.buf = &buffAddr, .bufLen = &bufLen, .bufOffset = &bufOffset};
     // Call the interface under test
-    int32_t ret = PackCustomExtensions(ctx, buf, bufLen, &len, context, NULL, 0);
+    int32_t ret = PackCustomExtensions(ctx, &pkt, context, NULL, 0);
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
     ASSERT_EQ(len, 0);             // Verify the packing length is 0
 
@@ -339,10 +348,14 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_CALLBACK_API_TC001(void)
     exts.methsCount = 1;
     ctx->config.tlsConfig.customExts = &exts;
 
+    uint32_t bufOffset = 0;
+    uint8_t *buffAddr = &buf[0];
+    PackPacket pkt = {.buf = &buffAddr, .bufLen = &bufLen, .bufOffset = &bufOffset};
     // Call the interface under test
-    int32_t ret = PackCustomExtensions(ctx, buf, bufLen, &len, context, NULL, 0);
+    int32_t ret = PackCustomExtensions(ctx, &pkt, context, NULL, 0);
     ctx->config.tlsConfig.customExts = NULL;
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
+    len += bufOffset;
     ASSERT_EQ(len, sizeof(uint16_t) + sizeof(uint16_t) + dataLen);  // ext_type (2 byte) + len (2 byte) + data (1 byte)
     // Verify the extension type
     uint16_t packedType = BSL_ByteToUint16(buf);

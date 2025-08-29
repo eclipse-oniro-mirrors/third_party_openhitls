@@ -35,6 +35,24 @@ extern "C" {
 #define HS_PSK_MAX_LEN 256u
 #define COOKIE_SECRET_LIFETIME 5u /* the number of times the cookie's secret is used */
 
+#ifndef HITLS_HS_INIT_BUFFER_SIZE
+#define HITLS_HS_INIT_BUFFER_SIZE 4096u
+#endif
+
+#ifndef HITLS_HS_BUFFER_SIZE_LIMIT
+#define HITLS_HS_BUFFER_SIZE_LIMIT 20480u
+#endif
+
+#if HITLS_HS_INIT_BUFFER_SIZE < 32
+#error "HITLS_HS_INIT_BUFFER_SIZE must be greater than or equal to 32"
+#endif
+
+#if HITLS_HS_BUFFER_SIZE_LIMIT < HITLS_HS_INIT_BUFFER_SIZE
+#error "HITLS_HS_BUFFER_SIZE_LIMIT must be greater than or equal to HITLS_HS_INIT_BUFFER_SIZE"
+#endif
+
+#define UINT24_SIZE 3u
+
 /* Transmits ECDH key exchange data */
 typedef struct {
     HITLS_ECParameters curveParams; /* Elliptic curve parameter */

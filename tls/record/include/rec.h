@@ -32,8 +32,6 @@ extern "C" {
 #define REC_MAX_TLS13_ENCRYPTED_OVERHEAD  256u
 /* TLS13 Maximum ciphertext length */
 #define REC_MAX_TLS13_ENCRYPTED_LEN (REC_MAX_PLAIN_LENGTH + REC_MAX_TLS13_ENCRYPTED_OVERHEAD)
-/* The length (in bytes) of the following TLSCiphertext.fragment. The length MUST NOT exceed 2^14 + 2048. */
-#define REC_MAX_PLAIN_DECRYPTO_MAX_LENGTH (16384 + 2048)
 
 #define REC_MASTER_SECRET_LEN 48
 #define REC_RANDOM_LEN  32
@@ -294,7 +292,7 @@ bool REC_HaveReadSuiteInfo(const TLS_Ctx *ctx);
  */
 uint32_t APP_GetReadPendingBytes(const TLS_Ctx *ctx);
 
-int32_t REC_RecBufReSet(TLS_Ctx *ctx);
+int32_t REC_RecOutBufReSet(TLS_Ctx *ctx);
 
 /**
  * @ingroup record

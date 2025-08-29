@@ -53,7 +53,7 @@ int32_t SendNewSessionTicketProcess(TLS_Ctx *ctx)
             return ret;
         }
         /* assemble message */
-        ret = HS_PackMsg(ctx, NEW_SESSION_TICKET, hsCtx->msgBuf, REC_MAX_PLAIN_LENGTH, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, NEW_SESSION_TICKET);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15978, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "server pack new session ticket msg fail.", 0, 0, 0, 0);
@@ -172,7 +172,7 @@ int32_t Tls13SendNewSessionTicketProcess(TLS_Ctx *ctx)
         }
 
         /* assemble message */
-        ret = HS_PackMsg(ctx, NEW_SESSION_TICKET, hsCtx->msgBuf, REC_MAX_PLAIN_LENGTH, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, NEW_SESSION_TICKET);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16052, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "server pack new session ticket msg fail.", 0, 0, 0, 0);

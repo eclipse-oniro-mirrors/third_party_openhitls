@@ -180,7 +180,7 @@ int32_t ServerSendServerHelloProcess(TLS_Ctx *ctx)
             return ret;
         }
 
-        ret = HS_PackMsg(ctx, SERVER_HELLO, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, SERVER_HELLO);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15550, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "pack server hello msg fail.", 0, 0, 0, 0);
@@ -273,7 +273,7 @@ int32_t Tls13ServerSendServerHelloProcess(TLS_Ctx *ctx)
             return ret;
         }
 
-        ret = HS_PackMsg(ctx, SERVER_HELLO, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, SERVER_HELLO);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15555, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "pack tls1.3 server hello msg fail.", 0, 0, 0, 0);
@@ -321,7 +321,7 @@ int32_t Tls13ServerSendHelloRetryRequestProcess(TLS_Ctx *ctx)
         }
 
         /* Pack the message. The hello retry request is assembled in the server hello format */
-        ret = HS_PackMsg(ctx, SERVER_HELLO, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, SERVER_HELLO);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15558, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "pack tls1.3 hello retry request msg fail.", 0, 0, 0, 0);

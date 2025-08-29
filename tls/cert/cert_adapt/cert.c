@@ -32,6 +32,8 @@
 #include "cert_mgr.h"
 #include "cert.h"
 #include "config_type.h"
+#include "pack.h"
+#include "custom_extensions.h"
 
 #ifdef HITLS_TLS_FEATURE_SECURITY
 static int32_t CheckKeySecbits(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, HITLS_CERT_Key *key)
@@ -511,9 +513,9 @@ int32_t SAL_CERT_SelectCertByInfo(HITLS_Ctx *ctx, CERT_ExpectInfo *info)
     return HITLS_CERT_ERR_SELECT_CERTIFICATE;
 }
 
-int32_t EncodeCertificate(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen, uint32_t certIndex)
+int32_t EncodeCertificate(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, PackPacket *pkt, uint32_t certIndex)
 {
-    if (ctx == NULL || buf == NULL || cert == NULL || usedLen == NULL) {
+    if (ctx == NULL || pkt == NULL || cert == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16314, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "input null", 0, 0, 0, 0);
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
         return HITLS_NULL_INPUT;
@@ -528,50 +530,60 @@ int32_t EncodeCertificate(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, uint8_t *buf, u
             "encode certificate error: unable to get encode length.", 0, 0, 0, 0);
         return ret;
     }
-    /* Reserve at least 3 bytes length + data length. */
-    if ((bufLen < CERT_LEN_TAG_SIZE) || (bufLen - CERT_LEN_TAG_SIZE < certLen) || (certLen == 0)) {
+    if (certLen == 0) {
         BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_ENCODE_CERT);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15044, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "encode cert out of buffer, encode len = %u, buffer len = %u.", certLen, bufLen, 0, 0);
+            "cert encode len is 0", 0, 0, 0, 0);
         return HITLS_CERT_ERR_ENCODE_CERT;
     }
-    *usedLen = 0;
-    /* Write the length of the certificate data. */
-    BSL_Uint24ToByte(certLen, buf);
-    /* Write the certificate data. */
-    ret = SAL_CERT_X509Encode(ctx, cert, &buf[CERT_LEN_TAG_SIZE], bufLen - CERT_LEN_TAG_SIZE, usedLen);
+
+    /* Write the length of the certificate data (3 bytes). */
+    ret = PackAppendUint24ToBuf(pkt, certLen);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    
+    /* Reserve space for certificate data and encode directly */
+    uint8_t *certBuf = NULL;
+    ret = PackReserveBytes(pkt, certLen, &certBuf);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    
+    uint32_t usedLen = 0;
+    /* Write the certificate data using the low-level encoding function */
+    ret = SAL_CERT_X509Encode(ctx, cert, certBuf, certLen, &usedLen);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16315, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "X509Encode err", 0, 0, 0, 0);
         return ret;
     }
-    uint32_t offset = CERT_LEN_TAG_SIZE + *usedLen;
+    
+    ret = PackSkipBytes(pkt, usedLen);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
 
 #ifdef HITLS_TLS_PROTO_TLS13
     if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
         /* If an extension applies to the entire chain, it SHOULD be included in the first CertificateEntry. */
-        if (bufLen - offset < sizeof(uint16_t)) {
-            BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_ENCODE_CERT);
-            return RETURN_ERROR_NUMBER_PROCESS(HITLS_CERT_ERR_ENCODE_CERT, BINLOG_ID16316, "bufLen err");
+        /* Start length field for extensions */
+        uint32_t exLenPos = 0;
+        ret = PackStartLengthField(pkt, sizeof(uint16_t), &exLenPos);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
         }
-
-        uint32_t exLen = 0;
 #ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
         if (IsPackNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), HITLS_EX_TYPE_TLS1_3_CERTIFICATE)) {
-            ret = PackCustomExtensions(ctx, &buf[offset + sizeof(uint16_t)], bufLen - offset - sizeof(uint16_t), &exLen,
-                HITLS_EX_TYPE_TLS1_3_CERTIFICATE, cert, certIndex);
+            ret = PackCustomExtensions(ctx, pkt, HITLS_EX_TYPE_TLS1_3_CERTIFICATE, cert, certIndex);
             if (ret != HITLS_SUCCESS) {
                 return ret;
             }
         }
 #endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
-        /* Valid extensions for server certificates at present include the OCSP Status extension [RFC6066]
-        and the SignedCertificateTimestamp extension [RFC6962] */
-        BSL_Uint16ToByte(exLen, &buf[offset]);
-        offset += sizeof(uint16_t) + exLen;
+        /* Close extension length field */
+        PackCloseUint16Field(pkt, exLenPos);
     }
 #endif
-
-    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 
@@ -583,6 +595,54 @@ void FreeCertList(HITLS_CERT_X509 **certList, uint32_t certNum)
     for (uint32_t i = 0; i < certNum; i++) {
         SAL_CERT_X509Free(certList[i]);
     }
+}
+
+static int32_t EncodeEECert(HITLS_Ctx *ctx, PackPacket *pkt, HITLS_CERT_X509 **cert)
+{
+    CERT_MgrCtx *mgrCtx = ctx->config.tlsConfig.certMgrCtx;
+    CERT_Pair *currentCertPair =  NULL;
+    int32_t ret = BSL_HASH_At(mgrCtx->certPairs, (uintptr_t)mgrCtx->currentCertKeyType, (uintptr_t *)&currentCertPair);
+    if (ret != HITLS_SUCCESS || currentCertPair == NULL || currentCertPair->cert == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_EXP_CERT);
+        return RETURN_ERROR_NUMBER_PROCESS(HITLS_CERT_ERR_EXP_CERT, BINLOG_ID16152, "first cert is null");
+    }
+    HITLS_CERT_X509 *tmpCert = currentCertPair->cert;
+
+#ifdef HITLS_TLS_FEATURE_SECURITY
+    HITLS_CERT_Key *key = currentCertPair->privateKey;
+    ret = CheckKeySecbits(ctx, tmpCert, key);
+    if (ret != HITLS_SUCCESS) {
+        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16317, "check key fail");
+    }
+#endif
+
+    /* Write the first device certificate. */
+    ret = EncodeCertificate(ctx, tmpCert, pkt, 0);
+    if (ret != HITLS_SUCCESS) {
+        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16153, "encode fail");
+    }
+#ifdef HITLS_TLS_PROTO_TLCP11
+    /* If the TLCP algorithm is used and the encryption certificate is required, write the
+    second encryption certificate. */
+    HITLS_CERT_X509 *certEnc = currentCertPair->encCert;
+    if (ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11 && certEnc != NULL) {
+#ifdef HITLS_TLS_FEATURE_SECURITY
+        HITLS_CERT_Key *keyEnc = currentCertPair->encPrivateKey;
+        ret = CheckKeySecbits(ctx, certEnc, keyEnc);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+#endif
+        ret = EncodeCertificate(ctx, certEnc, pkt, 1);
+        if (ret != HITLS_SUCCESS) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16154, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "TLCP encode device certificate error.", 0, 0, 0, 0);
+            return ret;
+        }
+    }
+#endif
+    *cert = tmpCert;
+    return HITLS_SUCCESS;
 }
 
 #ifdef HITLS_TLS_FEATURE_SECURITY
@@ -623,64 +683,7 @@ static int32_t CheckCertChainFromStore(HITLS_Config *config, HITLS_CERT_X509 *ce
 }
 #endif
 
-static int32_t EncodeEECert(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen,
-    HITLS_CERT_X509 **cert)
-{
-    uint32_t offset = 0;
-    CERT_MgrCtx *mgrCtx = ctx->config.tlsConfig.certMgrCtx;
-    CERT_Pair *currentCertPair =  NULL;
-    int32_t ret = BSL_HASH_At(mgrCtx->certPairs, (uintptr_t)mgrCtx->currentCertKeyType, (uintptr_t *)&currentCertPair);
-    if (ret != HITLS_SUCCESS || currentCertPair == NULL || currentCertPair->cert == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_EXP_CERT);
-        return RETURN_ERROR_NUMBER_PROCESS(HITLS_CERT_ERR_EXP_CERT, BINLOG_ID16152, "first cert is null");
-    }
-    HITLS_CERT_X509 *tmpCert = currentCertPair->cert;
-
-#ifdef HITLS_TLS_FEATURE_SECURITY
-    HITLS_CERT_Key *key = currentCertPair->privateKey;
-    ret = CheckKeySecbits(ctx, tmpCert, key);
-    if (ret != HITLS_SUCCESS) {
-        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16317, "check key fail");
-    }
-    ret = CheckCertChainFromStore(&ctx->config.tlsConfig, tmpCert);
-    if (ret != HITLS_SUCCESS) {
-        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15111, "check ee cert fail");
-    }
-#endif
-
-    /* Write the first device certificate. */
-    ret = EncodeCertificate(ctx, tmpCert, buf, bufLen, usedLen, 0);
-    if (ret != HITLS_SUCCESS) {
-        return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16153, "encode fail");
-    }
-    offset += *usedLen;
-#ifdef HITLS_TLS_PROTO_TLCP11
-    /* If the TLCP algorithm is used and the encryption certificate is required, write the
-    second encryption certificate. */
-    HITLS_CERT_X509 *certEnc = currentCertPair->encCert;
-    if (ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11 && certEnc != NULL) {
-#ifdef HITLS_TLS_FEATURE_SECURITY
-        HITLS_CERT_Key *keyEnc = currentCertPair->encPrivateKey;
-        ret = CheckKeySecbits(ctx, certEnc, keyEnc);
-        if (ret != HITLS_SUCCESS) {
-            return ret;
-        }
-#endif
-        ret = EncodeCertificate(ctx, certEnc, &buf[offset], bufLen - offset, usedLen, 1);
-        if (ret != HITLS_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16154, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "TLCP encode device certificate error.", 0, 0, 0, 0);
-            return ret;
-        }
-        offset += *usedLen;
-    }
-#endif
-    *usedLen = offset;
-    *cert = tmpCert;
-    return HITLS_SUCCESS;
-}
-
-static int32_t EncodeCertificateChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen, uint32_t offset)
+static int32_t EncodeCertificateChain(HITLS_Ctx *ctx, PackPacket *pkt)
 {
     HITLS_CERT_X509 *tempCert = NULL;
     HITLS_Config *config = &ctx->config.tlsConfig;
@@ -688,7 +691,6 @@ static int32_t EncodeCertificateChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t buf
     CERT_Pair *currentCertPair =  NULL;
     int32_t ret = BSL_HASH_At(mgrCtx->certPairs, (uintptr_t)mgrCtx->currentCertKeyType, (uintptr_t *)&currentCertPair);
     if (ret != HITLS_SUCCESS || currentCertPair == NULL) {
-        *usedLen = offset;
         return HITLS_SUCCESS;
     }
     HITLS_CERT_Chain *chain = NULL;
@@ -698,33 +700,23 @@ static int32_t EncodeCertificateChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t buf
         chain = mgrCtx->extraChain;
     }
     tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_FIRST(chain);
-    uint32_t tempOffset = offset;
     uint32_t certIndex = 1;
     while (tempCert != NULL) {
-#ifdef HITLS_TLS_FEATURE_SECURITY
-        ret = CheckCertChainFromStore(config, tempCert);
-        if (ret != HITLS_SUCCESS) {
-            return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15115, "check chain cert fail");
-        }
-#endif
-        ret = EncodeCertificate(ctx, tempCert, &buf[tempOffset], bufLen - tempOffset, usedLen, certIndex);
+        ret = EncodeCertificate(ctx, tempCert, pkt, certIndex);
         if (ret != HITLS_SUCCESS) {
             return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15048, "encode cert chain err");
         }
-        tempOffset += *usedLen;
         certIndex++;
         tempCert = BSL_LIST_GET_NEXT(chain);
     }
-    *usedLen = tempOffset;
     return HITLS_SUCCESS;
 }
 
-static int32_t EncodeCertStore(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen, HITLS_CERT_X509 *cert)
+static int32_t EncodeCertStore(HITLS_Ctx *ctx, PackPacket *pkt, HITLS_CERT_X509 *cert)
 {
     HITLS_Config *config = &ctx->config.tlsConfig;
     CERT_MgrCtx *mgrCtx = config->certMgrCtx;
     HITLS_CERT_Store *store = (mgrCtx->chainStore != NULL) ? mgrCtx->chainStore : mgrCtx->certStore;
-    uint32_t offset = *usedLen;
     HITLS_CERT_X509 *certList[TLS_DEFAULT_VERIFY_DEPTH] = {0};
     uint32_t certNum = TLS_DEFAULT_VERIFY_DEPTH;
     if (store != NULL) {
@@ -737,21 +729,20 @@ static int32_t EncodeCertStore(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, ui
 #ifdef HITLS_TLS_FEATURE_SECURITY
             ret = CheckCertChainFromStore(config, certList[i]);
             if (ret != HITLS_SUCCESS) {
+                FreeCertList(certList, certNum);
                 return ret;
             }
 #endif
-            ret = EncodeCertificate(ctx, certList[i], &buf[offset], bufLen - offset, usedLen, i);
+            ret = EncodeCertificate(ctx, certList[i], pkt, i);
             if (ret != HITLS_SUCCESS) {
                 BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16155, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                     "encode cert chain error in No.%u.", i, 0, 0, 0);
                 FreeCertList(certList, certNum);
                 return ret;
             }
-            offset += *usedLen;
         }
     }
     FreeCertList(certList, certNum);
-    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 /*
@@ -763,9 +754,9 @@ static int32_t EncodeCertStore(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, ui
  * The client does not check, the message is sent based on the configuration.
  * If the message will be sent, the signature certificate must exist.
  * */
-int32_t SAL_CERT_EncodeCertChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+int32_t SAL_CERT_EncodeCertChain(HITLS_Ctx *ctx, PackPacket *pkt)
 {
-    if (ctx == NULL || buf == NULL || usedLen == NULL) {
+    if (ctx == NULL || pkt == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_NULL_INPUT, BINLOG_ID16323, "input null");
     }
@@ -780,21 +771,17 @@ int32_t SAL_CERT_EncodeCertChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, 
     int32_t ret = BSL_HASH_At(mgrCtx->certPairs, (uintptr_t)mgrCtx->currentCertKeyType, (uintptr_t *)&currentCertPair);
     if (ret != HITLS_SUCCESS || currentCertPair == NULL) {
         /* No certificate needs to be sent at the local end. */
-        *usedLen = 0;
         return HITLS_SUCCESS;
     }
-    uint32_t offset = 0;
-    ret = EncodeEECert(ctx, buf, bufLen, usedLen, &cert);
+    ret = EncodeEECert(ctx, pkt, &cert);
     if (ret != HITLS_SUCCESS) {
         return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15046, "encode device cert err");
     }
-    offset += *usedLen;
     // Check the size. If a certificate exists in the chain, directly put the data in the chain into the buf and return.
     if (BSL_LIST_COUNT(currentCertPair->chain) > 0 || BSL_LIST_COUNT(mgrCtx->extraChain) > 0) {
-        return EncodeCertificateChain(ctx, buf, bufLen, usedLen, offset);
+        return EncodeCertificateChain(ctx, pkt);
     }
-    *usedLen = offset;
-    return EncodeCertStore(ctx, buf, bufLen, usedLen, cert);
+    return EncodeCertStore(ctx, pkt, cert);
 }
 
 #ifdef HITLS_TLS_PROTO_TLS13

@@ -22,7 +22,6 @@
 #include "cipher_suite.h"
 #include "tls_config.h"
 #include "hitls_error.h"
-#include "custom_extensions.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -311,6 +310,12 @@ struct TlsCtx {
     bool needQueryMtu;                      /* whether need query mtu from bio */
     bool mtuModified;                       /* whether mtu has been modified */
 };
+
+typedef struct {
+    uint8_t **buf;       // &hsCtx->msgbuf
+    uint32_t *bufLen;    // &hsCtx->bufferLen
+    uint32_t *bufOffset; // &hsCtx->msgLen
+} PackPacket;
 
 #define LIBCTX_FROM_CTX(ctx) ((ctx == NULL) ? NULL : (ctx)->config.tlsConfig.libCtx)
 #define ATTRIBUTE_FROM_CTX(ctx) ((ctx == NULL) ? NULL : (ctx)->config.tlsConfig.attrName)

@@ -147,7 +147,7 @@ int32_t ClientSendClientHelloProcess(TLS_Ctx *ctx)
         }
 
         ctx->negotiatedInfo.clientVersion = ctx->config.tlsConfig.maxVersion;
-        ret = HS_PackMsg(ctx, CLIENT_HELLO, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, CLIENT_HELLO);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15626, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "pack client hello fail.", 0, 0, 0, 0);
@@ -609,7 +609,7 @@ int32_t Tls13ClientSendClientHelloProcess(TLS_Ctx *ctx)
         ctx->negotiatedInfo.clientVersion = HITLS_VERSION_TLS12;
         /* The packed message is placed in the hsCtx->msgBuf. The length of the packed message is hsCtx->msgLen,
          * including the CH message header and body */
-        ret = HS_PackMsg(ctx, CLIENT_HELLO, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, CLIENT_HELLO);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15633, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "pack tls1.3 client hello fail.", 0, 0, 0, 0);

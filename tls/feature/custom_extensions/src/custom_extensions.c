@@ -32,6 +32,7 @@
 #include "bsl_sal.h"
 #include "custom_extensions.h"
 #include "alert.h"
+#include "pack.h"
 
 bool IsPackNeedCustomExtensions(CustomExtMethods *exts, uint32_t context)
 {
@@ -180,20 +181,18 @@ uint32_t HITLS_AddCustomExtension(HITLS_Ctx *ctx, const HITLS_CustomExtParams *p
     return HITLS_CFG_AddCustomExtension(&(ctx->config.tlsConfig), params);
 }
 
-int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *len, uint32_t context,
+int32_t PackCustomExtensions(const struct TlsCtx *ctx, PackPacket *pkt, uint32_t context,
     HITLS_CERT_X509 *cert, uint32_t certIndex)
 {
-    uint32_t offset = 0u;
     uint32_t alert = 0u;
 
-    if (ctx == NULL || buf == NULL || len == NULL) {
+    if (ctx == NULL) {
         return HITLS_NULL_INPUT;
     }
 
     CustomExtMethods *exts = CUSTOM_EXT_FROM_CTX(ctx);
     CustomExtMethod *meth = NULL;
     if (exts == NULL) {
-        *len = 0;
         return HITLS_SUCCESS;
     }
 
@@ -218,28 +217,31 @@ int32_t PackCustomExtensions(const struct TlsCtx *ctx, uint8_t *buf, uint32_t bu
         if (ret == HITLS_ADD_CUSTOM_EXTENSION_RET_PASS) {
             continue;
         }
-        if (outLen >= UINT16_MAX || (bufLen - offset < outLen + sizeof(uint16_t) + sizeof(uint16_t))) {
+        if (outLen >= UINT16_MAX) {
             if (meth->freeCb != NULL) {
                 meth->freeCb(ctx, meth->extType, context, out, meth->addArg);
             }
             return HITLS_PACK_NOT_ENOUGH_BUF_LENGTH;
         }
 
-        BSL_Uint16ToByte(meth->extType, &buf[offset]);
-        offset += sizeof(uint16_t);
+        ret = PackReserveBytes(pkt, sizeof(uint16_t) + sizeof(uint16_t) + outLen, NULL);
+        if (ret != HITLS_SUCCESS) {
+            if (meth->freeCb != NULL) {
+                meth->freeCb(ctx, meth->extType, context, out, meth->addArg);
+            }
+            return ret;
+        }
+        (void)PackAppendUint16ToBuf(pkt, meth->extType);
 
-                BSL_Uint16ToByte((uint16_t)outLen, &buf[offset]);
-                offset += sizeof(uint16_t);
-
-        (void)memcpy_s(&buf[offset], bufLen - offset, out, outLen);
-        offset += outLen;
+        (void)PackAppendUint16ToBuf(pkt, outLen);
+        
+        (void)PackAppendDataToBuf(pkt, out, outLen);
 
         if (meth->freeCb != NULL) {
             meth->freeCb(ctx, meth->extType, context, out, meth->addArg);
         }
     }
 
-    *len = offset;
     return HITLS_SUCCESS;
 }
 

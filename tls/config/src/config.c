@@ -50,7 +50,9 @@
 #ifdef HITLS_TLS_FEATURE_SECURITY
 #include "security.h"
 #endif
-
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+#include "custom_extensions.h"
+#endif
 #ifdef HITLS_TLS_CONFIG_CIPHER_SUITE
 /* Define the upper limit of the group type */
 #define MAX_GROUP_TYPE_NUM 128u
@@ -59,6 +61,11 @@
 #ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
 #define MAX_PLAINTEXT_LEN 16384u
 #define MIN_MAX_SEND_FRAGMENT 512u
+#endif
+
+#ifdef HITLS_TLS_FEATURE_REC_INBUFFER_SIZE
+#define MAX_INBUFFER_SIZE 18432u
+#define MIN_INBUFFER_SIZE 512u
 #endif
 
 void CFG_CleanConfig(HITLS_Config *config)
@@ -140,6 +147,9 @@ static void ShallowCopy(HITLS_Ctx *ctx, const HITLS_Config *srcConfig)
 #endif
 #ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
     destConfig->maxSendFragment = srcConfig->maxSendFragment;
+#endif
+#ifdef HITLS_TLS_FEATURE_REC_INBUFFER_SIZE
+    destConfig->recInbufferSize = srcConfig->recInbufferSize;
 #endif
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
     destConfig->isSupportRenegotiation = srcConfig->isSupportRenegotiation;
@@ -2191,6 +2201,33 @@ int32_t HITLS_CFG_GetMaxSendFragment(const HITLS_Config *config, uint16_t *maxSe
         return HITLS_NULL_INPUT;
     }
     *maxSendFragment = config->maxSendFragment;
+
+    return HITLS_SUCCESS;
+}
+#endif
+
+#ifdef HITLS_TLS_FEATURE_REC_INBUFFER_SIZE
+int32_t HITLS_CFG_SetRecInbufferSize(HITLS_Config *config, uint32_t recInbufferSize)
+{
+    if (config == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    if (recInbufferSize > MAX_INBUFFER_SIZE || recInbufferSize < MIN_INBUFFER_SIZE) {
+        BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_LENGTH);
+        return HITLS_CONFIG_INVALID_LENGTH;
+    }
+
+    config->recInbufferSize = recInbufferSize;
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_CFG_GetRecInbufferSize(const HITLS_Config *config, uint32_t *recInbufferSize)
+{
+    if (config == NULL || recInbufferSize == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    *recInbufferSize = config->recInbufferSize;
 
     return HITLS_SUCCESS;
 }
