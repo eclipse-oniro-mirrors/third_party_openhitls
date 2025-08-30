@@ -841,8 +841,8 @@ static int32_t CmpExtByCid(const void *pExt, const void *pCid)
 
 static int32_t PrintCrlReason(HITLS_X509_ExtEntry *extEntry, uint32_t layer, BSL_UIO *uio)
 {
-    HITLS_X509_RevokeExtReason reason = {0};
-    int32_t ret = HITLS_X509ParseCrlReason(extEntry, &reason);
+    int32_t reason = -1;
+    int32_t ret = HITLS_ParseCrlExtReason(extEntry, &reason);
     if (ret != HITLS_PKI_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -850,15 +850,15 @@ static int32_t PrintCrlReason(HITLS_X509_ExtEntry *extEntry, uint32_t layer, BSL
 
     RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "X509v3 CRL Reason Code: %s\n", extEntry->critical ? "critical" : "") != 0,
         HITLS_PRINT_ERR_CRL_TBS);
-    RETURN_RET_IF(BSL_PRINT_Fmt(layer + 1, uio, "%d\n", reason.reason) != 0, HITLS_PRINT_ERR_CRL_TBS);
+    RETURN_RET_IF(BSL_PRINT_Fmt(layer + 1, uio, "%d\n", reason) != 0, HITLS_PRINT_ERR_CRL_TBS);
 
     return HITLS_PKI_SUCCESS;
 }
 
 static int32_t PrintInvalidTime(HITLS_X509_ExtEntry *extEntry, uint32_t layer, BSL_UIO *uio)
 {
-    HITLS_X509_RevokeExtTime revokeExtTime = {0};
-    int32_t ret = HITLS_X509ParseInvalidTime(extEntry, &revokeExtTime);
+    BSL_TIME time = {0};
+    int32_t ret = HITLS_ParseCrlExtInvalidTime(extEntry, &time);
     if (ret != HITLS_PKI_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -866,7 +866,7 @@ static int32_t PrintInvalidTime(HITLS_X509_ExtEntry *extEntry, uint32_t layer, B
 
     RETURN_RET_IF(BSL_PRINT_Fmt(layer, uio, "Invalidity Date: %s\n", extEntry->critical ? "critical" : "") != 0,
         HITLS_PRINT_ERR_CRL_TBS);
-    RETURN_RET_IF(BSL_PRINT_Time(layer + 1, &revokeExtTime.time, uio) != 0, HITLS_PRINT_ERR_CRL_TBS);
+    RETURN_RET_IF(BSL_PRINT_Time(layer + 1, &time, uio) != 0, HITLS_PRINT_ERR_CRL_TBS);
 
     return HITLS_PKI_SUCCESS;
 }

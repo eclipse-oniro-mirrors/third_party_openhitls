@@ -251,14 +251,15 @@ EXIT:
 /* END_CASE */
 
 /**
- * @test SDV_BSL_OBJ_GetOidNumbericString_TC001
+ * @test SDV_BSL_OBJ_GetOIDNUMBERICSTRING_FUNC_TC001
  * @title Test converting an ASN.1 OID to its numeric representation
  * @expect success
  */
 /* BEGIN_CASE */
-void SDV_BSL_OBJ_GetOidNumbericString_TC001(Hex *str, char *expect)
+void SDV_BSL_OBJ_GetOIDNUMBERICSTRING_FUNC_TC001(Hex *str, char *expect)
 {
     char *oid = NULL;
+    TestMemInit();
     oid = BSL_OBJ_GetOidNumericString(str->x, str->len);
     ASSERT_TRUE(oid != NULL);
     ASSERT_EQ(memcmp(oid, expect, strlen(expect)), 0);
@@ -272,12 +273,12 @@ EXIT:
 /* END_CASE */
 
 /**
- * @test SDV_BSL_OBJ_GetOidNumbericString_TC002
+ * @test SDV_BSL_OBJ_GetOIDNUMBERICSTRING_FUNC_TC002
  * @title Test converting an ASN.1 OID to its numeric representation (Counterexample)
  * @expect success
  */
 /* BEGIN_CASE */
-void SDV_BSL_OBJ_GetOidNumbericString_TC002(Hex *str)
+void SDV_BSL_OBJ_GetOIDNUMBERICSTRING_FUNC_TC002(Hex *str)
 {
     ASSERT_TRUE(BSL_OBJ_GetOidNumericString(str->x, str->len) == NULL);
 EXIT:

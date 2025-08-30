@@ -33,7 +33,7 @@
 HITLS_CERT_MgrMethod g_certMgrMethod = {0};
 static bool IsMethodValid(const HITLS_CERT_MgrMethod *method)
 {
-    if (method == NULL ||
+    bool valid = method == NULL ||
         method->certStoreNew == NULL ||
         method->certStoreDup == NULL ||
         method->certStoreFree == NULL ||
@@ -51,7 +51,8 @@ static bool IsMethodValid(const HITLS_CERT_MgrMethod *method)
         method->keyCtrl == NULL ||
         method->createSign == NULL ||
         method->verifySign == NULL ||
-        method->checkPrivateKey == NULL) {
+        method->checkPrivateKey == NULL;
+    if (valid) {
         return false;
     }
     return true;

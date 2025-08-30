@@ -183,14 +183,15 @@ int32_t BSL_PRINT_Number(uint32_t layer, const char *title, const uint8_t *data,
         return BSL_INVALID_ARG;
     }
 
+    uint32_t temp = layer;
     if (dataLen > (sizeof(uint64_t))) {
         if (title != NULL) {
-            if (BSL_PRINT_Fmt(layer++, uio, "%s:\n", title) != 0) {
+            if (BSL_PRINT_Fmt(temp++, uio, "%s:\n", title) != 0) {
                 BSL_ERR_PUSH_ERROR(BSL_PRINT_ERR_NUMBER);
                 return BSL_PRINT_ERR_NUMBER;
             }
         }
-        return BSL_PRINT_Hex(layer, false, data, dataLen, uio);
+        return BSL_PRINT_Hex(temp, false, data, dataLen, uio);
     }
 
     uint64_t num = 0;

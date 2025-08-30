@@ -1208,6 +1208,15 @@ static int32_t SetExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t 
             return HITLS_X509_ERR_INVALID_PARAM;
     }
 }
+
+int32_t HITLS_X509_SetGeneralNames(HITLS_X509_ExtEntry *extEntry, void *val)
+{
+    if (extEntry == NULL || val == NULL) {
+        return BSL_NULL_INPUT;
+    }
+
+    return SetExtGeneralNames(NULL, extEntry, val);
+}
 #endif
 
 int32_t HITLS_X509_GetExt(BslList *ext, BslCid cid, BSL_Buffer *val, uint32_t expectLen, DecodeExtCb decodeExt)
@@ -1344,15 +1353,6 @@ int32_t HITLS_X509_ExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t
     }
 
     return X509_ExtCtrl(ext, cmd, val, valLen);
-}
-
-int32_t HITLS_X509_SetGeneralNames(HITLS_X509_ExtEntry *extEntry, void *val)
-{
-    if (extEntry == NULL || val == NULL) {
-        return BSL_NULL_INPUT;
-    }
-
-    return SetExtGeneralNames(NULL, extEntry, val);
 }
 
 void HITLS_X509_ExtEntryFree(HITLS_X509_ExtEntry *entry)
