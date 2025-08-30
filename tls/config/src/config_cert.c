@@ -868,3 +868,23 @@ int32_t HITLS_CFG_ClearVerifyCrls(HITLS_Config *config)
 
     return SAL_CERT_StoreCtrl(config, certStore, CERT_STORE_CTRL_CLEAR_CRL_LIST, NULL, NULL);
 }
+
+int32_t HITLS_CFG_FreeCert(HITLS_Config *config, HITLS_CERT_X509 *cert)
+{
+    if (config == NULL || config->certMgrCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    SAL_CERT_X509Free(cert);
+    return HITLS_SUCCESS;
+}
+
+int32_t HITLS_CFG_FreeKey(HITLS_Config *config, HITLS_CERT_Key *key)
+{
+    if (config == NULL || config->certMgrCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    SAL_CERT_KeyFree(config->certMgrCtx, key);
+    return HITLS_SUCCESS;
+}

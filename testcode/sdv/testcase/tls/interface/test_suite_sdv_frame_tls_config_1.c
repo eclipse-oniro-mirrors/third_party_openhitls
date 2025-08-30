@@ -1347,8 +1347,8 @@ void UT_HITLS_CFG_REMOVE_CERTANDKEY_API_TC001(int version, char *certFile, char 
     ASSERT_TRUE(HITLS_CFG_GetPrivateKey(tlsConfig) == NULL);
 
 EXIT:
+    HITLS_CFG_FreeCert(tlsConfig, cert);
     HITLS_CFG_FreeConfig(tlsConfig);
-    SAL_CERT_X509Free(cert);
 }
 /* END_CASE */
 

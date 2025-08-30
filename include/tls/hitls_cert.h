@@ -947,6 +947,29 @@ int32_t HITLS_LoadCrlBuffer(HITLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen,
  */
 int32_t HITLS_ClearVerifyCrls(HITLS_Ctx *ctx);
 
+/**
+ * @ingroup hitls_cert
+ * @brief   Release the certificate.
+ *
+ * @param   config [IN] Config handle
+ * @param   cert [IN] X509 certificate
+ *
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_FreeCert(HITLS_Config *config, HITLS_CERT_X509 *cert);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Release the key.
+ *
+ * @param   config [IN] Config handle
+ * @param   key [IN] private key
+ *
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_FreeKey(HITLS_Config *config, HITLS_CERT_Key *key);
 #ifdef __cplusplus
 }
 #endif
