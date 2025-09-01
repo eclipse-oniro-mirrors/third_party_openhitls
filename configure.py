@@ -484,8 +484,8 @@ class CMakeGenerator:
 
     def _gen_exe_cmake(self, exe_name, inc_dirs, exe_obj):
         lang = self._cfg_feature.executes[exe_name].get('lang', 'C')
-        definitions = '"${CMAKE_C_FLAGS} -DHITLS_VERSION=\'\\"%s\\"\' %s"' % (
-            self._args.hitls_version, '-D__FILENAME__=\'\\"$(notdir $(subst .o,,$@))\\"\'')
+        definitions = '"${CMAKE_C_FLAGS} -DHITLS_VERSION=\'\\"%s\\"\' %s -DCMVP_INTEGRITYKEY=\'\\"%s\\"\'"' % (
+            self._args.hitls_version, '-D__FILENAME__=\'\\"$(notdir $(subst .o,,$@))\\"\'', self._args.hkey)
         cmake = 'project({} {})\n\n'.format(exe_name, lang)
         cmake += self._gen_cmd_cmake('set', 'CMAKE_C_FLAGS', '${CC_ALL_OPTIONS}')
         cmake += self._gen_cmd_cmake('set', 'CMAKE_C_FLAGS', definitions)
@@ -520,6 +520,9 @@ class CMakeGenerator:
         cmake += self._gen_cmd_cmake('target_link_options', '{} PRIVATE'.format(exe_name), '${EXE_LNK_FLAGS}')
 
         cmake += 'install(TARGETS %s DESTINATION ${CMAKE_INSTALL_PREFIX})\n' % exe_name
+        cmake += 'install(CODE "execute_process(COMMAND openssl dgst -hmac \\\"%s\\\" -sm3 -out %s.hmac %s)")\n' % (self._args.hkey, exe_name, exe_name)
+        # Install the hmac file to the output directory.
+        cmake += 'install(CODE "execute_process(COMMAND cp %s.hmac ${CMAKE_INSTALL_PREFIX}/%s.hmac)")\n' % (exe_name, exe_name)
 
         exe_obj['cmake'] = cmake
         exe_obj['targets'] = [exe_name]

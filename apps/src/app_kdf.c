@@ -30,6 +30,7 @@
 #include "app_help.h"
 #include "app_print.h"
 #include "app_provider.h"
+#include "app_sm.h"
 #include "app_utils.h"
 
 typedef enum OptionChoice {
@@ -46,7 +47,10 @@ typedef enum OptionChoice {
     HITLS_APP_OPT_KDF_HEXSALT,
     HITLS_APP_OPT_KDF_ITER,
     HITLS_APP_OPT_KDF_BINARY,
-    HITLS_APP_PROV_ENUM
+    HITLS_APP_PROV_ENUM,
+#ifdef HITLS_APP_SM_MODE
+    HITLS_SM_OPTIONS_ENUM,
+#endif
 } HITLSOptType;
 
 const HITLS_CmdOption g_kdfOpts[] = {
@@ -66,6 +70,9 @@ const HITLS_CmdOption g_kdfOpts[] = {
         "Input salt in hexadecimal format (e.g.: 0xAABBCCDD)."},
     {"iter", HITLS_APP_OPT_KDF_ITER, HITLS_APP_OPT_VALUETYPE_UINT, "Number of iterations for KDF computation."},
     HITLS_APP_PROV_OPTIONS,
+#ifdef HITLS_APP_SM_MODE
+    HITLS_SM_OPTIONS,
+#endif
     {"kdfalg...", HITLS_APP_OPT_KDF_ALG, HITLS_APP_OPT_VALUETYPE_STRING, "Specify KDF algorithm (e.g.: pbkdf2)."},
     {NULL}};
 
@@ -82,6 +89,9 @@ typedef struct {
     uint32_t iter;
     AppProvider *provider;
     uint32_t isBinary;
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param *smParam;
+#endif
 } KdfOpt;
 
 typedef int32_t (*KdfOptHandleFunc)(KdfOpt *);
@@ -198,10 +208,13 @@ static int32_t ParseKdfOpt(KdfOpt *kdfOpt)
                 break;
             }
         }
-        HITLS_APP_PROV_CASES(optType, kdfOpt->provider)
         if (ret != HITLS_APP_SUCCESS) {
             return ret;
         }
+        HITLS_APP_PROV_CASES(optType, kdfOpt->provider)
+#ifdef HITLS_APP_SM_MODE
+        HITLS_APP_SM_CASES(optType, kdfOpt->smParam);
+#endif
     }
     return HITLS_APP_SUCCESS;
 }
@@ -228,8 +241,27 @@ static int32_t GetKdfAlg(KdfOpt *kdfOpt)
     return HITLS_APP_SUCCESS;
 }
 
+static int32_t CheckSmParam(KdfOpt *kdfOpt)
+{
+#ifdef HITLS_APP_SM_MODE
+    if (kdfOpt->smParam->smTag == 1) {
+        if (kdfOpt->smParam->workPath == NULL) {
+            AppPrintError("kdf: The workpath is not specified.\n");
+            return HITLS_APP_OPT_VALUE_INVALID;
+        }
+    }
+#else
+    (void)kdfOpt;
+#endif
+    return HITLS_APP_SUCCESS;
+}
+
 static int32_t CheckParam(KdfOpt *kdfOpt)
 {
+    int32_t ret = CheckSmParam(kdfOpt);
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
     if (kdfOpt->kdfId == CRYPT_KDF_PBKDF2) {
         if (kdfOpt->pass == NULL && kdfOpt->hexPass == NULL) {
             AppPrintError("kdf: No pass entered.\n");
@@ -266,9 +298,6 @@ static int32_t CheckParam(KdfOpt *kdfOpt)
 
 static CRYPT_EAL_KdfCTX *InitAlgKdf(KdfOpt *kdfOpt)
 {
-    if (HITLS_APP_LoadProvider(kdfOpt->provider->providerPath, kdfOpt->provider->providerName) != HITLS_APP_SUCCESS) {
-        return NULL;
-    }
     CRYPT_EAL_KdfCTX *ctx = CRYPT_EAL_ProviderKdfNewCtx(APP_GetCurrent_LibCtx(), kdfOpt->kdfId,
         kdfOpt->provider->providerAttr);
     if (ctx == NULL) {
@@ -360,7 +389,7 @@ static int32_t Pbkdf2Params(CRYPT_EAL_KdfCTX *ctx, BSL_Param *params, KdfOpt *kd
         BSL_SAL_FREE(salt);
     }
     if (kdfOpt->pass == NULL) {
-        BSL_SAL_FREE(pass);
+        BSL_SAL_ClearFree(pass, passLen);
     }
     return ret;
 }
@@ -385,7 +414,9 @@ static int32_t KdfResult(CRYPT_EAL_KdfCTX *ctx, KdfOpt *kdfOpt)
         (void)AppPrintError("PbkdfParamSet failed. \n");
         return ret;
     }
-
+#ifdef HITLS_APP_SM_MODE
+    kdfOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
+#endif
     out = BSL_SAL_Malloc(outLen);
     if (out == NULL) {
         (void)AppPrintError("kdf: Allocate memory failed. \n");
@@ -394,13 +425,13 @@ static int32_t KdfResult(CRYPT_EAL_KdfCTX *ctx, KdfOpt *kdfOpt)
     ret = CRYPT_EAL_KdfDerive(ctx, out, outLen);
     if (ret != CRYPT_SUCCESS) {
         (void)AppPrintError("KdfDeriv failed. ERROR:%d\n", ret);
-        BSL_SAL_FREE(out);
+        BSL_SAL_ClearFree(out, outLen);
         return HITLS_APP_CRYPTO_FAIL;
     }
 
     BSL_UIO *fileOutUio = HITLS_APP_UioOpen(kdfOpt->outFile, 'w', 0);
     if (fileOutUio == NULL) {
-        BSL_SAL_FREE(out);
+        BSL_SAL_ClearFree(out, outLen);
         (void)AppPrintError("kdf:UioOpen failed\n");
         return HITLS_APP_UIO_FAIL;
     }
@@ -414,7 +445,7 @@ static int32_t KdfResult(CRYPT_EAL_KdfCTX *ctx, KdfOpt *kdfOpt)
     }
 
     BSL_UIO_Free(fileOutUio);
-    BSL_SAL_FREE(out);
+    BSL_SAL_ClearFree(out, outLen);
     return ret;
 }
 
@@ -422,27 +453,34 @@ int32_t HITLS_KdfMain(int argc, char *argv[])
 {
     int32_t mainRet = HITLS_APP_SUCCESS;
     AppProvider appProvider = {"default", NULL, "provider=default"};
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
+    AppInitParam initParam = {&appProvider, &smParam};
+    KdfOpt kdfOpt = {CRYPT_MAC_HMAC_SM3, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL, 1024, &appProvider, 0, &smParam};
+#else
+    AppInitParam initParam = {&appProvider};
     KdfOpt kdfOpt = {CRYPT_MAC_HMAC_SHA256, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL, 1000, &appProvider, 0};
+#endif
     CRYPT_EAL_KdfCTX *ctx = NULL;
     do {
         mainRet = HITLS_APP_OptBegin(argc, argv, g_kdfOpts);
         if (mainRet != HITLS_APP_SUCCESS) {
-            HITLS_APP_OptEnd();
             (void)AppPrintError("error in opt begin.\n");
             break;
         }
         mainRet = ParseKdfOpt(&kdfOpt);
         if (mainRet != HITLS_APP_SUCCESS) {
-            HITLS_APP_OptEnd();
             break;
         }
         mainRet = GetKdfAlg(&kdfOpt);
         if (mainRet != HITLS_APP_SUCCESS) {
-            HITLS_APP_OptEnd();
             break;
         }
-        HITLS_APP_OptEnd();
         mainRet = CheckParam(&kdfOpt);
+        if (mainRet != HITLS_APP_SUCCESS) {
+            break;
+        }
+        mainRet = HITLS_APP_Init(&initParam);
         if (mainRet != HITLS_APP_SUCCESS) {
             break;
         }
@@ -454,6 +492,7 @@ int32_t HITLS_KdfMain(int argc, char *argv[])
         mainRet = KdfResult(ctx, &kdfOpt);
     } while (0);
     CRYPT_EAL_KdfFreeCtx(ctx);
+    HITLS_APP_Deinit(&initParam, mainRet);
     HITLS_APP_OptEnd();
     return mainRet;
 }

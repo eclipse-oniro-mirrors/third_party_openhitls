@@ -122,28 +122,6 @@ static double IgammaSeries(double a, double x)
     return (sum / a) * factor;
 }
 
-static int32_t MonobitTest(const uint8_t *data, uint32_t len)
-{
-    double s = 0.0;
-    double v;
-    double pValue;
-    for (uint32_t i = 0; i < len; i++) {
-        s += 2 * (data[i]) - 1; // convert 0, 1 to -1, 1
-    }
-    v = fabs(s) / sqrt(len);
-    pValue = erfc((v / sqrt(2.0)));
-    return pValue >= ALPHA ? CRYPT_SUCCESS : CRYPT_CMVP_RANDOMNESS_ERR;
-}
-
-static int32_t CMVP_MonobitTest(const uint8_t *data, uint32_t len)
-{
-    if (data == NULL) {
-        return CRYPT_CMVP_RANDOMNESS_ERR;
-    }
-    // length of data must be larger than 100 bits in GM/T 0005-2016
-    return len > 100 ? MonobitTest(data, len) : CRYPT_CMVP_RANDOMNESS_ERR;
-}
-
 static uint8_t DataToIndex(const uint8_t* data, const int32_t blocklen)
 {
     uint8_t s = 0;
@@ -175,26 +153,6 @@ static int32_t PokerTest(const uint8_t *data, uint32_t len, int32_t blocklen)
     return pValue >= ALPHA ? CRYPT_SUCCESS : CRYPT_CMVP_RANDOMNESS_ERR;
 }
 
-static int32_t CMVP_PokerTest(const uint8_t *data, uint32_t len)
-{
-    if (data == NULL || len == 0) {
-        return CRYPT_CMVP_RANDOMNESS_ERR;
-    }
-    // blocklen can be 2, 4 or 8 in GM/T 0005-2016, blocklen can't be greater than 8.
-    for (int blocklen = 8; blocklen >= 2; blocklen -= 2) {
-        // [n/m] >= 5 * 2^m in GM/T 0005-2016 chart B.1
-        if ((uint32_t)(len / blocklen) >= 5 * pow(2, blocklen)) {
-            return PokerTest(data, len, blocklen);
-        }
-    }
-    return  CRYPT_CMVP_RANDOMNESS_ERR;
-}
-
-typedef struct {
-    int32_t (*testFunc)(const uint8_t *data, uint32_t len);
-    char *name;
-} DRBG_TEST;
-
 int32_t CRYPT_CMVP_RandomnessTest(const uint8_t *data, const uint32_t len)
 {
     int32_t ret = CRYPT_SUCCESS;
@@ -205,17 +163,8 @@ int32_t CRYPT_CMVP_RandomnessTest(const uint8_t *data, const uint32_t len)
     if (bits == NULL) {
         return  CRYPT_CMVP_RANDOMNESS_ERR;
     }
-    const DRBG_TEST testList[] = {
-        {CMVP_MonobitTest, "BIT FREQUENCY TEST"},
-        {CMVP_PokerTest, "POKER TEST"},
-    };
-
-    for (uint32_t i = 0; i < sizeof(testList) / sizeof(testList[0]); i++) {
-        if (testList[i].testFunc != NULL && testList[i].testFunc(bits, len * BITSPERBYTE) != CRYPT_SUCCESS) {
-            ret = CRYPT_CMVP_RANDOMNESS_ERR;
-            break;
-        }
-    }
+    // GM/T 0062-2018 Table 8: perform Poker test with parameter m = 2
+    ret = PokerTest(bits, len * BITSPERBYTE, 2);
     BSL_SAL_FREE(bits);
     return ret;
 }

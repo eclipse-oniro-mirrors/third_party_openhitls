@@ -48,3 +48,6 @@ UT_HITLS_APP_KDF_NormalOpt_TC001:"kdf -mac hmac-sm3 -hexpass 0x70617373776f7264 
 
 UT_HITLS_APP_kdf_TC002
 UT_HITLS_APP_kdf_TC002:
+
+sm mode pbkdf2 with hamc-sm3
+UT_HITLS_APP_kdf_TC003:"kdf -sm -workpath ./kdf_workpath -mac hmac-sm3 -hexpass 0x70617373776f7264 -hexsalt 0x73616c74 -keylen 20 -out ./kdf.out -iter 1 pbkdf2":"./kdf.out":"4612f922a1fdcefaf4312fc6f8f3322b489cbf24"

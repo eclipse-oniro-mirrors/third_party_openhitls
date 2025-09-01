@@ -29,6 +29,8 @@
 #include "app_print.h"
 #include "app_provider.h"
 #include "app_utils.h"
+#include "app_sm.h"
+#include "app_keymgmt.h"
 
 #define MAX_BUFSIZE (1024 * 8)  // Indicates the length of a single mac during mac calculation.
 #define IS_SUPPORT_GET_EOF 1
@@ -48,7 +50,10 @@ typedef enum OptionChoice {
     HITLS_APP_OPT_MAC_IV,
     HITLS_APP_OPT_MAC_HEXIV,
     HITLS_APP_OPT_MAC_TAGLEN,
-    HITLS_APP_PROV_ENUM
+    HITLS_APP_PROV_ENUM,
+#ifdef HITLS_APP_SM_MODE
+    HITLS_SM_OPTIONS_ENUM,
+#endif
 } HITLSOptType;
 
 const HITLS_CmdOption g_macOpts[] = {
@@ -71,6 +76,9 @@ const HITLS_CmdOption g_macOpts[] = {
     {"taglen", HITLS_APP_OPT_MAC_TAGLEN, HITLS_APP_OPT_VALUETYPE_INT,
         "Set authentication tag length."},
     HITLS_APP_PROV_OPTIONS,
+#ifdef HITLS_APP_SM_MODE
+    HITLS_SM_OPTIONS,
+#endif
     {NULL}};
 
 typedef struct {
@@ -88,6 +96,9 @@ typedef struct {
     char *hexIv;
     uint32_t tagLen;
     AppProvider *provider;
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param *smParam;
+#endif
 } MacOpt;
 
 typedef int32_t (*MacOptHandleFunc)(MacOpt *);
@@ -200,6 +211,9 @@ static int32_t ParseMacOpt(MacOpt *macOpt)
             }
         }
         HITLS_APP_PROV_CASES(optType, macOpt->provider);
+#ifdef HITLS_APP_SM_MODE
+        HITLS_APP_SM_CASES(optType, macOpt->smParam);
+#endif
         if (ret != HITLS_APP_SUCCESS) {
             return ret;
         }
@@ -212,12 +226,21 @@ static int32_t ParseMacOpt(MacOpt *macOpt)
     return HITLS_APP_SUCCESS;
 }
 
-static int32_t CheckParam(MacOpt *macOpt)
+static int32_t CheckKeyParam(MacOpt *macOpt)
 {
-    if (macOpt->algId < 0) {
-        macOpt->algId = CRYPT_MAC_HMAC_SHA256;
+#ifdef HITLS_APP_SM_MODE
+    if (macOpt->smParam->smTag == 1) {
+        if (macOpt->smParam->uuid == NULL) {
+            AppPrintError("mac: The uuid is not specified.\n");
+            return HITLS_APP_OPT_VALUE_INVALID;
+        }
+        if (macOpt->smParam->workPath == NULL) {
+            AppPrintError("mac: The workpath is not specified.\n");
+            return HITLS_APP_OPT_VALUE_INVALID;
+        }
+        return HITLS_APP_SUCCESS;
     }
-
+#endif
     if (macOpt->key == NULL && macOpt->hexKey == NULL) {
         AppPrintError("mac: No key entered.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
@@ -226,7 +249,16 @@ static int32_t CheckParam(MacOpt *macOpt)
         AppPrintError("mac: Cannot specify both key and hexkey.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
-    
+    return HITLS_APP_SUCCESS;
+}
+
+static int32_t CheckParam(MacOpt *macOpt)
+{
+    int32_t ret = CheckKeyParam(macOpt);
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
+    macOpt->algId = macOpt->algId < 0 ? CRYPT_MAC_HMAC_SHA256 : macOpt->algId;
     if (macOpt->algId >= CRYPT_MAC_GMAC_AES128 && macOpt->algId <= CRYPT_MAC_GMAC_AES256) {
         if (macOpt->iv == NULL && macOpt->hexIv == NULL) {
             AppPrintError("mac: No iv entered.\n");
@@ -256,28 +288,64 @@ static int32_t CheckParam(MacOpt *macOpt)
     return HITLS_APP_SUCCESS;
 }
 
+#ifdef HITLS_APP_SM_MODE
+static int32_t GetKeyFromP12(MacOpt *macOpt, uint8_t **key, uint32_t *keyLen)
+{
+    HITLS_APP_KeyInfo keyInfo = {0};
+    int32_t ret = HITLS_APP_FindKey(macOpt->provider, macOpt->smParam, macOpt->algId, &keyInfo);
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("Failed to find key, ret: 0x%08x\n", ret);
+        return ret;
+    }
+    *key = (uint8_t*)BSL_SAL_Dump(keyInfo.key, keyInfo.keyLen);
+    if (*key == NULL) {
+        (void)BSL_SAL_CleanseData(keyInfo.key, keyInfo.keyLen);
+        AppPrintError("mac: Failed to dump key.\n");
+        return HITLS_APP_MEM_ALLOC_FAIL;
+    }
+    *keyLen = keyInfo.keyLen;
+    (void)BSL_SAL_CleanseData(keyInfo.key, keyInfo.keyLen);
+    return HITLS_APP_SUCCESS;
+}
+#endif
+
+static int32_t GetMacKey(MacOpt *macOpt, uint8_t **key, uint32_t *keyLen)
+{
+#ifdef HITLS_APP_SM_MODE
+    if (macOpt->smParam->smTag == 1) {
+        return GetKeyFromP12(macOpt, key, keyLen);
+    }
+#endif
+    if (macOpt->key != NULL) {
+        *key = (uint8_t*)BSL_SAL_Dump(macOpt->key, strlen(macOpt->key));
+        if (*key == NULL) {
+            AppPrintError("mac: Failed to dump key.\n");
+            return HITLS_APP_MEM_ALLOC_FAIL;
+        }
+        *keyLen = strlen(macOpt->key);
+        return HITLS_APP_SUCCESS;
+    } else if (macOpt->hexKey != NULL) {
+        int32_t ret = HITLS_APP_HexToByte(macOpt->hexKey, key, keyLen);
+        if (ret == HITLS_APP_OPT_VALUE_INVALID) {
+            AppPrintError("mac:Invalid key: %s.\n", macOpt->hexKey);
+            return ret;
+        }
+        return HITLS_APP_SUCCESS;
+    }
+    return HITLS_APP_OPT_VALUE_INVALID;
+}
+
 static CRYPT_EAL_MacCtx *InitAlgMac(MacOpt *macOpt)
 {
     uint8_t *key = NULL;
-    uint32_t keyLen = MAC_MAX_KEY_LEN;
-    int32_t ret;
+    uint32_t keyLen = 0;
 
-    if (macOpt->key != NULL) {
-        keyLen = strlen((const char*)macOpt->key);
-        key = (uint8_t*)macOpt->key;
-    } else if (macOpt->hexKey != NULL) {
-        ret = HITLS_APP_HexToByte(macOpt->hexKey, &key, &keyLen);
-        if (ret == HITLS_APP_OPT_VALUE_INVALID) {
-            AppPrintError("mac:Invalid key: %s.\n", macOpt->hexKey);
-            return NULL;
-        }
+    int32_t ret = GetMacKey(macOpt, &key, &keyLen);
+    if (ret != HITLS_APP_SUCCESS) {
+        return NULL;
     }
     CRYPT_EAL_MacCtx *ctx = NULL;
     do {
-        ret = HITLS_APP_LoadProvider(macOpt->provider->providerPath, macOpt->provider->providerName);
-        if (ret != HITLS_APP_SUCCESS) {
-            break;
-        }
         ctx = CRYPT_EAL_ProviderMacNewCtx(APP_GetCurrent_LibCtx(), macOpt->algId,
             macOpt->provider->providerAttr);  // creating an MAC Context
         if (ctx == NULL) {
@@ -292,9 +360,7 @@ static CRYPT_EAL_MacCtx *InitAlgMac(MacOpt *macOpt)
             break;
         }
     } while (0);
-    if (macOpt->hexKey != NULL) {
-        BSL_SAL_FREE(key);
-    }
+    BSL_SAL_ClearFree(key, keyLen);
     return ctx;
 }
 
@@ -421,6 +487,11 @@ static int32_t GetReadBuf(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
 
 static int32_t MacResult(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
 {
+#ifdef HITLS_APP_SM_MODE
+    if (macOpt->smParam->smTag == 1) {
+        macOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
+    }
+#endif
     uint8_t *outBuf = NULL;
     BSL_UIO *fileWriteUio = HITLS_APP_UioOpen(macOpt->outFile, 'w', 0);  // overwrite the original content
     BSL_UIO_SetIsUnderlyingClosedByUio(fileWriteUio, true);
@@ -460,47 +531,66 @@ static int32_t MacResult(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
     return ret;
 }
 
+static int32_t HandleMac(MacOpt *macOpt)
+{
+    CRYPT_EAL_MacCtx *ctx = NULL;
+    int32_t ret = HITLS_APP_SUCCESS;
+    do {
+        ctx = InitAlgMac(macOpt);
+        if (ctx == NULL) {
+            ret = HITLS_APP_CRYPTO_FAIL;
+            break;
+        }
+        ret = MacParamSet(ctx, macOpt);
+        if (ret != CRYPT_SUCCESS) {
+            (void)AppPrintError("mac:Failed to set mac params\n");
+            break;
+        }
+        ret = GetReadBuf(ctx, macOpt);
+        if (ret != HITLS_APP_SUCCESS) {
+            break;
+        }
+        ret = MacResult(ctx, macOpt);
+    } while (0);
+    CRYPT_EAL_MacDeinit(ctx);  // algorithm release
+    CRYPT_EAL_MacFreeCtx(ctx);
+    return ret;
+}
+
 int32_t HITLS_MacMain(int argc, char *argv[])
 {
     int32_t mainRet = HITLS_APP_SUCCESS;
     AppProvider appProvider = {"default", NULL, "provider=default"};
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
+    AppInitParam initParam = {&appProvider, &smParam};
+    MacOpt macOpt = {CRYPT_MAC_HMAC_SM3, 0, 0, NULL, {0}, 0, NULL, NULL, NULL, 0, NULL, NULL, 0, &appProvider,
+        &smParam};
+#else
+    AppInitParam initParam = {&appProvider};
     MacOpt macOpt = {CRYPT_MAC_HMAC_SHA256, 0, 0, NULL, {0}, 0, NULL, NULL, NULL, 0, NULL, NULL, 0, &appProvider};
-    CRYPT_EAL_MacCtx *ctx = NULL;
+#endif
     do {
         mainRet = HITLS_APP_OptBegin(argc, argv, g_macOpts);
         if (mainRet != HITLS_APP_SUCCESS) {
-            HITLS_APP_OptEnd();
             (void)AppPrintError("error in opt begin.\n");
             break;
         }
         mainRet = ParseMacOpt(&macOpt);
         if (mainRet != HITLS_APP_SUCCESS) {
-            HITLS_APP_OptEnd();
             break;
         }
-        HITLS_APP_OptEnd();
         mainRet = CheckParam(&macOpt);
         if (mainRet != HITLS_APP_SUCCESS) {
             break;
         }
-        ctx = InitAlgMac(&macOpt);
-        if (ctx == NULL) {
-            mainRet = HITLS_APP_CRYPTO_FAIL;
-            break;
-        }
-        mainRet = MacParamSet(ctx, &macOpt);
-        if (mainRet != CRYPT_SUCCESS) {
-            (void)AppPrintError("mac:Failed to set mac params\n");
-            break;
-        }
-        mainRet = GetReadBuf(ctx, &macOpt);
+        mainRet = HITLS_APP_Init(&initParam);
         if (mainRet != HITLS_APP_SUCCESS) {
             break;
         }
-        mainRet = MacResult(ctx, &macOpt);
+        mainRet = HandleMac(&macOpt);
     } while (0);
-    CRYPT_EAL_MacDeinit(ctx);  // algorithm release
-    CRYPT_EAL_MacFreeCtx(ctx);
+    HITLS_APP_Deinit(&initParam, mainRet);
     HITLS_APP_OptEnd();
     return mainRet;
 }

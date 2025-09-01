@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <securec.h>
 #include <string.h>
+#include <unistd.h>
 #include <linux/limits.h>
 #include "bsl_sal.h"
 #include "bsl_buffer.h"
@@ -29,11 +30,13 @@
 #include "crypt_eal_pkey.h"
 #include "crypt_eal_cipher.h"
 #include "crypt_eal_md.h"
+#include "crypt_eal_rand.h"
 #include "crypt_encode_decode_key.h"
 #include "app_print.h"
 #include "app_errno.h"
 #include "app_opt.h"
 #include "app_list.h"
+#include "app_sm.h"
 #include "hitls_pki_errno.h"
 
 #define DEFAULT_PEM_FILE_SIZE 1024U
@@ -918,4 +921,118 @@ int32_t HITLS_APP_HexToByte(const char *hex, uint8_t **bin, uint32_t *len)
 
     *bin = res;
     return HITLS_APP_SUCCESS;
+}
+
+int32_t HITLS_APP_HexToStr(const uint8_t *hex, size_t hexLen, char *str, size_t strMaxLen)
+{
+    if (str == NULL || strMaxLen < 2 * hexLen + 1) { // 2: one byte to two hex chars.
+        return HITLS_APP_INVALID_ARG;
+    }
+    const char *hexChars = "0123456789abcdef";
+    size_t pos = 0;
+
+    for (size_t i = 0; i < hexLen; ++i) {
+        str[pos++] = hexChars[(hex[i] >> 4) & 0xF]; // high 4 bits.
+        str[pos++] = hexChars[hex[i] & 0xF]; // low 4 bits.
+    }
+
+    str[pos] = '\0';
+    return HITLS_APP_SUCCESS;
+}
+
+int32_t HITLS_APP_StrToHex(const char *str, uint8_t *hex, uint32_t *hexLen)
+{
+    if (str == NULL || hex == NULL || hexLen == NULL) {
+        return HITLS_APP_INVALID_ARG;
+    }
+    size_t inLen = strlen(str);
+    if (inLen == 0 || inLen % 2 != 0 || *hexLen < inLen / 2) { // 2: one byte to two hex chars.
+        return HITLS_APP_INVALID_ARG;
+    }
+
+    // A group of 2 bytes
+    for (size_t i = 0; i < inLen; i += 2) {
+        // Formula for converting hex to int: (Hex% 32 + 9)% 25 = int, hexadecimal, 16: high 4 bits.
+        hex[i / 2] = ((uint8_t)str[i] % 32 + 9) % 25 * 16 + ((uint8_t)str[i + 1] % 32 + 9) % 25;
+    }
+    *hexLen = inLen / 2; // 2: one byte to two hex chars.
+    return HITLS_APP_SUCCESS;
+}
+
+static int32_t InitRand(AppInitParam *param)
+{
+#ifdef HITLS_APP_SM_MODE
+    pid_t pid = getpid();
+    char str[32] = {0};
+    int32_t len = sprintf_s(str, sizeof(str), "%d", pid);
+    if (len < 0) {
+        AppPrintError("Failed to set pid.\n");
+        return HITLS_APP_ERROR;
+    }
+    int32_t algId = param->smParam->smTag == 1 ? CRYPT_RAND_SM4_CTR_DF : CRYPT_RAND_SHA256;
+    int32_t ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), algId, param->provider->providerAttr,
+        (const uint8_t *)str, len, NULL);
+#else
+    int32_t ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), CRYPT_RAND_SHA256,
+        param->provider->providerAttr, NULL, 0, NULL);
+#endif
+    if (ret != CRYPT_SUCCESS) {
+        AppPrintError("Failed to init rand ctx, ret: 0x%08x.\n", ret);
+        return HITLS_APP_CRYPTO_FAIL;
+    }
+    return HITLS_APP_SUCCESS;
+}
+
+int32_t HITLS_APP_Init(AppInitParam *param)
+{
+    if (param == NULL) {
+        return HITLS_APP_INVALID_ARG;
+    }
+#ifdef HITLS_APP_SM_MODE
+    if (param->smParam->smTag == 1) {
+        param->smParam->status = HITLS_APP_SM_STATUS_INIT;
+    }
+#endif
+    int32_t ret = HITLS_APP_LoadProvider(param->provider->providerPath, param->provider->providerName);
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
+    ret = InitRand(param);
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
+#ifdef HITLS_APP_SM_MODE
+    if (param->smParam->smTag == 1) {
+        ret = HITLS_APP_SM_Init(param->provider, param->smParam->workPath, (char **)&param->smParam->password,
+            &param->smParam->status);
+        if (ret != HITLS_APP_SUCCESS) {
+            CRYPT_EAL_RandDeinitEx(APP_GetCurrent_LibCtx());
+            return ret;
+        }
+        param->smParam->passwordLen = strlen((const char *)param->smParam->password);
+        param->smParam->status = HITLS_APP_SM_STATUS_KEY_PARAMETER_INPUT;
+    }
+#endif
+    return HITLS_APP_SUCCESS;
+}
+
+void HITLS_APP_Deinit(AppInitParam *param, int32_t ret)
+{
+#ifdef HITLS_APP_SM_MODE
+    if (param != NULL && param->smParam != NULL && param->smParam->smTag == 1) {
+        if (ret != HITLS_APP_SUCCESS) {
+            param->smParam->status = HITLS_APP_SM_STATUS_ERROR;
+        }
+        if (param->smParam->password != NULL) {
+            BSL_SAL_ClearFree(param->smParam->password, param->smParam->passwordLen);
+            param->smParam->password = NULL;
+            param->smParam->passwordLen = 0;
+        }
+        param->smParam->status = HITLS_APP_SM_STATUS_CLOSE;
+    }
+#else
+    (void)param;
+    (void)ret;
+#endif
+    CRYPT_EAL_RandDeinitEx(APP_GetCurrent_LibCtx());
 }

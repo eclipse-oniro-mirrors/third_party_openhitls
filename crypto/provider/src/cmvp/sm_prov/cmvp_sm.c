@@ -134,4 +134,90 @@ int32_t CMVP_SmCheckIntegrity(void *libCtx, const char *attrName)
     return CMVP_CheckIntegrity(libCtx, attrName, CRYPT_MAC_HMAC_SM3);
 }
 
+static int32_t RandomSelftest(CRYPT_EAL_RndCtx *randCtx)
+{
+    // GM/T 0062-2018:
+    // Random number power-on self-test parameters:
+    // a) Test quantity: Collect 20 * 10^4 bits of random numbers, divided into 20 groups, each with 10^4 bits.
+    uint32_t groups = 20;
+    uint32_t bitsPerGroup = 10000;
+    // b) Test item: Poker test, parameter m=2.
+    // c) Test criteria: If 2 or more groups fail the test criteria, an alert is triggered indicating test failure.
+    //    One retry of random number collection and testing is allowed. If the repeated test still fails,
+    //    the product's random number generator is deemed to have failed.
+    uint32_t retry = 2;
+    uint32_t threshold = 2;
+    const uint32_t bytesPerGroup = (bitsPerGroup + 7) >> 3;
+    const uint32_t totalLen = groups * bytesPerGroup;
+
+    uint8_t *data = BSL_SAL_Malloc(totalLen);
+    if (data == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+
+    bool isSuccess = false;
+    for (uint32_t attempt = 0; attempt < retry; attempt++) {
+        int32_t ret = CRYPT_EAL_Drbgbytes(randCtx, data, totalLen);
+        if (ret != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(ret);
+            BSL_SAL_Free(data);
+            return ret;
+        }
+        uint32_t failCnt = 0;
+        for (uint32_t i = 0; i < groups; i++) {
+            ret = CRYPT_CMVP_RandomnessTest(data + i * bytesPerGroup, bytesPerGroup);
+            if (ret == CRYPT_SUCCESS) {
+                continue;
+            }
+            failCnt++;
+            if (failCnt >= threshold) {
+                break;
+            }
+        }
+        if (failCnt < threshold) {
+            isSuccess = true;
+            break;
+        }
+    }
+    BSL_SAL_Free(data);
+    return isSuccess ? CRYPT_SUCCESS : CRYPT_CMVP_RANDOMNESS_ERR;
+}
+
+static int32_t RandomStartupSelftest(void *libCtx, const char *attrName, int32_t algId)
+{
+    int32_t ret = CRYPT_SUCCESS;
+    CRYPT_EAL_RndCtx *randCtx = CRYPT_EAL_ProviderDrbgNewCtx(libCtx, algId, attrName, NULL);
+    if (randCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    int32_t selfTest = 0;
+    ret = CRYPT_EAL_DrbgCtrl(randCtx, CRYPT_CTRL_SET_SELFTEST_FLAG, &selfTest, sizeof(int32_t));
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        CRYPT_EAL_DrbgDeinit(randCtx);
+        return ret;
+    }
+    ret = CRYPT_EAL_DrbgInstantiate(randCtx, NULL, 0);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        CRYPT_EAL_DrbgDeinit(randCtx);
+        return ret;
+    }
+
+    ret = RandomSelftest(randCtx);
+    CRYPT_EAL_DrbgDeinit(randCtx);
+    return ret;
+}
+
+int32_t CMVP_SmRandomStartupSelftest(void *libCtx, const char *attrName)
+{
+    int32_t ret = RandomStartupSelftest(libCtx, attrName, CRYPT_RAND_SM3);
+    if (ret != CRYPT_SUCCESS) {
+        return ret;
+    }
+    return RandomStartupSelftest(libCtx, attrName, CRYPT_RAND_SM4_CTR_DF);
+}
+
 #endif /* HITLS_CRYPTO_CMVP_SM */

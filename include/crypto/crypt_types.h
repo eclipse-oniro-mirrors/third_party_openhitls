@@ -723,6 +723,7 @@ typedef enum {
     CRYPT_CTRL_GET_RESEED_TIME,
     CRYPT_CTRL_SET_PREDICTION_RESISTANCE,
     CRYPT_CTRL_GET_WORKING_STATUS,
+    CRYPT_CTRL_SET_SELFTEST_FLAG, /**<  Set the self test flag of drbg, 0: disable, 1: enable */
     CRYPT_CTRL_RAND_MAX = 0xff,
 } CRYPT_RandCtrl;
 

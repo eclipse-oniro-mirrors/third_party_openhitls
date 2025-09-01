@@ -42,6 +42,12 @@ int32_t CRYPT_SM_Selftest(BSL_Param *param)
     }
 
     ret = CMVP_SmKat(libCtx, CRYPT_EAL_SM_ATTR);
+    if (ret != CRYPT_SUCCESS) {
+        CRYPT_EAL_LibCtxFree(libCtx);
+        return ret;
+    }
+
+    ret = CMVP_SmRandomStartupSelftest(libCtx, CRYPT_EAL_SM_ATTR);
     CRYPT_EAL_LibCtxFree(libCtx);
     if (ret != CRYPT_SUCCESS) {
         return ret;

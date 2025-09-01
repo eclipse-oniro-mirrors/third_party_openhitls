@@ -39,6 +39,8 @@ int32_t CMVP_SmCheckIntegrity(void *libCtx, const char *attrName);
 
 bool CMVP_SmPkeyPct(void *ctx, int32_t algId);
 
+int32_t CMVP_SmRandomStartupSelftest(void *libCtx, const char *attrName);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

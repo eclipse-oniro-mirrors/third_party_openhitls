@@ -21,6 +21,8 @@
 #include "bsl_types.h"
 #include "crypt_eal_pkey.h"
 #include "app_conf.h"
+#include "app_provider.h"
+#include "app_sm.h"
 #include "hitls_csr_local.h"
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +32,8 @@ extern "C" {
 #define APP_MIN_PASS_LENGTH 1
 #define APP_FILE_MAX_SIZE_KB 256
 #define APP_FILE_MAX_SIZE (APP_FILE_MAX_SIZE_KB * 1024) // 256KB
+
+#define APP_MAX_PATH_LEN PATH_MAX
 
 #define DEFAULT_SALTLEN 16
 #define DEFAULT_ITCNT 2048
@@ -211,6 +215,21 @@ int32_t HITLS_APP_PrintText(const BSL_Buffer *csrBuf, const char *outFileName);
 int32_t HITLS_APP_HexToByte(const char *hex, uint8_t **bin, uint32_t *len);
 
 CRYPT_EAL_PkeyCtx *HITLS_APP_GenRsaPkeyCtx(uint32_t bits);
+
+int32_t HITLS_APP_HexToStr(const uint8_t *hex, size_t hexLen, char *str, size_t strMaxLen);
+
+int32_t HITLS_APP_StrToHex(const char *str, uint8_t *hex, uint32_t *hexLen);
+
+typedef struct {
+    AppProvider *provider;
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param *smParam;
+#endif
+} AppInitParam;
+
+int32_t HITLS_APP_Init(AppInitParam *param);
+
+void HITLS_APP_Deinit(AppInitParam *param, int32_t ret);
 
 #ifdef __cplusplus
 }

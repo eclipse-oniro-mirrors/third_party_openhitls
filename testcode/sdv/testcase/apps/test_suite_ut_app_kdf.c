@@ -33,16 +33,39 @@
 #include "app_function.h"
 #include "app_provider.h"
 #include "app_kdf.h"
+#include "app_sm.h"
+#include "bsl_ui.h"
 
 /* END_HEADER */
 #define KDF_MAX_ARGC 22
 #define MAX_BUFSIZE (1024 * 8)
+#define WORK_PATH "./kdf_workpath"
+#define PASSWORD "12345678"
 
 typedef struct {
     int argc;
     char **argv;
     int expect;
 } OptTestData;
+
+#ifdef HITLS_APP_SM_MODE
+static int32_t STUB_BSL_UI_ReadPwdUtil(BSL_UI_ReadPwdParam *param, char *buff, uint32_t *buffLen,
+    const BSL_UI_CheckDataCallBack checkDataCallBack, void *callBackData)
+{
+    (void)param;
+    (void)checkDataCallBack;
+    (void)callBackData;
+    char result[] = PASSWORD;
+    (void)strcpy_s(buff, *buffLen, result);
+    *buffLen = (uint32_t)strlen(buff) + 1;
+    return BSL_SUCCESS;
+}
+
+static int32_t STUB_HITLS_APP_SM_IntegrityCheck(void)
+{
+    return HITLS_APP_SUCCESS;
+}
+#endif
 
 static void PreProcArgs(char *args, int *argc, char **argv)
 {
@@ -146,5 +169,44 @@ void UT_HITLS_APP_kdf_TC002(void)
 EXIT:
     AppPrintErrorUioUnInit();
     return;
+}
+/* END_CASE */
+
+/**
+ * @test   UT_HITLS_APP_kdf_TC003
+ * @title  Test the sm mode of the kdf command.
+ * @brief  Enter parameters and return HITLS_APP_SUCCESS.
+ */
+/* BEGIN_CASE */
+void UT_HITLS_APP_kdf_TC003(char *opts, char *outFile, Hex *expectData)
+{
+#ifndef HITLS_APP_SM_MODE
+    (void)opts;
+    (void)outFile;
+    (void)expectData;
+    SKIP_TEST();
+#else
+    system("rm -rf " WORK_PATH);
+    system("mkdir -p " WORK_PATH);
+    STUB_Init();
+    FuncStubInfo stubInfo[2] = {0};
+    STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
+    STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    int argc = 0;
+    char *argv[KDF_MAX_ARGC] = {0};
+    char *tmp = strdup(opts);
+    ASSERT_NE(tmp, NULL);
+    PreProcArgs(tmp, &argc, argv);
+    ASSERT_EQ(AppPrintErrorUioInit(stderr), HITLS_APP_SUCCESS);
+    ASSERT_EQ(HITLS_KdfMain(argc, argv), HITLS_APP_SUCCESS);
+    ASSERT_EQ(CompareOutByData(outFile, expectData), HITLS_APP_SUCCESS);
+EXIT:
+    AppPrintErrorUioUnInit();
+    BSL_SAL_Free(tmp);
+    STUB_Reset(&stubInfo[0]);
+    STUB_Reset(&stubInfo[1]);
+    system("rm -rf " WORK_PATH);
+    remove(outFile);
+#endif
 }
 /* END_CASE */

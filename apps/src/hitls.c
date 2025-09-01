@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     ret = func.main(newArgc, newArgv);
     FreeNewArgv(newArgv, newArgc);
 end:
-    HITLS_APP_FreeLibCtx(APP_GetCurrent_LibCtx());
+    HITLS_APP_FreeLibCtx();
     AppUninit();
     return ret;
 }

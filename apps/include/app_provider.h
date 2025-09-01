@@ -34,7 +34,8 @@ CRYPT_EAL_LibCtx *APP_GetCurrent_LibCtx(void);
 
 int32_t HITLS_APP_LoadProvider(const char *searchPath, const char *providerName);
 
-#define HITLS_APP_FreeLibCtx CRYPT_EAL_LibCtxFree
+void HITLS_APP_FreeLibCtx(void);
+
 #ifdef __cplusplus
 }
 #endif

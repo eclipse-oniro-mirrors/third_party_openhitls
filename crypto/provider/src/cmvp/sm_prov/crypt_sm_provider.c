@@ -90,6 +90,26 @@ static const CRYPT_EAL_AlgInfo g_smSelftests[] = {
     CRYPT_EAL_ALGINFO_END
 };
 
+#ifdef HITLS_CRYPTO_CODECSKEY
+static const CRYPT_EAL_AlgInfo g_smEalDecoders[] = {
+    {BSL_CID_DECODE_UNKNOWN, g_smEalPem2Der,
+        "provider=sm, inFormat=PEM, outFormat=ASN1"},
+    {BSL_CID_DECODE_UNKNOWN, g_smEalPrvP8Enc2P8,
+        "provider=sm, inFormat=ASN1, inType=PRIKEY_PKCS8_ENCRYPT, outFormat=ASN1, outType=PRIKEY_PKCS8_UNENCRYPT"},
+    {CRYPT_PKEY_SM2, g_smEalSm2PrvDer2Key,
+        "provider=sm, inFormat=ASN1, inType=PRIKEY_ECC, outFormat=OBJECT, outType=LOW_KEY"},
+    {CRYPT_PKEY_SM2, g_smEalP8Der2Sm2Key,
+        "provider=sm, inFormat=ASN1, inType=PRIKEY_PKCS8_UNENCRYPT, outFormat=OBJECT, outType=LOW_KEY"},
+    {CRYPT_PKEY_SM2, g_smEalSubPubKeyDer2Sm2Key,
+        "provider=sm, inFormat=ASN1, inType=PUBKEY_SUBKEY, outFormat=OBJECT, outType=LOW_KEY"},
+    {CRYPT_PKEY_SM2, g_smEalSubPubKeyWithoutSeqDer2Sm2Key,
+        "provider=sm, inFormat=ASN1, inType=PUBKEY_SUBKEY_WITHOUT_SEQ, outFormat=OBJECT, outType=LOW_KEY"},
+    {BSL_CID_DECODE_UNKNOWN, g_smEalLowKeyObject2PkeyObject,
+        "provider=sm, inFormat=OBJECT, inType=LOW_KEY, outFormat=OBJECT, outType=HIGH_KEY"},
+    CRYPT_EAL_ALGINFO_END
+};
+#endif // HITLS_CRYPTO_CODECSKEY
+
 static int32_t CRYPT_EAL_SmProvQuery(void *provCtx, int32_t operaId, const CRYPT_EAL_AlgInfo **algInfos)
 {
     (void)provCtx;
@@ -125,6 +145,11 @@ static int32_t CRYPT_EAL_SmProvQuery(void *provCtx, int32_t operaId, const CRYPT
         case CRYPT_EAL_OPERAID_SELFTEST:
             *algInfos = g_smSelftests;
             break;
+#ifdef HITLS_CRYPTO_CODECSKEY
+        case CRYPT_EAL_OPERAID_DECODER:
+            *algInfos = g_smEalDecoders;
+            break;
+#endif
         default:
             *algInfos = NULL;
             ret = CRYPT_NOT_SUPPORT;

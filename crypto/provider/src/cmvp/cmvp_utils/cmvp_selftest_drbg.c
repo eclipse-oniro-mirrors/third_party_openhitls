@@ -412,9 +412,13 @@ static CRYPT_EAL_RndCtx *CMVP_DrbgInit(void *libCtx, const char *attrName, const
         method.cleanNonce, 0);
     ctx = CRYPT_EAL_ProviderDrbgNewCtx(libCtx, drbgVec->id, attrName, param);
 
-    GOTO_EXIT_IF(ctx == NULL,
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+#ifdef HITLS_CRYPTO_CMVP_SM
+    int32_t selfTest = 0;
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_DrbgCtrl(ctx, CRYPT_CTRL_SET_SELFTEST_FLAG, &selfTest, sizeof(int32_t)) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_DrbgInstantiate(ctx, pers, persLen) != CRYPT_SUCCESS,  CRYPT_CMVP_ERR_ALGO_SELFTEST);
+#endif
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_DrbgInstantiate(ctx, pers, persLen) != CRYPT_SUCCESS,  CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     BSL_SAL_Free(pers);
     return ctx;
