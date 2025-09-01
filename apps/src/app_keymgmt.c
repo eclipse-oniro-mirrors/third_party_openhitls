@@ -132,11 +132,13 @@ static char *GetKeyFullPath(const char *workPath, const char *uuid)
 {
     char *path = BSL_SAL_Malloc(APP_MAX_PATH_LEN);
     if (path == NULL) {
+        AppPrintError("keymgmt: Failed to allocate memory.\n");
         return NULL;
     }
     int32_t ret = sprintf_s(path, APP_MAX_PATH_LEN, "%s/%s.p12", workPath, uuid);
     if (ret < 0) {
         BSL_SAL_Free(path);
+        AppPrintError("keymgmt: Failed to get key full path, ret: %d.\n", ret);
         return NULL;
     }
     return path;
@@ -175,13 +177,17 @@ static int32_t WriteKeyFile(KeyMgmtCmdOpt *keyMgmtOpt, const char *uuid, HITLS_P
 
     char *path = GetKeyFullPath(keyMgmtOpt->smParam->workPath, uuid);
     if (path == NULL) {
-        (void)AppPrintError("Failed to get key full path.\n");
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        (void)AppPrintError("keymgmt: Failed to get key full path.\n");
+        return HITLS_APP_INVALID_ARG;
     }
 
     int32_t ret = HITLS_PKCS12_GenFile(BSL_FORMAT_ASN1, p12, &encodeParam, true, path);
     BSL_SAL_Free(path);
-    return ret;
+    if (ret != HITLS_PKI_SUCCESS) {
+        AppPrintError("keymgmt: Failed to generate pkcs12 key file, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
+    }
+    return HITLS_APP_SUCCESS;
 }
 
 static int32_t AddAttrToBag(HITLS_PKCS12_Bag *bag, HITLS_APP_KeyInfo *keyInfo)
@@ -190,14 +196,20 @@ static int32_t AddAttrToBag(HITLS_PKCS12_Bag *bag, HITLS_APP_KeyInfo *keyInfo)
     KeyAttrOrderCvt(&attr, true);
     char attrValue[2 * sizeof(attr) + 1] = {0}; // 2: one byte to two hex chars.
 
-    int32_t ret = HITLS_APP_HexToStr((uint8_t *)&attr, sizeof(attr), attrValue, sizeof(attrValue));
+    int32_t ret = HITLS_APP_OptToHex((uint8_t *)&attr, sizeof(attr), attrValue, sizeof(attrValue));
     if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("keymgmt: Failed to convert attr to hex, errCode: 0x%x.\n", ret);
         return ret;
     }
     BSL_Buffer attrValueBuf = {0};
     attrValueBuf.data = (uint8_t *)attrValue;
     attrValueBuf.dataLen = strlen(attrValue) + 1;
-    return HITLS_PKCS12_BagCtrl(bag, HITLS_PKCS12_BAG_ADD_ATTR, &attrValueBuf, BSL_CID_FRIENDLYNAME);
+    ret = HITLS_PKCS12_BagCtrl(bag, HITLS_PKCS12_BAG_ADD_ATTR, &attrValueBuf, BSL_CID_FRIENDLYNAME);
+    if (ret != HITLS_PKI_SUCCESS) {
+        AppPrintError("keymgmt: Failed to add attr to bag, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
+    }
+    return HITLS_APP_SUCCESS;
 }
 
 static int32_t AddCipherKeyToP12(HITLS_PKCS12 *p12, HITLS_APP_KeyInfo *keyInfo)
@@ -208,35 +220,45 @@ static int32_t AddCipherKeyToP12(HITLS_PKCS12 *p12, HITLS_APP_KeyInfo *keyInfo)
 
     HITLS_PKCS12_Bag *bag = HITLS_PKCS12_BagNew(BSL_CID_SECRETBAG, BSL_CID_CE_KEYUSAGE, &value);
     if (bag == NULL) {
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        AppPrintError("keymgmt: Failed to create the secret bag.\n");
+        return HITLS_APP_X509_FAIL;
     }
 
     int32_t ret = AddAttrToBag(bag, keyInfo);
-    if (ret != HITLS_PKI_SUCCESS) {
+    if (ret != HITLS_APP_SUCCESS) {
         HITLS_PKCS12_BagFree(bag);
         return ret;
     }
 
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_ADD_SECRETBAG, bag, 0);
     HITLS_PKCS12_BagFree(bag);
-    return ret;
+    if (ret != HITLS_PKI_SUCCESS) {
+        AppPrintError("keymgmt: Failed to add the secret bag, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
+    }
+    return HITLS_PKI_SUCCESS;
 }
 
 static int32_t AddAsymKeyToP12(HITLS_PKCS12 *p12, HITLS_APP_KeyInfo *keyInfo)
 {
     HITLS_PKCS12_Bag *bag = HITLS_PKCS12_BagNew(BSL_CID_PKCS8SHROUDEDKEYBAG, 0, keyInfo->pkeyCtx);
     if (bag == NULL) {
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        AppPrintError("keymgmt: Failed to create the PKCS8ShroudedKeyBag.\n");
+        return HITLS_APP_X509_FAIL;
     }
 
     int32_t ret = AddAttrToBag(bag, keyInfo);
-    if (ret != HITLS_PKI_SUCCESS) {
+    if (ret != HITLS_APP_SUCCESS) {
         HITLS_PKCS12_BagFree(bag);
         return ret;
     }
 
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_SET_ENTITY_KEYBAG, bag, 0);
     HITLS_PKCS12_BagFree(bag);
+    if (ret != HITLS_PKI_SUCCESS) {
+        AppPrintError("keymgmt: Failed to set the private key bag, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
+    }
     return ret;
 }
 
@@ -244,7 +266,8 @@ static int32_t HITLS_APP_WriteKey(KeyMgmtCmdOpt *keyMgmtOpt, HITLS_APP_KeyInfo *
 {
     HITLS_PKCS12 *p12 = HITLS_PKCS12_ProviderNew(APP_GetCurrent_LibCtx(), keyMgmtOpt->provider->providerAttr);
     if (p12 == NULL) {
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        AppPrintError("keymgmt: Failed to create the pkcs12 context.\n");
+        return HITLS_APP_X509_FAIL;
     }
     int32_t ret = 0;
     if (keyInfo->attr.algId == CRYPT_PKEY_SM2) {
@@ -267,13 +290,15 @@ static int32_t GetTimeInfo(int64_t *time)
     BSL_TIME sysTime = {0};
     int32_t ret = BSL_SAL_SysTimeGet(&sysTime);
     if (ret != BSL_SUCCESS) {
-        return ret;
+        AppPrintError("keymgmt: Failed to get system time, errCode: 0x%x.\n", ret);
+        return HITLS_APP_SAL_FAIL;
     }
 
     int64_t utcTime = 0;
     ret = BSL_SAL_DateToUtcTimeConvert(&sysTime, &utcTime);
     if (ret != BSL_SUCCESS) {
-        return ret;
+        AppPrintError("keymgmt: Failed to convert system time to utc time, errCode: 0x%x.\n", ret);
+        return HITLS_APP_SAL_FAIL;
     }
     *time = utcTime;
     return HITLS_APP_SUCCESS;
@@ -285,7 +310,7 @@ static int32_t GenerateKeyAttr(int32_t algId, HITLS_APP_KeyAttr *attr,
     char *uuidStr = NULL;
     int32_t ret = CRYPT_EAL_RandbytesEx(APP_GetCurrent_LibCtx(), attr->uuid, sizeof(attr->uuid));
     if (ret != CRYPT_SUCCESS) {
-        AppPrintError("Failed to generate the uuid, ret: 0x%08x.\n", ret);
+        AppPrintError("keymgmt: Failed to generate the uuid, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     ret = GetTimeInfo(&attr->createTime);
@@ -298,12 +323,14 @@ static int32_t GenerateKeyAttr(int32_t algId, HITLS_APP_KeyAttr *attr,
 
     uuidStr = (char *)BSL_SAL_Malloc(APP_KEYMGMT_UUID_STR_LEN);
     if (uuidStr == NULL) {
+        AppPrintError("keymgmt: Failed to allocate memory.\n");
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
 
-    ret = HITLS_APP_HexToStr(attr->uuid, sizeof(attr->uuid), uuidStr, APP_KEYMGMT_UUID_STR_LEN);
+    ret = HITLS_APP_OptToHex(attr->uuid, sizeof(attr->uuid), uuidStr, APP_KEYMGMT_UUID_STR_LEN);
     if (ret != HITLS_APP_SUCCESS) {
         BSL_SAL_Free(uuidStr);
+        AppPrintError("keymgmt: Failed to convert uuid to hex, errCode: 0x%x.\n", ret);
         return ret;
     }
     *uuid = uuidStr;
@@ -317,14 +344,16 @@ static int32_t CreateCipherKey(KeyMgmtCmdOpt *keyMgmtOpt, int32_t algId, HITLS_A
     } else if (algId == CRYPT_MAC_CBC_MAC_SM4) {
         keyInfo->keyLen = APP_KEYMGMT_CBC_MAC_SM4_KEY_LEN;
     } else {
-        if (CRYPT_EAL_CipherGetInfo(algId, CRYPT_INFO_KEY_LEN, &keyInfo->keyLen) != CRYPT_SUCCESS) {
+        int32_t ret = CRYPT_EAL_CipherGetInfo(algId, CRYPT_INFO_KEY_LEN, &keyInfo->keyLen);
+        if (ret != CRYPT_SUCCESS) {
+            AppPrintError("keymgmt: Failed to get the key length, errCode: 0x%x.\n", ret);
             return HITLS_APP_CRYPTO_FAIL;
         }
     }
     keyMgmtOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
     int32_t ret = CRYPT_EAL_RandbytesEx(APP_GetCurrent_LibCtx(), keyInfo->key, keyInfo->keyLen);
     if (ret != CRYPT_SUCCESS) {
-        AppPrintError("Failed to generate the key, ret: 0x%08x.\n", ret);
+        AppPrintError("keymgmt: Failed to generate the key, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     return HITLS_APP_SUCCESS;
@@ -335,13 +364,15 @@ static int32_t CreateAsymKey(KeyMgmtCmdOpt *keyMgmtOpt, int32_t algId, HITLS_APP
     CRYPT_EAL_PkeyCtx *pkeyCtx = CRYPT_EAL_ProviderPkeyNewCtx(APP_GetCurrent_LibCtx(), algId, 0,
         keyMgmtOpt->provider->providerAttr);
     if (pkeyCtx == NULL) {
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        AppPrintError("keymgmt: Failed to create the asym pkey context.\n");
+        return HITLS_APP_CRYPTO_FAIL;
     }
     keyMgmtOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
     int32_t ret = CRYPT_EAL_PkeyGen(pkeyCtx);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-        return ret;
+        AppPrintError("keymgmt: Failed to generate the asym key, errCode: 0x%x.\n", ret);
+        return HITLS_APP_CRYPTO_FAIL;
     }
 
     keyInfo->pkeyCtx = pkeyCtx;
@@ -369,7 +400,8 @@ static int32_t HITLS_APP_CreateKey(KeyMgmtCmdOpt *keyMgmtOpt, int32_t algId, cha
             ret = CreateAsymKey(keyMgmtOpt, algId, &keyInfo);
             break;
         default:
-            ret = HITLS_APP_KEY_NOT_SUPPORTED;
+            AppPrintError("keymgmt: Invalid algorithm id: %d.\n", algId);
+            ret = HITLS_APP_INVALID_ARG;
             break;
     }
     if (ret != HITLS_APP_SUCCESS) {
@@ -403,16 +435,19 @@ static int32_t EraseKeyFile(char *path)
         return HITLS_APP_BSL_FAIL;
     }
     if (fileLen > APP_FILE_MAX_SIZE) {
-        AppPrintError("keymgmt: File size exceed limit %zukb: %s.\n", APP_FILE_MAX_SIZE_KB, path);
+        AppPrintError("keymgmt: File size exceed limit: %zu, fileLen:%zu, path:%s.\n",
+            APP_FILE_MAX_SIZE, fileLen, path);
         return HITLS_APP_UIO_FAIL;
     }
 
     BSL_UIO *uio = BSL_UIO_New(BSL_UIO_FileMethod());
     if (uio == NULL) {
+        AppPrintError("keymgmt: Failed to create uio.\n");
         return HITLS_APP_UIO_FAIL;
     }
-    if (BSL_UIO_Ctrl(uio, BSL_UIO_FILE_OPEN, BSL_UIO_FILE_WRITE, path) != BSL_SUCCESS) {
-        AppPrintError("Failed to open key file.\n");
+    ret = BSL_UIO_Ctrl(uio, BSL_UIO_FILE_OPEN, BSL_UIO_FILE_WRITE, path);
+    if (ret != BSL_SUCCESS) {
+        AppPrintError("keymgmt: Failed to open key file, errCode: 0x%x.\n", ret);
         BSL_UIO_Free(uio);
         return HITLS_APP_UIO_FAIL;
     }
@@ -422,12 +457,14 @@ static int32_t EraseKeyFile(char *path)
     uint8_t *data = BSL_SAL_Calloc(fileLen, 1);
     if (data == NULL) {
         BSL_UIO_Free(uio);
+        AppPrintError("keymgmt: Failed to allocate memory.\n");
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
-    if (BSL_UIO_Write(uio, data, fileLen, &writeLen) != BSL_SUCCESS || writeLen != fileLen) {
+    ret = BSL_UIO_Write(uio, data, fileLen, &writeLen);
+    if (ret != BSL_SUCCESS || writeLen != fileLen) {
         BSL_UIO_Free(uio);
         BSL_SAL_Free(data);
-        AppPrintError("Failed to erase key file.\n");
+        AppPrintError("keymgmt: Failed to erase key file, errCode: 0x%x, writeLen: %u.\n", ret, writeLen);
         return HITLS_APP_UIO_FAIL;
     }
     BSL_UIO_Free(uio);
@@ -439,20 +476,18 @@ static int32_t HITLS_APP_RmvKey(KeyMgmtCmdOpt *keyMgmtOpt, const char *uuid)
 {
     char *path = GetKeyFullPath(keyMgmtOpt->smParam->workPath, uuid);
     if (path == NULL) {
-        AppPrintError("delete key failed, failed to get key full path\n");
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        return HITLS_APP_INVALID_ARG;
     }
     keyMgmtOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
     int32_t ret = EraseKeyFile(path);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("delete key failed, failed to erase key file, path: %s\n", path);
         BSL_SAL_Free(path);
         return ret;
     }
     if (remove(path) != 0) {
-        AppPrintError("delete key failed, failed to remove key file, path: %s\n", path);
+        AppPrintError("keymgmt: Failed to remove key file, path: %s.\n", path);
         BSL_SAL_Free(path);
-        return HITLS_APP_KEY_DELETE_FAIL;
+        return HITLS_APP_INVALID_ARG;
     }
     BSL_SAL_Free(path);
     return HITLS_APP_SUCCESS;
@@ -516,6 +551,7 @@ static int32_t HandleOpt(KeyMgmtCmdOpt *keyMgmtOpt)
                 return HITLS_APP_HELP;
             case HITLS_APP_OPT_KEYMGMT_ALGID:
                 if ((keyMgmtOpt->algId = GetAlgId(HITLS_APP_OptGetValueStr())) == -1) {
+                    AppPrintError("keymgmt: Invalid algorithm id: %s.\n", HITLS_APP_OptGetValueStr());
                     return HITLS_APP_OPT_VALUE_INVALID;
                 }
                 break;
@@ -537,7 +573,7 @@ static int32_t HandleOpt(KeyMgmtCmdOpt *keyMgmtOpt)
         HandleSomeOpt(keyMgmtOpt, optType);
     }
     if (HITLS_APP_GetRestOptNum() != 0) {
-        AppPrintError("Extra arguments given.\nkeymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: Extra arguments given.\n");
         return HITLS_APP_OPT_UNKOWN;
     }
     return HITLS_APP_SUCCESS;
@@ -553,9 +589,8 @@ static int32_t CheckActionTag(KeyMgmtCmdOpt *keyMgmtOpt)
     count += keyMgmtOpt->getStatusTag;
     count += keyMgmtOpt->selfTestTag;
     if (count != 1) {
-        AppPrintError("You must specify only one action: -create, -delete, -erasekey, -getversion, -getstatus or " \
+        AppPrintError("keymgmt: Only one action is allowed: -create, -delete, -erasekey, -getversion, -getstatus or " \
             "-selftest.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     return HITLS_APP_SUCCESS;
@@ -568,13 +603,11 @@ static int32_t CheckOptParam(KeyMgmtCmdOpt *keyMgmtOpt)
         return ret;
     }
     if (keyMgmtOpt->smParam->smTag != 1) {
-        AppPrintError("The sm is not specified.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The sm is not specified.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     if (keyMgmtOpt->smParam->workPath == NULL) {
-        AppPrintError("The workpath is not specified.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The workpath is not specified.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     if (keyMgmtOpt->eraseTag == 1 || keyMgmtOpt->getVersionTag == 1 || keyMgmtOpt->getStatusTag == 1 ||
@@ -583,32 +616,30 @@ static int32_t CheckOptParam(KeyMgmtCmdOpt *keyMgmtOpt)
     }
     if (keyMgmtOpt->deleteTag == 1) {
         if (keyMgmtOpt->smParam->uuid == NULL) {
-            AppPrintError("The uuid is not specified.\n");
-            AppPrintError("keymgmt: Use -help for summary.\n");
+            AppPrintError("keymgmt: The uuid is not specified.\n");
             return HITLS_APP_OPT_VALUE_INVALID;
         }
         return HITLS_APP_SUCCESS;
     }
 
     if (keyMgmtOpt->algId < 0) {
-        AppPrintError("The algorithm is not specified.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The algorithm is not specified.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     if (keyMgmtOpt->iter == -1) {
         keyMgmtOpt->iter = APP_KEYMGMT_PBKDF2_IT_CNT_MIN;
     }
     if (keyMgmtOpt->iter < APP_KEYMGMT_PBKDF2_IT_CNT_MIN) {
-        AppPrintError("The number of iterations is invalid, the minimum value is %d.\n", APP_KEYMGMT_PBKDF2_IT_CNT_MIN);
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The number of iterations is invalid, iter: %d, min: %d.\n", keyMgmtOpt->iter,
+            APP_KEYMGMT_PBKDF2_IT_CNT_MIN);
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     if (keyMgmtOpt->saltLen == -1) {
         keyMgmtOpt->saltLen = APP_KEYMGMT_PBKDF2_SALT_LEN_MIN;
     }
     if (keyMgmtOpt->saltLen < APP_KEYMGMT_PBKDF2_SALT_LEN_MIN) {
-        AppPrintError("The salt length is invalid, the minimum value is %d.\n", APP_KEYMGMT_PBKDF2_SALT_LEN_MIN);
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The salt length is invalid, saltLen: %d, min: %d.\n", keyMgmtOpt->saltLen,
+            APP_KEYMGMT_PBKDF2_SALT_LEN_MIN);
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     return HITLS_APP_SUCCESS;
@@ -619,10 +650,10 @@ static int32_t CreateKey(KeyMgmtCmdOpt *keyMgmtOpt)
     char *uuid = NULL;
     int32_t ret = HITLS_APP_CreateKey(keyMgmtOpt, keyMgmtOpt->algId, &uuid);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("create key failed, ret: 0x%08x\n", ret);
+        AppPrintError("keymgmt: Failed to create key, errCode: 0x%x.\n", ret);
         return ret;
     }
-    AppPrintError("uuid: %s\n", uuid);
+    AppPrintError("keymgmt: uuid: %s\n", uuid);
     BSL_SAL_Free(uuid);
     return HITLS_APP_SUCCESS;
 }
@@ -631,13 +662,15 @@ static int32_t SplitUuidString(const char *uuid, BslList **uuidList)
 {
     char *src = BSL_SAL_Dump(uuid, strlen(uuid) + 1);
     if (src == NULL) {
+        AppPrintError("keymgmt: Failed to dump uuid string.\n");
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
     
     BslList *list = BSL_LIST_New(sizeof(char *));
     if (list == NULL) {
         BSL_SAL_FREE(src);
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        AppPrintError("keymgmt: Failed to create list.\n");
+        return HITLS_APP_SAL_FAIL;
     }
 
     char sep[] = ",";
@@ -648,6 +681,7 @@ static int32_t SplitUuidString(const char *uuid, BslList **uuidList)
         if (singleUuid == NULL) {
             BSL_SAL_FREE(src);
             BSL_LIST_FREE(list, BSL_SAL_Free);
+            AppPrintError("keymgmt: Failed to dump single uuid string.\n");
             return HITLS_APP_MEM_ALLOC_FAIL;
         }
         int32_t ret = BSL_LIST_AddElement(list, singleUuid, BSL_LIST_POS_END);
@@ -655,7 +689,8 @@ static int32_t SplitUuidString(const char *uuid, BslList **uuidList)
             BSL_SAL_FREE(singleUuid);
             BSL_SAL_FREE(src);
             BSL_LIST_FREE(list, BSL_SAL_Free);
-            return HITLS_APP_MEM_ALLOC_FAIL;
+            AppPrintError("keymgmt: Failed to add single uuid to list.\n");
+            return HITLS_APP_SAL_FAIL;
         }
         tmp = strtok_s(NULL, sep, &nextTmp);
     }
@@ -707,13 +742,15 @@ static int32_t GetAllKeyUuids(const char *workPath, BslList **fileList)
     int32_t ret = HITLS_APP_SUCCESS;
     DIR *dir = opendir(workPath);
     if (dir == NULL) {
+        AppPrintError("keymgmt: Failed to open directory.\n");
         return HITLS_APP_INVALID_ARG;
     }
 
     BslList *list = BSL_LIST_New(sizeof(char *));
     if (list == NULL) {
         closedir(dir);
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        AppPrintError("keymgmt: Failed to create list.\n");
+        return HITLS_APP_SAL_FAIL;
     }
 
     struct dirent *dp = NULL;
@@ -723,6 +760,7 @@ static int32_t GetAllKeyUuids(const char *workPath, BslList **fileList)
             if (uuid == NULL) {
                 closedir(dir);
                 BSL_LIST_FREE(list, BSL_SAL_Free);
+                AppPrintError("keymgmt: Failed to dump single uuid string.\n");
                 return HITLS_APP_MEM_ALLOC_FAIL;
             }
             uuid[APP_KEYMGMT_UUID_STR_LEN - 1] = '\0';
@@ -731,7 +769,8 @@ static int32_t GetAllKeyUuids(const char *workPath, BslList **fileList)
                 closedir(dir);
                 BSL_LIST_FREE(list, BSL_SAL_Free);
                 BSL_SAL_FREE(uuid);
-                return HITLS_APP_MEM_ALLOC_FAIL;
+                AppPrintError("keymgmt: Failed to add single uuid to list.\n");
+                return HITLS_APP_SAL_FAIL;
             }
         }
     }
@@ -751,10 +790,10 @@ static int32_t EraseAllKeys(KeyMgmtCmdOpt *keyMgmtOpt)
     ret = DeleteKeyByUuidList(keyMgmtOpt, uuidList);
     BSL_LIST_FREE(uuidList, BSL_SAL_Free);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("erase all keys failed, ret: 0x%08x\n", ret);
+        AppPrintError("keymgmt: Failed to erase all keys, errCode: 0x%x.\n", ret);
         return ret;
     }
-    AppPrintError("All keys deleted successfully\n");
+    AppPrintError("keymgmt: All keys deleted successfully.\n");
     return HITLS_APP_SUCCESS;
 }
 
@@ -763,25 +802,25 @@ static int32_t GetVersion(KeyMgmtCmdOpt *keyMgmtOpt)
     CRYPT_SelftestCtx *selftestCtx = NULL;
     selftestCtx = CRYPT_CMVP_SelftestNewCtx(APP_GetCurrent_LibCtx(), keyMgmtOpt->provider->providerAttr);
     if (selftestCtx == NULL) {
-        AppPrintError("keymgmt: get version failed, selftestCtx is NULL.\n");
+        AppPrintError("keymgmt: Failed to get version, selftestCtx is NULL.\n");
         return HITLS_APP_CRYPTO_FAIL;
     }
     keyMgmtOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
     const char *version = CRYPT_CMVP_GetVersion(selftestCtx);
     if (version == NULL) {
         CRYPT_CMVP_SelftestFreeCtx(selftestCtx);
-        AppPrintError("keymgmt: get version failed, version is NULL.\n");
+        AppPrintError("keymgmt: Failed to get version, version is NULL.\n");
         return HITLS_APP_CRYPTO_FAIL;
     }
     CRYPT_CMVP_SelftestFreeCtx(selftestCtx);
-    AppPrintError("%s\n", version);
+    AppPrintError("keymgmt: %s\n", version);
     return HITLS_APP_SUCCESS;
 }
 
 static int32_t GetStatus(KeyMgmtCmdOpt *keyMgmtOpt)
 {
     keyMgmtOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
-    AppPrintError("status: %d\n", keyMgmtOpt->smParam->status);
+    AppPrintError("keymgmt: status: %d\n", keyMgmtOpt->smParam->status);
     return HITLS_APP_SUCCESS;
 }
 
@@ -790,7 +829,7 @@ static int32_t SelfTest(KeyMgmtCmdOpt *keyMgmtOpt)
     CRYPT_SelftestCtx *selftestCtx = NULL;
     selftestCtx = CRYPT_CMVP_SelftestNewCtx(APP_GetCurrent_LibCtx(), keyMgmtOpt->provider->providerAttr);
     if (selftestCtx == NULL) {
-        AppPrintError("keymgmt: self test failed, selftestCtx is NULL.\n");
+        AppPrintError("keymgmt: Failed to self test, selftestCtx is NULL.\n");
         return HITLS_APP_CRYPTO_FAIL;
     }
     keyMgmtOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
@@ -799,12 +838,12 @@ static int32_t SelfTest(KeyMgmtCmdOpt *keyMgmtOpt)
     BSL_PARAM_InitValue(&params[0], CRYPT_PARAM_CMVP_SELFTEST_TYPE, BSL_PARAM_TYPE_INT32, &type, sizeof(type));
     int32_t ret = CRYPT_CMVP_Selftest(selftestCtx, params);
     if (ret != CRYPT_SUCCESS) {
-        AppPrintError("keymgmt: kat self test failed, type: %d, ret: 0x%08x\n", type, ret);
+        AppPrintError("keymgmt: Failed to self test, errCode: 0x%x.\n", ret);
         CRYPT_CMVP_SelftestFreeCtx(selftestCtx);
         return HITLS_APP_CRYPTO_FAIL;
     }
     CRYPT_CMVP_SelftestFreeCtx(selftestCtx);
-    AppPrintError("Self test passed.\n");
+    AppPrintError("keymgmt: Self test passed.\n");
     return HITLS_APP_SUCCESS;
 }
 
@@ -839,7 +878,7 @@ int32_t HITLS_KeyMgmtMain(int argc, char *argv[])
     AppInitParam initParam = {&appProvider, &smParam};
     KeyMgmtCmdOpt keyMgmtOpt = {1, -1, 0, 0, 0, 0, 0, 0, -1, -1, &appProvider, &smParam};
     if ((ret = HITLS_APP_OptBegin(argc, argv, g_keyMgmtOpts)) != HITLS_APP_SUCCESS) {
-        AppPrintError("error in opt begin.\n");
+        AppPrintError("keymgmt: Error in opt begin.\n");
         goto End;
     }
     if ((ret = HandleOpt(&keyMgmtOpt)) != HITLS_APP_SUCCESS) {
@@ -848,21 +887,13 @@ int32_t HITLS_KeyMgmtMain(int argc, char *argv[])
     if ((ret = CheckOptParam(&keyMgmtOpt)) != HITLS_APP_SUCCESS) {
         goto End;
     }
-    ret = HITLS_APP_Init(&initParam);
-    if (ret != HITLS_APP_SUCCESS) {
+    if ((ret = HITLS_APP_Init(&initParam)) != HITLS_APP_SUCCESS) {
+        AppPrintError("keymgmt: Failed to init, errCode: 0x%x.\n", ret);
         goto End;
     }
-    ret = CRYPT_EAL_ProviderRandInitCtx(NULL, CRYPT_RAND_SM4_CTR_DF, NULL, NULL, 0, NULL);
-    if (ret != CRYPT_SUCCESS) {
-        AppPrintError("init rand failed, ret: 0x%08x\n", ret);
-        ret = HITLS_APP_CRYPTO_FAIL;
-        goto End;
-    }
-
     ret = ProcessOptions(&keyMgmtOpt);
 
 End:
-    CRYPT_EAL_RandDeinitEx(NULL);
     HITLS_APP_Deinit(&initParam, ret);
     return ret;
 }
@@ -871,8 +902,8 @@ static int32_t ReadKeyFile(AppProvider *provider, HITLS_APP_SM_Param *smParam, H
 {
     char *path = GetKeyFullPath(smParam->workPath, smParam->uuid);
     if (path == NULL) {
-        (void)AppPrintError("Failed to get key full path.\n");
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        AppPrintError("keymgmt: Failed to get key full path.\n");
+        return HITLS_APP_INVALID_ARG;
     }
 
     BSL_Buffer encPwd = {0};
@@ -886,7 +917,11 @@ static int32_t ReadKeyFile(AppProvider *provider, HITLS_APP_SM_Param *smParam, H
     int32_t ret = HITLS_PKCS12_ProviderParseFile(APP_GetCurrent_LibCtx(), provider->providerAttr, "ASN1", path,
         &pwdParam, p12, true);
     BSL_SAL_Free(path);
-    return ret;
+    if (ret != HITLS_PKI_SUCCESS) {
+        AppPrintError("keymgmt: Failed to read key file, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
+    }
+    return HITLS_APP_SUCCESS;
 }
 
 static int32_t GetKeyAttr(HITLS_PKCS12_Bag *bag, HITLS_APP_KeyAttr *attr)
@@ -898,17 +933,17 @@ static int32_t GetKeyAttr(HITLS_PKCS12_Bag *bag, HITLS_APP_KeyAttr *attr)
 
     int32_t ret = HITLS_PKCS12_BagCtrl(bag, HITLS_PKCS12_BAG_GET_ATTR, &attrValueBuf, BSL_CID_FRIENDLYNAME);
     if (ret != HITLS_PKI_SUCCESS) {
-        AppPrintError("get key attr failed, ret: 0x%08x\n", ret);
-        return HITLS_APP_CRYPTO_FAIL;
+        AppPrintError("keymgmt: Failed to get key attr, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
     }
     uint32_t attrLen = sizeof(HITLS_APP_KeyAttr);
     ret = HITLS_APP_StrToHex(attrValue, (uint8_t *)attr, &attrLen);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("str to hex failed, ret: 0x%08x\n", ret);
+        AppPrintError("keymgmt: Failed to convert attr to hex, errCode: 0x%x.\n", ret);
         return ret;
     }
     if (attrLen != sizeof(HITLS_APP_KeyAttr)) {
-        AppPrintError("attr len not match, ret: 0x%08x\n", ret);
+        AppPrintError("keymgmt: Attr len not match, attrLen: %u.\n", attrLen);
         return HITLS_APP_INFO_CMP_FAIL;
     }
     KeyAttrOrderCvt(attr, false);
@@ -920,9 +955,9 @@ static int32_t ReadCipherKey(AppProvider *provider, HITLS_APP_SM_Param *smParam,
     HITLS_PKCS12 *p12 = NULL;
 
     int32_t ret = ReadKeyFile(provider, smParam, &p12);
-    if (ret != HITLS_PKI_SUCCESS) {
-        AppPrintError("read cipher key failed, ret: 0x%08x\n", ret);
-        return HITLS_APP_CRYPTO_FAIL;
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("keymgmt: Failed to read cipher key, errCode: 0x%x.\n", ret);
+        return ret;
     }
 
     HITLS_PKCS12_Bag *tmpBag = NULL;
@@ -930,8 +965,8 @@ static int32_t ReadCipherKey(AppProvider *provider, HITLS_APP_SM_Param *smParam,
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_GET_SECRETBAGS, &secretBags, 0);
     if (ret != HITLS_PKI_SUCCESS) {
         HITLS_PKCS12_Free(p12);
-        AppPrintError("get secret bags failed, ret: 0x%08x\n", ret);
-        return HITLS_APP_CRYPTO_FAIL;
+        AppPrintError("keymgmt: Failed to get secret bags, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
     }
     tmpBag = BSL_LIST_GET_FIRST(secretBags);
 
@@ -945,7 +980,8 @@ static int32_t ReadCipherKey(AppProvider *provider, HITLS_APP_SM_Param *smParam,
     ret = HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_VALUE, &value, 0);
     HITLS_PKCS12_Free(p12);
     if (ret != HITLS_PKI_SUCCESS) {
-        return ret;
+        AppPrintError("keymgmt: Failed to get key value, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
     }
     keyInfo->keyLen = value.dataLen;
     return HITLS_APP_SUCCESS;
@@ -955,17 +991,17 @@ static int32_t ReadAsymKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, H
 {
     HITLS_PKCS12 *p12 = NULL;
     int32_t ret = ReadKeyFile(provider, smParam, &p12);
-    if (ret != HITLS_PKI_SUCCESS) {
-        AppPrintError("read asym key failed, ret: 0x%08x\n", ret);
-        return HITLS_APP_CRYPTO_FAIL;
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("keymgmt: Failed to read asym key, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
     }
 
     HITLS_PKCS12_Bag *tmpBag = NULL;
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_GET_ENTITY_KEYBAG, &tmpBag, 0);
     if (ret != HITLS_PKI_SUCCESS) {
         HITLS_PKCS12_Free(p12);
-        AppPrintError("get entity key bag failed, ret: 0x%08x\n", ret);
-        return HITLS_APP_CRYPTO_FAIL;
+        AppPrintError("keymgmt: Failed to get entity key bag, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
     }
 
     ret = GetKeyAttr(tmpBag, &keyInfo->attr);
@@ -979,8 +1015,8 @@ static int32_t ReadAsymKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, H
     HITLS_PKCS12_BagFree(tmpBag);
     HITLS_PKCS12_Free(p12);
     if (ret != HITLS_PKI_SUCCESS) {
-        AppPrintError("get pkeyCtx failed, ret: 0x%08x\n", ret);
-        return HITLS_APP_CRYPTO_FAIL;
+        AppPrintError("keymgmt: Failed to get pkeyCtx, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
     }
     return HITLS_APP_SUCCESS;
 }
@@ -990,8 +1026,7 @@ int32_t HITLS_APP_FindKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, in
 {
     if (provider == NULL || smParam == NULL || smParam->uuid == NULL || smParam->password == NULL ||
         smParam->passwordLen == 0 || smParam->workPath == NULL || keyInfo == NULL) {
-        AppPrintError("Invalid argument to find key.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: Invalid argument to find key.\n");
         return HITLS_APP_INVALID_ARG;
     }
     int32_t ret;
@@ -1012,10 +1047,11 @@ int32_t HITLS_APP_FindKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, in
             ret = ReadAsymKey(provider, smParam, &readKeyInfo);
             break;
         default:
-            ret = HITLS_APP_KEY_NOT_SUPPORTED;
-            break;
+            AppPrintError("keymgmt: Invalid algorithm id: %d.\n", algId);
+            return HITLS_APP_INVALID_ARG;
     }
     if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("keymgmt: Failed to read key, errCode: 0x%x.\n", ret);
         return ret;
     }
     ret = CheckAlgMatchForFind(algId, readKeyInfo.attr.algId);
@@ -1035,6 +1071,7 @@ static int32_t GetSm2Raw(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *prv, uint32_t *
 
     int32_t ret = CRYPT_EAL_PkeyGetPubEx(pkey, pubParam);
     if (ret != CRYPT_SUCCESS) {
+        AppPrintError("keymgmt: Failed to get pub, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     *pubLen = pubParam[0].useLen;
@@ -1042,6 +1079,7 @@ static int32_t GetSm2Raw(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *prv, uint32_t *
     ret = CRYPT_EAL_PkeyGetPrvEx(pkey, prvParam);
     if (ret != CRYPT_SUCCESS) {
         BSL_SAL_CleanseData(pub, *pubLen);
+        AppPrintError("keymgmt: Failed to get prv, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     *prvLen = prvParam[0].useLen;
@@ -1062,41 +1100,29 @@ static int32_t FillSyncKeyInfoFromSm2(const HITLS_APP_KeyInfo *keyInfo, HITLS_Sy
     if (ret != HITLS_APP_SUCCESS) {
         return ret;
     }
+    if (pubLen + prvLen + sizeof(pubLen) + sizeof(prvLen) > sizeof(info->key)) {
+        AppPrintError("keymgmt: Invalid pubLen(%u) and prvLen(%u).\n", pubLen, prvLen);
+        BSL_SAL_CleanseData(prv, prvLen);
+        BSL_SAL_CleanseData(pub, pubLen);
+        return HITLS_APP_INVALID_ARG;
+    }
 
     uint32_t used = 0;
     uint32_t len = 0;
-    do {
-        BSL_Uint32ToByte(pubLen, (uint8_t *)&len);
-        if (memcpy_s(info->key + used, sizeof(info->key) - used, &len, sizeof(len)) != EOK) {
-            ret = HITLS_APP_ERROR;
-            break;
-        }
-        used += sizeof(len);
+    BSL_Uint32ToByte(pubLen, (uint8_t *)&len);
+    (void)memcpy_s(info->key + used, sizeof(info->key) - used, &len, sizeof(len));
+    used += sizeof(len);
 
-        if (memcpy_s(info->key + used, sizeof(info->key) - used, pub, pubLen) != EOK) {
-            ret = HITLS_APP_ERROR;
-            break;
-        }
-        used += pubLen;
+    (void)memcpy_s(info->key + used, sizeof(info->key) - used, pub, pubLen);
+    used += pubLen;
 
-        BSL_Uint32ToByte(prvLen, (uint8_t *)&len);
-        if (memcpy_s(info->key + used, sizeof(info->key) - used, &len, sizeof(len)) != EOK) {
-            ret = HITLS_APP_ERROR;
-            break;
-        }
-        used += sizeof(len);
+    BSL_Uint32ToByte(prvLen, (uint8_t *)&len);
+    (void)memcpy_s(info->key + used, sizeof(info->key) - used, &len, sizeof(len));
+    used += sizeof(len);
 
-        if (memcpy_s(info->key + used, sizeof(info->key) - used, prv, prvLen) != EOK) {
-            ret = HITLS_APP_ERROR;
-            break;
-        }
-        used += prvLen;
-        BSL_Uint32ToByte(used, (uint8_t *)&info->keyLen);
-    } while (0);
-
-    if (ret != HITLS_APP_SUCCESS) {
-        BSL_SAL_CleanseData(info->key, sizeof(info->key));
-    }
+    (void)memcpy_s(info->key + used, sizeof(info->key) - used, prv, prvLen);
+    used += prvLen;
+    BSL_Uint32ToByte(used, (uint8_t *)&info->keyLen);
     BSL_SAL_CleanseData(prv, prvLen);
     BSL_SAL_CleanseData(pub, pubLen);
     return ret;
@@ -1117,28 +1143,36 @@ static int32_t ReadCipherOrAsymKey(AppProvider *provider, HITLS_APP_SM_Param *sm
 {
     HITLS_PKCS12 *p12 = NULL;
     int32_t ret = ReadKeyFile(provider, smParam, &p12);
-    if (ret != HITLS_PKI_SUCCESS) {
-        AppPrintError("read key failed, ret: 0x%08x\n", ret);
-        return HITLS_APP_CRYPTO_FAIL;
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("keymgmt: Failed to read key, errCode: 0x%x.\n", ret);
+        return ret;
     }
     // try asym first
     HITLS_PKCS12_Bag *keyBag = NULL;
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_GET_ENTITY_KEYBAG, &keyBag, 0);
     if (ret == HITLS_PKI_SUCCESS && keyBag != NULL) {
-        int32_t r = GetKeyAttr(keyBag, &keyInfo->attr);
-        if (r == HITLS_APP_SUCCESS) {
-            r = HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_GET_VALUE, &keyInfo->pkeyCtx, 0);
+        ret = GetKeyAttr(keyBag, &keyInfo->attr);
+        if (ret != HITLS_APP_SUCCESS) {
+            HITLS_PKCS12_BagFree(keyBag);
+            HITLS_PKCS12_Free(p12);
+            return HITLS_APP_X509_FAIL;
         }
+        ret = HITLS_PKCS12_BagCtrl(keyBag, HITLS_PKCS12_BAG_GET_VALUE, &keyInfo->pkeyCtx, 0);
         HITLS_PKCS12_BagFree(keyBag);
         HITLS_PKCS12_Free(p12);
-        return r;
+        if (ret != HITLS_PKI_SUCCESS) {
+            AppPrintError("keymgmt: Failed to get pkeyCtx, errCode: 0x%x.\n", ret);
+            return HITLS_APP_X509_FAIL;
+        }
+        return HITLS_APP_SUCCESS;
     }
     // else secret bag
     BslList *secretBags = NULL;
     ret = HITLS_PKCS12_Ctrl(p12, HITLS_PKCS12_GET_SECRETBAGS, &secretBags, 0);
     if (ret != HITLS_PKI_SUCCESS) {
         HITLS_PKCS12_Free(p12);
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Failed to get secret bags, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
     }
     HITLS_PKCS12_Bag *tmpBag = BSL_LIST_GET_FIRST(secretBags);
     ret = GetKeyAttr(tmpBag, &keyInfo->attr);
@@ -1150,7 +1184,8 @@ static int32_t ReadCipherOrAsymKey(AppProvider *provider, HITLS_APP_SM_Param *sm
     ret = HITLS_PKCS12_BagCtrl(tmpBag, HITLS_PKCS12_BAG_GET_VALUE, &value, 0);
     HITLS_PKCS12_Free(p12);
     if (ret != HITLS_PKI_SUCCESS) {
-        return ret;
+        AppPrintError("keymgmt: Failed to get key value, errCode: 0x%x.\n", ret);
+        return HITLS_APP_X509_FAIL;
     }
     keyInfo->keyLen = value.dataLen;
     return HITLS_APP_SUCCESS;
@@ -1196,8 +1231,7 @@ int32_t HITLS_APP_SendKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, HI
 {
     if (provider == NULL || smParam == NULL || smParam->uuid == NULL || smParam->password == NULL ||
         smParam->passwordLen == 0 || smParam->workPath == NULL || sendFunc == NULL) {
-        AppPrintError("Invalid argument to send key.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: Invalid argument to send key.\n");
         return HITLS_APP_INVALID_ARG;
     }
 
@@ -1210,6 +1244,7 @@ int32_t HITLS_APP_SendKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, HI
     uint32_t n = BSL_LIST_COUNT(uuidList);
     if (n == 0 || n > APP_KEYMGMT_MAX_KEY_COUNT) {
         BSL_LIST_FREE(uuidList, BSL_SAL_Free);
+        AppPrintError("keymgmt: Invalid key count: %u.\n", n);
         return HITLS_APP_INVALID_ARG;
     }
 
@@ -1217,6 +1252,7 @@ int32_t HITLS_APP_SendKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, HI
     uint8_t *buf = (uint8_t *)BSL_SAL_Malloc(total);
     if (buf == NULL) {
         BSL_LIST_FREE(uuidList, BSL_SAL_Free);
+        AppPrintError("keymgmt: Failed to allocate memory, len: %zu.\n", total);
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
 
@@ -1239,9 +1275,9 @@ int32_t HITLS_APP_SendKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, HI
 
     ret = sendFunc(ctx, buf, index);
     BSL_SAL_ClearFree(buf, index);
-    if (ret != HITLS_APP_SUCCESS && ret != BSL_SUCCESS) {
-        AppPrintError("TLCP send failed: 0x%08x\n", ret);
-        return HITLS_APP_ERROR;
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("keymgmt: TLCP send failed, errCode = 0x%x.\n", ret);
+        return ret;
     }
     return HITLS_APP_SUCCESS;
 }
@@ -1249,7 +1285,8 @@ int32_t HITLS_APP_SendKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, HI
 static int32_t CreateCipherKeyFromSyncInfo(const HITLS_SyncKeyInfo *info, HITLS_APP_KeyInfo *outKeyInfo)
 {
     if (info->keyLen > sizeof(outKeyInfo->key)) {
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Invalid keyLen: %d.\n", info->keyLen);
+        return HITLS_APP_INVALID_ARG;
     }
     (void)memcpy_s(outKeyInfo->key, sizeof(outKeyInfo->key), info->key, info->keyLen);
     outKeyInfo->keyLen = info->keyLen;
@@ -1262,7 +1299,8 @@ static int32_t CreateAndCheckAsymKey(AppProvider *provider, uint8_t *prv, uint32
     CRYPT_EAL_PkeyCtx *pkeyCtx = CRYPT_EAL_ProviderPkeyNewCtx(APP_GetCurrent_LibCtx(), CRYPT_PKEY_SM2, 0,
         provider->providerAttr);
     if (pkeyCtx == NULL) {
-        return HITLS_APP_MEM_ALLOC_FAIL;
+        AppPrintError("keymgmt: Failed to create the pkeyCtx.\n");
+        return HITLS_APP_CRYPTO_FAIL;
     }
     BSL_Param prvParam[] = {{0}, BSL_PARAM_END};
     BSL_Param pubParam[] = {{0}, BSL_PARAM_END};
@@ -1273,19 +1311,19 @@ static int32_t CreateAndCheckAsymKey(AppProvider *provider, uint8_t *prv, uint32
     int32_t ret = CRYPT_EAL_PkeySetPrvEx(pkeyCtx, prvParam);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-        AppPrintError("set prv key failed: 0x%08x\n", ret);
+        AppPrintError("keymgmt: Failed to set prv key, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     ret = CRYPT_EAL_PkeySetPubEx(pkeyCtx, pubParam);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-        AppPrintError("set pub key failed: 0x%08x\n", ret);
+        AppPrintError("keymgmt: Failed to set pub key, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     ret = CRYPT_EAL_PkeyPairCheck(pkeyCtx, pkeyCtx);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-        AppPrintError("check key pair failed: 0x%08x\n", ret);
+        AppPrintError("keymgmt: Failed to check key pair, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     *pkey = pkeyCtx;
@@ -1295,27 +1333,31 @@ static int32_t CreateAndCheckAsymKey(AppProvider *provider, uint8_t *prv, uint32
 static int32_t CreateAsymKeyFromSyncInfo(AppProvider *provider, HITLS_SyncKeyInfo *info, HITLS_APP_KeyInfo *outKeyInfo)
 {
     if (info->keyLen < sizeof(uint32_t)) {
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Invalid keyLen: %d.\n", info->keyLen);
+        return HITLS_APP_INVALID_ARG;
     }
     uint32_t pubLen = 0;
     (void)memcpy_s(&pubLen, sizeof(pubLen), info->key, sizeof(uint32_t));
     pubLen = BSL_ByteToUint32((uint8_t *)&pubLen);
     uint32_t pos = sizeof(uint32_t);
     if (pubLen > info->keyLen - pos) {
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Invalid pubLen: %d.\n", pubLen);
+        return HITLS_APP_INVALID_ARG;
     }
     uint8_t *pub = info->key + pos;
     pos += pubLen;
 
     if (info->keyLen - pos < sizeof(uint32_t)) {
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Invalid keyLen: %d.\n", info->keyLen);
+        return HITLS_APP_INVALID_ARG;
     }
     uint32_t prvLen = 0;
     (void)memcpy_s(&prvLen, sizeof(prvLen), info->key + pos, sizeof(uint32_t));
     prvLen = BSL_ByteToUint32((uint8_t *)&prvLen);
     pos += sizeof(uint32_t);
     if (prvLen != info->keyLen - pos) {
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Invalid prvLen(%d) or keyLen(%d).\n", prvLen, info->keyLen);
+        return HITLS_APP_INVALID_ARG;
     }
     uint8_t *prv = info->key + pos;
     return CreateAndCheckAsymKey(provider, prv, prvLen, pub, pubLen, &outKeyInfo->pkeyCtx);
@@ -1325,7 +1367,8 @@ static int32_t ParseAndWriteKeyFile(KeyMgmtCmdOpt *keyMgmtOpt, HITLS_SyncKeyInfo
 {
     info->keyLen = BSL_ByteToUint32((uint8_t *)&info->keyLen);
     if (info->keyLen > sizeof(info->key)) {
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Invalid keyLen: %d.\n", info->keyLen);
+        return HITLS_APP_INVALID_ARG;
     }
     KeyAttrOrderCvt(&info->attr, false);
 
@@ -1342,9 +1385,10 @@ static int32_t ParseAndWriteKeyFile(KeyMgmtCmdOpt *keyMgmtOpt, HITLS_SyncKeyInfo
     }
 
     char uuidStr[APP_KEYMGMT_UUID_STR_LEN];
-    ret = HITLS_APP_HexToStr(keyInfo.attr.uuid, sizeof(keyInfo.attr.uuid), uuidStr, sizeof(uuidStr));
+    ret = HITLS_APP_OptToHex(keyInfo.attr.uuid, sizeof(keyInfo.attr.uuid), uuidStr, sizeof(uuidStr));
     if (ret != HITLS_APP_SUCCESS) {
         FreeKeyInfo(&keyInfo);
+        AppPrintError("keymgmt: Failed to convert uuid to hex, errCode: 0x%x.\n", ret);
         return ret;
     }
     ret = HITLS_APP_WriteKey(keyMgmtOpt, &keyInfo, uuidStr);
@@ -1357,8 +1401,7 @@ static int32_t CheckAndSetKdfParam(KeyMgmtCmdOpt *keyMgmtOpt, HITLS_APP_SM_Param
 {
     if (smParam == NULL || smParam->password == NULL || smParam->passwordLen == 0 ||
         smParam->workPath == NULL) {
-        AppPrintError("The password is invalid.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The password is invalid.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     keyMgmtOpt->smParam = smParam;
@@ -1367,13 +1410,11 @@ static int32_t CheckAndSetKdfParam(KeyMgmtCmdOpt *keyMgmtOpt, HITLS_APP_SM_Param
     keyMgmtOpt->saltLen = saltLen == -1 ? APP_KEYMGMT_PBKDF2_SALT_LEN_MIN : saltLen;
 
     if (keyMgmtOpt->iter < APP_KEYMGMT_PBKDF2_IT_CNT_MIN) {
-        AppPrintError("The number of iterations is invalid.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The number of iterations is invalid, iter: %d.\n", keyMgmtOpt->iter);
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     if (keyMgmtOpt->saltLen < APP_KEYMGMT_PBKDF2_SALT_LEN_MIN) {
-        AppPrintError("The salt length is invalid.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The salt length is invalid, saltLen: %d.\n", keyMgmtOpt->saltLen);
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     
@@ -1391,44 +1432,44 @@ int32_t HITLS_APP_ReceiveKey(AppProvider *provider, HITLS_APP_SM_Param *smParam,
         return ret;
     }
     if (recvFunc == NULL) {
-        AppPrintError("The recvFunc is invalid.\n");
-        AppPrintError("keymgmt: Use -help for summary.\n");
+        AppPrintError("keymgmt: The recvFunc is invalid.\n");
         return HITLS_APP_INVALID_ARG;
     }
     ret = recvFunc(ctx, &version, sizeof(uint32_t));
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("TLCP receive failed: 0x%08x\n", ret);
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: TLCP receive failed, errCode: 0x%x.\n", ret);
+        return ret;
     }
     version = BSL_ByteToUint32((uint8_t *)&version);
     if (version != APP_KEYMGMT_SYNC_DATA_VERSION) {
-        AppPrintError("version mismatch: %d != %d\n", version, APP_KEYMGMT_SYNC_DATA_VERSION);
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Version mismatch, version: %d, expected: %d.\n", version,
+            APP_KEYMGMT_SYNC_DATA_VERSION);
+        return HITLS_APP_INVALID_ARG;
     }
     uint32_t n = 0;
     ret = recvFunc(ctx, &n, sizeof(uint32_t));
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("TLCP receive failed: 0x%08x\n", ret);
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: TLCP receive failed, errCode: 0x%x.\n", ret);
+        return ret;
     }
     n = BSL_ByteToUint32((uint8_t *)&n);
     if (n == 0 || n > APP_KEYMGMT_MAX_KEY_COUNT) {
-        AppPrintError("n is invalid: %d\n", n);
-        return HITLS_APP_ERROR;
+        AppPrintError("keymgmt: Invalid n: %d.\n", n);
+        return HITLS_APP_INVALID_ARG;
     }
 
     HITLS_SyncKeyInfo keyInfo = {0};
     for (uint32_t i = 0; i < n; i++) {
         ret = recvFunc(ctx, &keyInfo, sizeof(HITLS_SyncKeyInfo));
         if (ret != HITLS_APP_SUCCESS) {
-            AppPrintError("TLCP receive failed: 0x%08x\n", ret);
-            return HITLS_APP_ERROR;
+            AppPrintError("keymgmt: TLCP receive failed, errCode: 0x%x.\n", ret);
+            return ret;
         }
         ret = ParseAndWriteKeyFile(&keyMgmtOpt, &keyInfo);
         BSL_SAL_CleanseData(keyInfo.key, sizeof(keyInfo.key));
         if (ret != HITLS_APP_SUCCESS) {
-            AppPrintError("ParseAndWriteKeyFile failed: 0x%08x\n", ret);
-            return HITLS_APP_ERROR;
+            AppPrintError("keymgmt: Failed to parse and write key file, errCode: 0x%x.\n", ret);
+            return ret;
         }
     }
     return HITLS_APP_SUCCESS;
@@ -1496,14 +1537,17 @@ static int32_t CheckAlgMatchForFind(int32_t requestAlgId, int32_t storedAlgId)
 {
     if (IsSm4NormalAlg(requestAlgId)) {
         if (!IsSm4NormalAlg(storedAlgId)) {
-            AppPrintError("The key file algorithm is not equal to the algorithm specified by the user.\n");
-            return HITLS_APP_KEY_NOT_SUPPORTED;
+            AppPrintError(
+                "keymgmt: The key file algorithm(%d) is not equal to the algorithm(%d) specified by the user.\n",
+                storedAlgId, requestAlgId);
+            return HITLS_APP_INVALID_ARG;
         }
         return HITLS_APP_SUCCESS;
     }
     if (storedAlgId != requestAlgId) {
-        AppPrintError("The key file algorithm is not equal to the algorithm specified by the user.\n");
-        return HITLS_APP_KEY_NOT_SUPPORTED;
+        AppPrintError("keymgmt: The key file algorithm(%d) is not equal to the algorithm(%d) specified by the user.\n",
+            storedAlgId, requestAlgId);
+        return HITLS_APP_INVALID_ARG;
     }
     return HITLS_APP_SUCCESS;
 }

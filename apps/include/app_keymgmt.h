@@ -41,9 +41,42 @@ typedef struct {
     HITLS_APP_KeyAttr attr;
 } HITLS_APP_KeyInfo;
 
+/**
+ * @ingroup app_keymgmt
+ * @brief   The function type to send the key.
+ *
+ * @param   ctx [IN] The context of the function.
+ * @param   buf [IN] The buffer to send the key.
+ * @param   len [IN] The length of the buffer.
+ *
+ * @retval  #HITLS_APP_SUCCESS.
+ *          For other error codes, see app_errno.h.
+ */
 typedef int32_t (*HITLS_APP_SendFunc)(void *ctx, const void *buf, uint32_t len);
+
+/**
+ * @ingroup app_keymgmt
+ * @brief   The function type to receive the key.
+ *
+ * @param   ctx [IN] The context of the function.
+ * @param   buf [OUT] The buffer to receive.
+ * @param   len [IN] The length of the buffer.
+ *
+ * @retval  #HITLS_APP_SUCCESS.
+ *          For other error codes, see app_errno.h.
+ */
 typedef int32_t (*HITLS_APP_RecvFunc)(void *ctx, void *buf, uint32_t len);
 
+/**
+ * @ingroup app_keymgmt
+ * @brief   The main function of the key management module.
+ *
+ * @param   argc [IN] The number of arguments.
+ * @param   argv [IN] The arguments.
+ *
+ * @retval  #HITLS_APP_SUCCESS.
+ *          For other error codes, see app_errno.h.
+ */
 int32_t HITLS_KeyMgmtMain(int argc, char *argv[]);
 
 /**

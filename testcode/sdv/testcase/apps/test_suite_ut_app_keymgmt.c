@@ -156,7 +156,7 @@ static char *GetUuidFromP12(const char *directory)
     return uuid;
 }
 
-// 获取目录中所有UUID的列表
+// Get the list of all UUIDs in the directory
 static int32_t GetAllUuidsFromDirectory(const char *directory, char **uuidList, int maxCount)
 {
     struct dirent *entry;
@@ -171,7 +171,6 @@ static int32_t GetAllUuidsFromDirectory(const char *directory, char **uuidList, 
             uint32_t len = strlen(entry->d_name) - strlen(SUFFIX) + 1;
             uuidList[count] = BSL_SAL_Malloc(len);
             if (uuidList[count] == NULL) {
-                // 内存分配失败，清理已分配的内存
                 for (int i = 0; i < count; i++) {
                     BSL_SAL_FREE(uuidList[i]);
                 }
@@ -214,7 +213,7 @@ static int32_t TLCP_Send_Init(void *ctx)
     int fd = open(SYNC_DATA_FILE, O_WRONLY | O_CREAT, 0644);
     if (fd == -1) {
         AppPrintError("open %s failed, ret: 0x%08x\n", SYNC_DATA_FILE, fd);
-        return HITLS_APP_ERROR;
+        return HITLS_APP_UIO_FAIL;
     }
     tlcpCtx->fd = fd;
     return HITLS_APP_SUCCESS;
@@ -227,7 +226,7 @@ static int32_t TLCP_Receive_Init(void *ctx)
     int fd = open(SYNC_DATA_FILE, O_RDONLY);
     if (fd == -1) {
         AppPrintError("open %s failed, ret: 0x%08x\n", SYNC_DATA_FILE, fd);
-        return HITLS_APP_ERROR;
+        return HITLS_APP_UIO_FAIL;
     }
     tlcpCtx->fd = fd;
     return HITLS_APP_SUCCESS;
@@ -240,7 +239,7 @@ static int32_t TLCP_Send(void *ctx, const void *data, uint32_t len)
     int ret = write(tlcpCtx->fd, data, len);
     if (ret < 0 || (uint32_t)ret != len) {
         AppPrintError("write %s failed, ret: %d\n", SYNC_DATA_FILE, ret);
-        return HITLS_APP_ERROR;
+        return HITLS_APP_UIO_FAIL;
     }
     return HITLS_APP_SUCCESS;
 }
@@ -251,7 +250,7 @@ static int32_t TLCP_Receive(void *ctx, void *data, uint32_t len)
     int ret = read(tlcpCtx->fd, data, len);
     if (ret < 0 || (uint32_t)ret != len) {
         AppPrintError("read %s failed, ret: %d\n", SYNC_DATA_FILE, ret);
-        return HITLS_APP_ERROR;
+        return HITLS_APP_UIO_FAIL;
     }
     return HITLS_APP_SUCCESS;
 }
@@ -270,7 +269,7 @@ static int32_t CreateFile(const char *file)
 {
     FILE *fp = fopen(file, "w");
     if (fp == NULL) {
-        return HITLS_APP_ERROR;
+        return HITLS_APP_UIO_FAIL;
     }
     fprintf(fp, "01234567890123456789");
     fclose(fp);
@@ -284,7 +283,7 @@ static int32_t CompareFile(const char *file1, const char *file2)
     if (fp1 == NULL || fp2 == NULL) {
         if (fp1 != NULL) fclose(fp1);
         if (fp2 != NULL) fclose(fp2);
-        return HITLS_APP_ERROR;
+        return HITLS_APP_UIO_FAIL;
     }
     int result = HITLS_APP_SUCCESS;
     char buf1[1024];
@@ -294,7 +293,7 @@ static int32_t CompareFile(const char *file1, const char *file2)
         bytesRead1 = fread(buf1, 1, sizeof(buf1), fp1);
         bytesRead2 = fread(buf2, 1, sizeof(buf2), fp2);
         if (bytesRead1 != bytesRead2 || memcmp(buf1, buf2, bytesRead1) != 0) {
-            result = HITLS_APP_ERROR;
+            result = HITLS_APP_UIO_FAIL;
             break;
         }
     } while (bytesRead1 > 0 && bytesRead2 > 0);
@@ -373,7 +372,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC001
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 创建、查找sm4密钥场景
+ * @title  Test keymgmt subcommand: create and find sm4 key
  */
 
 /* BEGIN_CASE */
@@ -428,7 +427,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC002
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 创建、查找sm4_xts密钥场景
+ * @title  Test keymgmt subcommand: create and find sm4_xts key
  */
 /* BEGIN_CASE */
 void UT_HITLS_APP_KEYMGMT_TC002(void)
@@ -490,7 +489,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC003
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 创建、查找sm2密钥场景
+ * @title  Test keymgmt subcommand: create and find sm2 key
  */
 
 /* BEGIN_CASE */
@@ -541,7 +540,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC004
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 创建密钥时传入不支持的算法id, 返回失败
+ * @title  Test keymgmt subcommand: unsupported algorithm id on create; expect failure
  */
 
 /* BEGIN_CASE */
@@ -572,7 +571,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC005
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 参数异常场景，返回失败
+ * @title  Test keymgmt subcommand: invalid parameter scenarios; expect failure
  */
 
 /* BEGIN_CASE */
@@ -588,37 +587,37 @@ void UT_HITLS_APP_KEYMGMT_TC005(void)
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 测试1: 缺少操作参数(-create 或 -delete)
+    // Case 1: Missing operation parameter (-create or -delete)
     char *argv1[] = {"keymgmt", "-algid", "sm2", SM_PARAM, NULL};
     int ret = HITLS_KeyMgmtMain(sizeof(argv1) / sizeof(argv1[0]) - 1, argv1);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
 
-    // 测试2: 缺少-sm参数
+    // Case 2: Missing -sm parameter
     char *argv2[] = {"keymgmt", "-create", "-algid", "sm2", "-workpath", WORK_PATH, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv2) / sizeof(argv2[0]) - 1, argv2);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
 
-    // 测试3: 缺少-workpath参数
+    // Case 3: Missing -workpath parameter
     char *argv3[] = {"keymgmt", "-create", "-algid", "sm2", "-sm", NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv3) / sizeof(argv3[0]) - 1, argv3);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
 
-    // 测试4: 缺少-algid参数(创建密钥时)
+    // Case 4: Missing -algid parameter (during key creation)
     char *argv4[] = {"keymgmt", "-create", SM_PARAM, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv4) / sizeof(argv4[0]) - 1, argv4);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
 
-    // 测试5: 缺少-uuid参数(删除密钥时)
+    // Case 5: Missing -uuid parameter (during key deletion)
     char *argv5[] = {"keymgmt", "-delete", SM_PARAM, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv5) / sizeof(argv5[0]) - 1, argv5);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
 
-    // 测试6: 同时指定-create和-delete(冲突操作)
+    // Case 6: Specify both -create and -delete (conflicting operations)
     char *argv6[] = {"keymgmt", "-create", "-delete", "-algid", "sm2", SM_PARAM, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv6) / sizeof(argv6[0]) - 1, argv6);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
 
-    // 测试7: 空参数列表
+    // Case 7: Empty argument list
     char *argv7[] = {"keymgmt", NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv7) / sizeof(argv7[0]) - 1, argv7);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
@@ -634,7 +633,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC006
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 传入的派生参数不符合要求，返回失败
+ * @title  Test keymgmt subcommand: invalid derivation parameters; expect failure
  */
 
 /* BEGIN_CASE */
@@ -650,7 +649,7 @@ void UT_HITLS_APP_KEYMGMT_TC006(void)
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 测试1: 传入的派生参数不符合要求
+    // Case 1: Invalid derivation parameters
     char *argv1[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, "-iter", "1023", NULL};
     int ret = HITLS_KeyMgmtMain(sizeof(argv1) / sizeof(argv1[0]) - 1, argv1);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
@@ -659,7 +658,7 @@ void UT_HITLS_APP_KEYMGMT_TC006(void)
     ret = HITLS_KeyMgmtMain(sizeof(argv2) / sizeof(argv2[0]) - 1, argv2);
     ASSERT_EQ(ret, HITLS_APP_OPT_UNKOWN);
 
-    // 测试2: 传入的盐值长度不符合要求
+    // Case 2: Invalid salt length
     char *argv3[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, "-saltlen", "7", NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv3) / sizeof(argv3[0]) - 1, argv3);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
@@ -679,7 +678,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC007
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试删除密钥，传入单个uuid，正常删除
+ * @title  Test keymgmt subcommand: delete key with single UUID; expect success
  */
 
 /* BEGIN_CASE */
@@ -696,28 +695,28 @@ void UT_HITLS_APP_KEYMGMT_TC007(void)
     char *uuid = NULL;
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 首先创建一个密钥
+    // First create a key
     char *argv_create[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, NULL};
     int ret = HITLS_KeyMgmtMain(sizeof(argv_create) / sizeof(argv_create[0]) - 1, argv_create);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 获取创建的密钥UUID
+    // Get the created key UUID
     uuid = GetUuidFromP12(WORK_PATH);
     ASSERT_TRUE(uuid != NULL);
 
-    // 验证密钥文件存在
+    // Verify the key file exists
     char keyPath[256];
     snprintf(keyPath, sizeof(keyPath), "%s/%s.p12", WORK_PATH, uuid);
     FILE *fp = fopen(keyPath, "r");
     ASSERT_TRUE(fp != NULL);
     fclose(fp);
 
-    // 测试删除密钥 - 传入单个UUID
+    // Test deleting a key - pass a single UUID
     char *argv_delete[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", uuid, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv_delete) / sizeof(argv_delete[0]) - 1, argv_delete);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 验证密钥文件已被删除
+    // Verify the key file has been deleted
     fp = fopen(keyPath, "r");
     ASSERT_TRUE(fp == NULL);
 
@@ -734,7 +733,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC008
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试删除密钥，传入单个uuid，uuid对应密钥不存在，返回失败
+ * @title  Test keymgmt subcommand: delete key with single UUID; key not found; expect failure
  */
 
 /* BEGIN_CASE */
@@ -750,15 +749,15 @@ void UT_HITLS_APP_KEYMGMT_TC008(void)
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 测试删除不存在的密钥 - 传入一个随机生成的UUID
+    // Test deleting a non-existent key - pass a randomly generated UUID
     char fakeUuid[] = "1234567890abcdef1234567890abcdef";
     char *argv_delete[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", fakeUuid, NULL};
     int ret = HITLS_KeyMgmtMain(sizeof(argv_delete) / sizeof(argv_delete[0]) - 1, argv_delete);
     
-    // 应该返回失败，因为密钥不存在
+    // Should return failure because the key does not exist
     ASSERT_NE(ret, HITLS_APP_SUCCESS);
 
-    // 验证工作目录中确实没有对应的密钥文件
+    // Verify there is indeed no corresponding key file in the work directory
     char keyPath[256];
     snprintf(keyPath, sizeof(keyPath), "%s/%s.p12", WORK_PATH, fakeUuid);
     FILE *fp = fopen(keyPath, "r");
@@ -775,7 +774,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC009
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试删除密钥，传入多个uuid，正常删除
+ * @title  Test keymgmt subcommand: delete keys with multiple UUIDs; expect success
  */
 
 /* BEGIN_CASE */
@@ -792,25 +791,25 @@ void UT_HITLS_APP_KEYMGMT_TC009(void)
     char *uuidArray[10] = {NULL};
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 创建第一个密钥
+    // Create the first key
     char *argv_create1[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, NULL};
     int ret = HITLS_KeyMgmtMain(sizeof(argv_create1) / sizeof(argv_create1[0]) - 1, argv_create1);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 创建第二个密钥
+    // Create the second key
     char *argv_create2[] = {"keymgmt", "-create", "-algid", "sm4", SM_PARAM, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv_create2) / sizeof(argv_create2[0]) - 1, argv_create2);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 获取创建的密钥UUID列表
+    // Get the list of created key UUIDs
     uuid1 = GetUuidFromP12(WORK_PATH);
     ASSERT_TRUE(uuid1 != NULL);
     
-    // 获取目录中所有UUID的列表
+    // Get all UUIDs in the directory
     int uuidCount = GetAllUuidsFromDirectory(WORK_PATH, uuidArray, 10);
-    ASSERT_EQ(uuidCount, 2); // 应该有两个密钥
+    ASSERT_EQ(uuidCount, 2); // There should be two keys
     
-    // 找到与uuid1不同的UUID
+    // Find a UUID different from uuid1
     char *uuid2 = NULL;
     for (int i = 0; i < uuidCount; i++) {
         if (strcmp(uuidArray[i], uuid1) != 0) {
@@ -820,7 +819,7 @@ void UT_HITLS_APP_KEYMGMT_TC009(void)
     }
     ASSERT_TRUE(uuid2 != NULL);
 
-    // 验证两个密钥文件都存在
+    // Verify both key files exist
     char keyPath1[256], keyPath2[256];
     snprintf(keyPath1, sizeof(keyPath1), "%s/%s.p12", WORK_PATH, uuid1);
     snprintf(keyPath2, sizeof(keyPath2), "%s/%s.p12", WORK_PATH, uuid2);
@@ -832,14 +831,14 @@ void UT_HITLS_APP_KEYMGMT_TC009(void)
     ASSERT_TRUE(fp2 != NULL);
     fclose(fp2);
 
-    // 测试删除多个密钥 - 传入多个UUID（用逗号分隔）
+    // Test deleting multiple keys - pass multiple UUIDs (comma-separated)
     char uuidList[256];
     snprintf(uuidList, sizeof(uuidList), "%s,%s", uuid1, uuid2);
     char *argv_delete[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", uuidList, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv_delete) / sizeof(argv_delete[0]) - 1, argv_delete);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 验证两个密钥文件都已被删除
+    // Verify both key files have been deleted
     fp1 = fopen(keyPath1, "r");
     fp2 = fopen(keyPath2, "r");
     ASSERT_TRUE(fp1 == NULL);
@@ -847,7 +846,7 @@ void UT_HITLS_APP_KEYMGMT_TC009(void)
 
 EXIT:
     BSL_SAL_FREE(uuid1);
-    // 释放uuidArray中分配的内存
+    // Free memory allocated in uuidArray
     for (int i = 0; i < 10; i++) {
         if (uuidArray[i] != NULL) {
             BSL_SAL_FREE(uuidArray[i]);
@@ -863,7 +862,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC010
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试删除密钥，传入多个uuid，部分uuid对应密钥不存在，返回失败，按顺序会删除部分密钥
+ * @title  Test keymgmt subcommand: delete with multiple UUIDs; some missing; expect failure; earlier existing keys deleted in order
  */
 
 /* BEGIN_CASE */
@@ -879,39 +878,39 @@ void UT_HITLS_APP_KEYMGMT_TC010(void)
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 创建第一个密钥
+    // Create the first key
     char *argv_create1[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, NULL};
     int ret = HITLS_KeyMgmtMain(sizeof(argv_create1) / sizeof(argv_create1[0]) - 1, argv_create1);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 获取创建的密钥UUID
+    // Get the created key UUID
     char *uuid1 = GetUuidFromP12(WORK_PATH);
     ASSERT_TRUE(uuid1 != NULL);
 
-    // 验证密钥文件存在
+    // Verify the key file exists
     char keyPath1[256];
     snprintf(keyPath1, sizeof(keyPath1), "%s/%s.p12", WORK_PATH, uuid1);
     FILE *fp1 = fopen(keyPath1, "r");
     ASSERT_TRUE(fp1 != NULL);
     fclose(fp1);
 
-    // 构造一个包含存在和不存在的UUID列表
+    // Construct a list containing existing and non-existing UUIDs
     char fakeUuid[] = "1234567890abcdef1234567890abcdef";
     char uuidList[256];
-    // 注意：将存在的UUID放在前面，不存在的放在后面，这样测试可以验证按顺序删除的逻辑
+    // Note: Put the existing UUID first and the non-existing one after, to verify ordered deletion logic
     snprintf(uuidList, sizeof(uuidList), "%s,%s", uuid1, fakeUuid);
 
     char *argv_delete[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", uuidList, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv_delete) / sizeof(argv_delete[0]) - 1, argv_delete);
 
-    // 应该返回失败，因为部分UUID对应的密钥不存在
+    // Should return failure because some UUIDs do not have corresponding keys
     ASSERT_NE(ret, HITLS_APP_SUCCESS);
 
-    // 验证存在的密钥文件已被删除（因为它在列表前面，会先被处理）
+    // Verify the existing key file has been deleted (processed first due to order)
     fp1 = fopen(keyPath1, "r");
     ASSERT_TRUE(fp1 == NULL);
 
-    // 验证不存在的密钥文件确实不存在
+    // Verify the non-existent key file indeed does not exist
     char keyPath2[256];
     snprintf(keyPath2, sizeof(keyPath2), "%s/%s.p12", WORK_PATH, fakeUuid);
     FILE *fp2 = fopen(keyPath2, "r");
@@ -930,8 +929,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC011
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试查找密钥接口，传入uuid，查找sm4-ofb算法密钥，返回成功，keyLen等于16，传入sm4_xts算法，
- * 返回失败
+ * @title  Test keymgmt subcommand: find key API with UUID; find sm4-ofb key success (keyLen 16); sm4_xts returns failure
  */
 
 /* BEGIN_CASE */
@@ -948,7 +946,7 @@ void UT_HITLS_APP_KEYMGMT_TC011(void)
     HITLS_APP_KeyInfo keyInfo = {0};
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
 
-    // 创建sm4密钥而不是sm2密钥
+    // Create an sm4 key instead of an sm2 key
     char *argv[] = {"keymgmt", "-create", "-algid", "sm4", SM_PARAM, NULL};
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -962,17 +960,17 @@ void UT_HITLS_APP_KEYMGMT_TC011(void)
     ret = TEST_APP_SM_Init(&g_appProvider, &smParam);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 查找sm4-ofb密钥
+    // Find sm4-ofb key
     ret = HITLS_APP_FindKey(&g_appProvider, &smParam, CRYPT_CIPHER_SM4_OFB, &keyInfo);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 验证密钥信息
+    // Verify key info
     ASSERT_TRUE(keyInfo.key != NULL);
-    ASSERT_EQ(keyInfo.keyLen, 16); // sm4密钥长度应该是16字节
+    ASSERT_EQ(keyInfo.keyLen, 16); // sm4 key length should be 16 bytes
 
-    // 查找sm4_xts密钥，返回失败
+    // Find sm4_xts key; expect failure
     ret = HITLS_APP_FindKey(&g_appProvider, &smParam, CRYPT_CIPHER_SM4_XTS, &keyInfo);
-    ASSERT_EQ(ret, HITLS_APP_KEY_NOT_SUPPORTED);
+    ASSERT_EQ(ret, HITLS_APP_INVALID_ARG);
 
 EXIT:
     BSL_SAL_FREE(smParam.uuid);
@@ -987,8 +985,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC012
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试查找密钥接口，传入uuid，查找sm4_xts算法密钥，返回成功，keyLen等于16，传入sm4-ofb算法，
- * 返回失败
+ * @title  Test keymgmt subcommand: find key API with UUID; find sm4_xts key success (keyLen 32); sm4-ofb returns failure
  */
 
 /* BEGIN_CASE */
@@ -1005,7 +1002,7 @@ void UT_HITLS_APP_KEYMGMT_TC012(void)
     HITLS_APP_KeyInfo keyInfo = {0};
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
 
-    // 创建sm4密钥而不是sm2密钥
+    // Create an sm4_xts key instead of an sm2 key
     char *argv[] = {"keymgmt", "-create", "-algid", "sm4_xts", SM_PARAM, NULL};
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -1019,17 +1016,17 @@ void UT_HITLS_APP_KEYMGMT_TC012(void)
     ret = TEST_APP_SM_Init(&g_appProvider, &smParam);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 查找sm4_xts密钥
+    // Find sm4_xts key
     ret = HITLS_APP_FindKey(&g_appProvider, &smParam, CRYPT_CIPHER_SM4_XTS, &keyInfo);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 验证密钥信息
+    // Verify key info
     ASSERT_TRUE(keyInfo.key != NULL);
-    ASSERT_EQ(keyInfo.keyLen, 32); // sm4_xts密钥长度应该是32字节
+    ASSERT_EQ(keyInfo.keyLen, 32); // sm4_xts key length should be 32 bytes
 
-    // 查找sm4-ofb密钥，返回失败
+    // Find sm4-ofb key; expect failure
     ret = HITLS_APP_FindKey(&g_appProvider, &smParam, CRYPT_CIPHER_SM4_OFB, &keyInfo);
-    ASSERT_EQ(ret, HITLS_APP_KEY_NOT_SUPPORTED);
+    ASSERT_EQ(ret, HITLS_APP_INVALID_ARG);
 
 EXIT:
     BSL_SAL_FREE(smParam.uuid);
@@ -1044,7 +1041,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC013
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试创建mac密钥，调用mac命令行计算mac，返回成功
+ * @title  Test keymgmt subcommand: create MAC key; compute MAC via CLI; expect success
  */
 
 /* BEGIN_CASE */
@@ -1085,7 +1082,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC014
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试查找密钥接口，传入uuid，查找mac算法密钥，返回成功, keyLen等于对应算法keyLen
+ * @title  Test keymgmt subcommand: find key API with UUID; find MAC key success; keyLen equals algorithm keyLen
  */
 
 /* BEGIN_CASE */
@@ -1105,7 +1102,7 @@ void UT_HITLS_APP_KEYMGMT_TC014(int algId, char *macAlgId, int keyLen)
     HITLS_APP_KeyInfo keyInfo = {0};
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
 
-    // 创建mac密钥
+    // Create a MAC key
     char *argv[] = {"keymgmt", "-create", "-algid", macAlgId, SM_PARAM, NULL};
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -1119,11 +1116,11 @@ void UT_HITLS_APP_KEYMGMT_TC014(int algId, char *macAlgId, int keyLen)
     ret = TEST_APP_SM_Init(&g_appProvider, &smParam);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 查找mac密钥
+    // Find MAC key
     ret = HITLS_APP_FindKey(&g_appProvider, &smParam, algId, &keyInfo);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 验证密钥信息
+    // Verify key info
     ASSERT_TRUE(keyInfo.key != NULL);
     ASSERT_EQ(keyInfo.keyLen, keyLen);
     ASSERT_EQ(keyInfo.attr.algId, algId);
@@ -1141,7 +1138,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC015
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试查找密钥接口，传入uuid，查找sm2算法密钥，返回成功, pkeyCtx不为空
+ * @title  Test keymgmt subcommand: find key API with UUID; find sm2 key success; pkeyCtx not NULL
  */
 
 /* BEGIN_CASE */
@@ -1158,7 +1155,7 @@ void UT_HITLS_APP_KEYMGMT_TC015(void)
     HITLS_APP_KeyInfo keyInfo = {0};
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
 
-    // 创建sm2密钥
+    // Create an sm2 key
     char *argv[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, NULL};
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -1172,15 +1169,15 @@ void UT_HITLS_APP_KEYMGMT_TC015(void)
     ret = TEST_APP_SM_Init(&g_appProvider, &smParam);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 查找sm2密钥
+    // Find sm2 key
     ret = HITLS_APP_FindKey(&g_appProvider, &smParam, CRYPT_PKEY_SM2, &keyInfo);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 验证密钥信息
-    ASSERT_TRUE(keyInfo.pkeyCtx != NULL); // 关键验证：pkeyCtx不为空
+    // Verify key info
+    ASSERT_TRUE(keyInfo.pkeyCtx != NULL); // pkeyCtx is not NULL
     ASSERT_EQ(keyInfo.attr.algId, CRYPT_PKEY_SM2);
 
-    // 测试SM2密钥的签名和验证功能
+    // Test SM2 key signing and verification
     ret = AsymSignAndVerify(keyInfo.pkeyCtx);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
@@ -1198,7 +1195,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC016
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试查找密钥接口，传入uuid，查找sm2算法密钥，传入错误的口令，pkcs12解密失败
+ * @title  Test keymgmt subcommand: find key API with UUID; find sm2 key with wrong password; PKCS12 decryption fails
  */
 
 /* BEGIN_CASE */
@@ -1214,7 +1211,7 @@ void UT_HITLS_APP_KEYMGMT_TC016(void)
 
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
 
-    // 创建sm2密钥
+    // Create an sm2 key
     char *argv[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, NULL};
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -1230,12 +1227,12 @@ void UT_HITLS_APP_KEYMGMT_TC016(void)
     ret = TEST_APP_SM_Init(&g_appProvider, &smParam);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    // 使用错误的口令尝试解密PKCS12：将已获取的正确口令改写成错误口令
+    // Attempt to decrypt PKCS12 with a wrong password: flip the first byte of the correct password
     smParam.password[0] = ~smParam.password[0];
 
-    // 查找sm2密钥应失败（PKCS12解密失败）
+    // Finding sm2 key should fail (PKCS12 decryption failure)
     ret = HITLS_APP_FindKey(&g_appProvider, &smParam, CRYPT_PKEY_SM2, &keyInfo);
-    ASSERT_EQ(ret, HITLS_APP_CRYPTO_FAIL);
+    ASSERT_EQ(ret, HITLS_APP_X509_FAIL);
 
 EXIT:
     BSL_SAL_FREE(smParam.uuid);
@@ -1302,10 +1299,11 @@ void UT_HITLS_APP_KEYMGMT_TC017(void)
     ret = TLCP_Receive_Init(&tlcpCtx);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
-    ret = CRYPT_EAL_ProviderRandInitCtx(NULL, CRYPT_RAND_SM3, "provider=default", NULL, 0, NULL);
+    ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), CRYPT_RAND_SM3, "provider=sm", NULL, 0, NULL);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
     ret = HITLS_APP_ReceiveKey(&g_appProvider, &smParam, -1, -1, TLCP_Receive, &tlcpCtx);
+    CRYPT_EAL_RandDeinitEx(APP_GetCurrent_LibCtx());
     TLCP_Deinit(&tlcpCtx);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
@@ -1317,7 +1315,6 @@ void UT_HITLS_APP_KEYMGMT_TC017(void)
 
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(keyInfo.pkeyCtx);
-    CRYPT_EAL_RandDeinitEx(NULL);
     BSL_SAL_FREE(smParam.uuid);
     BSL_SAL_FREE(smParam.password);
     AppTestUninit();
@@ -1330,7 +1327,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC018
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试删除全量密钥接口，返回成功
+ * @title  Test keymgmt subcommand: erase all keys interface; expect success
  */
 /* BEGIN_CASE */
 void UT_HITLS_APP_KEYMGMT_TC018(void)
@@ -1377,7 +1374,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC019
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试获取状态接口，返回成功
+ * @title  Test keymgmt subcommand: get status interface; expect success
  */
 /* BEGIN_CASE */
 void UT_HITLS_APP_KEYMGMT_TC019(void)
@@ -1408,7 +1405,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC020
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试获取版本号接口，返回成功
+ * @title  Test keymgmt subcommand: get version interface; expect success
  */
 /* BEGIN_CASE */
 void UT_HITLS_APP_KEYMGMT_TC020(void)
@@ -1439,7 +1436,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_KEYMGMT_TC021
  * @spec  -
- * @title  测试命令行二级命令keymgmt, 测试自检接口，返回成功
+ * @title  Test keymgmt subcommand: self-test interface; expect success
  */
 /* BEGIN_CASE */
 void UT_HITLS_APP_KEYMGMT_TC021(void)

@@ -244,11 +244,9 @@ static int32_t GetKdfAlg(KdfOpt *kdfOpt)
 static int32_t CheckSmParam(KdfOpt *kdfOpt)
 {
 #ifdef HITLS_APP_SM_MODE
-    if (kdfOpt->smParam->smTag == 1) {
-        if (kdfOpt->smParam->workPath == NULL) {
-            AppPrintError("kdf: The workpath is not specified.\n");
-            return HITLS_APP_OPT_VALUE_INVALID;
-        }
+    if (kdfOpt->smParam->smTag == 1 && kdfOpt->smParam->workPath == NULL) {
+        AppPrintError("kdf: The workpath is not specified.\n");
+        return HITLS_APP_OPT_VALUE_INVALID;
     }
 #else
     (void)kdfOpt;
@@ -482,6 +480,7 @@ int32_t HITLS_KdfMain(int argc, char *argv[])
         }
         mainRet = HITLS_APP_Init(&initParam);
         if (mainRet != HITLS_APP_SUCCESS) {
+            (void)AppPrintError("kdf: Failed to init, errCode: 0x%x.\n", mainRet);
             break;
         }
         ctx = InitAlgKdf(&kdfOpt);

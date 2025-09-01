@@ -554,7 +554,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_rand_TC0014
  * @spec  -
- * @title   测试UT_HITLS_APP_rand_TC0014函数
+ * @title   Test the random function in SM mode.
  */
 /* BEGIN_CASE */
 void UT_HITLS_APP_rand_TC0014(void)

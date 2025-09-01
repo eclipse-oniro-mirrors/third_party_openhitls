@@ -77,13 +77,12 @@ static int32_t GetRandNumLen(int32_t *randNumLen)
     int unParseParamNum = HITLS_APP_GetRestOptNum();
     char** unParseParam = HITLS_APP_GetRestOpt();
     if (unParseParamNum != 1) {
-        (void)AppPrintError("Extra arguments given.\n");
-        (void)AppPrintError("rand: Use -help for summary.\n");
+        (void)AppPrintError("rand: Extra arguments given.\n");
         return HITLS_APP_OPT_UNKOWN;
     }
     int32_t ret = HITLS_APP_OptGetInt(unParseParam[0], randNumLen);
     if (ret != HITLS_APP_SUCCESS || *randNumLen <= 0) {
-        (void)AppPrintError("Valid Range[1, 2147483647]\n");
+        (void)AppPrintError("rand: Valid Range[1, 2147483647]\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     return HITLS_APP_SUCCESS;
@@ -110,13 +109,14 @@ int32_t HITLS_RandMain(int argc, char **argv)
     if (mainRet != HITLS_APP_SUCCESS) {
         goto end;
     }
-    // 获取用户输入即要生成的随机数长度
+    // GET the length of the random number to be generated.
     mainRet = GetRandNumLen(&randCmdOpt.randNumLen);
     if (mainRet != HITLS_APP_SUCCESS) {
         goto end;
     }
     mainRet = HITLS_APP_Init(&initParam);
     if (mainRet != HITLS_APP_SUCCESS) {
+        (void)AppPrintError("rand: Failed to init, errCode: 0x%x.\n", mainRet);
         goto end;
     }
     mainRet = RandNumOut(&randCmdOpt);
@@ -145,7 +145,7 @@ static int32_t OptParse(RandCmdOpt *randCmdOpt)
             case HITLS_APP_OPT_RAND_OUT:
                 randCmdOpt->outFile = HITLS_APP_OptGetValueStr();
                 if (randCmdOpt->outFile == NULL || strlen(randCmdOpt->outFile) >= PATH_MAX) {
-                    AppPrintError("The length of outfile error, range is (0, 4096).\n");
+                    AppPrintError("rand: The length of outfile error, range is (0, 4096).\n");
                     return HITLS_APP_OPT_VALUE_INVALID;
                 }
                 break;
@@ -197,7 +197,7 @@ static int32_t RandNumOut(RandCmdOpt *randCmdOpt)
         if (randRet != CRYPT_SUCCESS) {
             BSL_UIO_Free(uio);
             BSL_SAL_CleanseData(outBuf, sizeof(outBuf));
-            (void)AppPrintError("Failed to generate random number, randRet: 0x%08x\n", randRet);
+            (void)AppPrintError("rand: Failed to generate random number, randRet: 0x%x\n", randRet);
             return HITLS_APP_CRYPTO_FAIL;
         }
         ret = HITLS_APP_OptWriteUio(uio, outBuf, outLen, randCmdOpt->format);
@@ -215,8 +215,8 @@ static int32_t RandNumOut(RandCmdOpt *randCmdOpt)
             if (ret != BSL_SUCCESS) {
                 BSL_UIO_Free(uio);
                 BSL_SAL_CleanseData(outBuf, outLen);
-                (void)AppPrintError("Failed to enter the newline character\n");
-                return ret;
+                (void)AppPrintError("rand: Failed to enter the newline character, errCode: 0x%x.\n", ret);
+                return HITLS_APP_UIO_FAIL;
             }
         }
     }

@@ -65,20 +65,8 @@ enum HITLS_APP_ERROR {
     HITLS_APP_LOAD_KEY_FAIL,           /* *< Failed to load the public and private keys. */
     HITLS_APP_ENCODE_KEY_FAIL,         /* *< Failed to encode the public and private keys. */
 
-    HITLS_APP_PROV_LOAD_FAIL,          /* *< Failed to load the provider. */
-    HITLS_APP_PROV_SET_LOAD_PATH_FAIL, /* *< Failed to set the load path of the provider. */
-
-    HITLS_APP_ERROR,
-    HITLS_APP_KEY_NOT_FOUND,
-    HITLS_APP_KEY_ALREADY_EXISTS,
-    HITLS_APP_KEY_NOT_SUPPORTED,
-    HITLS_APP_KEY_INVALID,
-    HITLS_APP_KEY_EXPIRED,
-    HITLS_APP_KEY_REVOKED,
-    HITLS_APP_KEY_DISABLED,
-    HITLS_APP_KEY_DELETE_FAIL,
-    HITLS_APP_ROOT_CHECK_FAIL,
-    HITLS_APP_SM_HMAC_VERIFY_FAIL,
+    HITLS_APP_ROOT_CHECK_FAIL,         /* *< root user check failed. */
+    HITLS_APP_HMAC_VERIFY_FAIL,        /* *< hmac verify failed. */
 
     HITLS_APP_MAX = 126,               /* *< maximum of the error code */
 };

@@ -249,13 +249,11 @@ static int32_t CheckSmParam(EncCmdOpt *encOpt)
 #ifdef HITLS_APP_SM_MODE
     if (encOpt->smParam->smTag == 1) {
         if (encOpt->smParam->uuid == NULL) {
-            AppPrintError("The uuid is not specified.\n");
-            AppPrintError("enc: Use -help for summary.\n");
+            AppPrintError("enc: The uuid is not specified.\n");
             return HITLS_APP_OPT_VALUE_INVALID;
         }
         if (encOpt->smParam->workPath == NULL) {
-            AppPrintError("The workpath is not specified.\n");
-            AppPrintError("enc: Use -help for summary.\n");
+            AppPrintError("enc: The workpath is not specified.\n");
             return HITLS_APP_OPT_VALUE_INVALID;
         }
     }
@@ -476,14 +474,14 @@ static int32_t GenSaltAndIv(EncCmdOpt *encOpt)
     // use the random number API to generate the salt value
     int32_t ret = CRYPT_EAL_RandbytesEx(APP_GetCurrent_LibCtx(), encOpt->keySet->salt, encOpt->keySet->saltLen);
     if (ret != CRYPT_SUCCESS) {
-        AppPrintError("Failed to generate the salt value, ret: 0x%08x.\n", ret);
+        AppPrintError("enc: Failed to generate the salt value, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     // use the random number API to generate the iv value
     if (encOpt->keySet->ivLen > 0) {
         ret = CRYPT_EAL_RandbytesEx(APP_GetCurrent_LibCtx(), encOpt->keySet->iv, encOpt->keySet->ivLen);
         if (ret != CRYPT_SUCCESS) {
-            AppPrintError("Failed to generate the iv value, ret: 0x%08x.\n", ret);
+            AppPrintError("enc: Failed to generate the iv value, errCode: 0x%x.\n", ret);
             return HITLS_APP_CRYPTO_FAIL;
         }
     }
@@ -635,15 +633,17 @@ static int32_t GetKeyFromP12(EncCmdOpt *encOpt)
     HITLS_APP_KeyInfo keyInfo = {0};
     int32_t ret = HITLS_APP_FindKey(encOpt->provider, encOpt->smParam, encOpt->cipherId, &keyInfo);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("Failed to find key, ret: 0x%08x\n", ret);
+        AppPrintError("enc: Failed to find key, errCode: 0x%x\n", ret);
         return ret;
     }
     if (encOpt->keySet->dKeyLen != keyInfo.keyLen) {
-        AppPrintError("Key length is error, key length read from file is %u.\n", keyInfo.keyLen);
-        return HITLS_APP_INFO_CMP_FAIL;
+        AppPrintError("enc: Key length is not equal, dKeyLen: %u, keyLen: %u.\n", encOpt->keySet->dKeyLen,
+            keyInfo.keyLen);
+        BSL_SAL_CleanseData(keyInfo.key, keyInfo.keyLen);
+        return HITLS_APP_INVALID_ARG;
     }
     (void)memcpy_s(encOpt->keySet->dKey, encOpt->keySet->dKeyLen, keyInfo.key, keyInfo.keyLen);
-    (void)BSL_SAL_CleanseData(keyInfo.key, keyInfo.keyLen);
+    BSL_SAL_CleanseData(keyInfo.key, keyInfo.keyLen);
     return HITLS_APP_SUCCESS;
 }
 #endif

@@ -294,13 +294,13 @@ static int32_t GetKeyFromP12(MacOpt *macOpt, uint8_t **key, uint32_t *keyLen)
     HITLS_APP_KeyInfo keyInfo = {0};
     int32_t ret = HITLS_APP_FindKey(macOpt->provider, macOpt->smParam, macOpt->algId, &keyInfo);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("Failed to find key, ret: 0x%08x\n", ret);
+        AppPrintError("mac: Failed to find key, errCode: 0x%x.\n", ret);
         return ret;
     }
     *key = (uint8_t*)BSL_SAL_Dump(keyInfo.key, keyInfo.keyLen);
     if (*key == NULL) {
         (void)BSL_SAL_CleanseData(keyInfo.key, keyInfo.keyLen);
-        AppPrintError("mac: Failed to dump key.\n");
+        AppPrintError("mac: Failed to dump key, keyLen: %u.\n", keyInfo.keyLen);
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
     *keyLen = keyInfo.keyLen;
@@ -319,7 +319,7 @@ static int32_t GetMacKey(MacOpt *macOpt, uint8_t **key, uint32_t *keyLen)
     if (macOpt->key != NULL) {
         *key = (uint8_t*)BSL_SAL_Dump(macOpt->key, strlen(macOpt->key));
         if (*key == NULL) {
-            AppPrintError("mac: Failed to dump key.\n");
+            AppPrintError("mac: Failed to dump key, keyLen: %u.\n", strlen(macOpt->key));
             return HITLS_APP_MEM_ALLOC_FAIL;
         }
         *keyLen = strlen(macOpt->key);
@@ -327,7 +327,7 @@ static int32_t GetMacKey(MacOpt *macOpt, uint8_t **key, uint32_t *keyLen)
     } else if (macOpt->hexKey != NULL) {
         int32_t ret = HITLS_APP_HexToByte(macOpt->hexKey, key, keyLen);
         if (ret == HITLS_APP_OPT_VALUE_INVALID) {
-            AppPrintError("mac:Invalid key: %s.\n", macOpt->hexKey);
+            AppPrintError("mac: Get key from hexkey failed, errCode: 0x%x.\n", ret);
             return ret;
         }
         return HITLS_APP_SUCCESS;
@@ -487,11 +487,6 @@ static int32_t GetReadBuf(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
 
 static int32_t MacResult(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
 {
-#ifdef HITLS_APP_SM_MODE
-    if (macOpt->smParam->smTag == 1) {
-        macOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
-    }
-#endif
     uint8_t *outBuf = NULL;
     BSL_UIO *fileWriteUio = HITLS_APP_UioOpen(macOpt->outFile, 'w', 0);  // overwrite the original content
     BSL_UIO_SetIsUnderlyingClosedByUio(fileWriteUio, true);
@@ -543,16 +538,20 @@ static int32_t HandleMac(MacOpt *macOpt)
         }
         ret = MacParamSet(ctx, macOpt);
         if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("mac:Failed to set mac params\n");
+            (void)AppPrintError("mac: Failed to set mac params, errCode: 0x%x.\n", ret);
             break;
         }
+#ifdef HITLS_APP_SM_MODE
+        if (macOpt->smParam->smTag == 1) {
+            macOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
+        }
+#endif
         ret = GetReadBuf(ctx, macOpt);
         if (ret != HITLS_APP_SUCCESS) {
             break;
         }
         ret = MacResult(ctx, macOpt);
     } while (0);
-    CRYPT_EAL_MacDeinit(ctx);  // algorithm release
     CRYPT_EAL_MacFreeCtx(ctx);
     return ret;
 }
@@ -586,6 +585,7 @@ int32_t HITLS_MacMain(int argc, char *argv[])
         }
         mainRet = HITLS_APP_Init(&initParam);
         if (mainRet != HITLS_APP_SUCCESS) {
+            (void)AppPrintError("mac: Failed to init, errCode: 0x%x.\n", mainRet);
             break;
         }
         mainRet = HandleMac(&macOpt);

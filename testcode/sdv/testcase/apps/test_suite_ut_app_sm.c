@@ -139,7 +139,7 @@ static int32_t STUB_HITLS_APP_SM_IntegrityCheck(void)
 /**
  * @test UT_HITLS_APP_SM_TC001
  * @spec  -
- * @title  测试命令行商密模块获取密码功能
+ * @title  Test password retrieval of the command-line SM module
  */
 
 /* BEGIN_CASE */
@@ -181,7 +181,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_SM_TC002
  * @spec  -
- * @title  测试命令行商密模块root用户检测功能
+ * @title  Test root user check of the command-line SM module
  */
 
 /* BEGIN_CASE */
@@ -211,7 +211,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_SM_TC003
  * @spec  -
- * @title  测试命令行商密模块文件篡改检测功能，模拟文件内容损坏
+ * @title  Test file tamper detection of the command-line SM module; simulate file content corruption
  */
 
 /* BEGIN_CASE */
@@ -233,36 +233,36 @@ void UT_HITLS_APP_SM_TC003(void)
     system("mkdir -p " WORK_PATH);
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 正常初始化
+    // Normal initialization
     int32_t status = 0;
     ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_SUCCESS);
     ASSERT_EQ(strcmp(password, PASSWORD), 0);
     BSL_SAL_FREE(password);
 
-    // 构造用户文件路径
+    // Build user file path
     snprintf(userFilePath, sizeof(userFilePath), "%s/openhitls_user", WORK_PATH);
     
-    // 篡改用户文件内容 - 修改盐值，这样可以通过版本号校验但会触发完整性校验失败
+    // Tamper user file content - modify salt; this passes version check but fails integrity check
     fd = open(userFilePath, O_RDWR);
     ASSERT_TRUE(fd >= 0);
 
-    // 计算盐值在文件中的偏移量
-    // UserParam结构: version(4) + deriveMacId(4) + integrityMacId(4) + iter(4) + salt[64] + saltLen(4) + dKey[32] + dKeyLen(4)
-    // 盐值偏移 = 4 + 4 + 4 + 4 = 16字节
+    // Calculate the offset of the salt in the file
+    // UserParam structure: version(4) + deriveMacId(4) + integrityMacId(4) + iter(4) + salt[64] + saltLen(4) + dKey[32] + dKeyLen(4)
+    // Salt offset = 4 + 4 + 4 + 4 = 16 bytes
     off_t saltOffset = 16;
     
-    // 定位到盐值位置
+    // Seek to the salt position
     ASSERT_EQ(lseek(fd, saltOffset, SEEK_SET), saltOffset);
     
-    // 修改盐值，使其无效（填充0xFF）
+    // Corrupt the salt by filling with 0xFF
     uint8_t corruptedSalt[64];
     memset(corruptedSalt, 0xFF, sizeof(corruptedSalt));
     ASSERT_EQ(write(fd, corruptedSalt, sizeof(corruptedSalt)), sizeof(corruptedSalt));
     close(fd);
     fd = -1;
 
-    // 篡改后的初始化应该失败（通过版本号校验但完整性校验失败）
-    ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_SM_HMAC_VERIFY_FAIL);
+    // Initialization after tampering should fail (version check passes but integrity check fails)
+    ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_HMAC_VERIFY_FAIL);
     ASSERT_EQ(password, NULL);
 
 EXIT:
@@ -281,7 +281,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_SM_TC004
  * @spec  -
- * @title  测试命令行商密模块文件权限篡改检测功能
+ * @title  Test file permission tamper detection of the command-line SM module
  */
 
 /* BEGIN_CASE */
@@ -301,23 +301,23 @@ void UT_HITLS_APP_SM_TC004(void)
     system("mkdir -p " WORK_PATH);
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 正常初始化
+    // Normal initialization
     int32_t status = 0;
     ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_SUCCESS);
     ASSERT_EQ(strcmp(password, PASSWORD), 0);
     BSL_SAL_FREE(password);
 
-    // 构造用户文件路径
+    // Build user file path
     snprintf(userFilePath, sizeof(userFilePath), "%s/openhitls_user", WORK_PATH);
     
-    // 篡改文件权限 - 移除读取权限
+    // Tamper file permissions - remove read permission
     ASSERT_EQ(chmod(userFilePath, 0), 0);
 
-    // 权限被篡改后，文件访问应该失败
+    // With permissions tampered, file access should fail
     ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_UIO_FAIL);
     ASSERT_EQ(password, NULL);
 
-    // 恢复文件权限
+    // Restore file permissions
     ASSERT_EQ(chmod(userFilePath, 0644), 0);
 
 EXIT:
@@ -333,7 +333,7 @@ EXIT:
 /**
  * @test UT_HITLS_APP_SM_TC005
  * @spec  -
- * @title  测试命令行商密模块用户口令输入错误，第二次登录失败
+ * @title  Test wrong user password; second login fails in the command-line SM module
  */
 
 /* BEGIN_CASE */
@@ -347,24 +347,24 @@ void UT_HITLS_APP_SM_TC005(void)
     STUB_Init();
     FuncStubInfo stubInfo[2] = {0};
     
-    // 第一次登录：使用正确口令
+    // First login: use correct password
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
     system("rm -rf " WORK_PATH);
     system("mkdir -p " WORK_PATH);
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
-    // 第一次登录应该成功
+    // First login should succeed
     int32_t status = 0;
     ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_SUCCESS);
     ASSERT_EQ(strcmp(password, PASSWORD), 0);
     BSL_SAL_FREE(password);
 
-    // 第二次登录：使用错误口令
+    // Second login: use wrong password
     STUB_Reset(&stubInfo[0]);
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil_WrongPassword);
 
-    // 使用错误口令的第二次登录应该失败
+    // Second login with wrong password should fail
     ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_PASSWD_FAIL);
     ASSERT_EQ(password, NULL);
 

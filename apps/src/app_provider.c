@@ -52,14 +52,14 @@ int32_t HITLS_APP_LoadProvider(const char *searchPath, const char *providerName)
         ret = CRYPT_EAL_ProviderSetLoadPath(ctx, searchPath);
         if (ret != HITLS_APP_SUCCESS) {
             (void)AppPrintError("Load SetSearchPath failed. ERR:%d\n", ret);
-            return HITLS_APP_PROV_SET_LOAD_PATH_FAIL;
+            return HITLS_APP_CRYPTO_FAIL;
         }
     }
     if (providerName != NULL) {
         ret = CRYPT_EAL_ProviderLoad(ctx, BSL_SAL_LIB_FMT_OFF, providerName, NULL, NULL);
         if (ret != HITLS_APP_SUCCESS) {
             (void)AppPrintError("Load provider failed. ERR:%d\n", ret);
-            return HITLS_APP_PROV_LOAD_FAIL;
+            return HITLS_APP_CRYPTO_FAIL;
         }
     }
     return HITLS_APP_SUCCESS;

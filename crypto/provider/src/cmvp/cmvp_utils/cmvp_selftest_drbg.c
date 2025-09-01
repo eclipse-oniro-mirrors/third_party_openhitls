@@ -22,6 +22,7 @@
 #include "err.h"
 #include "crypt_errno.h"
 #include "crypt_eal_rand.h"
+#include "crypt_eal_cmvp.h"
 #include "bsl_err_internal.h"
 #include "crypt_utils.h"
 #include "bsl_sal.h"

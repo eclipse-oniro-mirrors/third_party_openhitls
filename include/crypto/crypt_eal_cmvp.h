@@ -41,6 +41,11 @@ typedef enum {
     CRYPT_CMVP_MAX
 } CRYPT_CMVP_SELFTEST_TYPE;
 
+typedef enum {
+    /* Set the self test flag of drbg, 0: disable, 1: enable */
+    CRYPT_CTRL_SET_SELFTEST_FLAG = CRYPT_CTRL_RAND_MAX + 1,
+} CRYPT_CMVP_RandCtrl;
+
 /**
  * @ingroup crypt_eal_cmvp
  * @brief   Log function for provider.
