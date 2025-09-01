@@ -48,6 +48,7 @@ set(SOURCE_FILES_PATH1_LIBSO
     provider_load_test_providerNoInit.c
     provider_load_test_providerNoFree.c
     provider_self_decoder_test.c
+    provider_load_p12.c
 )
 
 set(SOURCE_FILES_PATH2_SO

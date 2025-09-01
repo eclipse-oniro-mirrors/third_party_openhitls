@@ -109,13 +109,13 @@ typedef enum {
  * A method of obtaining the mac key in key-integrity protection mode.
  * The method implementation follows standards RFC 7292
 */
-int32_t HITLS_PKCS12_KDF(BSL_Buffer *output, const uint8_t *pwd, uint32_t pwdLen, HITLS_PKCS12_KDF_IDX type,
-    HITLS_PKCS12_MacData *macData);
+int32_t HITLS_PKCS12_KDF(HITLS_PKCS12 *p12, const uint8_t *pwd, uint32_t pwdLen,
+    HITLS_PKCS12_KDF_IDX type, BSL_Buffer *output);
 
 /*
  * To cal mac data in key-integrity protection mode, we use the way of Hmac + PKCS12_KDF.
 */
-int32_t HITLS_PKCS12_CalMac(BSL_Buffer *output, BSL_Buffer *pwd, BSL_Buffer *initData, HITLS_PKCS12_MacData *macData);
+int32_t HITLS_PKCS12_CalMac(HITLS_PKCS12 *p12, BSL_Buffer *pwd, BSL_Buffer *initData, BSL_Buffer *output);
 
 #ifdef HITLS_PKI_PKCS12_PARSE
 /*
@@ -161,8 +161,8 @@ int32_t HITLS_PKCS12_ParseMacData(BSL_Buffer *encode, HITLS_PKCS12_MacData *macD
 /*
  * Encode MacData of a p12.
 */
-int32_t HITLS_PKCS12_EncodeMacData(BSL_Buffer *initData, const HITLS_PKCS12_MacParam *macParam,
-    HITLS_PKCS12_MacData *p12Mac, BSL_Buffer *encode);
+int32_t HITLS_PKCS12_EncodeMacData(HITLS_PKCS12 *p12, BSL_Buffer *initData, const HITLS_PKCS12_MacParam *macParam,
+    BSL_Buffer *encode);
 
 /*
  * Encode contentInfo.
@@ -173,8 +173,8 @@ int32_t HITLS_PKCS12_EncodeContentInfo(HITLS_PKI_LibCtx *libCtx, const char *att
 /*
  * Encode list, including contentInfo-list, safeContent-list.
 */
-int32_t HITLS_PKCS12_EncodeAsn1List(BSL_ASN1_List *list, uint32_t encodeType, const CRYPT_EncodeParam *encryptParam,
-    BSL_Buffer *encode);
+int32_t HITLS_PKCS12_EncodeAsn1List(HITLS_PKCS12 *p12, BSL_ASN1_List *list, uint32_t encodeType,
+    const CRYPT_EncodeParam *encryptParam, BSL_Buffer *encode);
 #endif
 
 /**

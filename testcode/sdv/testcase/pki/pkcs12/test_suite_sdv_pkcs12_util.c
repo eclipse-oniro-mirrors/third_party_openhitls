@@ -31,6 +31,7 @@
 #include "crypt_errno.h"
 #include "stub_replace.h"
 #include "bsl_list_internal.h"
+#include "crypt_eal_rand.h"
 /* END_HEADER */
 
 static int32_t SetCertBag(HITLS_PKCS12 *p12, HITLS_X509_Cert *cert)
@@ -83,7 +84,7 @@ EXIT:
 
 static int32_t NewAndSetKeyBag(HITLS_PKCS12 *p12, int algId)
 {
-    CRYPT_EAL_PkeyCtx *key = CRYPT_EAL_PkeyNewCtx(algId);
+    CRYPT_EAL_PkeyCtx *key = CRYPT_EAL_ProviderPkeyNewCtx(p12->libCtx, algId, 0, p12->attrName);
     ASSERT_NE(key, NULL);
     if (algId == BSL_CID_RSA) {
         CRYPT_EAL_PkeyPara para = {.id = CRYPT_PKEY_RSA};
@@ -115,7 +116,8 @@ static int32_t NewAndSetSecretBag(HITLS_PKCS12 *p12)
     BSL_Buffer buffer = {0};
     buffer.data = (uint8_t *)secret;
     buffer.dataLen = strlen(secret);
-    HITLS_PKCS12_Bag *secretBag = HITLS_PKCS12_BagNew(BSL_CID_SECRETBAG, BSL_CID_PKCS7_SIMPLEDATA, &buffer); // new a secret Bag
+    // new a secret Bag
+    HITLS_PKCS12_Bag *secretBag = HITLS_PKCS12_BagNew(BSL_CID_SECRETBAG, BSL_CID_PKCS7_SIMPLEDATA, &buffer);
     ASSERT_NE(secretBag, NULL);
     char *name = "I am an attribute of secretBag";
     uint32_t nameLen = strlen(name);
@@ -321,6 +323,124 @@ void SDV_PKCS12_PARSE_MULBAG_TC001(Hex *mulBag, int hasMac)
     ASSERT_NE(p12->key, NULL);
 EXIT:
     HITLS_PKCS12_Free(p12);
+#endif
+}
+/* END_CASE */
+
+#if defined(HITLS_CRYPTO_PROVIDER) && defined(HITLS_PKI_PKCS12_PARSE) && defined(HITLS_PKI_PKCS12_GEN)
+
+#define HITLS_P12_LIB_NAME "libprovider_load_p12.so"
+#define HITLS_P12_PROVIDER_ATTR "provider?=p12Load"
+#define HITLS_P12_PROVIDER_PATH "../../testcode/testdata/provider/path1"
+
+static CRYPT_EAL_LibCtx *P12_ProviderLoadWithDefault(void)
+{
+    CRYPT_EAL_LibCtx *libCtx = CRYPT_EAL_LibCtxNew();
+    ASSERT_TRUE(libCtx != NULL);
+
+    ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(libCtx, HITLS_P12_PROVIDER_PATH), CRYPT_SUCCESS);
+
+    ASSERT_EQ(CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_P12_LIB_NAME, NULL, NULL), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_ProviderLoad(libCtx, 0, "default", NULL, NULL), CRYPT_SUCCESS);
+
+    ASSERT_EQ(CRYPT_EAL_ProviderRandInitCtx(libCtx, CRYPT_RAND_SHA256, HITLS_P12_PROVIDER_ATTR, NULL, 0, NULL),
+        CRYPT_SUCCESS);
+    return libCtx;
+
+EXIT:
+    CRYPT_EAL_LibCtxFree(libCtx);
+    return NULL;
+}
+
+static int32_t STUB_HITLS_PKCS12_CalMac(HITLS_PKCS12 *p12, BSL_Buffer *pwd, BSL_Buffer *initData, BSL_Buffer *output)
+{
+    (void)p12;
+    (void)pwd;
+    (void)initData;
+    uint8_t *temp = BSL_SAL_Malloc(32);
+    ASSERT_TRUE(temp != NULL);
+    uint8_t outBuf[32] = {0xe3, 0x69, 0x5a, 0x9a, 0xfe, 0x27, 0x53, 0x4c,
+        0x95, 0x17, 0x67, 0xa2, 0x3f, 0x83, 0x9f, 0x94,
+        0x55, 0xb7, 0xf9, 0x00, 0x4b, 0xbc, 0x28, 0xbb,
+        0x9d, 0x59, 0x73, 0xbb, 0x91, 0xd0, 0x7c, 0x53};
+    memcpy(temp, outBuf, 32);
+    output->data = temp;
+    output->dataLen = 32;
+EXIT:
+    return CRYPT_SUCCESS;
+}
+
+#endif
+
+/**
+ * For test parse p12 with provider.
+*/
+/* BEGIN_CASE */
+void SDV_PKCS12_PARSE_WITH_PROVIDER_TC001(Hex *mulBag)
+{
+#if !defined(HITLS_PKI_PKCS12_PARSE) || !defined(HITLS_CRYPTO_PROVIDER)
+    (void)mulBag;
+    SKIP_TEST();
+#else
+    CRYPT_EAL_LibCtx *libCtx = NULL;
+    libCtx = P12_ProviderLoadWithDefault();
+    ASSERT_TRUE(libCtx != NULL);
+    FuncStubInfo tmpRpInfo = {0};
+    
+    char *pwd = "123456";
+    BSL_Buffer encPwd = {.data = (uint8_t *)pwd, .dataLen = strlen(pwd)};
+    HITLS_PKCS12_PwdParam pwdParam = {.encPwd = &encPwd, .macPwd = &encPwd};
+    HITLS_PKCS12 *p12 = NULL;
+    BSL_Buffer buffer = {.data = (uint8_t *)mulBag->x, .dataLen = mulBag->len};
+    ASSERT_EQ(HITLS_PKCS12_ProviderParseBuff(libCtx, HITLS_P12_PROVIDER_ATTR, "ASN1", &buffer, &pwdParam, &p12, true),
+        HITLS_PKCS12_ERR_VERIFY_FAIL); // mac has been installed.
+    STUB_Init();
+    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, HITLS_PKCS12_CalMac, STUB_HITLS_PKCS12_CalMac) == 0);
+    ASSERT_EQ(HITLS_PKCS12_ProviderParseBuff(libCtx, HITLS_P12_PROVIDER_ATTR, "ASN1", &buffer, &pwdParam, &p12, true),
+        HITLS_PKI_SUCCESS);
+    ASSERT_NE(p12, NULL);
+    ASSERT_NE(BSL_LIST_COUNT(p12->certList), 0);
+    ASSERT_NE(BSL_LIST_COUNT(p12->keyList), 0);
+    ASSERT_NE(BSL_LIST_COUNT(p12->secretBags), 0);
+    ASSERT_NE(p12->key, NULL);
+EXIT:
+    HITLS_PKCS12_Free(p12);
+    CRYPT_EAL_RandDeinitEx(libCtx);
+    CRYPT_EAL_LibCtxFree(libCtx);
+    STUB_Reset(&tmpRpInfo);
+#endif
+}
+/* END_CASE */
+
+/**
+ * For test encode p12 with provider.
+*/
+/* BEGIN_CASE */
+void SDV_PKCS12_ENCODE_WITH_PROVIDER_TC001(void)
+{
+#if !defined(HITLS_PKI_PKCS12_GEN) || !defined(HITLS_CRYPTO_PROVIDER)
+    SKIP_TEST();
+#else
+    CRYPT_EAL_RandDeinit();
+    CRYPT_EAL_LibCtx *libCtx = NULL;
+    libCtx = P12_ProviderLoadWithDefault();
+    ASSERT_TRUE(libCtx != NULL);
+    BSL_Buffer output = {0};
+    char *pwd = "123456";
+    CRYPT_Pbkdf2Param pbParam = {BSL_CID_PBES2, BSL_CID_PBKDF2, CRYPT_MAC_HMAC_SM3, CRYPT_CIPHER_AES256_CBC,
+        16, (uint8_t *)pwd, strlen(pwd), 2048};
+    CRYPT_EncodeParam encParam = {CRYPT_DERIVE_PBKDF2, &pbParam};
+    HITLS_PKCS12_KdfParam macParam = {8, 2048, BSL_CID_SHA256, (uint8_t *)pwd, strlen(pwd)};
+    HITLS_PKCS12_MacParam paramTest = {.para = &macParam, .algId = BSL_CID_PKCS12KDF};
+    HITLS_PKCS12_EncodeParam encodeParam = {encParam, paramTest};
+    HITLS_PKCS12 *p12 = HITLS_PKCS12_ProviderNew(libCtx, HITLS_P12_PROVIDER_ATTR);
+    ASSERT_EQ(NewAndSetKeyBag(p12, BSL_CID_RSA), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_GenBuff(BSL_FORMAT_ASN1, p12, &encodeParam, true, &output), HITLS_PKI_SUCCESS);
+EXIT:
+    BSL_SAL_Free(output.data);
+    HITLS_PKCS12_Free(p12);
+    CRYPT_EAL_RandDeinitEx(libCtx);
+    CRYPT_EAL_LibCtxFree(libCtx);
 #endif
 }
 /* END_CASE */

@@ -330,25 +330,25 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_PKCS12_CAL_MACDATA_TC001(Hex *initData, Hex *salt, int alg, int iter, Hex *mac)
 {
-    BSL_Buffer output = {0};
     TestMemInit();
-    HITLS_PKCS12_MacData *macData = HITLS_PKCS12_MacDataNew();
-    ASSERT_NE(macData, NULL);
+    HITLS_PKCS12 *p12 = HITLS_PKCS12_New();
+    ASSERT_NE(p12, NULL);
+    BSL_Buffer output = {0};
+    HITLS_PKCS12_MacData *macData = p12->macData;
     macData->alg = alg;
-    macData->macSalt->data = salt->x;
+    macData->macSalt->data = BSL_SAL_Dump(salt->x, salt->len);
+    ASSERT_NE(macData->macSalt->data, NULL);
     macData->macSalt->dataLen = salt->len;
     macData->iteration = iter;
     char *pwdData = "123456";
     uint32_t pwdlen = strlen(pwdData);
     BSL_Buffer pwd = {(uint8_t *)pwdData, pwdlen};
-    int32_t ret = HITLS_PKCS12_CalMac(&output, &pwd, (BSL_Buffer *)initData, macData);
+    int32_t ret = HITLS_PKCS12_CalMac(p12, &pwd, (BSL_Buffer *)initData, &output);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_EQ(memcmp(output.data, mac->x, mac->len), 0);
 EXIT:
-    BSL_SAL_FREE(macData->mac);
-    BSL_SAL_FREE(macData->macSalt);
-    BSL_SAL_FREE(macData);
     BSL_SAL_Free(output.data);
+    HITLS_PKCS12_Free(p12);
 }
 /* END_CASE */
 
@@ -359,21 +359,21 @@ EXIT:
 void SDV_PKCS12_CAL_KDF_TC001(Hex *pwd, Hex *salt, int alg, int iter, Hex *key)
 {
     TestMemInit();
-    HITLS_PKCS12_MacData *macData = HITLS_PKCS12_MacDataNew();
-    ASSERT_NE(macData, NULL);
+    HITLS_PKCS12 *p12 = HITLS_PKCS12_New();
+    ASSERT_NE(p12, NULL);
+    HITLS_PKCS12_MacData *macData = p12->macData;
     macData->alg = alg;
-    macData->macSalt->data = salt->x;
+    macData->macSalt->data = BSL_SAL_Dump(salt->x, salt->len);
+    ASSERT_NE(macData->macSalt->data, NULL);
     macData->macSalt->dataLen = salt->len;
     macData->iteration = iter;
     uint8_t outData[64] = {0};
     BSL_Buffer output = {outData, 64};
-    int32_t ret = HITLS_PKCS12_KDF(&output, pwd->x, pwd->len, HITLS_PKCS12_KDF_MACKEY_ID, macData);
+    int32_t ret = HITLS_PKCS12_KDF(p12, pwd->x, pwd->len, HITLS_PKCS12_KDF_MACKEY_ID, &output);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_EQ(memcmp(output.data, key->x, key->len), 0);
 EXIT:
-    BSL_SAL_FREE(macData->mac);
-    BSL_SAL_FREE(macData->macSalt);
-    BSL_SAL_FREE(macData);
+    HITLS_PKCS12_Free(p12);
     return;
 }
 /* END_CASE */
@@ -697,7 +697,7 @@ void SDV_PKCS12_ENCODE_SAFEBAGS_OF_PKCS8SHROUDEDKEYBAG_TC001(Hex *buff)
     param.itCnt = 2048;
     CRYPT_EncodeParam paramEx = {CRYPT_DERIVE_PBKDF2, &param};
 
-    ret = HITLS_PKCS12_EncodeAsn1List(list, BSL_CID_PKCS8SHROUDEDKEYBAG, &paramEx, &encode);
+    ret = HITLS_PKCS12_EncodeAsn1List(p12, list, BSL_CID_PKCS8SHROUDEDKEYBAG, &paramEx, &encode);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.dataLen, buff->len);
     ret = memcmp(encode.data + encode.dataLen - 37, buff->x + buff->len - 37, 37);
@@ -758,7 +758,7 @@ void SDV_PKCS12_ENCODE_SAFEBAGS_OF_CERTBAGS_TC001(Hex *buff)
     param.itCnt = 2048;
     CRYPT_EncodeParam paramEx = {CRYPT_DERIVE_PBKDF2, &param};
 
-    ret = HITLS_PKCS12_EncodeAsn1List(p12->certList, BSL_CID_CERTBAG, &paramEx, &encode);
+    ret = HITLS_PKCS12_EncodeAsn1List(p12, p12->certList, BSL_CID_CERTBAG, &paramEx, &encode);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
     ret = HITLS_PKCS12_EncodeContentInfo(NULL, NULL, &encode, BSL_CID_PKCS7_ENCRYPTEDDATA, &paramEx, &output);
@@ -835,7 +835,7 @@ void SDV_PKCS12_ENCODE_AUTHSAFE_TC001(Hex *buff)
     p12->entityCert->attributes = NULL;
     p12->entityCert->value.cert = NULL;
 
-    ret = HITLS_PKCS12_EncodeAsn1List(p12->certList, BSL_CID_CERTBAG, &paramEx, encode1);
+    ret = HITLS_PKCS12_EncodeAsn1List(p12, p12->certList, BSL_CID_CERTBAG, &paramEx, encode1);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
     ret = HITLS_PKCS12_EncodeContentInfo(NULL, NULL, encode1, BSL_CID_PKCS7_ENCRYPTEDDATA, &paramEx, encode2);
@@ -848,7 +848,7 @@ void SDV_PKCS12_ENCODE_AUTHSAFE_TC001(Hex *buff)
     ret = BSL_LIST_AddElement(keyList, bagKey, BSL_LIST_POS_END);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    ret = HITLS_PKCS12_EncodeAsn1List(keyList, BSL_CID_PKCS8SHROUDEDKEYBAG, &paramEx, encode3);
+    ret = HITLS_PKCS12_EncodeAsn1List(p12, keyList, BSL_CID_PKCS8SHROUDEDKEYBAG, &paramEx, encode3);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
     ret = HITLS_PKCS12_EncodeContentInfo(NULL, NULL, encode3, BSL_CID_PKCS7_SIMPLEDATA, &paramEx, encode4);
@@ -860,7 +860,7 @@ void SDV_PKCS12_ENCODE_AUTHSAFE_TC001(Hex *buff)
     ret = BSL_LIST_AddElement(list, encode4, BSL_LIST_POS_END);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
 
-    ret = HITLS_PKCS12_EncodeAsn1List(list, BSL_CID_PKCS7_CONTENTINFO, &paramEx, &encode5);
+    ret = HITLS_PKCS12_EncodeAsn1List(p12, list, BSL_CID_PKCS7_CONTENTINFO, &paramEx, &encode5);
     ASSERT_EQ(encode5.dataLen, buff->len);
 
 EXIT:
@@ -899,8 +899,7 @@ void SDV_PKCS12_ENCODE_MACDATA_TC001(Hex *buff, Hex *initData, Hex *expectData)
     BSL_Buffer output = {0};
     BSL_Buffer output1 = {0};
     HITLS_PKCS12 *p12 = NULL;
-    HITLS_PKCS12_MacData *macData = HITLS_PKCS12_MacDataNew();
-    ASSERT_NE(macData, NULL);
+    HITLS_PKCS12 *p12_1 = NULL;
 
     HITLS_PKCS12_PwdParam param = {
         .encPwd = &encPwd,
@@ -916,25 +915,26 @@ void SDV_PKCS12_ENCODE_MACDATA_TC001(Hex *buff, Hex *initData, Hex *expectData)
     hmacParam.itCnt = 2048;
 
     HITLS_PKCS12_MacParam macParam = {.para = &hmacParam, .algId = BSL_CID_PKCS12KDF};
-    ASSERT_EQ(HITLS_PKCS12_EncodeMacData((BSL_Buffer *)initData, &macParam, p12->macData, &output), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_EncodeMacData(p12, (BSL_Buffer *)initData, &macParam, &output), HITLS_PKI_SUCCESS);
     ASSERT_EQ(memcmp(output.data, expectData->x, expectData->len), 0);
-
+    p12_1 = HITLS_PKCS12_New();
+    ASSERT_NE(p12_1, NULL);
     hmacParam.itCnt = 999;
-    ASSERT_EQ(HITLS_PKCS12_EncodeMacData((BSL_Buffer *)initData, &macParam, macData, &output),
+    ASSERT_EQ(HITLS_PKCS12_EncodeMacData(p12_1, (BSL_Buffer *)initData, &macParam, &output),
         HITLS_PKCS12_ERR_INVALID_ITERATION);
 
     hmacParam.itCnt = 1024;
     hmacParam.saltLen = 0;
-    ASSERT_EQ(HITLS_PKCS12_EncodeMacData((BSL_Buffer *)initData, &macParam, macData, &output),
+    ASSERT_EQ(HITLS_PKCS12_EncodeMacData(p12_1, (BSL_Buffer *)initData, &macParam, &output),
         HITLS_PKCS12_ERR_INVALID_SALTLEN);
 
     hmacParam.saltLen = 16;
-    ASSERT_EQ(HITLS_PKCS12_EncodeMacData((BSL_Buffer *)initData, &macParam, macData, &output1), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_PKCS12_EncodeMacData(p12_1, (BSL_Buffer *)initData, &macParam, &output1), HITLS_PKI_SUCCESS);
 EXIT:
     BSL_SAL_Free(output.data);
     BSL_SAL_Free(output1.data);
-    HITLS_PKCS12_MacDataFree(macData);
     HITLS_PKCS12_Free(p12);
+    HITLS_PKCS12_Free(p12_1);
 #endif
 }
 /* END_CASE */
