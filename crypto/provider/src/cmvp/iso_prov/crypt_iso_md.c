@@ -152,11 +152,8 @@ static uint32_t CRYPT_ASMCAP_Test(int32_t algId)
                                                                                                         \
     static int32_t CRYPT_##name##_GetParamWrapper(IsoMdCtx *ctx, BSL_Param *param)                      \
     {                                                                                                   \
-        if (ctx == NULL) {                                                                              \
-            BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);                                                       \
-            return CRYPT_NULL_INPUT;                                                                    \
-        }                                                                                               \
-        return CRYPT_##name##_GetParam(ctx->ctx, param);                                                \
+        (void)ctx;                                                                                      \
+        return CRYPT_##name##_GetParam(NULL, param);                                                    \
     }                                                                                                   \
                                                                                                         \
     static int32_t CRYPT_##name##_CopyCtxWrapper(IsoMdCtx *dst, const IsoMdCtx *src)                    \

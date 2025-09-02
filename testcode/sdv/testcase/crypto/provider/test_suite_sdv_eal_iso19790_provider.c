@@ -1477,3 +1477,49 @@ EXIT:
 #endif
 }
 /* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_ISO19790_PROVIDER_MD_USE_DEFAULT_LIBCTX_TEST_TC001(int algId)
+{
+#ifndef HITLS_CRYPTO_CMVP_ISO19790
+    (void)algId;
+    SKIP_TEST();
+#else
+    int32_t ret = CRYPT_SUCCESS;
+    CRYPT_EAL_MdCTX *mdCtx = NULL;
+    uint8_t plaintext[128] = {0};
+    uint32_t plaintextLen = sizeof(plaintext);
+    uint8_t md[128] = {0};
+    uint32_t mdLen = sizeof(md);
+    BSL_Param param[2] = {{0}, BSL_PARAM_END};
+    (void)BSL_PARAM_InitValue(&param[0], CRYPT_PARAM_CMVP_LOG_FUNC, BSL_PARAM_TYPE_FUNC_PTR, ISO19790_RunLogCb, 0);
+
+    ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(NULL, HITLS_ISO_PROVIDER_PATH), CRYPT_SUCCESS);
+
+    do {
+        ret = CRYPT_EAL_ProviderLoad(NULL, 0, HITLS_ISO_LIB_NAME, param, NULL);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY || ret == CRYPT_DRBG_FAIL_GET_NONCE);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+
+    do {
+        ret = CRYPT_EAL_ProviderRandInitCtx(NULL, CRYPT_RAND_SHA256, HITLS_ISO_PROVIDER_ATTR, NULL, 0, NULL);
+    } while (ret == CRYPT_ENTROPY_ES_NO_NS || ret == CRYPT_DRBG_FAIL_GET_ENTROPY || ret == CRYPT_DRBG_FAIL_GET_NONCE);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+
+    mdCtx = CRYPT_EAL_ProviderMdNewCtx(NULL, algId, HITLS_ISO_PROVIDER_ATTR);
+    ASSERT_TRUE(mdCtx != NULL);
+    ret = CRYPT_EAL_MdInit(mdCtx);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ret = CRYPT_EAL_MdUpdate(mdCtx, plaintext, plaintextLen);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ret = CRYPT_EAL_MdFinal(mdCtx, md, &mdLen);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+
+EXIT:
+    CRYPT_EAL_MdFreeCtx(mdCtx);
+    CRYPT_EAL_RandDeinitEx(NULL);
+    CRYPT_EAL_ProviderUnload(NULL, 0, HITLS_ISO_LIB_NAME);
+    return;
+#endif
+}
+/* END_CASE */

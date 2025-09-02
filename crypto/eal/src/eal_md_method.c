@@ -240,7 +240,7 @@ static EAL_MdMethod *EAL_ProviderMdFindMethod(CRYPT_MD_AlgId id, void *libCtx, c
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
     }
-    ret = retMethod->getParam(libCtx, &params[0]);
+    ret = retMethod->getParam(NULL, &params[0]);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
