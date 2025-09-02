@@ -106,4 +106,4 @@ const CRYPT_EAL_Func g_defEalRand[] = {
     CRYPT_EAL_FUNC_END,
 };
 
-#endif /* HITLS_CRYPTO_PROVIDER */
+#endif /* HITLS_CRYPTO_DRBG && HITLS_CRYPTO_PROVIDER */

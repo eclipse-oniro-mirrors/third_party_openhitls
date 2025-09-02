@@ -251,12 +251,18 @@ uint32_t CRYPT_EAL_GetMacLen(const CRYPT_EAL_MacCtx *ctx)
     return (ret == CRYPT_SUCCESS) ? result : 0;
 }
 
+/* The function not support provider */
 bool CRYPT_EAL_MacIsValidAlgId(CRYPT_MAC_AlgId id)
 {
     // 1. Check if the dependency method is valid
+    /**
+     * The dependency method is getted from the global static table:
+     *     If the mac algorithm is HMAC, the method in mdMethod will be overwritten.
+     *     If the mac algorithm is other than HMAC, the depMeth.method will be overwritten.
+     */
     EAL_MdMethod mdMethod = {0};
     EAL_MacDepMethod depMeth = {.method = {.md = &mdMethod}};
-    int32_t ret = EAL_MacFindDepMethod(id, NULL, NULL, &depMeth, NULL);
+    int32_t ret = EAL_MacFindDepMethod(id, NULL, NULL, &depMeth, NULL, false);
     if (ret != CRYPT_SUCCESS) {
         return false;
     }

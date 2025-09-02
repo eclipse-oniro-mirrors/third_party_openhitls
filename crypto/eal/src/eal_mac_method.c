@@ -318,34 +318,35 @@ EAL_MacMethod *EAL_MacFindMethodEx(CRYPT_MAC_AlgId id, void *libCtx, const char 
 }
 
 int32_t EAL_MacFindDepMethod(CRYPT_MAC_AlgId macId, void *libCtx, const char *attrName, EAL_MacDepMethod *depMeth,
-    void **provCtx)
+    void **provCtx, bool isProvider)
 {
     (void)libCtx;
     (void)attrName;
     (void)provCtx;
+    (void)isProvider;
     const EAL_MacAlgMap *macAlgMap = EAL_FindMacAlgMap(macId);
     if (macAlgMap == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
         return CRYPT_EAL_ERR_ALGID;
     }
 
+#ifdef HITLS_CRYPTO_HMAC
+    EAL_MdMethod *mdMethod = NULL;
+#endif
     switch (macAlgMap->macId) {
 #ifdef HITLS_CRYPTO_HMAC
         case CRYPT_MAC_HMAC:
             depMeth->id.mdId = macAlgMap->mdId;
-            // md method is get from global or provider,
-            EAL_MdMethod *mdMethod = EAL_MdFindMethodEx(macAlgMap->mdId, libCtx, attrName, depMeth->method.md, provCtx);
+            mdMethod = isProvider ? EAL_MdFindMethodEx(macAlgMap->mdId, libCtx, attrName, depMeth->method.md, provCtx)
+                                  : EAL_MdFindMethod(macAlgMap->mdId, depMeth->method.md);
             if (mdMethod == NULL) {
                 BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
                 return CRYPT_EAL_ERR_ALGID;
             }
-            if (depMeth->method.md != NULL) {
-                // if the md pointer is not NULL, the md method will be overwritten.
-                *depMeth->method.md = *mdMethod;
-            } else {
+            if (depMeth->method.md == NULL) {
                 // if the md pointer is NULL, the md method will be allocated. The caller should free the md method.
                 depMeth->method.md = mdMethod;
-            }
+            } // if the md pointer is not NULL, the md method has been overwritten before.
             return CRYPT_SUCCESS;
 #endif
 #if defined(HITLS_CRYPTO_CMAC) || defined(HITLS_CRYPTO_CBC_MAC) || defined(HITLS_CRYPTO_GMAC)

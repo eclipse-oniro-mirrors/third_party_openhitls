@@ -102,6 +102,7 @@ EAL_MacMethod *EAL_MacFindMethodEx(CRYPT_MAC_AlgId id, void *libCtx, const char 
  * @param attrName  [IN]  Attribute name for provider selection
  * @param depMeth   [OUT] Structure containing dependent methods and algorithm IDs
  * @param provCtx   [OUT] The provider context.
+ * @param isProvider [IN]  Whether to use the provider method.
  *
  * @return CRYPT_SUCCESS on success, error code on failure
  *
@@ -114,7 +115,7 @@ EAL_MacMethod *EAL_MacFindMethodEx(CRYPT_MAC_AlgId id, void *libCtx, const char 
  *         - Original contents will be overwritten
  */
 int32_t EAL_MacFindDepMethod(CRYPT_MAC_AlgId macId, void *libCtx, const char *attrName, EAL_MacDepMethod *depMeth,
-    void **provCtx);
+    void **provCtx, bool isProvider);
 
 #ifdef __cplusplus
 }

@@ -14,9 +14,7 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_PROVIDER) && (defined(HITLS_CRYPTO_MD5) || defined(HITLS_CRYPTO_SHA1) || \
-    defined(HITLS_CRYPTO_SHA224) || defined(HITLS_CRYPTO_SHA256) || defined(HITLS_CRYPTO_SHA384) || \
-    defined(HITLS_CRYPTO_SHA512) || defined(HITLS_CRYPTO_SHA3) || defined(HITLS_CRYPTO_SM3))
+#if defined(HITLS_CRYPTO_MD) && defined(HITLS_CRYPTO_PROVIDER)
 
 #include "crypt_eal_implprovider.h"
 #include "crypt_md5.h"
@@ -272,4 +270,4 @@ const CRYPT_EAL_Func g_defEalMdSm3[] = {
 };
 #endif // HITLS_CRYPTO_SM3
 
-#endif /* HITLS_CRYPTO_PROVIDER */
+#endif /* HITLS_CRYPTO_MD && HITLS_CRYPTO_PROVIDER */
