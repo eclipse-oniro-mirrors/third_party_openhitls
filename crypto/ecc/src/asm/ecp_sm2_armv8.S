@@ -465,7 +465,6 @@ AARCH64_PACIASP
 	sbc	x8,x8,x14
 	stp	x9, x7, [x0]
 	stp	x10, x8, [x0, #16]
-	ret
 AARCH64_AUTIASP
 	ret
 .size	ECP_Sm2Neg, .-ECP_Sm2Neg
