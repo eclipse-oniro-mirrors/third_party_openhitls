@@ -300,8 +300,8 @@ clean
 parse_option
 if [ ${need_run_all} -eq 1 ]; then
     run_all
+    run_demos
 else
     run_test
 fi
-run_demos
 gen_test_report
