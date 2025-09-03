@@ -1207,6 +1207,39 @@ int32_t HITLS_CFG_LoadVerifyFile(HITLS_Config *config, const char *file);
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_LoadVerifyDir(HITLS_Config *config, const char *path);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Release the certificate.
+ *
+ * @param   config [IN] Config handle
+ * @param   cert [IN] X509 certificate
+ *
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_FreeCert(HITLS_Config *config, HITLS_CERT_X509 *cert);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Release the key.
+ *
+ * @param   config [IN] Config handle
+ * @param   key [IN] private key
+ *
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_FreeKey(HITLS_Config *config, HITLS_CERT_Key *key);
+
+/**
+ * @brief   Load the default CA verification directory path
+ * @param   config  [OUT] TLS link configuration
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_LoadDefaultCAPath(HITLS_Config *config);
+
 #ifdef __cplusplus
 }
 #endif
