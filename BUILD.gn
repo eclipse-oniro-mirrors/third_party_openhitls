@@ -152,6 +152,8 @@ public_all_defines = [
     "HITLS_PKI_PKCS12",
     "HITLS_PKI_X509",
 
+    "HITLS_TLS_FEATURE_CERT_MODE",
+
     "HITLS_TLS",
     "HITLS_TLS_CALLBACK_SAL",
     "HITLS_TLS_CALLBACK_CERT",
@@ -207,6 +209,10 @@ config("bsl_config") {
         "include/bsl",
         "config/macro_config",
     ]
+}
+
+config("bsl_public_config") {
+  include_dirs = [ "include/bsl" ]
 }
 
 ohos_source_set("bsl_source") {
@@ -274,6 +280,12 @@ ohos_shared_library("openhitls_bsl") {
     sources = []
     deps = [":bsl_source"]
     innerapi_tags = [ "ndk" ]
+    public_configs = [ ":bsl_public_config" ]
+    
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
 
 config("crypto_config") {
@@ -753,6 +765,10 @@ ohos_source_set("crypto_source") {
     ldflags = public_ldflags
 }
 
+config("crypto_public_config") {
+  include_dirs = [ "include/crypto" ]
+}
+
 ohos_shared_library("openhitls_crypto") {
     subsystem_name = "thirdparty"
     part_name = "openhitls"
@@ -761,6 +777,12 @@ ohos_shared_library("openhitls_crypto") {
         ":crypto_source"
     ]
     innerapi_tags = [ "ndk" ]
+    public_configs = [ ":crypto_public_config" ]
+
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
 
 config("pki_config") {
@@ -827,6 +849,10 @@ ohos_source_set("pki_source") {
     ldflags = public_ldflags
 }
 
+config("pki_public_config") {
+  include_dirs = [ "include/pki" ]
+}
+
 ohos_shared_library("openhitls_pki") {
     subsystem_name = "thirdparty"
     part_name = "openhitls"
@@ -835,6 +861,12 @@ ohos_shared_library("openhitls_pki") {
         ":pki_source"
     ]
     innerapi_tags = [ "ndk" ]
+    public_configs = [ ":pki_public_config" ]
+
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
 
 
@@ -1044,6 +1076,10 @@ ohos_source_set("tls_source") {
     ldflags = public_ldflags
 }
 
+config("tls_public_config") {
+  include_dirs = [ "include/tls" ]
+}
+
 ohos_shared_library("openhitls_tls") {
     subsystem_name = "thirdparty"
     part_name = "openhitls"
@@ -1052,6 +1088,12 @@ ohos_shared_library("openhitls_tls") {
         ":tls_source"
     ]
     innerapi_tags = [ "ndk" ]
+    public_configs = [ ":tls_public_config" ]
+
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
 
 
@@ -1104,4 +1146,8 @@ ohos_shared_library("openhitls_auth") {
         ":auth_source"
     ]
     innerapi_tags = [ "ndk" ]
+    install_images = [
+      "system",
+      "updater",
+    ]
 }
