@@ -168,7 +168,7 @@ public_all_defines = [
     "HITLS_TLS_SUITE_ECC_SM4_GCM_SM3",
     "HITLS_CRYPTO_ENTROPY_GETENTROPY",
     "HITLS_CRYPTO_ENTROPY_DEVRANDOM",
-    "HITLS_EAL_INIT_OPTS=0xFF",
+    "HITLS_EAL_INIT_OPTS=0x01",
     "HITLS_SIXTY_FOUR_BITS",
     "HITLS_SEED_DRBG_INIT_RAND_ALG=CRYPT_RAND_SHA256",
     "__FILENAME__=__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__"
@@ -948,6 +948,7 @@ ohos_source_set("tls_source") {
         "tls/cert/hitls_x509_adapt/hitls_x509_crypto.c",
         "tls/cert/hitls_x509_adapt/hitls_x509_init.c",
         "tls/cert/hitls_x509_adapt/hitls_x509_pkey_magr.c",
+        "tls/cert/hitls_x509_adapt/hitls_x509_crl_magr.c",
         "tls/config/src/cipher_suite.c",
         "tls/config/src/config.c",
         "tls/config/src/config_cert.c",
