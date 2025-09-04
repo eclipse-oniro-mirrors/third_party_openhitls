@@ -262,7 +262,7 @@ void UT_HITLS_APP_SM_TC003(void)
     fd = -1;
 
     // Initialization after tampering should fail (version check passes but integrity check fails)
-    ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_HMAC_VERIFY_FAIL);
+    ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_INTEGRITY_VERIFY_FAIL);
     ASSERT_EQ(password, NULL);
 
 EXIT:

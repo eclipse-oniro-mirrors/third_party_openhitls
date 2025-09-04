@@ -66,7 +66,7 @@ enum HITLS_APP_ERROR {
     HITLS_APP_ENCODE_KEY_FAIL,         /* *< Failed to encode the public and private keys. */
 
     HITLS_APP_ROOT_CHECK_FAIL,         /* *< root user check failed. */
-    HITLS_APP_HMAC_VERIFY_FAIL,        /* *< hmac verify failed. */
+    HITLS_APP_INTEGRITY_VERIFY_FAIL,   /* *< integrity verify failed. */
 
     HITLS_APP_MAX = 126,               /* *< maximum of the error code */
 };

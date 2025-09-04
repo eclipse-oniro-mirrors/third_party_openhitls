@@ -906,7 +906,7 @@ int32_t HITLS_APP_HexToByte(const char *hex, uint8_t **bin, uint32_t *len)
     if (hexLen % HEX_TO_BYTE == 1) {
         char *tmp = BSL_SAL_Malloc(hexLen + 2); // 2: '0' + '\0'
         if (tmp == NULL) {
-            AppPrintError("utils: Allocate memory failed.\n");
+            AppPrintError("Allocate memory failed.\n");
             BSL_SAL_Free(res);
             return HITLS_APP_MEM_ALLOC_FAIL;
         }
@@ -929,7 +929,7 @@ int32_t HITLS_APP_HexToByte(const char *hex, uint8_t **bin, uint32_t *len)
 int32_t HITLS_APP_StrToHex(const char *str, uint8_t *hex, uint32_t *hexLen)
 {
     if (str == NULL || hex == NULL || hexLen == NULL) {
-        AppPrintError("utils: Invalid input buffer or output buffer.\n");
+        AppPrintError("Invalid input buffer or output buffer.\n");
         return HITLS_APP_INVALID_ARG;
     }
     size_t inLen = strlen(str);
@@ -941,12 +941,12 @@ int32_t HITLS_APP_StrToHex(const char *str, uint8_t *hex, uint32_t *hexLen)
     for (size_t i = 0; i < inLen; i += 2) {
         if (!((str[i] >= '0' && str[i] <= '9') || (str[i] >= 'a' && str[i] <= 'f') ||
             (str[i] >= 'A' && str[i] <= 'F'))) {
-            AppPrintError("utils: Input string is not a valid hex string.\n");
+            AppPrintError("Input string is not a valid hex string.\n");
             return HITLS_APP_OPT_VALUE_INVALID;
         }
         if (!((str[i + 1] >= '0' && str[i + 1] <= '9') || (str[i + 1] >= 'a' && str[i + 1] <= 'f') ||
             (str[i + 1] >= 'A' && str[i + 1] <= 'F'))) {
-            AppPrintError("utils: Input string is not a valid hex string.\n");
+            AppPrintError("Input string is not a valid hex string.\n");
             return HITLS_APP_OPT_VALUE_INVALID;
         }
         // Formula for converting hex to int: (Hex% 32 + 9)% 25 = int, hexadecimal, 16: high 4 bits.
@@ -963,7 +963,7 @@ static int32_t InitRand(AppInitParam *param)
     char str[32] = {0};
     int32_t len = sprintf_s(str, sizeof(str), "%d", pid);
     if (len < 0) {
-        AppPrintError("utils: Failed to set pid, pid = %d.\n", pid);
+        AppPrintError("Failed to set pid, pid = %d.\n", pid);
         return HITLS_APP_INVALID_ARG;
     }
     int32_t algId = param->smParam->smTag == 1 ? CRYPT_RAND_SM4_CTR_DF : CRYPT_RAND_SHA256;
@@ -974,7 +974,7 @@ static int32_t InitRand(AppInitParam *param)
         param->provider->providerAttr, NULL, 0, NULL);
 #endif
     if (ret != CRYPT_SUCCESS) {
-        AppPrintError("utils: Failed to init rand ctx, ret: 0x%x.\n", ret);
+        AppPrintError("Failed to init rand ctx, ret: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     return HITLS_APP_SUCCESS;
@@ -1003,7 +1003,7 @@ int32_t HITLS_APP_Init(AppInitParam *param)
         ret = HITLS_APP_SM_Init(param->provider, param->smParam->workPath, (char **)&param->smParam->password,
             &param->smParam->status);
         if (ret != HITLS_APP_SUCCESS) {
-            AppPrintError("utils: Failed to init sm, errCode: 0x%x.\n", ret);
+            AppPrintError("Failed to init sm, errCode: 0x%x.\n", ret);
             CRYPT_EAL_RandDeinitEx(APP_GetCurrent_LibCtx());
             return ret;
         }

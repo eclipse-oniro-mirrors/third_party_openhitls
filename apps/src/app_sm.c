@@ -106,7 +106,7 @@ static void UserInfoOrderCvt(UserInfo *userInfo, bool toByte)
 static int32_t RootUserCheck(void)
 {
     if (getuid() == 0) {
-        AppPrintError("sm: The current user is root, please use a non-root user to run the program.\n");
+        AppPrintError("The current user is root, please use a non-root user to run the program.\n");
         return HITLS_APP_ROOT_CHECK_FAIL;
     }
     return HITLS_APP_SUCCESS;
@@ -129,7 +129,7 @@ static int32_t GetPassword(char **password)
         return HITLS_APP_PASSWD_FAIL;
     }
     if (ret != BSL_SUCCESS) {
-        AppPrintError("sm: Failed to read passwd from stdin.\n");
+        AppPrintError("Failed to read passwd from stdin.\n");
         return HITLS_APP_PASSWD_FAIL;
     }
     buf[bufLen - 1] = '\0';
@@ -142,7 +142,7 @@ static int32_t GetPassword(char **password)
     *password = (char *)BSL_SAL_Dump(buf, bufLen);
     BSL_SAL_CleanseData(buf, bufLen);
     if (*password == NULL) {
-        AppPrintError("sm: Failed to allocate memory, bufLen: %u.\n", bufLen);
+        AppPrintError("Failed to allocate memory, bufLen: %u.\n", bufLen);
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
     return HITLS_APP_SUCCESS;
@@ -154,7 +154,7 @@ static int32_t DeriveKeyFromPassword(AppProvider *provider, char *password, User
     CRYPT_EAL_KdfCTX *kdfCtx = CRYPT_EAL_ProviderKdfNewCtx(APP_GetCurrent_LibCtx(), CRYPT_KDF_PBKDF2,
         provider->providerAttr);
     if (kdfCtx == NULL) {
-        AppPrintError("sm: Failed to create kdf context.\n");
+        AppPrintError("Failed to create kdf context.\n");
         return HITLS_APP_CRYPTO_FAIL;
     }
 
@@ -172,14 +172,14 @@ static int32_t DeriveKeyFromPassword(AppProvider *provider, char *password, User
     int32_t ret = CRYPT_EAL_KdfSetParam(kdfCtx, params);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_KdfFreeCtx(kdfCtx);
-        AppPrintError("sm: Failed to set kdf params, errCode: 0x%x.\n", ret);
+        AppPrintError("Failed to set kdf params, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
 
     ret = CRYPT_EAL_KdfDerive(kdfCtx, dKey, dKeyLen);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_KdfFreeCtx(kdfCtx);
-        AppPrintError("sm: Failed to derive key, errCode: 0x%x.\n", ret);
+        AppPrintError("Failed to derive key, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     CRYPT_EAL_KdfFreeCtx(kdfCtx);
@@ -196,28 +196,28 @@ static int32_t CalculateHMAC(AppProvider *provider, int32_t macId, const uint8_t
 {
     CRYPT_EAL_MacCtx *macCtx = CRYPT_EAL_ProviderMacNewCtx(APP_GetCurrent_LibCtx(), macId, provider->providerAttr);
     if (macCtx == NULL) {
-        AppPrintError("sm: Failed to create mac context, macId: %d.\n", macId);
+        AppPrintError("Failed to create mac context, macId: %d.\n", macId);
         return HITLS_APP_CRYPTO_FAIL;
     }
 
     int32_t ret = CRYPT_EAL_MacInit(macCtx, (const uint8_t *)GetIntegrityKey(), (uint32_t)strlen(GetIntegrityKey()));
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_MacFreeCtx(macCtx);
-        AppPrintError("sm: Failed to init mac context, errCode: 0x%x.\n", ret);
+        AppPrintError("Failed to init mac context, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
 
     ret = CRYPT_EAL_MacUpdate(macCtx, data, dataLen);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_MacFreeCtx(macCtx);
-        AppPrintError("sm: Failed to update mac context, errCode: 0x%x.\n", ret);
+        AppPrintError("Failed to update mac context, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
 
     ret = CRYPT_EAL_MacFinal(macCtx, hmac, hmacLen);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_MacFreeCtx(macCtx);
-        AppPrintError("sm: Failed to final mac context, errCode: 0x%x.\n", ret);
+        AppPrintError("Failed to final mac context, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     CRYPT_EAL_MacFreeCtx(macCtx);
@@ -236,8 +236,8 @@ static int32_t VerifyHMAC(AppProvider *provider, int32_t macId, const uint8_t *d
     }
 
     if (calcHmacLen != hmacLen || memcmp(calculatedHmac, hmac, hmacLen) != 0) {
-        AppPrintError("sm: HMAC verify failed.\n");
-        return HITLS_APP_HMAC_VERIFY_FAIL;
+        AppPrintError("HMAC verify failed.\n");
+        return HITLS_APP_INTEGRITY_VERIFY_FAIL;
     }
     return HITLS_APP_SUCCESS;
 }
@@ -246,12 +246,12 @@ static int32_t WriteUserFile(char *userFile, UserInfo *userInfo)
 {
     BSL_UIO *uio = BSL_UIO_New(BSL_UIO_FileMethod());
     if (uio == NULL) {
-        AppPrintError("sm: Failed to create uio.\n");
+        AppPrintError("Failed to create uio.\n");
         return HITLS_APP_UIO_FAIL;
     }
     int32_t ret = BSL_UIO_Ctrl(uio, BSL_UIO_FILE_OPEN, BSL_UIO_FILE_WRITE, userFile);
     if (ret != BSL_SUCCESS) {
-        AppPrintError("sm: Failed to open userFile, errCode: 0x%x.\n", ret);
+        AppPrintError("Failed to open userFile, errCode: 0x%x.\n", ret);
         BSL_UIO_Free(uio);
         return HITLS_APP_UIO_FAIL;
     }
@@ -262,7 +262,7 @@ static int32_t WriteUserFile(char *userFile, UserInfo *userInfo)
     ret = BSL_UIO_Write(uio, userInfo, sizeof(UserInfo), &writeLen);
     if (ret != BSL_SUCCESS || writeLen != sizeof(UserInfo)) {
         BSL_UIO_Free(uio);
-        AppPrintError("sm: Failed to write userFile, errCode: 0x%x, writeLen: %u.\n", ret, writeLen);
+        AppPrintError("Failed to write userFile, errCode: 0x%x, writeLen: %u.\n", ret, writeLen);
         return HITLS_APP_UIO_FAIL;
     }
     BSL_UIO_Free(uio);
@@ -273,12 +273,12 @@ static int32_t ReadUserFile(char *userFile, UserInfo *userInfo)
 {
     BSL_UIO *uio = BSL_UIO_New(BSL_UIO_FileMethod());
     if (uio == NULL) {
-        AppPrintError("sm: Failed to create uio.\n");
+        AppPrintError("Failed to create uio.\n");
         return HITLS_APP_UIO_FAIL;
     }
     int32_t ret = BSL_UIO_Ctrl(uio, BSL_UIO_FILE_OPEN, BSL_UIO_FILE_READ, userFile);
     if (ret != BSL_SUCCESS) {
-        AppPrintError("sm: Failed to open userFile, errCode: 0x%x.\n", ret);
+        AppPrintError("Failed to open userFile, errCode: 0x%x.\n", ret);
         BSL_UIO_Free(uio);
         return HITLS_APP_UIO_FAIL;
     }
@@ -289,7 +289,7 @@ static int32_t ReadUserFile(char *userFile, UserInfo *userInfo)
     ret = BSL_UIO_Read(uio, userInfo, sizeof(UserInfo), &readLen);
     if (ret != BSL_SUCCESS || readLen != sizeof(UserInfo)) {
         BSL_UIO_Free(uio);
-        AppPrintError("sm: Failed to read userFile, errCode: 0x%x, readLen: %u.\n", ret, readLen);
+        AppPrintError("Failed to read userFile, errCode: 0x%x, readLen: %u.\n", ret, readLen);
         return HITLS_APP_UIO_FAIL;
     }
     BSL_UIO_Free(uio);
@@ -301,7 +301,7 @@ static int32_t ReadUserFile(char *userFile, UserInfo *userInfo)
         userInfo->userParam.saltLen > sizeof(userInfo->userParam.salt) ||
         userInfo->userParam.dKeyLen > sizeof(userInfo->userParam.dKey) ||
         userInfo->hmacLen > sizeof(userInfo->hmac)) {
-        AppPrintError("sm: User info check failed.\n");
+        AppPrintError("User info check failed.\n");
         return HITLS_APP_INFO_CMP_FAIL;
     }
 
@@ -319,7 +319,7 @@ static int32_t SetUserInfo(AppProvider *provider, UserInfo *userInfo, char *pass
 
     int32_t ret = CRYPT_EAL_RandbytesEx(APP_GetCurrent_LibCtx(), userInfo->userParam.salt, userInfo->userParam.saltLen);
     if (ret != CRYPT_SUCCESS) {
-        AppPrintError("sm: Failed to generate the salt value, ret: 0x%x.\n", ret);
+        AppPrintError("Failed to generate the salt value, ret: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     return DeriveKeyFromPassword(provider, password, &userInfo->userParam, userInfo->userParam.dKey,
@@ -332,7 +332,7 @@ static int32_t FirstTimeLogin(AppProvider *provider, char *userFile, char **pwd)
     UserInfo userInfo = {0};
     userInfo.hmacLen = sizeof(userInfo.hmac);
 
-    AppPrintError("sm: This is your first login, please set your password.\n");
+    AppPrintError("This is your first login, please set your password.\n");
     int32_t ret = GetPassword(&password);
     if (ret != HITLS_APP_SUCCESS) {
         return ret;
@@ -373,12 +373,12 @@ static int32_t VerifyPassword(AppProvider *provider, UserInfo *userInfo, char *p
         return ret;
     }
     if (userInfo->userParam.dKeyLen != sizeof(derivedKey)) {
-        AppPrintError("sm: Invalid user file.\n");
+        AppPrintError("Invalid user file.\n");
         return HITLS_APP_INFO_CMP_FAIL;
     }
 
     if (memcmp(derivedKey, userInfo->userParam.dKey, userInfo->userParam.dKeyLen) != 0) {
-        AppPrintError("sm: Password is incorrect.\n");
+        AppPrintError("Password is incorrect.\n");
         return HITLS_APP_PASSWD_FAIL;
     }
 
@@ -402,7 +402,7 @@ static int32_t ExistingUserLogin(AppProvider *provider, char *userFile, char **p
     ret = VerifyHMAC(provider, macId, (const uint8_t *)&userInfo.userParam, sizeof(UserParam),
         userInfo.hmac, userInfo.hmacLen);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("sm: User file integrity check failed, errCode: 0x%x.\n", ret);
+        AppPrintError("User file integrity check failed, errCode: 0x%x.\n", ret);
         return ret;
     }
 
@@ -426,12 +426,12 @@ static char *GetUserFilePath(const char *workPath)
 {
     char *path = BSL_SAL_Malloc(APP_MAX_PATH_LEN);
     if (path == NULL) {
-        AppPrintError("sm: Failed to allocate memory.\n");
+        AppPrintError("Failed to allocate memory.\n");
         return NULL;
     }
     int32_t ret = sprintf_s(path, APP_MAX_PATH_LEN, "%s/%s", workPath, HITLS_APP_SM_USER_FILE_NAME);
     if (ret < 0) {
-        AppPrintError("sm: WorkPath is invalid.\n");
+        AppPrintError("WorkPath is invalid.\n");
         BSL_SAL_Free(path);
         return NULL;
     }
@@ -459,7 +459,7 @@ int32_t HITLS_APP_SM_Init(AppProvider *provider, const char *workPath, char **pa
 
     char *path = GetUserFilePath(workPath);
     if (path == NULL) {
-        AppPrintError("sm: Failed to get user file path.\n");
+        AppPrintError("Failed to get user file path.\n");
         return HITLS_APP_INVALID_ARG;
     }
 
@@ -478,13 +478,13 @@ static char *GetAppPath(void)
 {
     char *tempPath = BSL_SAL_Malloc(APP_MAX_PATH_LEN);
     if (tempPath == NULL) {
-        (void)AppPrintError("sm: Failed to allocate memory.\n");
+        (void)AppPrintError("Failed to allocate memory.\n");
         return NULL;
     }
     ssize_t count = readlink("/proc/self/exe", tempPath, APP_MAX_PATH_LEN);
     if (count < 0 || (size_t)count >= APP_MAX_PATH_LEN) {
         BSL_SAL_Free(tempPath);
-        AppPrintError("sm: Failed to readlink.\n");
+        AppPrintError("Failed to readlink.\n");
         return NULL;
     }
     tempPath[count] = '\0';
@@ -493,14 +493,14 @@ static char *GetAppPath(void)
     char *path = BSL_SAL_Malloc(PATH_MAX);
     if (path == NULL) {
         BSL_SAL_Free(tempPath);
-        AppPrintError("sm: Failed to allocate app path memory.\n");
+        AppPrintError("Failed to allocate app path memory.\n");
         return NULL;
     }
 
     if (realpath(tempPath, path) == NULL) {
         BSL_SAL_Free(path);
         BSL_SAL_Free(tempPath);
-        AppPrintError("sm: Failed to get realpath.\n");
+        AppPrintError("Failed to get realpath.\n");
         return NULL;
     }
     BSL_SAL_Free(tempPath);
@@ -511,12 +511,12 @@ static int32_t GetAppExpectHmac(const char *appPath, uint8_t *hmac, uint32_t *hm
 {
     char *hmacPath = BSL_SAL_Malloc(APP_MAX_PATH_LEN);
     if (hmacPath == NULL) {
-        AppPrintError("sm: Failed to allocate memory.\n");
+        AppPrintError("Failed to allocate memory.\n");
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
     int32_t ret = sprintf_s(hmacPath, APP_MAX_PATH_LEN, "%s.hmac", appPath);
     if (ret < 0) {
-        AppPrintError("sm: AppPath is too long, ret: %d.\n", ret);
+        AppPrintError("AppPath is too long, ret: %d.\n", ret);
         BSL_SAL_Free(hmacPath);
         return HITLS_APP_SECUREC_FAIL;
     }
@@ -524,7 +524,7 @@ static int32_t GetAppExpectHmac(const char *appPath, uint8_t *hmac, uint32_t *hm
     BSL_Buffer data = { 0 };
     ret = BSL_SAL_ReadFile(hmacPath, &data.data, &data.dataLen);
     if (ret != BSL_SUCCESS) {
-        AppPrintError("sm: Read file failed: %s, errCode: 0x%x.\n", hmacPath, ret);
+        AppPrintError("Read file failed: %s, errCode: 0x%x.\n", hmacPath, ret);
         BSL_SAL_Free(hmacPath);
         return HITLS_APP_SAL_FAIL;
     }
@@ -536,19 +536,19 @@ static int32_t GetAppExpectHmac(const char *appPath, uint8_t *hmac, uint32_t *hm
     do {
         tmp = strtok_s((char *)data.data, seps, &nextTmp);
         if (tmp == NULL) {
-            AppPrintError("sm: Invalid hmac.\n");
+            AppPrintError("Invalid hmac.\n");
             ret = HITLS_APP_INVALID_ARG;
             break;
         }
         tmp = strtok_s(NULL, seps, &nextTmp);
         if (tmp == NULL) {
-            AppPrintError("sm: Invalid hmac.\n");
+            AppPrintError("Invalid hmac.\n");
             ret = HITLS_APP_INVALID_ARG;
             break;
         }
         ret = HITLS_APP_StrToHex(tmp, hmac, hmacLen);
         if (ret != HITLS_APP_SUCCESS) {
-            AppPrintError("sm: Failed to convert hmac, errCode: 0x%x.\n", ret);
+            AppPrintError("Failed to convert hmac, errCode: 0x%x.\n", ret);
             break;
         }
     } while (0);
@@ -562,13 +562,13 @@ static int32_t VerifyAppHmac(AppProvider *provider, const char *appPath, const u
     BSL_Buffer data = {0};
     int32_t ret = BSL_SAL_ReadFile(appPath, &data.data, &data.dataLen);
     if (ret != BSL_SUCCESS) {
-        AppPrintError("sm: Read file failed, appPath: %s, errCode: 0x%x.\n", appPath, ret);
+        AppPrintError("Read file failed, appPath: %s, errCode: 0x%x.\n", appPath, ret);
         return HITLS_APP_SAL_FAIL;
     }
     ret = VerifyHMAC(provider, CRYPT_MAC_HMAC_SM3, data.data, data.dataLen, expectHmac, expectHmacLen);
     BSL_SAL_Free(data.data);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("sm: Calculate integrity hmac failed, appPath: %s, errCode: 0x%x.\n", appPath, ret);
+        AppPrintError("Calculate integrity hmac failed, appPath: %s, errCode: 0x%x.\n", appPath, ret);
         return ret;
     }
     return ret;
@@ -582,7 +582,7 @@ int32_t HITLS_APP_SM_IntegrityCheck(AppProvider *provider)
 
     char *appPath = GetAppPath();
     if (appPath == NULL) {
-        AppPrintError("sm: Failed to get app path.\n");
+        AppPrintError("Failed to get app path.\n");
         return HITLS_APP_INVALID_ARG;
     }
     uint8_t expectHmac[HITLS_APP_SM_HMAC_LEN];
@@ -612,7 +612,7 @@ static int32_t RandomnessTest(CRYPT_SelftestCtx *selftestCtx, uint8_t *data, uin
 
     int32_t ret = CRYPT_CMVP_Selftest(selftestCtx, params);
     if (ret != CRYPT_SUCCESS) {
-        AppPrintError("sm: Randomness test failed, errCode: 0x%x.\n", ret);
+        AppPrintError("Randomness test failed, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     return HITLS_APP_SUCCESS;
@@ -626,13 +626,13 @@ static int32_t RandomSelftest(AppProvider *provider, uint32_t groups, uint32_t b
 
     uint8_t *data = BSL_SAL_Malloc(totalLen);
     if (data == NULL) {
-        AppPrintError("sm: Failed to allocate memory.\n");
+        AppPrintError("Failed to allocate memory.\n");
         return HITLS_APP_MEM_ALLOC_FAIL;
     }
 
     CRYPT_SelftestCtx *selftestCtx = CRYPT_CMVP_SelftestNewCtx(APP_GetCurrent_LibCtx(), provider->providerAttr);
     if (selftestCtx == NULL) {
-        AppPrintError("sm: Randomness test failed, selftestCtx is NULL.\n");
+        AppPrintError("Randomness test failed, selftestCtx is NULL.\n");
         BSL_SAL_Free(data);
         return HITLS_APP_CRYPTO_FAIL;
     }
@@ -641,7 +641,7 @@ static int32_t RandomSelftest(AppProvider *provider, uint32_t groups, uint32_t b
     for (uint32_t attempt = 0; attempt < retry; attempt++) {
         int32_t ret = CRYPT_EAL_RandbytesEx(APP_GetCurrent_LibCtx(), data, totalLen);
         if (ret != CRYPT_SUCCESS) {
-            AppPrintError("sm: Failed to generate random data, errCode: 0x%x.\n", ret);
+            AppPrintError("Failed to generate random data, errCode: 0x%x.\n", ret);
             continue;
         }
         uint32_t failCnt = 0;
