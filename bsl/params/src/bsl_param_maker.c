@@ -106,8 +106,12 @@ static int32_t BSL_PARAM_MAKER_CheckNumberLen(uint32_t type, uint32_t len)
     return BSL_SUCCESS;
 }
 
-static int32_t BSL_PARAM_MAKER_CheckInput(const BSL_ParamMaker *maker, const void *value, uint32_t len)
+static int32_t BSL_PARAM_MAKER_CheckInput(const BSL_ParamMaker *maker, int32_t key, const void *value, uint32_t len)
 {
+    if (key == 0) {
+        BSL_ERR_PUSH_ERROR(BSL_PARAMS_INVALID_KEY);
+        return BSL_PARAMS_INVALID_KEY;
+    }
     if (maker == NULL || maker->params == NULL || (value == NULL && len != 0)) {
         BSL_ERR_PUSH_ERROR(BSL_NULL_INPUT);
         return BSL_NULL_INPUT;
@@ -120,7 +124,7 @@ static int32_t BSL_PARAM_MAKER_CheckInput(const BSL_ParamMaker *maker, const voi
 
 int32_t BSL_PARAM_MAKER_PushValue(BSL_ParamMaker *maker, int32_t key, uint32_t type, void *value, uint32_t len)
 {
-    int32_t ret = BSL_PARAM_MAKER_CheckInput(maker, value, len);
+    int32_t ret = BSL_PARAM_MAKER_CheckInput(maker, key, value, len);
     if (ret != BSL_SUCCESS) {
         return ret;
     }
@@ -176,7 +180,7 @@ exit:
 
 int32_t BSL_PARAM_MAKER_DeepPushValue(BSL_ParamMaker *maker, int32_t key, uint32_t type, void *value, uint32_t len)
 {
-    int32_t ret = BSL_PARAM_MAKER_CheckInput(maker, value, len);
+    int32_t ret = BSL_PARAM_MAKER_CheckInput(maker, key, value, len);
     if (ret != BSL_SUCCESS) {
         return ret;
     }
@@ -202,7 +206,7 @@ int32_t BSL_PARAM_MAKER_DeepPushValue(BSL_ParamMaker *maker, int32_t key, uint32
             goto exit;
     }
     paramMakerDef->value = BSL_SAL_Malloc(len);
-    if (paramMakerDef->value == NULL) {
+    if (paramMakerDef->value == NULL && value != NULL) {
         ret = BSL_MALLOC_FAIL;
         BSL_ERR_PUSH_ERROR(ret);
         goto exit;

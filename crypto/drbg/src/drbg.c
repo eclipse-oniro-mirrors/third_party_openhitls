@@ -542,6 +542,16 @@ static int32_t DRBG_SetReseedIntervalTime(DRBG_Ctx *ctx, const void *val, uint32
     ctx->reseedIntervalTime = *(const uint64_t *)val;
     return CRYPT_SUCCESS;
 }
+
+static int32_t DRBG_GetReseedIntervalTime(DRBG_Ctx *ctx, void *val, uint32_t len)
+{
+    if (val == NULL || len != sizeof(uint64_t)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    *(uint64_t *)val = ctx->reseedIntervalTime;
+    return CRYPT_SUCCESS;
+}
 #endif // HITLS_CRYPTO_DRBG_GM
 
 static int32_t DRBG_SetReseedInterval(DRBG_Ctx *ctx, const void *val, uint32_t len)
@@ -551,6 +561,16 @@ static int32_t DRBG_SetReseedInterval(DRBG_Ctx *ctx, const void *val, uint32_t l
         return CRYPT_INVALID_ARG;
     }
     ctx->reseedInterval = *(const uint32_t *)val;
+    return CRYPT_SUCCESS;
+}
+
+static int32_t DRBG_GetReseedInterval(DRBG_Ctx *ctx, void *val, uint32_t len)
+{
+    if (val == NULL || len != sizeof(uint32_t)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    *(uint32_t *)val = ctx->reseedInterval;
     return CRYPT_SUCCESS;
 }
 
@@ -576,9 +596,13 @@ int32_t DRBG_Ctrl(DRBG_Ctx *ctx, int32_t opt, void *val, uint32_t len)
             return DRBG_SetGmlevel(ctx, val, len);
         case CRYPT_CTRL_SET_RESEED_TIME:
             return DRBG_SetReseedIntervalTime(ctx, val, len);
+        case CRYPT_CTRL_GET_RESEED_TIME:
+            return DRBG_GetReseedIntervalTime(ctx, val, len);
 #endif // HITLS_CRYPTO_DRBG_GM
         case CRYPT_CTRL_SET_RESEED_INTERVAL:
             return DRBG_SetReseedInterval(ctx, val, len);
+        case CRYPT_CTRL_GET_RESEED_INTERVAL:
+            return DRBG_GetReseedInterval(ctx, val, len);
         case CRYPT_CTRL_SET_PREDICTION_RESISTANCE:
             return DRBG_SetPredictionResistance(ctx, val, len);
         default:

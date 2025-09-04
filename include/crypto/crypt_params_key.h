@@ -94,6 +94,8 @@ extern "C" {
 #define CRYPT_PARAM_RAND_SEED_CLEANENTROPY                  (CRYPT_PARAM_RAND_BASE + 4)
 #define CRYPT_PARAM_RAND_SEED_GETNONCE                      (CRYPT_PARAM_RAND_BASE + 5)
 #define CRYPT_PARAM_RAND_SEED_CLEANNONCE                    (CRYPT_PARAM_RAND_BASE + 6)
+#define CRYPT_PARAM_RAND_RESEED_INTERVAL                    (CRYPT_PARAM_RAND_BASE + 7)
+#define CRYPT_PARAM_RAND_RESEED_TIME                        (CRYPT_PARAM_RAND_BASE + 8)
 
 #define CRYPT_PARAM_CURVE25519_BASE                         700
 #define CRYPT_PARAM_CURVE25519_PUBKEY                       (CRYPT_PARAM_CURVE25519_BASE + 1)
