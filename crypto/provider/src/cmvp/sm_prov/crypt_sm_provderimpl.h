@@ -40,6 +40,7 @@ typedef struct {
 extern const CRYPT_EAL_Func g_smMdSm3[];
 
 extern const CRYPT_EAL_Func g_smKdfPBKdf2[];
+extern const CRYPT_EAL_Func g_smKdfKdfTLS12[];
 
 extern const CRYPT_EAL_Func g_smKeyMgmtSm2[];
 

@@ -89,25 +89,27 @@ build_hitls_code()
     add_options="${add_options} -DHITLS_CRYPTO_ACVP_TESTS" # enable ACVP tests
     add_options="${add_options} -DHITLS_CRYPTO_DSA_GEN_PARA" # enable DSA genPara tests
     add_options="${add_options} ${test_options}"
+
+    build_options=""
+    if [[ $executes = "ON" ]]; then
+        build_options="${build_options} --executes hitls"
+        add_options="${add_options} -DHITLS_CRYPTO_CMVP"
+    fi
+
     if [[ $get_arch = "x86_64" ]]; then
         echo "Compile: env=x86_64, c, little endian, 64bits"
         add_options="${add_options} -DHITLS_CRYPTO_SP800_STRICT_CHECK" # open the strict check in crypto.
         del_options="${del_options} -DHITLS_CRYPTO_SM2_PRECOMPUTE_512K_TBL" # close the sm2 512k pre-table
-        if [[ $executes = "ON" ]]; then
-            add_options="${add_options} -DHITLS_CRYPTO_CMVP"
-            python3 ../configure.py --executes hitls --lib_type ${LIB_TYPE} --enable all --asm_type x8664 --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
-        else 
-            python3 ../configure.py --lib_type ${LIB_TYPE} --enable all --asm_type x8664 --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
-        fi
+        python3 ../configure.py ${build_options} --lib_type ${LIB_TYPE} --enable all --asm_type x8664 --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
     elif [[ $get_arch = "armv8_be" ]]; then
         echo "Compile: env=armv8, asm + c, big endian, 64bits"
-        python3 ../configure.py --lib_type ${LIB_TYPE} --enable all --endian big --asm_type armv8 --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
+        python3 ../configure.py ${build_options} --lib_type ${LIB_TYPE} --enable all --endian big --asm_type armv8 --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
     elif [[ $get_arch = "armv8_le" ]]; then
         echo "Compile: env=armv8, asm + c, little endian, 64bits"
-        python3 ../configure.py --lib_type ${LIB_TYPE} --enable all --asm_type armv8 --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
+        python3 ../configure.py ${build_options} --lib_type ${LIB_TYPE} --enable all --asm_type armv8 --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
     else
         echo "Compile: env=$get_arch, c, little endian, 64bits"
-        python3 ../configure.py --lib_type ${LIB_TYPE} --enable all --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
+        python3 ../configure.py ${build_options} --lib_type ${LIB_TYPE} --enable all --add_options="$add_options" --del_options="$del_options" --add_link_flags="-ldl" ${enable_sctp} ${dis_options}
     fi
     cmake ..
     make -j

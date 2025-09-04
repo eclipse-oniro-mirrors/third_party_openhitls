@@ -24,6 +24,9 @@
 #include "crypt_errno.h"
 #include "crypt_utils.h"
 #include "crypt_eal_rand.h"
+#include "hitls_cert_type.h"
+#include "hitls_crypt_type.h"
+#include "hitls_type.h"
 #include "entropy_seed_pool.h"
 #include "crypt_sm_selftest.h"
 #include "crypt_sm_provderimpl.h"
@@ -39,6 +42,7 @@ static const CRYPT_EAL_AlgInfo g_smMds[] = {
 
 static const CRYPT_EAL_AlgInfo g_smKdfs[] = {
     {CRYPT_KDF_PBKDF2, g_smKdfPBKdf2, CRYPT_EAL_SM_ATTR},
+    {CRYPT_KDF_KDFTLS12, g_smKdfKdfTLS12, CRYPT_EAL_SM_ATTR},
     CRYPT_EAL_ALGINFO_END
 };
 
@@ -169,11 +173,175 @@ static void CRYPT_EAL_SmProvFree(void *provCtx)
     BSL_SAL_Free(provCtx);
 }
 
+#define TLS_GROUP_PARAM_COUNT 11
+#define TLS_SIGN_SCHEME_PARAM_COUNT 18
+typedef struct {
+    const char *name;           // group name
+    int32_t paraId;             // parameter id CRYPT_PKEY_ParaId
+    int32_t algId;              // algorithm id CRYPT_PKEY_AlgId
+    int32_t secBits;            // security bits
+    uint16_t groupId;           // iana group id, HITLS_NamedGroup
+    uint32_t pubkeyLen;         // public key length(CH keyshare / SH keyshare)
+    uint32_t sharedkeyLen;      // shared key length
+    uint32_t ciphertextLen;     // ciphertext length(SH keyshare)
+    uint32_t versionBits;       // TLS_VERSION_MASK
+    bool isKem;                 // true: KEM, false: KEX
+} TLS_GroupInfo;
+
+static const TLS_GroupInfo g_tlsGroupInfo[] = {
+    {
+        "sm2",
+        CRYPT_PKEY_PARAID_MAX, // CRYPT_PKEY_PARAID_MAX
+        CRYPT_PKEY_SM2, // CRYPT_PKEY_SM2
+        128, // secBits
+        HITLS_EC_GROUP_SM2, // groupId
+        65, 32, 0, // pubkeyLen=65, sharedkeyLen=32 (256 bits)
+        TLCP11_VERSION_BIT | DTLCP11_VERSION_BIT, // versionBits
+        false,
+    },
+};
+
+static int32_t BuildTlsGroupParam(const TLS_GroupInfo *groupInfo, BSL_Param *p)
+{
+    int32_t i = 0;
+    int32_t ret = 0;
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_IANA_GROUP_NAME,
+        BSL_PARAM_TYPE_OCTETS_PTR, (void *)(uintptr_t)groupInfo->name, (uint32_t)strlen(groupInfo->name)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_IANA_GROUP_ID, BSL_PARAM_TYPE_UINT16,
+        (void *)(uintptr_t)&(groupInfo->groupId), sizeof(groupInfo->groupId)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_PARA_ID, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(groupInfo->paraId), sizeof(groupInfo->paraId)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_ALG_ID, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(groupInfo->algId), sizeof(groupInfo->algId)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_SEC_BITS, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(groupInfo->secBits), sizeof(groupInfo->secBits)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_VERSION_BITS, BSL_PARAM_TYPE_UINT32,
+        (void *)(uintptr_t)&(groupInfo->versionBits), sizeof(groupInfo->versionBits)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_IS_KEM, BSL_PARAM_TYPE_BOOL,
+        (void *)(uintptr_t)&(groupInfo->isKem), sizeof(groupInfo->isKem)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_PUBKEY_LEN, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(groupInfo->pubkeyLen), sizeof(groupInfo->pubkeyLen)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_SHAREDKEY_LEN, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(groupInfo->sharedkeyLen), sizeof(groupInfo->sharedkeyLen)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_CIPHERTEXT_LEN, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(groupInfo->ciphertextLen), sizeof(groupInfo->ciphertextLen)), ret);
+
+    return ret;
+}
+
+static int32_t CryptGetGroupCaps(CRYPT_EAL_ProcessFuncCb cb, void *args)
+{
+    for (size_t i = 0; i < sizeof(g_tlsGroupInfo) / sizeof(g_tlsGroupInfo[0]); i++) {
+        BSL_Param param[TLS_GROUP_PARAM_COUNT] = {0};
+        int32_t ret = BuildTlsGroupParam(&g_tlsGroupInfo[i], param);
+        if (ret != BSL_SUCCESS) {
+            return ret;
+        }
+        ret = cb(param, args);
+        if (ret != CRYPT_SUCCESS) {
+            return ret;
+        }
+    }
+    return CRYPT_SUCCESS;
+}
+
+typedef struct {
+    const char *name;                   // name
+    uint16_t signatureScheme;           // HITLS_SignHashAlgo, IANA specified
+    int32_t keyType;                    // HITLS_CERT_KeyType
+    int32_t paraId;                     // CRYPT_PKEY_ParaId
+    int32_t signHashAlgId;              // combined sign hash algorithm id
+    int32_t signAlgId;                  // CRYPT_PKEY_AlgId
+    int32_t hashAlgId;                  // CRYPT_MD_AlgId
+    int32_t secBits;                    // security bits
+    uint32_t certVersionBits;           // TLS_VERSION_MASK
+    uint32_t chainVersionBits;          // TLS_VERSION_MASK
+} TLS_SigSchemeInfo;
+
+static const TLS_SigSchemeInfo g_signSchemeInfo[] = {
+    {
+        "sm2_sm3",
+        CERT_SIG_SCHEME_SM2_SM3,
+        TLS_CERT_KEY_TYPE_SM2,
+        CRYPT_PKEY_PARAID_MAX,
+        BSL_CID_SM2DSAWITHSM3,
+        HITLS_SIGN_SM2,
+        HITLS_HASH_SM3,
+        128,
+        TLCP11_VERSION_BIT | DTLCP11_VERSION_BIT,
+        TLCP11_VERSION_BIT | DTLCP11_VERSION_BIT,
+    },
+};
+
+static int32_t BuildTlsSigAlgParam(const TLS_SigSchemeInfo *sigSchemeInfo, BSL_Param *p)
+{
+    int32_t i = 0;
+    int32_t ret = 0;
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_IANA_SIGN_NAME,
+        BSL_PARAM_TYPE_OCTETS_PTR, (void *)(uintptr_t)sigSchemeInfo->name, (uint32_t)strlen(sigSchemeInfo->name)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_IANA_SIGN_ID, BSL_PARAM_TYPE_UINT16,
+        (void *)(uintptr_t)&(sigSchemeInfo->signatureScheme), sizeof(sigSchemeInfo->signatureScheme)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_KEY_TYPE, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(sigSchemeInfo->keyType), sizeof(sigSchemeInfo->keyType)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_PARA_ID, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(sigSchemeInfo->paraId), sizeof(sigSchemeInfo->paraId)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_SIGNWITHMD_ID, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(sigSchemeInfo->signHashAlgId), sizeof(sigSchemeInfo->signHashAlgId)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_SIGN_ID, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(sigSchemeInfo->signAlgId), sizeof(sigSchemeInfo->signAlgId)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_MD_ID, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(sigSchemeInfo->hashAlgId), sizeof(sigSchemeInfo->hashAlgId)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_SEC_BITS, BSL_PARAM_TYPE_INT32,
+        (void *)(uintptr_t)&(sigSchemeInfo->secBits), sizeof(sigSchemeInfo->secBits)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_CERT_VERSION_BITS,
+        BSL_PARAM_TYPE_UINT32, (void *)(uintptr_t)&(sigSchemeInfo->certVersionBits),
+        sizeof(sigSchemeInfo->certVersionBits)), ret);
+    RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_CHAIN_VERSION_BITS,
+        BSL_PARAM_TYPE_UINT32, (void *)(uintptr_t)&(sigSchemeInfo->chainVersionBits),
+        sizeof(sigSchemeInfo->chainVersionBits)), ret);
+
+    return ret;
+}
+
+static int32_t CryptGetSignAlgCaps(CRYPT_EAL_ProcessFuncCb cb, void *args)
+{
+    for (size_t i = 0; i < sizeof(g_signSchemeInfo) / sizeof(g_signSchemeInfo[0]); i++) {
+        BSL_Param param[TLS_SIGN_SCHEME_PARAM_COUNT] = {0};
+        int32_t ret = BuildTlsSigAlgParam(&g_signSchemeInfo[i], param);
+        if (ret != BSL_SUCCESS) {
+            return ret;
+        }
+        ret = cb(param, args);
+        if (ret != CRYPT_SUCCESS) {
+            return ret;
+        }
+    }
+    return CRYPT_SUCCESS;
+}
+
+static int32_t CRYPT_EAL_SmProvGetCaps(void *provCtx, int32_t cmd, CRYPT_EAL_ProcessFuncCb cb, void *args)
+{
+    (void)provCtx;
+    if (cb == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    switch (cmd) {
+        case CRYPT_EAL_GET_GROUP_CAP:
+            return CryptGetGroupCaps(cb, args);
+        case CRYPT_EAL_GET_SIGALG_CAP:
+            return CryptGetSignAlgCaps(cb, args);
+        default:
+            BSL_ERR_PUSH_ERROR(CRYPT_NOT_SUPPORT);
+            return CRYPT_NOT_SUPPORT;
+    }
+}
+
 static CRYPT_EAL_Func g_smProvOutFuncs[] = {
     {CRYPT_EAL_PROVCB_QUERY, CRYPT_EAL_SmProvQuery},
     {CRYPT_EAL_PROVCB_FREE, CRYPT_EAL_SmProvFree},
     {CRYPT_EAL_PROVCB_CTRL, NULL},
-    {CRYPT_EAL_PROVCB_GETCAPS, NULL},
+    {CRYPT_EAL_PROVCB_GETCAPS, CRYPT_EAL_SmProvGetCaps},
     CRYPT_EAL_FUNC_END
 };
 

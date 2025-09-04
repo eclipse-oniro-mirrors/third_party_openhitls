@@ -18,6 +18,7 @@
 
 #include "crypt_eal_implprovider.h"
 #include "crypt_pbkdf2.h"
+#include "crypt_kdf_tls12.h"
 #include "bsl_sal.h"
 #include "crypt_errno.h"
 #include "crypt_cmvp.h"
@@ -40,6 +41,10 @@ void *CRYPT_EAL_SmKdfNewCtxEx(CRYPT_EAL_SmProvCtx *provCtx, int32_t algId)
 #ifdef HITLS_CRYPTO_PBKDF2
         case CRYPT_KDF_PBKDF2:
             return CRYPT_PBKDF2_NewCtxEx(provCtx->libCtx);
+#endif
+#ifdef HITLS_CRYPTO_KDFTLS12
+        case CRYPT_KDF_KDFTLS12:
+            return CRYPT_KDFTLS12_NewCtxEx(provCtx->libCtx);
 #endif
         default:
             BSL_ERR_PUSH_ERROR(CRYPT_PROVIDER_NOT_SUPPORT);
@@ -116,6 +121,17 @@ const CRYPT_EAL_Func g_smKdfPBKdf2[] = {
     {CRYPT_EAL_IMPLKDF_DERIVE, (CRYPT_EAL_ImplKdfDerive)CRYPT_PBKDF2_Derive},
     {CRYPT_EAL_IMPLKDF_DEINITCTX, (CRYPT_EAL_ImplKdfDeInitCtx)CRYPT_PBKDF2_Deinit},
     {CRYPT_EAL_IMPLKDF_FREECTX, (CRYPT_EAL_ImplKdfFreeCtx)CRYPT_PBKDF2_FreeCtx},
+#endif
+    CRYPT_EAL_FUNC_END,
+};
+
+const CRYPT_EAL_Func g_smKdfKdfTLS12[] = {
+#ifdef HITLS_CRYPTO_KDFTLS12
+    {CRYPT_EAL_IMPLKDF_NEWCTX, (CRYPT_EAL_ImplKdfNewCtx)CRYPT_EAL_SmKdfNewCtxEx},
+    {CRYPT_EAL_IMPLKDF_SETPARAM, (CRYPT_EAL_ImplKdfSetParam)CRYPT_KDFTLS12_SetParam},
+    {CRYPT_EAL_IMPLKDF_DERIVE, (CRYPT_EAL_ImplKdfDerive)CRYPT_KDFTLS12_Derive},
+    {CRYPT_EAL_IMPLKDF_DEINITCTX, (CRYPT_EAL_ImplKdfDeInitCtx)CRYPT_KDFTLS12_Deinit},
+    {CRYPT_EAL_IMPLKDF_FREECTX, (CRYPT_EAL_ImplKdfFreeCtx)CRYPT_KDFTLS12_FreeCtx},
 #endif
     CRYPT_EAL_FUNC_END,
 };

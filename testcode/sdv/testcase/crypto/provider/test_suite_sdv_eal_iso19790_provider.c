@@ -711,20 +711,21 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
-void SDV_ISO19790_PROVIDER_KDF_TEST_TC003(int algId, Hex *key, Hex *label, Hex *seed)
+void SDV_ISO19790_PROVIDER_KDF_TEST_TC003(int algId, Hex *key, Hex *label, Hex *seed, Hex *result)
 {
 #ifndef HITLS_CRYPTO_CMVP_ISO19790
     (void)algId;
     (void)key;
     (void)label;
     (void)seed;
+    (void)result;
     SKIP_TEST();
 #else
     if (IsHmacAlgDisabled(algId)) {
         SKIP_TEST();
     }
     TestMemInit();
-    uint32_t outLen = 32;
+    uint32_t outLen = result->len;
     uint8_t *out = malloc(outLen * sizeof(uint8_t));
     ASSERT_TRUE(out != NULL);
     Iso19790_ProviderLoadCtx ctx = {0};
@@ -747,6 +748,7 @@ void SDV_ISO19790_PROVIDER_KDF_TEST_TC003(int algId, Hex *key, Hex *label, Hex *
         seed->x, seed->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_KdfSetParam(kdfCtx, params), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_KdfDerive(kdfCtx, out, outLen), CRYPT_SUCCESS);
+    ASSERT_COMPARE("result cmp", out, outLen, result->x, result->len);
 EXIT:
     if (out != NULL) {
         free(out);

@@ -467,3 +467,51 @@ EXIT:
 #endif
 }
 /* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_SM_PROVIDER_KDF_KDFTLS12_TEST_TC001(int algId, Hex *key, Hex *label, Hex *seed)
+{
+#ifndef HITLS_CRYPTO_CMVP_SM
+    (void)algId;
+    (void)key;
+    (void)label;
+    (void)seed;
+    SKIP_TEST();
+#else
+    if (IsHmacAlgDisabled(algId)) {
+        SKIP_TEST();
+    }
+    TestMemInit();
+    CRYPT_EAL_LibCtx *libCtx = NULL;
+    CRYPT_EAL_KdfCTX *kdfCtx = NULL;
+    uint32_t outLen = 32;
+    uint8_t *out = malloc(outLen * sizeof(uint8_t));
+    ASSERT_TRUE(out != NULL);
+
+    libCtx = SM_ProviderLoad();
+    ASSERT_TRUE(libCtx != NULL);
+
+    kdfCtx = CRYPT_EAL_ProviderKdfNewCtx(libCtx, CRYPT_KDF_KDFTLS12, HITLS_SM_PROVIDER_ATTR);
+    ASSERT_TRUE(kdfCtx != NULL);
+
+    int32_t index = 0;
+    BSL_Param params[5] = {{0}, {0}, {0}, {0}, BSL_PARAM_END};
+    ASSERT_EQ(BSL_PARAM_InitValue(&params[index++], CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32,
+        &algId, sizeof(algId)), CRYPT_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_InitValue(&params[index++], CRYPT_PARAM_KDF_KEY, BSL_PARAM_TYPE_OCTETS,
+        key->x, key->len), CRYPT_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_InitValue(&params[index++], CRYPT_PARAM_KDF_LABEL, BSL_PARAM_TYPE_OCTETS,
+        label->x, label->len), CRYPT_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_InitValue(&params[index++], CRYPT_PARAM_KDF_SEED, BSL_PARAM_TYPE_OCTETS,
+        seed->x, seed->len), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_KdfSetParam(kdfCtx, params), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_KdfDerive(kdfCtx, out, outLen), CRYPT_SUCCESS);
+EXIT:
+    if (out != NULL) {
+        free(out);
+    }
+    CRYPT_EAL_KdfFreeCtx(kdfCtx);
+    SM_ProviderUnload(libCtx);
+#endif
+}
+/* END_CASE */
