@@ -78,33 +78,19 @@ static const CRYPT_EAL_AlgInfo g_defEalMds[] = {
 #ifdef HITLS_CRYPTO_MAC
 static const CRYPT_EAL_AlgInfo g_defEalMacs[] = {
 #ifdef HITLS_CRYPTO_HMAC
-#ifdef HITLS_CRYPTO_MD5
+    // The underlying hash algorithm in HMAC can be offloaded to other providers,
+    // so no need to add hash-related macro guards here
     {CRYPT_MAC_HMAC_MD5, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA1
     {CRYPT_MAC_HMAC_SHA1, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA224
     {CRYPT_MAC_HMAC_SHA224, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA256
     {CRYPT_MAC_HMAC_SHA256, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA384
     {CRYPT_MAC_HMAC_SHA384, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA512
     {CRYPT_MAC_HMAC_SHA512, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA3
     {CRYPT_MAC_HMAC_SHA3_224, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MAC_HMAC_SHA3_256, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MAC_HMAC_SHA3_384, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
     {CRYPT_MAC_HMAC_SHA3_512, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SM3
     {CRYPT_MAC_HMAC_SM3, g_defEalMacHmac, CRYPT_EAL_DEFAULT_ATTR},
-#endif
 #endif
 #ifdef HITLS_CRYPTO_CMAC
 #ifdef HITLS_CRYPTO_AES
@@ -226,41 +212,19 @@ static const CRYPT_EAL_AlgInfo g_defEalCiphers[] = {
 #ifdef HITLS_CRYPTO_DRBG
 static const CRYPT_EAL_AlgInfo g_defEalRands[] = {
 #ifdef HITLS_CRYPTO_DRBG_HASH
-#ifdef HITLS_CRYPTO_SHA1
     {CRYPT_RAND_SHA1, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA224
     {CRYPT_RAND_SHA224, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA256
     {CRYPT_RAND_SHA256, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA384
     {CRYPT_RAND_SHA384, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA512
     {CRYPT_RAND_SHA512, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SM3
     {CRYPT_RAND_SM3, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
 #endif // HITLS_CRYPTO_DRBG_HASH
 #ifdef HITLS_CRYPTO_DRBG_HMAC
-#ifdef HITLS_CRYPTO_SHA1
     {CRYPT_RAND_HMAC_SHA1, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA224
     {CRYPT_RAND_HMAC_SHA224, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA256
     {CRYPT_RAND_HMAC_SHA256, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA384
     {CRYPT_RAND_HMAC_SHA384, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
-#ifdef HITLS_CRYPTO_SHA512
     {CRYPT_RAND_HMAC_SHA512, g_defEalRand, CRYPT_EAL_DEFAULT_ATTR},
-#endif
 #endif // HITLS_CRYPTO_DRBG_HMAC
 #ifdef HITLS_CRYPTO_DRBG_CTR
 #ifdef HITLS_CRYPTO_AES

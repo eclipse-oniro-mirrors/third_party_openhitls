@@ -447,15 +447,10 @@ test_provider()
     NO_LIB="no-tls"
 
     # sha256
-    bash mini_build_test.sh $COMMON_PARAM $NO_LIB linux enable=eal,provider,sha256 test=provider add-options="-DHITLS_CONFIG_FILE='<test_config.h>'" include-path="${include_path}"
-    provider_test_check
     bash mini_build_test.sh $COMMON_PARAM $NO_LIB linux enable=eal,provider test=provider add-options="-DHITLS_CONFIG_FILE='<test_config.h>'" include-path="${include_path}"
     provider_test_check
 
     # hmac
-    # build with sha256
-    bash mini_build_test.sh $COMMON_PARAM $NO_LIB linux enable=eal,provider,hmac,sha256 test=provider add-options="-DHITLS_CONFIG_FILE='<test_config.h>'" include-path="${include_path}"
-    provider_test_check
     # build without sha256, and not check config
     bash mini_build_test.sh $COMMON_PARAM $NO_LIB linux enable=eal,provider,hmac test=provider add-options="-DHITLS_CONFIG_FILE='<test_config.h>'" include-path="${include_path}" add-options="-DHITLS_NO_CONFIG_CHECK"
     provider_test_check
@@ -473,7 +468,7 @@ test_provider()
     provider_test_check
 
     # rsa
-    bash mini_build_test.sh $COMMON_PARAM $NO_LIB linux enable=eal,provider,rsa,sm3,drbg_hash,entropy test=provider add-options="-DHITLS_CONFIG_FILE='<test_config.h>'" include-path="${include_path}" add-options="-DHITLS_SEED_DRBG_INIT_RAND_ALG=CRYPT_RAND_SM3" add-options="-DHITLS_CRYPTO_DRBG_GM" add-options="-DHITLS_NO_CONFIG_CHECK"
+    bash mini_build_test.sh $COMMON_PARAM $NO_LIB linux enable=eal,provider,rsa,sm3,drbg_hash,entropy,ealinit test=provider add-options="-DHITLS_CONFIG_FILE='<test_config.h>'" include-path="${include_path}" add-options="-DHITLS_SEED_DRBG_INIT_RAND_ALG=CRYPT_RAND_SM3" add-options="-DHITLS_CRYPTO_DRBG_GM" add-options="-DHITLS_NO_CONFIG_CHECK"
     provider_test_check
 }
 

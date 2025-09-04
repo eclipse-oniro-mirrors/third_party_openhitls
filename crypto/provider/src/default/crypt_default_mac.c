@@ -14,7 +14,8 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_MAC) && defined(HITLS_CRYPTO_PROVIDER)
+#if (defined(HITLS_CRYPTO_HMAC) || defined(HITLS_CRYPTO_CMAC) || defined(HITLS_CRYPTO_CBC_MAC) || \
+    defined(HITLS_CRYPTO_SIPHASH) || defined(HITLS_CRYPTO_GMAC)) && defined(HITLS_CRYPTO_PROVIDER)
 
 #include "crypt_eal_implprovider.h"
 #include "crypt_hmac.h"
@@ -152,4 +153,4 @@ const CRYPT_EAL_Func g_defEalMacSiphash[] = {
 };
 #endif
 
-#endif /* HITLS_CRYPTO_MAC && HITLS_CRYPTO_PROVIDER */
+#endif

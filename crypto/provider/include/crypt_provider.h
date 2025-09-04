@@ -25,7 +25,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif /* __cpluscplus */
+#endif /* __cplusplus */
 
 #define CRYPT_EAL_DEFAULT_PROVIDER "default"
 

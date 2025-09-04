@@ -14,7 +14,11 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CIPHER) && defined(HITLS_CRYPTO_PROVIDER)
+#if (defined(HITLS_CRYPTO_AES) || defined(HITLS_CRYPTO_SM4) || defined(HITLS_CRYPTO_CHACHA20) || \
+    defined(HITLS_CRYPTO_CHACHA20POLY1305) || defined(HITLS_CRYPTO_XTS) || defined(HITLS_CRYPTO_CBC) || \
+    defined(HITLS_CRYPTO_CCM) || defined(HITLS_CRYPTO_CFB) || defined(HITLS_CRYPTO_ECB) || \
+    defined(HITLS_CRYPTO_GCM) || defined(HITLS_CRYPTO_OFB) || defined(HITLS_CRYPTO_CTR)) && \
+    defined(HITLS_CRYPTO_PROVIDER)
 
 #include "crypt_eal_implprovider.h"
 #include "crypt_modes_cbc.h"
@@ -212,4 +216,4 @@ const CRYPT_EAL_Func g_defEalXts[] = {
 };
 #endif
 
-#endif /* HITLS_CRYPTO_CIPHER && HITLS_CRYPTO_PROVIDER */
+#endif

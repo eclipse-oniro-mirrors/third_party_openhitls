@@ -14,7 +14,8 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_KDF) && defined(HITLS_CRYPTO_PROVIDER)
+#if (defined(HITLS_CRYPTO_SCRYPT) || defined(HITLS_CRYPTO_PBKDF2) || defined(HITLS_CRYPTO_KDFTLS12) || \
+    defined(HITLS_CRYPTO_HKDF)) && defined(HITLS_CRYPTO_PROVIDER)
 
 #include "crypt_eal_implprovider.h"
 #include "crypt_pbkdf2.h"
@@ -98,4 +99,4 @@ const CRYPT_EAL_Func g_defEalKdfHkdf[] = {
 };
 #endif
 
-#endif /* HITLS_CRYPTO_KDF && HITLS_CRYPTO_PROVIDER */
+#endif

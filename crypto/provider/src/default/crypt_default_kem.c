@@ -39,4 +39,4 @@ const CRYPT_EAL_Func g_defEalHybridKeyKem[] = {
     CRYPT_EAL_FUNC_END
 };
 #endif
-#endif // HITLS_CRYPTO_PROVIDER
+#endif

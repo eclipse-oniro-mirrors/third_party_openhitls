@@ -14,7 +14,11 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_PKEY) && defined(HITLS_CRYPTO_PROVIDER)
+#if (defined(HITLS_CRYPTO_DSA) || defined(HITLS_CRYPTO_ED25519) || defined(HITLS_CRYPTO_X25519) || \
+    defined(HITLS_CRYPTO_RSA) || defined(HITLS_CRYPTO_DH) || defined(HITLS_CRYPTO_ECDSA) || \
+    defined(HITLS_CRYPTO_ECDH) || defined(HITLS_CRYPTO_SM2) || defined(HITLS_CRYPTO_PAILLIER) || \
+    defined(HITLS_CRYPTO_ELGAMAL) || defined(HITLS_CRYPTO_SLH_DSA) || defined(HITLS_CRYPTO_MLKEM) || \
+    defined(HITLS_CRYPTO_MLDSA) || defined(HITLS_CRYPTO_HYBRIDKEM)) && defined(HITLS_CRYPTO_PROVIDER)
 
 #include "crypt_eal_implprovider.h"
 #ifdef HITLS_CRYPTO_DSA
@@ -422,4 +426,4 @@ const CRYPT_EAL_Func g_defEalKeyMgmtHybridKem[] = {
     CRYPT_EAL_FUNC_END,
 };
 #endif
-#endif /* HITLS_CRYPTO_PKEY && HITLS_CRYPTO_PROVIDER */
+#endif
