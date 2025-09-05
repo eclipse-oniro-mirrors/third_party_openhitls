@@ -19,6 +19,7 @@
 #include "crypt_errno.h"
 #include "crypt_util_rand.h"
 #include "crypt_utils.h"
+#include "crypt_algid.h"
 #include "bsl_errno.h"
 #include "bsl_sal.h"
 #include "bsl_obj_internal.h"
@@ -115,6 +116,7 @@ CRYPT_ML_DSA_Ctx *CRYPT_ML_DSA_DupCtx(CRYPT_ML_DSA_Ctx *ctx)
     newCtx->isMuMsg = ctx->isMuMsg;
     newCtx->deterministicSignFlag = ctx->deterministicSignFlag;
     newCtx->needPreHash = ctx->needPreHash;
+    newCtx->libCtx = ctx->libCtx;
     return newCtx;
 ERR:
     CRYPT_ML_DSA_FreeCtx(newCtx);

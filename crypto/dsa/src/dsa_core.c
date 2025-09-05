@@ -364,6 +364,7 @@ CRYPT_DSA_Ctx *CRYPT_DSA_DupCtx(CRYPT_DSA_Ctx *dsaCtx)
     GOTO_ERR_IF_SRC_NOT_NULL(dsaNewCtx->y, dsaCtx->y, BN_Dup(dsaCtx->y), CRYPT_MEM_ALLOC_FAIL);
     GOTO_ERR_IF_SRC_NOT_NULL(dsaNewCtx->para, dsaCtx->para, ParaDup(dsaCtx->para), CRYPT_MEM_ALLOC_FAIL);
     BSL_SAL_ReferencesInit(&(dsaNewCtx->references));
+    dsaNewCtx->libCtx = dsaCtx->libCtx;
     return dsaNewCtx;
 
 ERR:

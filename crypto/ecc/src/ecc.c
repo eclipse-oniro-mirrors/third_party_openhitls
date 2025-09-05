@@ -253,7 +253,11 @@ ECC_Para *ECC_DupPara(const ECC_Para *para)
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return NULL;
     }
-    return ECC_NewPara(para->id);
+    ECC_Para *newPara = ECC_NewPara(para->id);
+    if (newPara != NULL) {
+        newPara->libCtx = para->libCtx;
+    }
+    return newPara;
 }
 
 uint32_t ECC_ParaBits(const ECC_Para *para)

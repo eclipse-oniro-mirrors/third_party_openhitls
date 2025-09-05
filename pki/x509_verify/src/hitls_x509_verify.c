@@ -276,6 +276,16 @@ static int32_t X509_SetCRL(HITLS_X509_StoreCtx *storeCtx, void *val)
     return ret;
 }
 
+static int32_t X509_ClearCRL(HITLS_X509_StoreCtx *storeCtx)
+{
+    if (storeCtx->crl == NULL) {
+        return HITLS_PKI_SUCCESS;
+    }
+
+    BSL_LIST_DeleteAll(storeCtx->crl, (BSL_LIST_PFUNC_FREE)HITLS_X509_CrlFree);
+    return HITLS_PKI_SUCCESS;
+}
+
 static int32_t X509_RefUp(HITLS_X509_StoreCtx *storeCtx, void *val, uint32_t valLen)
 {
     if (valLen != sizeof(int)) {
@@ -288,7 +298,13 @@ static int32_t X509_RefUp(HITLS_X509_StoreCtx *storeCtx, void *val, uint32_t val
 
 int32_t HITLS_X509_StoreCtxCtrl(HITLS_X509_StoreCtx *storeCtx, int32_t cmd, void *val, uint32_t valLen)
 {
-    if (storeCtx == NULL || val == NULL) {
+    if (storeCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
+        return HITLS_X509_ERR_INVALID_PARAM;
+    }
+
+    // Allow val to be NULL only for specific commands like CLEAR_CRL
+    if (val == NULL && cmd != HITLS_X509_STORECTX_CLEAR_CRL) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
         return HITLS_X509_ERR_INVALID_PARAM;
     }
@@ -309,6 +325,8 @@ int32_t HITLS_X509_StoreCtxCtrl(HITLS_X509_StoreCtx *storeCtx, int32_t cmd, void
             return X509_SetCA(storeCtx, val, false);
         case HITLS_X509_STORECTX_SET_CRL:
             return X509_SetCRL(storeCtx, val);
+        case HITLS_X509_STORECTX_CLEAR_CRL:
+            return X509_ClearCRL(storeCtx);
         case HITLS_X509_STORECTX_REF_UP:
             return X509_RefUp(storeCtx, val, valLen);
 #ifdef HITLS_CRYPTO_SM2

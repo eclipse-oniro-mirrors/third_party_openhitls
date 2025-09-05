@@ -22,6 +22,7 @@
 #include "bsl_obj_internal.h"
 #include "bsl_asn1.h"
 #include "crypt_errno.h"
+#include "crypt_algid.h"
 #include "crypt_util_rand.h"
 #include "eal_md_local.h"
 #include "crypt_slh_dsa.h"
@@ -37,6 +38,7 @@
 #define ASN1_HEADER_LEN    2
 #define SPLIT_CEIL(a, b)   (((a) + (b) - 1) / (b))
 #define SPLIT_BYTES(a)     SPLIT_CEIL(a, BYTE_BITS)
+#define NUM_OF_CRYPT_SLH_DSA_ALGId 12
 
 typedef struct {
     BSL_Param *pubSeed;
@@ -51,16 +53,16 @@ typedef struct {
 } SlhDsaPrvKeyParam;
 
 // reference to FIPS-205, table 2
-static uint32_t g_slhDsaN[CRYPT_SLH_DSA_ALG_ID_MAX] = {16, 16, 16, 16, 24, 24, 24, 24, 32, 32, 32, 32};
-static uint32_t g_slhDsaH[CRYPT_SLH_DSA_ALG_ID_MAX] = {63, 63, 66, 66, 63, 63, 66, 66, 64, 64, 68, 68};
-static uint32_t g_slhDsaD[CRYPT_SLH_DSA_ALG_ID_MAX] = {7, 7, 22, 22, 7, 7, 22, 22, 8, 8, 17, 17};
-static uint32_t g_slhDsaHp[CRYPT_SLH_DSA_ALG_ID_MAX] = {9, 9, 3, 3, 9, 9, 3, 3, 8, 8, 4, 4}; // xmss height
-static uint32_t g_slhDsaA[CRYPT_SLH_DSA_ALG_ID_MAX] = {12, 12, 6, 6, 14, 14, 8, 8, 14, 14, 9, 9};
-static uint32_t g_slhDsaK[CRYPT_SLH_DSA_ALG_ID_MAX] = {14, 14, 33, 33, 17, 17, 33, 33, 22, 22, 35, 35};
-static uint32_t g_slhDsaM[CRYPT_SLH_DSA_ALG_ID_MAX] = {30, 30, 34, 34, 39, 39, 42, 42, 47, 47, 49, 49};
-static uint32_t g_slhDsaPkBytes[CRYPT_SLH_DSA_ALG_ID_MAX] = {32, 32, 32, 32, 48, 48, 48, 48, 64, 64, 64, 64};
-static uint32_t g_slhDsaSigBytes[CRYPT_SLH_DSA_ALG_ID_MAX] = {7856,  7856,  17088, 17088, 16224, 16224,
-                                                              35664, 35664, 29792, 29792, 49856, 49856};
+static uint32_t g_slhDsaN[NUM_OF_CRYPT_SLH_DSA_ALGId] = {16, 16, 16, 16, 24, 24, 24, 24, 32, 32, 32, 32};
+static uint32_t g_slhDsaH[NUM_OF_CRYPT_SLH_DSA_ALGId] = {63, 63, 66, 66, 63, 63, 66, 66, 64, 64, 68, 68};
+static uint32_t g_slhDsaD[NUM_OF_CRYPT_SLH_DSA_ALGId] = {7, 7, 22, 22, 7, 7, 22, 22, 8, 8, 17, 17};
+static uint32_t g_slhDsaHp[NUM_OF_CRYPT_SLH_DSA_ALGId] = {9, 9, 3, 3, 9, 9, 3, 3, 8, 8, 4, 4}; // xmss height
+static uint32_t g_slhDsaA[NUM_OF_CRYPT_SLH_DSA_ALGId] = {12, 12, 6, 6, 14, 14, 8, 8, 14, 14, 9, 9};
+static uint32_t g_slhDsaK[NUM_OF_CRYPT_SLH_DSA_ALGId] = {14, 14, 33, 33, 17, 17, 33, 33, 22, 22, 35, 35};
+static uint32_t g_slhDsaM[NUM_OF_CRYPT_SLH_DSA_ALGId] = {30, 30, 34, 34, 39, 39, 42, 42, 47, 47, 49, 49};
+static uint32_t g_slhDsaPkBytes[NUM_OF_CRYPT_SLH_DSA_ALGId] = {32, 32, 32, 32, 48, 48, 48, 48, 64, 64, 64, 64};
+static uint32_t g_slhDsaSigBytes[NUM_OF_CRYPT_SLH_DSA_ALGId] = {7856,  7856,  17088, 17088, 16224, 16224,
+                                                                35664, 35664, 29792, 29792, 49856, 49856};
 static uint8_t g_secCategory[] = {1, 1, 1, 1, 3, 3, 3, 3, 5, 5, 5, 5};
 
 // "UC" means uncompressed
@@ -256,7 +258,7 @@ CryptSlhDsaCtx *CRYPT_SLH_DSA_NewCtx(void)
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return NULL;
     }
-    ctx->para.algId = CRYPT_SLH_DSA_ALG_ID_MAX;
+    ctx->para.algId = 0;
     ctx->isPrehash = false;
     ctx->isDeterministic = false;
     return ctx;
@@ -284,6 +286,14 @@ void CRYPT_SLH_DSA_FreeCtx(CryptSlhDsaCtx *ctx)
     BSL_SAL_Free(ctx);
 }
 
+static bool CheckNotSlhDsaAlgId(int32_t algId)
+{
+    if (algId > CRYPT_SLH_DSA_SHAKE_256F || algId < CRYPT_SLH_DSA_SHA2_128S) {
+        return true;
+    }
+    return false;
+}
+
 int32_t CRYPT_SLH_DSA_Gen(CryptSlhDsaCtx *ctx)
 {
     int32_t ret;
@@ -291,7 +301,7 @@ int32_t CRYPT_SLH_DSA_Gen(CryptSlhDsaCtx *ctx)
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    if (ctx->para.algId >= CRYPT_SLH_DSA_ALG_ID_MAX) {
+    if (CheckNotSlhDsaAlgId(ctx->para.algId)) {
         BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
         return CRYPT_SLHDSA_ERR_INVALID_ALGID;
     }
@@ -595,19 +605,20 @@ int32_t CRYPT_SLH_DSA_Verify(const CryptSlhDsaCtx *ctx, int32_t algId, const uin
     return ret;
 }
 
-static void SlhDsaSetAlgId(CryptSlhDsaCtx *ctx, CRYPT_SLH_DSA_AlgId algId)
+static void SlhDsaSetAlgId(CryptSlhDsaCtx *ctx, CRYPT_PKEY_ParaId algId)
 {
     ctx->para.algId = algId;
-    ctx->para.n = g_slhDsaN[algId];
-    ctx->para.h = g_slhDsaH[algId];
-    ctx->para.d = g_slhDsaD[algId];
-    ctx->para.hp = g_slhDsaHp[algId];
-    ctx->para.a = g_slhDsaA[algId];
-    ctx->para.k = g_slhDsaK[algId];
-    ctx->para.m = g_slhDsaM[algId];
-    ctx->para.pkBytes = g_slhDsaPkBytes[algId];
-    ctx->para.sigBytes = g_slhDsaSigBytes[algId];
-    ctx->para.secCategory = g_secCategory[algId];
+    int32_t index = algId - CRYPT_SLH_DSA_SHA2_128S;
+    ctx->para.n = g_slhDsaN[index];
+    ctx->para.h = g_slhDsaH[index];
+    ctx->para.d = g_slhDsaD[index];
+    ctx->para.hp = g_slhDsaHp[index];
+    ctx->para.a = g_slhDsaA[index];
+    ctx->para.k = g_slhDsaK[index];
+    ctx->para.m = g_slhDsaM[index];
+    ctx->para.pkBytes = g_slhDsaPkBytes[index];
+    ctx->para.sigBytes = g_slhDsaSigBytes[index];
+    ctx->para.secCategory = g_secCategory[index];
     SlhDsaInitHashFuncs(ctx);
     if (ctx->para.isCompressed) {
         ctx->adrsOps = g_adrsOps[1];
@@ -624,12 +635,12 @@ int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t
     }
     switch (opt) {
         case CRYPT_CTRL_SET_PARA_BY_ID:
-            if (val == NULL || len != sizeof(CRYPT_SLH_DSA_AlgId)) {
+            if (val == NULL || len != sizeof(CRYPT_PKEY_ParaId)) {
                 BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
                 return CRYPT_INVALID_ARG;
             }
-            CRYPT_SLH_DSA_AlgId algId = *(CRYPT_SLH_DSA_AlgId *)val;
-            if (algId >= CRYPT_SLH_DSA_ALG_ID_MAX) {
+            CRYPT_PKEY_ParaId algId = *(CRYPT_PKEY_ParaId *)val;
+            if (CheckNotSlhDsaAlgId(algId)) {
                 BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
                 return CRYPT_SLHDSA_ERR_INVALID_ALGID;
             }
