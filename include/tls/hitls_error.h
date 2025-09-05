@@ -103,6 +103,8 @@ typedef enum {
     HITLS_CFG_ERR_LOAD_CERT_BUFFER,                /**< Failed to load the certificate buffer. */
     HITLS_CFG_ERR_LOAD_KEY_FILE,                   /**< Failed to load the key file. */
     HITLS_CFG_ERR_LOAD_KEY_BUFFER,                 /**< Failed to load the key buffer. */
+    HITLS_CFG_ERR_LOAD_CRL_FILE,                   /**< Failed to load the CRL file. */
+    HITLS_CFG_ERR_LOAD_CRL_BUFFER,                 /**< Failed to load the CRL buffer. */
     HITLS_CONFIG_ERR_LOAD_GROUP_INFO,              /**< Failed to load the group info. */
     HITLS_CONFIG_ERR_LOAD_SIGN_SCHEME_INFO,        /**< Failed to load the signature scheme info. */
     HITLS_CONFIG_DUP_CUSTOM_EXT,                   /**< Duplicate custom extension type detected. */
@@ -262,6 +264,8 @@ typedef enum {
     HITLS_CERT_FAIL_START = 0x020C0001,            /**< Certificate module error code start bit. */
     HITLS_CERT_STORE_CTRL_ERR_SET_VERIFY_DEPTH,
     HITLS_CERT_STORE_CTRL_ERR_ADD_CERT_LIST,
+    HITLS_CERT_STORE_CTRL_ERR_ADD_CRL_LIST,        /**< Failed to add CRL list to verify store. */
+    HITLS_CERT_STORE_CTRL_ERR_CLEAR_CRL_LIST,      /**< Failed to clear CRL list from verify store. */
     HITLS_CERT_ERR_X509_DUP,                       /**< Failed to duplicate the certificate. */
     HITLS_CERT_ERR_KEY_DUP,                        /**< Failed to duplicate the key. */
     HITLS_CERT_ERR_STORE_DUP,                      /**< Failed to duplicate the store. */
@@ -310,6 +314,7 @@ typedef enum {
     HITLS_CERT_KEY_CTRL_ERR_IS_DATA_ENC_USAGE,      /**< Determine whether the certificate fails to be data enc. */
     HITLS_CERT_KEY_CTRL_ERR_IS_NON_REPUDIATION_USAGE, /**< Determine whether the certificate fails to be
                                                            non-repudiation. */
+    HITLS_CERT_CTRL_ERR_INVALID_CMD,               /**< certificate ctrl invalid command */
 
     HITLS_CRYPT_FAIL_START = 0x020D0001,           /**< Crypt adaptation module error code start bit. */
     HITLS_CRYPT_ERR_GENERATE_RANDOM,               /**< Failed to generate a random number. */

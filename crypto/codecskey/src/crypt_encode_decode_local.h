@@ -137,36 +137,39 @@ int32_t CRYPT_DECODE_RsaPubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1
 
 int32_t CRYPT_DECODE_RsaPrikeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *asn1, uint32_t asn1Num);
 
-int32_t CRYPT_RSA_ParsePubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *param,
+int32_t CRYPT_RSA_ParsePubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *param,
     CRYPT_RSA_Ctx **rsaPubKey, BslCid cid);
-int32_t CRYPT_RSA_ParsePkcs8Key(uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx **rsaPriKey);
+int32_t CRYPT_RSA_ParsePkcs8Key(void *libCtx, uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx **rsaPriKey);
 
-int32_t CRYPT_RSA_ParseSubPubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx **pubKey, bool isComplete);
+int32_t CRYPT_RSA_ParseSubPubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, CRYPT_RSA_Ctx **pubKey,
+    bool isComplete);
 
-int32_t CRYPT_RSA_ParsePrikeyAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *rsaPssParam,
+int32_t CRYPT_RSA_ParsePrikeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *rsaPssParam,
     CRYPT_RSA_Ctx **rsaPriKey);
 #endif
 
 #if defined(HITLS_CRYPTO_ECDSA) || defined(HITLS_CRYPTO_ECDH)
-int32_t CRYPT_ECC_ParseSubPubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, void **pubKey, bool isComplete);
+int32_t CRYPT_ECC_ParseSubPubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, void **pubKey, bool isComplete);
 
-int32_t CRYPT_ECC_ParsePkcs8Key(uint8_t *buff, uint32_t buffLen, void **ecdsaPriKey);
+int32_t CRYPT_ECC_ParsePkcs8Key(void *libCtx, uint8_t *buff, uint32_t buffLen, void **ecdsaPriKey);
 
-int32_t CRYPT_ECC_ParsePrikeyAsn1Buff(uint8_t *buffer, uint32_t bufferLen, BSL_ASN1_Buffer *pk8AlgoParam,
+int32_t CRYPT_ECC_ParsePrikeyAsn1Buff(void *libCtx, uint8_t *buffer, uint32_t bufferLen, BSL_ASN1_Buffer *pk8AlgoParam,
     void **ecPriKey);
 #endif
 
 #ifdef HITLS_CRYPTO_SM2
-int32_t CRYPT_SM2_ParseSubPubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, CRYPT_SM2_Ctx **pubKey, bool isComplete);
-int32_t CRYPT_SM2_ParsePrikeyAsn1Buff(uint8_t *buffer, uint32_t bufferLen, BSL_ASN1_Buffer *pk8AlgoParam,
+int32_t CRYPT_SM2_ParseSubPubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, CRYPT_SM2_Ctx **pubKey,
+    bool isComplete);
+int32_t CRYPT_SM2_ParsePrikeyAsn1Buff(void *libCtx, uint8_t *buffer, uint32_t bufferLen, BSL_ASN1_Buffer *pk8AlgoParam,
     CRYPT_SM2_Ctx **sm2PriKey);
-int32_t CRYPT_SM2_ParsePkcs8Key(uint8_t *buff, uint32_t buffLen, CRYPT_SM2_Ctx **sm2PriKey);
+int32_t CRYPT_SM2_ParsePkcs8Key(void *libCtx, uint8_t *buff, uint32_t buffLen, CRYPT_SM2_Ctx **sm2PriKey);
 #endif
 
 #ifdef HITLS_CRYPTO_ED25519
-int32_t CRYPT_ED25519_ParsePkcs8Key(uint8_t *buffer, uint32_t bufferLen, CRYPT_CURVE25519_Ctx **ed25519PriKey);
-int32_t CRYPT_ED25519_ParseSubPubkeyAsn1Buff(uint8_t *buff, uint32_t buffLen, CRYPT_CURVE25519_Ctx **pubKey,
-    bool isComplete);
+int32_t CRYPT_ED25519_ParsePkcs8Key(void *libCtx, uint8_t *buffer, uint32_t bufferLen,
+    CRYPT_CURVE25519_Ctx **ed25519PriKey);
+int32_t CRYPT_ED25519_ParseSubPubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen,
+    CRYPT_CURVE25519_Ctx **pubKey, bool isComplete);
 #endif
 
 #endif

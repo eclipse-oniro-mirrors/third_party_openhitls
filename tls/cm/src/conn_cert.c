@@ -261,3 +261,30 @@ HITLS_VerifyCb HITLS_GetVerifyCb(HITLS_Ctx *ctx)
 
     return HITLS_CFG_GetVerifyCb(&(ctx->config.tlsConfig));
 }
+
+int32_t HITLS_LoadCrlFile(HITLS_Ctx *ctx, const char *file, HITLS_ParseFormat format)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_LoadCrlFile(&(ctx->config.tlsConfig), file, format);
+}
+
+int32_t HITLS_LoadCrlBuffer(HITLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, HITLS_ParseFormat format)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_LoadCrlBuffer(&(ctx->config.tlsConfig), buf, bufLen, format);
+}
+
+int32_t HITLS_ClearVerifyCrls(HITLS_Ctx *ctx)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_ClearVerifyCrls(&(ctx->config.tlsConfig));
+}

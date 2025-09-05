@@ -16,6 +16,7 @@
 /* BEGIN_HEADER */
 #include "bsl_sal.h"
 #include "crypt_errno.h"
+#include "crypt_algid.h"
 #include "crypt_eal_pkey.h"
 #include "crypt_util_rand.h"
 #include "eal_pkey_local.h"

@@ -81,7 +81,7 @@ void HITLS_PKCS12_BagFree(HITLS_PKCS12_Bag *bag);
  * @param bag    [IN] bag context.
  * @param cmd    [IN] HITLS_PKCS12_XXX
  * @param val    [IN/OUT] input and output value
- * @param valLen [In] value length
+ * @param valType [In] value type or length
  * @retval #HITLS_PKI_SUCCESS, success.
  *         Error codes can be found in hitls_pki_errno.h
  */
@@ -114,7 +114,7 @@ int32_t HITLS_PKCS12_Ctrl(HITLS_PKCS12 *p12, int32_t cmd, void *val, uint32_t va
  *  BSL_FORMAT_PEM and BSL_FORMAT_UNKNOWN, the buff of encode needs to end with '\0'
  *
  * @attention Only support to parse p12 buffer in key-integrity and key-privacy protection mode.
- * @param format         [IN] Decoding format: BSL_FORMAT_ASN1/BSL_FORMAT_UNKNOWN.
+ * @param format         [IN] Decoding format: BSL_FORMAT_ASN.
  * @param encode         [IN] encode data
  * @param pwdParam       [IN] include MAC-pwd, enc-pwd, they can be different.
  * @param p12            [OUT] the p12 struct.
@@ -133,7 +133,7 @@ int32_t HITLS_PKCS12_ParseBuff(int32_t format, const BSL_Buffer *encode, const H
  * @attention Only support to parse p12 buffer in key-integrity and key-privacy protection mode.
  * @param libCtx         [IN] lib context
  * @param attrName       [IN] attribute name
- * @param format         [IN] Encoding format: PEM/ASN1/NULL
+ * @param format         [IN] Encoding format: "ASN1"
  * @param encode         [IN] encode data
  * @param pwdParam       [IN] include MAC-pwd, enc-pwd, they can be different.
  * @param p12            [OUT] the p12 struct.
@@ -148,7 +148,7 @@ int32_t HITLS_PKCS12_ProviderParseBuff(HITLS_PKI_LibCtx *libCtx, const char *att
  * @par Description: parse p12 file, and set the p12 struct.
  *
  * @attention Only support to parse p12 files in key-integrity and key-privacy protection mode.
- * @param format         [IN] Encoding format: BSL_FORMAT_PEM/BSL_FORMAT_ASN1
+ * @param format         [IN] Encoding format: BSL_FORMAT_ASN1
  * @param path           [IN] p12 file path.
  * @param pwdParam       [IN] include MAC-pwd, enc-pwd, they can be different.
  * @param p12            [OUT] the p12 struct.
@@ -167,7 +167,7 @@ int32_t HITLS_PKCS12_ParseFile(int32_t format, const char *path, const HITLS_PKC
  * @attention Only support to parse p12 files in key-integrity and key-privacy protection mode.
  * @param libCtx         [IN] lib context
  * @param attrName       [IN] attribute name
- * @param format         [IN] Encoding format: PEM/ASN1/NULL
+ * @param format         [IN] Encoding format: "ASN1"
  * @param path           [IN] p12 file path.
  * @param pwdParam       [IN] include MAC-pwd, enc-pwd, they can be different.
  * @param p12            [OUT] the p12 struct.
@@ -183,7 +183,7 @@ int32_t HITLS_PKCS12_ProviderParseFile(HITLS_PKI_LibCtx *libCtx, const char *att
  * @par Description: gen p12 buffer.
  *
  * @attention Generate a p12 buffer based on the existing information.
- * @param format          [IN] Encoding format: BSL_FORMAT_ASN1/BSL_FORMAT_UNKNOWN.
+ * @param format          [IN] Encoding format: BSL_FORMAT_ASN1.
  * @param p12             [IN] p12 struct, including entityCert, CA-cert, prvkey, and so on.
  * @param encodeParam     [IN] encode data
  * @param isNeedMac       [IN] Identifies whether macData is required.
@@ -199,7 +199,7 @@ int32_t HITLS_PKCS12_GenBuff(int32_t format, HITLS_PKCS12 *p12, const HITLS_PKCS
  * @par Description: Generate p12 to store in file
  *
  * @attention Generate a .p12 file based on the existing information.
- * @param format          [IN] Encoding format: BSL_FORMAT_ASN1/BSL_FORMAT_UNKNOWN.
+ * @param format          [IN] Encoding format: BSL_FORMAT_ASN1.
  * @param p12             [IN] p12 struct, including entityCert, CA-cert, prvkey, and so on.
  * @param encodeParam     [IN] encode data
  * @param isNeedMac       [IN] Identifies whether macData is required.
