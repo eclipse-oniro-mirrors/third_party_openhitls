@@ -188,7 +188,7 @@ typedef struct {
     bool isKem;                 // true: KEM, false: KEX
 } TLS_GroupInfo;
 
-static const TLS_GroupInfo g_tlsGroupInfo[] = {
+static TLS_GroupInfo g_tlsGroupInfo[] = {
     {
         "sm2",
         CRYPT_PKEY_PARAID_MAX, // CRYPT_PKEY_PARAID_MAX
@@ -201,30 +201,30 @@ static const TLS_GroupInfo g_tlsGroupInfo[] = {
     },
 };
 
-static int32_t BuildTlsGroupParam(const TLS_GroupInfo *groupInfo, BSL_Param *p)
+static int32_t BuildTlsGroupParam(TLS_GroupInfo *groupInfo, BSL_Param *p)
 {
     int32_t i = 0;
     int32_t ret = 0;
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_IANA_GROUP_NAME,
         BSL_PARAM_TYPE_OCTETS_PTR, (void *)(uintptr_t)groupInfo->name, (uint32_t)strlen(groupInfo->name)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_IANA_GROUP_ID, BSL_PARAM_TYPE_UINT16,
-        (void *)(uintptr_t)&(groupInfo->groupId), sizeof(groupInfo->groupId)), ret);
+        &(groupInfo->groupId), sizeof(groupInfo->groupId)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_PARA_ID, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(groupInfo->paraId), sizeof(groupInfo->paraId)), ret);
+        &(groupInfo->paraId), sizeof(groupInfo->paraId)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_ALG_ID, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(groupInfo->algId), sizeof(groupInfo->algId)), ret);
+        &(groupInfo->algId), sizeof(groupInfo->algId)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_SEC_BITS, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(groupInfo->secBits), sizeof(groupInfo->secBits)), ret);
+        &(groupInfo->secBits), sizeof(groupInfo->secBits)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_VERSION_BITS, BSL_PARAM_TYPE_UINT32,
-        (void *)(uintptr_t)&(groupInfo->versionBits), sizeof(groupInfo->versionBits)), ret);
+        &(groupInfo->versionBits), sizeof(groupInfo->versionBits)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_IS_KEM, BSL_PARAM_TYPE_BOOL,
-        (void *)(uintptr_t)&(groupInfo->isKem), sizeof(groupInfo->isKem)), ret);
+        &(groupInfo->isKem), sizeof(groupInfo->isKem)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_PUBKEY_LEN, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(groupInfo->pubkeyLen), sizeof(groupInfo->pubkeyLen)), ret);
+        &(groupInfo->pubkeyLen), sizeof(groupInfo->pubkeyLen)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_SHAREDKEY_LEN, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(groupInfo->sharedkeyLen), sizeof(groupInfo->sharedkeyLen)), ret);
+        &(groupInfo->sharedkeyLen), sizeof(groupInfo->sharedkeyLen)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_GROUP_CIPHERTEXT_LEN, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(groupInfo->ciphertextLen), sizeof(groupInfo->ciphertextLen)), ret);
+        &(groupInfo->ciphertextLen), sizeof(groupInfo->ciphertextLen)), ret);
 
     return ret;
 }
@@ -258,7 +258,7 @@ typedef struct {
     uint32_t chainVersionBits;          // TLS_VERSION_MASK
 } TLS_SigSchemeInfo;
 
-static const TLS_SigSchemeInfo g_signSchemeInfo[] = {
+static TLS_SigSchemeInfo g_signSchemeInfo[] = {
     {
         "sm2_sm3",
         CERT_SIG_SCHEME_SM2_SM3,
@@ -273,32 +273,30 @@ static const TLS_SigSchemeInfo g_signSchemeInfo[] = {
     },
 };
 
-static int32_t BuildTlsSigAlgParam(const TLS_SigSchemeInfo *sigSchemeInfo, BSL_Param *p)
+static int32_t BuildTlsSigAlgParam(TLS_SigSchemeInfo *sigSchemeInfo, BSL_Param *p)
 {
     int32_t i = 0;
     int32_t ret = 0;
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_IANA_SIGN_NAME,
         BSL_PARAM_TYPE_OCTETS_PTR, (void *)(uintptr_t)sigSchemeInfo->name, (uint32_t)strlen(sigSchemeInfo->name)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_IANA_SIGN_ID, BSL_PARAM_TYPE_UINT16,
-        (void *)(uintptr_t)&(sigSchemeInfo->signatureScheme), sizeof(sigSchemeInfo->signatureScheme)), ret);
+        &(sigSchemeInfo->signatureScheme), sizeof(sigSchemeInfo->signatureScheme)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_KEY_TYPE, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(sigSchemeInfo->keyType), sizeof(sigSchemeInfo->keyType)), ret);
+        &(sigSchemeInfo->keyType), sizeof(sigSchemeInfo->keyType)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_PARA_ID, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(sigSchemeInfo->paraId), sizeof(sigSchemeInfo->paraId)), ret);
+        &(sigSchemeInfo->paraId), sizeof(sigSchemeInfo->paraId)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_SIGNWITHMD_ID, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(sigSchemeInfo->signHashAlgId), sizeof(sigSchemeInfo->signHashAlgId)), ret);
+        &(sigSchemeInfo->signHashAlgId), sizeof(sigSchemeInfo->signHashAlgId)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_SIGN_ID, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(sigSchemeInfo->signAlgId), sizeof(sigSchemeInfo->signAlgId)), ret);
+        &(sigSchemeInfo->signAlgId), sizeof(sigSchemeInfo->signAlgId)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_MD_ID, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(sigSchemeInfo->hashAlgId), sizeof(sigSchemeInfo->hashAlgId)), ret);
+        &(sigSchemeInfo->hashAlgId), sizeof(sigSchemeInfo->hashAlgId)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_SEC_BITS, BSL_PARAM_TYPE_INT32,
-        (void *)(uintptr_t)&(sigSchemeInfo->secBits), sizeof(sigSchemeInfo->secBits)), ret);
+        &(sigSchemeInfo->secBits), sizeof(sigSchemeInfo->secBits)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_CERT_VERSION_BITS,
-        BSL_PARAM_TYPE_UINT32, (void *)(uintptr_t)&(sigSchemeInfo->certVersionBits),
-        sizeof(sigSchemeInfo->certVersionBits)), ret);
+        BSL_PARAM_TYPE_UINT32, &(sigSchemeInfo->certVersionBits), sizeof(sigSchemeInfo->certVersionBits)), ret);
     RETURN_RET_IF_ERR_EX(BSL_PARAM_InitValue(&p[i++], CRYPT_PARAM_CAP_TLS_SIGNALG_CHAIN_VERSION_BITS,
-        BSL_PARAM_TYPE_UINT32, (void *)(uintptr_t)&(sigSchemeInfo->chainVersionBits),
-        sizeof(sigSchemeInfo->chainVersionBits)), ret);
+        BSL_PARAM_TYPE_UINT32, &(sigSchemeInfo->chainVersionBits), sizeof(sigSchemeInfo->chainVersionBits)), ret);
 
     return ret;
 }
