@@ -701,7 +701,7 @@ typedef enum {
     CRYPT_CTRL_GET_ECC_ORDER_BITS,      /**< Get the number of bits in the group order. */
     CRYPT_CTRL_GET_ECC_NAME,            /**< Obtain the name of the ECC curve. */
     CRYPT_CTRL_GEN_X25519_PUBLICKEY,    /**< Use prikey genarate x25519 pubkey. */
-    CRYPT_CTRL_GET_ECC_FLAG,            /**< Get ECC pkey flags. */
+    CRYPT_CTRL_GET_SM2_RANDOM,          /**< SM2 get the r value. */
 
     // slh-dsa
     CRYPT_CTRL_GET_SLH_DSA_KEY_LEN = 600,     /**< Get the SLH-DSA key length. */

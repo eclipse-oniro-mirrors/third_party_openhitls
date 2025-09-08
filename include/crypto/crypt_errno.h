@@ -435,6 +435,7 @@ enum CRYPT_ERROR {
     CRYPT_SM2_K_REPEAT_SET_ERROR,                     /**< the random k is set repeatedly*/
     CRYPT_SM2_PAIRWISE_CHECK_FAIL,                     /**< The public and private keys are inconsistent. */
     CRYPT_SM2_INVALID_PRVKEY,                         /**< Invalid private key. */
+    CRYPT_SM2_NO_RANDOM_INFO,                         /**< no r value in sm2 exch. */
 
     CRYPT_KDFTLS12_NOT_SUPPORTED = 0x01210001,        /**< Unsupport the KDFTLS12 algorithm. */
     CRYPT_KDFTLS12_PARAM_ERROR,                       /**< Incorrect input parameter. */

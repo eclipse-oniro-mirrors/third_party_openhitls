@@ -848,6 +848,23 @@ ERR:
     return ret;
 }
 
+static int32_t Sm2GetRandom(CRYPT_SM2_Ctx *ctx, void *val, uint32_t len)
+{
+    if (val == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (ctx->r == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SM2_NO_RANDOM_INFO);
+        return CRYPT_SM2_NO_RANDOM_INFO;
+    }
+    if (len != SM3_MD_SIZE) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SM2_BUFF_LEN_NOT_ENOUGH);
+        return CRYPT_SM2_BUFF_LEN_NOT_ENOUGH;
+    }
+    return BN_Bn2BinFixZero(ctx->r, val, len);
+}
+
 static int32_t Sm2GetSumSend(CRYPT_SM2_Ctx *ctx, void *val, uint32_t len)
 {
     if (val == NULL) {
@@ -901,7 +918,7 @@ static int32_t Sm2DoCheck(CRYPT_SM2_Ctx *ctx, const void *val, uint32_t len)
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    if (len != SM3_MD_SIZE) {
+    if (len != SM2_X_LEN) {
         ret = CRYPT_SM2_ERR_DATA_LEN;
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -1019,6 +1036,9 @@ int32_t CRYPT_SM2_Ctrl(CRYPT_SM2_Ctx *ctx, int32_t opt, void *val, uint32_t len)
 #endif
         case CRYPT_CTRL_SET_SM2_RANDOM:
             ret = Sm2SetRandom(ctx, val, len);
+            break;
+        case CRYPT_CTRL_GET_SM2_RANDOM:
+            ret = Sm2GetRandom(ctx, val, len);
             break;
         case CRYPT_CTRL_GET_SM2_SEND_CHECK:
             ret = Sm2GetSumSend(ctx, val, len);
