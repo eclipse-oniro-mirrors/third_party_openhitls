@@ -252,7 +252,7 @@ void UT_TLS_CFG_SET_GET_VERSIONFORBID_API_TC001(void)
 
     config = HITLS_CFG_NewTLSConfig();
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
-    ASSERT_TRUE(config->version == TLS_VERSION_MASK);
+    ASSERT_TRUE(config->version == (TLS_VERSION_MASK | TLCP11_VERSION_BIT));
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS13);
     HITLS_CFG_FreeConfig(config);
 
@@ -277,19 +277,19 @@ void UT_TLS_CFG_SET_GET_VERSIONFORBID_API_TC001(void)
     config = HITLS_CFG_NewTLSConfig();
     version = DTLS12_VERSION_BIT;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
-    ASSERT_TRUE(config->version == TLS_VERSION_MASK);
+    ASSERT_TRUE(config->version == (TLS_VERSION_MASK | TLCP11_VERSION_BIT));
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS13);
 
     version = 0x10000000U;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
-    ASSERT_TRUE(config->version == TLS_VERSION_MASK);
+    ASSERT_TRUE(config->version == (TLS_VERSION_MASK | TLCP11_VERSION_BIT));
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS13);
     HITLS_CFG_FreeConfig(config);
 
     config = HITLS_CFG_NewTLSConfig();
     version = TLS13_VERSION_BIT;
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
-    ASSERT_TRUE(config->version == TLS12_VERSION_BIT);
+    ASSERT_TRUE(config->version == (TLS12_VERSION_BIT | TLCP11_VERSION_BIT));
     ASSERT_TRUE(config->minVersion == HITLS_VERSION_TLS12 && config->maxVersion == HITLS_VERSION_TLS12);
 
     HITLS_CFG_FreeConfig(config);
@@ -321,7 +321,7 @@ EXIT:
 void UT_TLS_CFG_SET_GET_VERSIONFORBID_API_TC002(void)
 {
     FRAME_Init();
-    uint32_t version = TLS_VERSION_MASK;
+    uint32_t version = TLS_VERSION_MASK | TLCP11_VERSION_BIT;
     HITLS_Config *config = HITLS_CFG_NewTLSConfig();
     ASSERT_TRUE(HITLS_CFG_SetVersionForbid(config, version) == HITLS_SUCCESS);
     ASSERT_TRUE(config->version == 0);

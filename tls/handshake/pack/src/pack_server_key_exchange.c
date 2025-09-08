@@ -335,7 +335,7 @@ static int32_t PackKxPrimaryData(const TLS_Ctx *ctx, PackPacket *pkt)
     uint32_t pubkeyLen = dh->plen;
     uint16_t plen = dh->plen;
     uint16_t glen = dh->glen;
-    
+
     int32_t ret = PackAppendUint16ToBuf(pkt, plen);
     if (ret != HITLS_SUCCESS) {
         return ret;
@@ -361,7 +361,7 @@ static int32_t PackKxPrimaryData(const TLS_Ctx *ctx, PackPacket *pkt)
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-    
+
     uint8_t *reservedBuf = NULL;
     ret = PackReserveBytes(pkt, pubkeyLen, &reservedBuf);
     if (ret != HITLS_SUCCESS) {
@@ -375,12 +375,12 @@ static int32_t PackKxPrimaryData(const TLS_Ctx *ctx, PackPacket *pkt)
             "encode dhe key fail.", 0, 0, 0, 0);
         return HITLS_CRYPT_ERR_ENCODE_DH_KEY;
     }
-    
+
     ret = PackSkipBytes(pkt, pubkeyLen);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-    
+
     PackCloseUint16Field(pkt, pubKeyLenPosition);
 
     return HITLS_SUCCESS;
@@ -489,7 +489,7 @@ static int32_t PackServerKxMsgDhe(TLS_Ctx *ctx, PackPacket *pkt)
 static int32_t PackServerKxMsgPskIdentityHint(const TLS_Ctx *ctx, PackPacket *pkt)
 {
     uint8_t *pskIdentityHint = ctx->config.tlsConfig.pskIdentityHint;
-    /* The length of hintSize <= HITLS_IDENTITY_HINT_MAX_SIZE is ensured during configuration. Therefore, the length of
+    /* The length of hintSize <= HS_PSK_IDENTITY_MAX_LEN is ensured during configuration. Therefore, the length of
      * uint16_t can be forcibly converted to the length of uint16_t */
     uint16_t pskIdentityHintSize = (uint16_t)ctx->config.tlsConfig.hintSize;
 

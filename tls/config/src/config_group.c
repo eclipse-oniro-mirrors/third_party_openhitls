@@ -261,7 +261,7 @@ static int32_t ProviderAddGroupInfo(const BSL_Param *params, void *args)
             TLS_CAPABILITY_LIST_MALLOC_SIZE * sizeof(TLS_GroupInfo));
         config->groupInfoSize += TLS_CAPABILITY_LIST_MALLOC_SIZE;
     }
-    
+
     group = config->groupInfo + config->groupInfolen;
     PROCESS_STRING_PARAM(param, group, params, CRYPT_PARAM_CAP_TLS_GROUP_IANA_GROUP_NAME, name);
     PROCESS_PARAM_UINT16(param, group, params, CRYPT_PARAM_CAP_TLS_GROUP_IANA_GROUP_ID, groupId);
@@ -282,7 +282,7 @@ static int32_t ProviderAddGroupInfo(const BSL_Param *params, void *args)
         CRYPT_EAL_PkeyFreeCtx(pkey);
         group = NULL;
     }
-    
+
 ERR:
     if (group != NULL) {
         BSL_SAL_Free(group->name);

@@ -1564,7 +1564,7 @@ int32_t HITLS_CFG_GetModeSupport(const HITLS_Config *config, uint32_t *mode);
  * @ingroup hitls
  * @brief   Sets whether to support middle box compat mode.
  *
- * @param   ctx [IN] TLS Connection Handle.
+ * @param   config [IN] TLS Connection Handle.
  * @param   isMiddleBox [IN] Support or Not.
  * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
  * @retval  HITLS_SUCCESS, if successful.
@@ -1575,7 +1575,7 @@ int32_t HITLS_CFG_SetMiddleBoxCompat(HITLS_Config *config, bool isMiddleBox);
  * @ingroup hitls
  * @brief   Obtain whether middle box compat mode is supported.
  *
- * @param   ctx [IN] TLS connection handle.
+ * @param   config [IN] TLS connection handle.
  * @param   isMiddleBox [OUT] Support or Not.
  * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
  * @retval  HITLS_SUCCESS, if successful.
@@ -1592,6 +1592,27 @@ int32_t HITLS_CFG_GetMiddleBoxCompat(HITLS_Config *config, bool *isMiddleBox);
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetEndPoint(HITLS_Config *config, bool isClient);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Get whether to support session restoration during renegotiation.
+ * By default, session restoration is not supported.
+ * @param   config   [IN] Config handle
+ * @param   isSupport  [OUT] Indicates whether to support session restoration during renegotiation.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_GetResumptionOnRenegoSupport(HITLS_Config *config, bool *isSupport);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Get whether to allow a renegotiate request from the client
+ * @param   config   [IN] Config handle
+ * @param   isSupport  [OUT] Indicates whether to allow a renegotiate request from the client
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_GetClientRenegotiateSupport(HITLS_Config *config, bool *isSupport);
 
 #ifdef __cplusplus
 }

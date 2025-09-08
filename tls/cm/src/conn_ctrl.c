@@ -427,6 +427,15 @@ int32_t HITLS_SetClientRenegotiateSupport(HITLS_Ctx *ctx, bool isSupport)
 
     return HITLS_CFG_SetClientRenegotiateSupport(&(ctx->config.tlsConfig), isSupport);
 }
+
+int32_t HITLS_GetClientRenegotiateSupport(HITLS_Ctx *ctx, bool *isSupport)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_GetClientRenegotiateSupport(&(ctx->config.tlsConfig), isSupport);
+}
 #endif
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
 int32_t HITLS_SetLegacyRenegotiateSupport(HITLS_Ctx *ctx, bool isSupport)

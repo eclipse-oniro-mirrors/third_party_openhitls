@@ -31,8 +31,6 @@ extern "C" {
 #endif
 
 #define MASTER_SECRET_LEN 48u
-#define HS_PSK_IDENTITY_MAX_LEN 128u /* Maximum length of PSK-negotiated identity information */
-#define HS_PSK_MAX_LEN 256u
 #define COOKIE_SECRET_LIFETIME 5u /* the number of times the cookie's secret is used */
 
 #ifndef HITLS_HS_INIT_BUFFER_SIZE

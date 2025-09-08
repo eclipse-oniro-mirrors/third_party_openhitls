@@ -814,14 +814,6 @@ static bool IsNeedPackPha(const TLS_Ctx *ctx)
 #endif /* HITLS_TLS_FEATURE_PHA */
 #endif /* HITLS_TLS_PROTO_TLS13 */
 
-static bool IsNeedEms(const TLS_Ctx *ctx)
-{
-    if (ctx->config.tlsConfig.maxVersion == HITLS_VERSION_TLCP_DTLCP11) {
-        return false;
-    }
-    return true;
-}
-
 // Pack the non-null extension of client hello.
 static int32_t PackClientExtensions(const TLS_Ctx *ctx, PackPacket *pkt)
 {
@@ -863,7 +855,7 @@ static int32_t PackClientExtensions(const TLS_Ctx *ctx, PackPacket *pkt)
         { EXTENSION_MSG(HS_EX_TYPE_POST_HS_AUTH, isNeedPha, NULL) },
 #endif /* HITLS_TLS_FEATURE_PHA */
 #endif /* HITLS_TLS_PROTO_TLS13 */
-        { EXTENSION_MSG(HS_EX_TYPE_EXTENDED_MASTER_SECRET, IsNeedEms(ctx), NULL) },
+        { EXTENSION_MSG(HS_EX_TYPE_EXTENDED_MASTER_SECRET, true, NULL) },
 #ifdef HITLS_TLS_FEATURE_ALPN
         { EXTENSION_MSG(HS_EX_TYPE_APP_LAYER_PROTOCOLS, (tlsConfig->alpnList != NULL &&
             ctx->state == CM_STATE_HANDSHAKING), PackClientAlpnList) },
@@ -905,7 +897,7 @@ static int32_t PackClientExtensions(const TLS_Ctx *ctx, PackPacket *pkt)
 #ifdef HITLS_TLS_FEATURE_PHA
     ctx->hsCtx->extFlag.havePostHsAuth = isNeedPha;
 #endif /* HITLS_TLS_FEATURE_PHA */
-    ctx->hsCtx->extFlag.haveExtendedMasterSecret = IsNeedEms(ctx);
+    ctx->hsCtx->extFlag.haveExtendedMasterSecret = true;
 #ifdef HITLS_TLS_FEATURE_ETM
     ctx->hsCtx->extFlag.haveEncryptThenMac = ctx->config.tlsConfig.isEncryptThenMac;
 #endif /* HITLS_TLS_FEATURE_ETM */

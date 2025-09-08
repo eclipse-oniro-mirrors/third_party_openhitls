@@ -14,6 +14,7 @@
  */
 
 #include "hitls_build.h"
+#include "securec.h"
 #include "bsl_sal.h"
 #include "tls_binlog_id.h"
 #include "hitls_type.h"
@@ -205,9 +206,6 @@ static void InitConfig(HITLS_Config *config)
 #ifdef HITLS_TLS_CONFIG_MANUAL_DH
     config->isSupportDhAuto = false;
 #endif
-    if (config->maxVersion == HITLS_VERSION_TLCP_DTLCP11) {
-        config->isSupportExtendedMasterSecret = false;
-    }
 #ifdef HITLS_TLS_FEATURE_FLIGHT
     config->isFlightTransmitEnable = true;
 #endif
@@ -366,7 +364,24 @@ static int32_t SetDefaultTlsAllCipherSuites(HITLS_Config *config)
     }
 #endif
 
-    return SetDefaultCipherSuite(config, g_tls12CipherSuites, sizeof(g_tls12CipherSuites));
+    uint32_t tls12CipherSuitesLen = sizeof(g_tls12CipherSuites) / sizeof(uint16_t);
+    uint32_t tlcpCipherSuitesLen = 0;
+#ifdef HITLS_TLS_PROTO_TLCP11
+    tlcpCipherSuitesLen = sizeof(g_tlcpCipherSuites) / sizeof(uint16_t);
+#endif
+    uint32_t cipherSuitesLen = tls12CipherSuitesLen + tlcpCipherSuitesLen;
+    uint16_t *cipherSuites = BSL_SAL_Calloc(1u, cipherSuitesLen * sizeof(uint16_t));
+    if (cipherSuites == NULL) {
+        return HITLS_MEMALLOC_FAIL;
+    }
+#ifdef HITLS_TLS_PROTO_TLCP11
+    (void)memcpy_s(cipherSuites, cipherSuitesLen * sizeof(uint16_t), g_tlcpCipherSuites, sizeof(g_tlcpCipherSuites));
+#endif
+    (void)memcpy_s(cipherSuites + tlcpCipherSuitesLen, (cipherSuitesLen - tlcpCipherSuitesLen) * sizeof(uint16_t),
+                   g_tls12CipherSuites, sizeof(g_tls12CipherSuites));
+    ret = SetDefaultCipherSuite(config, cipherSuites, cipherSuitesLen * sizeof(uint16_t));
+    BSL_SAL_FREE(cipherSuites);
+    return ret;
 }
 #endif
 #ifdef HITLS_TLS_PROTO_ALL

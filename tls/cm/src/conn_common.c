@@ -719,3 +719,40 @@ int32_t HITLS_Flush(HITLS_Ctx *ctx)
     return HITLS_SUCCESS;
 #endif
 }
+
+int32_t HITLS_SetExtenedMasterSecretSupport(HITLS_Ctx *ctx, bool support)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_SetExtenedMasterSecretSupport(&(ctx->config.tlsConfig), support);
+}
+
+int32_t HITLS_GetExtenedMasterSecretSupport(HITLS_Ctx *ctx, uint8_t *isSupport)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_GetExtenedMasterSecretSupport(&(ctx->config.tlsConfig), isSupport);
+}
+#if defined(HITLS_TLS_FEATURE_RENEGOTIATION) && defined(HITLS_TLS_FEATURE_SESSION)
+int32_t HITLS_SetResumptionOnRenegoSupport(HITLS_Ctx *ctx, bool support)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_SetResumptionOnRenegoSupport(&(ctx->config.tlsConfig), support);
+}
+
+int32_t HITLS_GetResumptionOnRenegoSupport(HITLS_Ctx *ctx, bool *isSupport)
+{
+    if (ctx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    return HITLS_CFG_GetResumptionOnRenegoSupport(&(ctx->config.tlsConfig), isSupport);
+}
+#endif

@@ -42,6 +42,10 @@
 static int32_t ConnectEventInIdleState(HITLS_Ctx *ctx)
 {
     ctx->isClient = true; // Set the configuration as a client
+    if (IS_SUPPORT_TLS(ctx->config.tlsConfig.version) && IS_SUPPORT_TLCP(ctx->config.tlsConfig.version)) {
+        ctx->config.tlsConfig.version &= ~TLCP11_VERSION_BIT;
+        ctx->config.tlsConfig.originVersionMask &= ~TLCP11_VERSION_BIT;
+    }
 
     int32_t ret = CONN_Init(ctx);
     if (ret != HITLS_SUCCESS) {

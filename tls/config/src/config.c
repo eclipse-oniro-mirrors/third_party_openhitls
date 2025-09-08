@@ -749,6 +749,9 @@ HITLS_Config *HITLS_CFG_ProviderNewTLSConfig(HITLS_Lib_Ctx *libCtx, const char *
 #ifdef HITLS_TLS_PROTO_TLS13
     newConfig->version |= TLS13_VERSION_BIT;
 #endif
+#ifdef HITLS_TLS_PROTO_TLCP11
+    newConfig->version |= TLCP11_VERSION_BIT;
+#endif
 
     newConfig->libCtx = libCtx;
     newConfig->attrName = attrName;
@@ -849,26 +852,21 @@ uint32_t MapVersion2VersionBit(bool isDatagram, uint16_t version)
     return ret;
 }
 
-static void ChangeMinMaxVersion(uint32_t versionMask, uint32_t originVersionMask, uint16_t *minVersion,
-    uint16_t *maxVersion)
+void ChangeMinMaxVersion(uint32_t versionMask, uint32_t originVersionMask, uint16_t *minVersion, uint16_t *maxVersion)
 {
-    /* The original supported version is disabled. This is abnormal and packets cannot be sent */
-    if ((versionMask & ~originVersionMask) != 0 && versionMask != 0) {
-        return;
+    uint32_t versionMaskBit = versionMask;
+    if (IS_SUPPORT_TLS(versionMaskBit) && IS_SUPPORT_TLCP(versionMaskBit)) {
+        versionMaskBit &= ~TLCP_VERSION_BITS;
     }
-    /* Currently, only DTLS1.2 is supported. DTLS1.0 is not supported */
-    if ((versionMask & DTLS12_VERSION_BIT) == DTLS12_VERSION_BIT) {
-        *maxVersion = HITLS_VERSION_DTLS12;
-        *minVersion = HITLS_VERSION_DTLS12;
-        return;
-    }
-    uint32_t versionBits[] = {TLS12_VERSION_BIT, TLS13_VERSION_BIT};
-    uint16_t versions[] = {HITLS_VERSION_TLS12, HITLS_VERSION_TLS13};
+    uint32_t versionBits[] = {TLS12_VERSION_BIT, TLS13_VERSION_BIT, DTLS12_VERSION_BIT, TLCP11_VERSION_BIT,
+                              DTLCP11_VERSION_BIT};
+    uint16_t versions[] = {HITLS_VERSION_TLS12, HITLS_VERSION_TLS13, HITLS_VERSION_DTLS12, HITLS_VERSION_TLCP_DTLCP11,
+                           HITLS_VERSION_TLCP_DTLCP11};
     uint32_t versionBitsSize = sizeof(versionBits) / sizeof(uint32_t);
     uint32_t minIdx = 0;
     uint32_t maxIdx = 0;
     bool found = false;
-    uint32_t intersection = versionMask & originVersionMask;
+    uint32_t intersection = versionMaskBit & originVersionMask;
     for (uint32_t i = 0; i < versionBitsSize; i++) {
         if ((intersection & versionBits[i]) == versionBits[i]) {
             if (!found) {
@@ -974,11 +972,11 @@ int32_t HITLS_CFG_SetVersion(HITLS_Config *config, uint16_t minVersion, uint16_t
 
     /* In invalid cases, both maxVersion and minVersion are 0 */
     ret = ChangeVersionMask(config, tmpMinVersion, tmpMaxVersion);
-    if (ret != HITLS_SUCCESS) {
+    if (ret == HITLS_SUCCESS) {
         ChangeMinMaxVersion(config->version, config->originVersionMask, &config->minVersion, &config->maxVersion);
     }
-    
-    return HITLS_SUCCESS;
+
+    return ret;
 }
 
 int32_t HITLS_CFG_SetVersionForbid(HITLS_Config *config, uint32_t noVersion)
@@ -1527,6 +1525,15 @@ int32_t HITLS_CFG_SetClientRenegotiateSupport(HITLS_Config *config, bool support
     config->allowClientRenegotiate = support;
     return HITLS_SUCCESS;
 }
+
+int32_t HITLS_CFG_GetClientRenegotiateSupport(HITLS_Config *config, bool *isSupport)
+{
+    if (config == NULL || isSupport == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    *isSupport = config->allowClientRenegotiate;
+    return HITLS_SUCCESS;
+}
 #endif
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
 int32_t HITLS_CFG_SetLegacyRenegotiateSupport(HITLS_Config *config, bool support)
@@ -1547,6 +1554,15 @@ int32_t HITLS_CFG_SetResumptionOnRenegoSupport(HITLS_Config *config, bool suppor
     config->isResumptionOnRenego = support;
     return HITLS_SUCCESS;
 }
+
+int32_t HITLS_CFG_GetResumptionOnRenegoSupport(HITLS_Config *config, bool *isSupport)
+{
+    if (config == NULL || isSupport == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    *isSupport = config->isResumptionOnRenego;
+    return HITLS_SUCCESS;
+}
 #endif
 
 int32_t HITLS_CFG_SetExtendedMasterSecretSupport(HITLS_Config *config, bool support)
@@ -1565,7 +1581,7 @@ int32_t HITLS_CFG_SetPskIdentityHint(HITLS_Config *config, const uint8_t *hint, 
         return HITLS_NULL_INPUT;
     }
 
-    if (hintSize > HITLS_IDENTITY_HINT_MAX_SIZE) {
+    if (hintSize > HS_PSK_IDENTITY_MAX_LEN) {
         return HITLS_CONFIG_INVALID_LENGTH;
     }
 

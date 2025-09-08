@@ -2109,3 +2109,109 @@ EXIT:
     FRAME_DeRegCryptMethod();
 }
 /* END_CASE */
+
+/* @
+* @test  UT_TLS_TLCP_CONSISTENCY_SERVER_TLS_ALL_TC001
+* @title  The client supports tlcp, and the server supports tls_all. Establish a connection and
+        expect successful chain building.
+* @precon  nan
+* @brief  1. Set the server version to tls_all and the client version to tlcp, and create config. Expected result 1.
+*         2. Establish a connection. Expected result 2.
+* @expect 1. The initialization is successful.
+*         2. Successfully established connection.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLCP_CONSISTENCY_SERVER_TLS_ALL_TC001()
+{
+    FRAME_Init();
+    HITLS_Config *config_s = NULL;
+    HITLS_Config *config_c = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    config_c = HITLS_CFG_NewTLCPConfig();
+    config_s = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(config_c != NULL);
+    ASSERT_TRUE(config_s != NULL);
+    config_c->isSupportExtendMasterSecret = true;
+    config_s->isSupportExtendMasterSecret = true;
+    config_s->isSupportClientVerify = true;
+    client = FRAME_CreateTLCPLink(config_c, BSL_UIO_TCP, true);
+    server = FRAME_CreateTLCPLink(config_s, BSL_UIO_TCP, false);
+    ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
+EXIT:
+    HITLS_CFG_FreeConfig(config_c);
+    HITLS_CFG_FreeConfig(config_s);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_TLCP_CONSISTENCY_SERVER_TLS_ALL_TC002
+* @title  The client supports tlcp with HITLS-ECC_SM4_CBC_SM3 cipher suite, while the server supports tls_all version
+        but disables tlcp version. The connection is established and expected to fail.
+* @precon  nan
+* @brief  1. Set the server version to tls_all and the client version to tlcp, and create config. Expected result 1.
+*         2. Server setting to disable tlcp version。Expected result 2.
+*         3. Establish a connection. Expected result 3.
+* @expect 1. The initialization is successful.
+*         2. Setup successful.
+*         3. Failed to establish connection.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLCP_CONSISTENCY_SERVER_TLS_ALL_TC002()
+{
+    FRAME_Init();
+    HITLS_Config *config_s = NULL;
+    HITLS_Config *config_c = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    config_c = HITLS_CFG_NewTLCPConfig();
+    config_s = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(config_c != NULL);
+    ASSERT_TRUE(config_s != NULL);
+    config_s->isSupportClientVerify = true;
+    HITLS_CFG_SetVersionForbid(config_s, TLCP11_VERSION_BIT);
+    client = FRAME_CreateTLCPLink(config_c, BSL_UIO_TCP, true);
+    server = FRAME_CreateTLCPLink(config_s, BSL_UIO_TCP, false);
+    ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
+EXIT:
+    HITLS_CFG_FreeConfig(config_c);
+    HITLS_CFG_FreeConfig(config_s);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_TLCP_CONSISTENCY_SERVER_TLS_ALL_TC003
+* @title  The client supports tls_all, the server supports tlcp, establishes a connection, and expects the
+        connection to fail.
+* @precon  nan
+* @brief  1. Set the server version to tlcp and the client version to tls_all, and create config. Expected result 1.
+*         2. Establish a connection. Expected result 2.
+* @expect 1. The initialization is successful.
+*         2. Failed to establish connection.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLCP_CONSISTENCY_SERVER_TLS_ALL_TC003()
+{
+    FRAME_Init();
+    HITLS_Config *config_s = NULL;
+    HITLS_Config *config_c = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    config_c = HITLS_CFG_NewTLSConfig();
+    config_s = HITLS_CFG_NewTLCPConfig();
+    ASSERT_TRUE(config_c != NULL);
+    ASSERT_TRUE(config_s != NULL);
+    client = FRAME_CreateTLCPLink(config_c, BSL_UIO_TCP, true);
+    server = FRAME_CreateTLCPLink(config_s, BSL_UIO_TCP, false);
+    ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
+EXIT:
+    HITLS_CFG_FreeConfig(config_c);
+    HITLS_CFG_FreeConfig(config_s);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */

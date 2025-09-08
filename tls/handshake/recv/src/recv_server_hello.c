@@ -132,7 +132,8 @@ static int32_t ClientCheckExtendedMasterSecret(TLS_Ctx *ctx, const ServerHelloMs
         return HITLS_MSG_HANDLE_UNSUPPORT_EXTENSION_TYPE;
     }
     /* tls1.3 Ignore Extended Master Secret */
-    if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13 || ctx->negotiatedInfo.version < HITLS_VERSION_TLS12) {
+    if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13 || (ctx->negotiatedInfo.version < HITLS_VERSION_TLS12 &&
+        ctx->negotiatedInfo.version != HITLS_VERSION_TLCP_DTLCP11)) {
         ctx->negotiatedInfo.isExtendedMasterSecret = false;
         return HITLS_SUCCESS;
     }

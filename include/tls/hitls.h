@@ -1635,6 +1635,61 @@ int32_t HITLS_GetOutPendingSize(const HITLS_Ctx *ctx, uint32_t *size);
  */
 int32_t HITLS_Flush(HITLS_Ctx *ctx);
 
+/**
+ * @ingroup hitls
+ * @brief   Sets whether to forcibly support extended master keys.
+ *
+ * @param   ctx [IN] TLS connection handle
+ * @param   support [IN] Indicates whether to forcibly support extended master keys.
+                         The options are as follows: True: yes; False: no. The default value is true.
+ * @retval  HITLS_SUCCESS.
+ * @retval  HITLS_NULL_INPUT, ctx is NULL.
+ */
+int32_t HITLS_SetExtenedMasterSecretSupport(HITLS_Ctx *ctx, bool support);
+
+/**
+ * @ingroup hitls
+ * @brief   Query whether extended master keys are supported.
+ *
+ * @param   ctx [IN] TLS connection handle
+ * @param   isSupport   [OUT] Indicates whether to support the extended master key.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, ctx is NULL.
+ */
+int32_t HITLS_GetExtenedMasterSecretSupport(HITLS_Ctx *ctx, uint8_t *isSupport);
+
+/**
+ * @ingroup hitls
+ * @brief   Set whether to support session restoration during renegotiation.
+ * By default, session restoration is not supported.
+ * @param   ctx [IN] TLS connection handle
+ * @param   support  [IN] Whether to support the function. The options are as follows: True: yes; False: no.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, ctx is null.
+ */
+int32_t HITLS_SetResumptionOnRenegoSupport(HITLS_Ctx *ctx, bool support);
+
+/**
+ * @ingroup hitls
+ * @brief   Get whether to support session restoration during renegotiation.
+ * By default, session restoration is not supported.
+ * @param   ctx [IN] TLS connection handle
+ * @param   isSupport  [OUT] Indicates whether to support session restoration during renegotiation.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, ctx is null.
+ */
+int32_t HITLS_GetResumptionOnRenegoSupport(HITLS_Ctx *ctx, bool *isSupport);
+
+/**
+ * @ingroup hitls
+ * @brief   Get whether to allow a renegotiate request from the client
+ * @param   ctx   [IN] TLS connection handle.
+ * @param   isSupport  [OUT] Indicates whether to allow a renegotiate request from the client
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ */
+int32_t HITLS_GetClientRenegotiateSupport(HITLS_Ctx *ctx, bool *isSupport);
+
 #ifdef __cplusplus
 }
 #endif
