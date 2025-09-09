@@ -832,6 +832,8 @@ EXIT:
 void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC001(void)
 {
     TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    HITLS_X509_List *chain = NULL;
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
     
@@ -842,12 +844,10 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC001(void)
 
     // Load the certificate to be verified
     const char *certToVerify = "../testdata/tls/certificate/pem/rsa_sha256/client.pem";
-    HITLS_X509_Cert *cert = NULL;
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_PEM, certToVerify, &cert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
    
     // Build certificate chain with on-demand CA loading from multiple paths
-    HITLS_X509_List *chain = NULL;
     ret = HITLS_X509_CertChainBuild(storeCtx, true, cert, &chain);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_NE(chain, NULL);
@@ -857,14 +857,11 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC001(void)
     
     // Verify the certificate chain
     ret = HITLS_X509_CertVerify(storeCtx, chain);
-
-    printf("Certificate verification result: %d\n", ret);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
-    BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
-    HITLS_X509_CertFree(cert);
-
 EXIT:
     HITLS_X509_StoreCtxFree(storeCtx);
+    BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+    HITLS_X509_CertFree(cert);
 }
 /* END_CASE */
 
@@ -872,6 +869,8 @@ EXIT:
 void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC002(void)
 {
     TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    HITLS_X509_List *chain = NULL;
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
     
@@ -882,17 +881,15 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC002(void)
 
     // Load the certificate to be verified
     const char *certToVerify = "../testdata/tls/certificate/pem/rsa_sha256/client.pem";
-    HITLS_X509_Cert *cert = NULL;
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_PEM, certToVerify, &cert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
    
     // Build certificate chain with on-demand CA loading from multiple paths
-    HITLS_X509_List *chain = NULL;
     ret = HITLS_X509_CertChainBuild(storeCtx, true, cert, &chain);
     ASSERT_EQ(ret, HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND);
     ASSERT_EQ(chain, NULL);
-    HITLS_X509_CertFree(cert);
 EXIT:
+    HITLS_X509_CertFree(cert);
     HITLS_X509_StoreCtxFree(storeCtx);
 }
 /* END_CASE */
@@ -901,6 +898,8 @@ EXIT:
 void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC003(void)
 {
     TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    HITLS_X509_List *chain = NULL;
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
     
@@ -911,18 +910,16 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC003(void)
 
     // Load the certificate to be verified
     const char *certToVerify = "../testdata/tls/certificate/pem/rsa_sha256/client.pem";
-    HITLS_X509_Cert *cert = NULL;
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_PEM, certToVerify, &cert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
    
     // Build certificate chain with on-demand CA loading from multiple paths
-    HITLS_X509_List *chain = NULL;
     ret = HITLS_X509_CertChainBuild(storeCtx, true, cert, &chain);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_NE(chain, NULL);
+EXIT:
     HITLS_X509_CertFree(cert);
     BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
-EXIT:
     HITLS_X509_StoreCtxFree(storeCtx);
 }
 /* END_CASE */
@@ -931,6 +928,8 @@ EXIT:
 void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC004(void)
 {
     TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    HITLS_X509_List *chain = NULL;
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
     
@@ -941,18 +940,17 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC004(void)
 
     // Load the certificate to be verified
     const char *certToVerify = "../testdata/tls/certificate/pem/ecdsa_sha256/client.pem";
-    HITLS_X509_Cert *cert = NULL;
+    
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_PEM, certToVerify, &cert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
    
     // Build certificate chain with on-demand CA loading from multiple paths
-    HITLS_X509_List *chain = NULL;
     ret = HITLS_X509_CertChainBuild(storeCtx, true, cert, &chain);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_NE(chain, NULL);
+EXIT:
     HITLS_X509_CertFree(cert);
     BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
-EXIT:
     HITLS_X509_StoreCtxFree(storeCtx);
 }
 /* END_CASE */
