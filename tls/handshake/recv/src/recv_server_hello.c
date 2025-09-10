@@ -42,6 +42,7 @@
 #include "alert.h"
 #include "hs_kx.h"
 #include "config_type.h"
+#include "config_check.h"
 
 typedef int32_t (*CheckExtFunc)(TLS_Ctx *ctx, const ServerHelloMsg *serverHello);
 
@@ -483,6 +484,16 @@ static int32_t ClientCheckCipherSuite(TLS_Ctx *ctx, const ServerHelloMsg *server
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
 static int32_t ClientCheckVersion(TLS_Ctx *ctx, const ServerHelloMsg *serverHello)
 {
+    int32_t ret = HITLS_SUCCESS;
+    (void)ret;
+#ifdef HITLS_TLS_FEATURE_RENEGOTIATION
+    ret = CheckRenegotiatedVersion(ctx);
+    if (ret != HITLS_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return RETURN_ALERT_PROCESS(ctx, ret, BINLOG_ID15072,
+            "The client renegotiation version is inconsistent with the initial one", ALERT_PROTOCOL_VERSION);
+    }
+#endif
     uint16_t clientMinVersion = ctx->config.tlsConfig.minVersion;
     uint16_t clientMaxVersion = ctx->config.tlsConfig.maxVersion;
     uint16_t serverVersion = serverHello->version;
@@ -509,7 +520,7 @@ static int32_t ClientCheckVersion(TLS_Ctx *ctx, const ServerHelloMsg *serverHell
         }
     }
 #ifdef HITLS_TLS_FEATURE_SECURITY
-    int32_t ret = SECURITY_SslCheck((HITLS_Ctx *)ctx, HITLS_SECURITY_SECOP_VERSION, 0, serverHello->version, NULL);
+    ret = SECURITY_SslCheck((HITLS_Ctx *)ctx, HITLS_SECURITY_SECOP_VERSION, 0, serverHello->version, NULL);
     if (ret != SECURITY_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17088, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "SslCheck fail, ret %d", ret, 0, 0, 0);

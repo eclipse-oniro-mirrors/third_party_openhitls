@@ -944,6 +944,24 @@ static void ChangeTmpVersion(HITLS_Config *config, uint16_t *tmpMinVersion, uint
     return;
 }
 
+#ifdef HITLS_TLS_FEATURE_RENEGOTIATION
+int32_t CheckRenegotiatedVersion(TLS_Ctx *ctx)
+{
+    if (ctx->negotiatedInfo.isRenegotiation) {
+        uint16_t oldNegotiatedVersion = ctx->negotiatedInfo.version;
+        uint32_t versionBit =
+            MapVersion2VersionBit(IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask), oldNegotiatedVersion);
+        if ((versionBit & ctx->config.tlsConfig.version) == 0) {
+            return HITLS_MSG_HANDLE_UNSUPPORT_VERSION;
+        }
+        ctx->config.tlsConfig.version = versionBit;
+        ChangeMinMaxVersion(ctx->config.tlsConfig.version, ctx->config.tlsConfig.originVersionMask,
+                            &ctx->config.tlsConfig.minVersion, &ctx->config.tlsConfig.maxVersion);
+    }
+    return HITLS_SUCCESS;
+}
+#endif
+
 int32_t HITLS_CFG_SetVersion(HITLS_Config *config, uint16_t minVersion, uint16_t maxVersion)
 {
     if (config == NULL) {

@@ -93,6 +93,10 @@ HITLS_CERT_MgrMethod *HITLS_CERT_GetMgrMethod(void)
 int32_t CheckCertCallBackRetVal(const char *logStr, int32_t callBackRet, uint32_t bingLogId, uint32_t hitlsRet)
 {
     if (callBackRet != HITLS_SUCCESS) {
+        if (hitlsRet == HITLS_CERT_KEY_CTRL_ERR_IS_DATA_ENC_USAGE || hitlsRet == HITLS_CERT_KEY_CTRL_ERR_IS_ENC_USAGE ||
+            hitlsRet == HITLS_CERT_KEY_CTRL_ERR_IS_KEY_AGREEMENT_USAGE) {
+            return (int32_t)hitlsRet;
+        }
         BSL_LOG_BINLOG_FIXLEN(bingLogId, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "%s error: callback ret = 0x%x.", logStr, callBackRet, 0, 0);
         BSL_ERR_PUSH_ERROR((int32_t)hitlsRet);
@@ -190,7 +194,7 @@ HITLS_CERT_X509 *SAL_CERT_X509Dup(const CERT_MgrCtx *mgrCtx, HITLS_CERT_X509 *ce
 {
 #ifdef HITLS_TLS_FEATURE_PROVIDER
     (void)mgrCtx;
-    return (HITLS_CERT_X509 *)HITLS_X509_CertDup(cert);
+    return (HITLS_CERT_X509 *)HITLS_X509_Adapt_CertDup(cert);
 #else
     return mgrCtx->method.certDup(cert);
 #endif

@@ -460,6 +460,16 @@ static uint32_t MapLegacyVersionToBits(TLS_Ctx *ctx, uint16_t version)
  */
 static int32_t ServerSelectNegoVersion(TLS_Ctx *ctx, const ClientHelloMsg *clientHello)
 {
+    int32_t ret = HITLS_SUCCESS;
+    (void)ret;
+#ifdef HITLS_TLS_FEATURE_RENEGOTIATION
+    ret = CheckRenegotiatedVersion(ctx);
+    if (ret != HITLS_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return RETURN_ALERT_PROCESS(ctx, ret, BINLOG_ID15071,
+            "The server renegotiation version is inconsistent with the initial one", ALERT_PROTOCOL_VERSION);
+    }
+#endif
     uint16_t legacyVersion = clientHello->version;
     uint32_t legacyVersionBits = MapLegacyVersionToBits(ctx, legacyVersion);
     uint32_t intersection = ctx->config.tlsConfig.version & legacyVersionBits;
@@ -484,7 +494,6 @@ static int32_t ServerSelectNegoVersion(TLS_Ctx *ctx, const ClientHelloMsg *clien
         }
     }
 #ifdef HITLS_TLS_FEATURE_SECURITY
-    int32_t ret = 0;
     /* Version security check */
     ret = SECURITY_SslCheck((HITLS_Ctx *)ctx, HITLS_SECURITY_SECOP_VERSION, 0, ctx->negotiatedInfo.version, NULL);
     if (ret != SECURITY_SUCCESS) {
