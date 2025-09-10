@@ -35,6 +35,8 @@
 #include "app_mac.h"
 #include "app_kdf.h"
 #include "app_keymgmt.h"
+#include "app_client.h"
+#include "app_server.h"
 
 HITLS_CmdFunc g_cmdFunc[] = {
     {"help",     FUNC_TYPE_GENERAL,   HITLS_HelpMain},
@@ -57,6 +59,8 @@ HITLS_CmdFunc g_cmdFunc[] = {
 #ifdef HITLS_APP_SM_MODE
     {"keymgmt",  FUNC_TYPE_GENERAL,   HITLS_KeyMgmtMain},
 #endif
+    {"s_client", FUNC_TYPE_GENERAL,   HITLS_ClientMain},
+    {"s_server", FUNC_TYPE_GENERAL,   HITLS_ServerMain},
     {NULL,      FUNC_TYPE_NONE, NULL}
 };
 static void AppGetFuncPrintfLen(size_t *maxLen)

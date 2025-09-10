@@ -499,17 +499,17 @@ class CMakeGenerator:
         lib_type = self._cfg_custom_feature.lib_type
         if 'shared' in lib_type:
             cmake += self._gen_cmd_cmake('add_dependencies', exe_name,
-                                        'hitls_pki-shared hitls_crypto-shared hitls_bsl-shared')
+                                        'hitls_tls-shared hitls_pki-shared hitls_crypto-shared hitls_bsl-shared')
         elif 'static' in lib_type:
             cmake += self._gen_cmd_cmake('add_dependencies', exe_name,
-                                        'hitls_pki-static hitls_crypto-static hitls_bsl-static')
+                                        'hitls_tls-static hitls_pki-static hitls_crypto-static hitls_bsl-static')
 
         common_link_dir = [
             '${CMAKE_CURRENT_LIST_DIR}', # libhitls_*
             '${CMAKE_SOURCE_DIR}/platform/Secure_C/lib',
         ]
         common_link_lib = [
-            'hitls_pki', 'hitls_crypto', 'hitls_bsl',
+            'hitls_tls', 'hitls_pki', 'hitls_crypto', 'hitls_bsl',
             'dl', 'pthread', 'm',
             str(self._args.securec_lib)
         ]

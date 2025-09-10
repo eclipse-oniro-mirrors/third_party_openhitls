@@ -108,6 +108,25 @@ CRYPT_EAL_PkeyCtx *HITLS_APP_LoadPubKey(const char *inFilePath, BSL_ParseFormat 
 /**
  * @ingroup apps
  *
+ * @brief Load the private key using provider attributes.
+ *
+ * @attention If inFilePath or passin is empty, it is read from the standard input.
+ *            The provider attribute (attrName) is used to specify the provider for key loading.
+ *
+ * @param libCtx            [IN] Library context
+ * @param attrName          [IN] Provider attribute name
+ * @param inFilePath        [IN] File name
+ * @param informat          [IN] Private Key Format
+ * @param passin            [IN/OUT] Parsed password
+ *
+ * @retval CRYPT_EAL_PkeyCtx
+ */
+CRYPT_EAL_PkeyCtx *HITLS_APP_ProviderLoadPrvKey(CRYPT_EAL_LibCtx *libCtx, const char *attrName,
+    const char *inFilePath, BSL_ParseFormat informat, char **passin);
+
+/**
+ * @ingroup apps
+ *
  * @brief Load the private key.
  *
  * @attention If inFilePath or passin is empty, it is read from the standard input.

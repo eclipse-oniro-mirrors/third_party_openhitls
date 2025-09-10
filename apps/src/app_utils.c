@@ -463,6 +463,78 @@ static CRYPT_EAL_PkeyCtx *LoadPrvDerKey(const char *inFilePath)
     return pkey;
 }
 
+static CRYPT_EAL_PkeyCtx *ProviderLoadPrvDerKey(CRYPT_EAL_LibCtx *libCtx, const char *attrName, const char *inFilePath)
+{
+    static CRYPT_PKEY_AlgId encodeType[] = {CRYPT_PKEY_SM2, CRYPT_PKEY_RSA};
+    const char *encodeTypeStr[] = {"PRIKEY_ECC", "PRIKEY_RSA"};
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
+    for (uint32_t i = 0; i < sizeof(encodeType) / sizeof(CRYPT_ENCDEC_TYPE); ++i) {
+        if (CRYPT_EAL_ProviderDecodeFileKey(libCtx, attrName, encodeType[i], "ASN1", encodeTypeStr[i], inFilePath,
+            NULL, &pkey) == CRYPT_SUCCESS) {
+            break;
+        }
+    }
+
+    if (pkey == NULL) {
+        AppPrintError("Failed to read the private key from \"%s\".\n", inFilePath);
+        return NULL;
+    }
+    return pkey;
+}
+
+static CRYPT_EAL_PkeyCtx *ProviderReadPemPrvKey(CRYPT_EAL_LibCtx *libCtx, const char *attrName, BSL_Buffer *encode,
+    uint8_t *pass, uint32_t passLen)
+{
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
+    BSL_Buffer passBuf = { pass, passLen };
+    if (CRYPT_EAL_ProviderDecodeBuffKey(libCtx, attrName, BSL_CID_UNKNOWN, "PEM", NULL,
+        encode, &passBuf, &pkey) != CRYPT_SUCCESS) {
+        return NULL;
+    }
+    return pkey;
+}
+
+CRYPT_EAL_PkeyCtx *HITLS_APP_ProviderLoadPrvKey(CRYPT_EAL_LibCtx *libCtx, const char *attrName,
+    const char *inFilePath, BSL_ParseFormat informat, char **passin)
+{
+    if (inFilePath == NULL && informat == BSL_FORMAT_ASN1) {
+        AppPrintError("The \"-inform DER or -keyform DER\" requires using the \"-in\" option.\n");
+        return NULL;
+    }
+    if (!CheckFilePath(inFilePath)) {
+        return NULL;
+    }
+    if (informat == BSL_FORMAT_ASN1) {
+        return ProviderLoadPrvDerKey(libCtx, attrName, inFilePath);
+    }
+    char *prvkeyName = NULL;
+    bool isEncrypted = false;
+    uint8_t *data = NULL;
+    uint32_t dataLen = 0;
+    if (ReadPemKeyFile(inFilePath, &data, &dataLen, &prvkeyName, &isEncrypted) != HITLS_APP_SUCCESS) {
+        PrintFileOrStdinError(inFilePath, "Failed to read the private key");
+        return NULL;
+    }
+
+    uint8_t *pass = NULL;
+    uint32_t passLen = 0;
+    BSL_UI_ReadPwdParam passParam = { "passwd", inFilePath, false };
+    if (isEncrypted && (HITLS_APP_GetPasswd(&passParam, passin, &pass, &passLen) != HITLS_APP_SUCCESS)) {
+        BSL_SAL_FREE(data);
+        BSL_SAL_FREE(prvkeyName);
+        return NULL;
+    }
+    BSL_Buffer encode = { data, dataLen };
+    CRYPT_EAL_PkeyCtx *pkey = ProviderReadPemPrvKey(libCtx, attrName, &encode, pass, passLen);
+    if (pkey == NULL) {
+        PrintFileOrStdinError(inFilePath, "Failed to read the private key");
+    }
+    (void)memset_s(pass, passLen, 0, passLen);
+    BSL_SAL_FREE(data);
+    BSL_SAL_FREE(prvkeyName);
+    return pkey;
+}
+
 CRYPT_EAL_PkeyCtx *HITLS_APP_LoadPrvKey(const char *inFilePath, BSL_ParseFormat informat, char **passin)
 {
     if (inFilePath == NULL && informat == BSL_FORMAT_ASN1) {
@@ -497,6 +569,7 @@ CRYPT_EAL_PkeyCtx *HITLS_APP_LoadPrvKey(const char *inFilePath, BSL_ParseFormat 
     if (pkey == NULL) {
         PrintFileOrStdinError(inFilePath, "Failed to read the private key");
     }
+    (void)memset_s(pass, passLen, 0, passLen);
     BSL_SAL_FREE(data);
     BSL_SAL_FREE(prvkeyName);
     return pkey;
