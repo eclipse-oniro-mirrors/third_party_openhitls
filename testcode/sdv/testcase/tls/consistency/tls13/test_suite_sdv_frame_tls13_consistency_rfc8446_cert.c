@@ -2134,3 +2134,71 @@ EXIT:
     FRAME_FreeLink(server);
 }
 /* END_CASE */
+
+static void Test_NewSessionTicketNonceLen0(HITLS_Ctx *ctx, uint8_t *data, uint32_t *len, uint32_t bufSize, void *user)
+{
+    (void)ctx;
+    (void)bufSize;
+    (void)user;
+    FRAME_Type frameType = { 0 };
+    frameType.versionType = HITLS_VERSION_TLS13;
+    FRAME_Msg frameMsg = { 0 };
+    frameMsg.recType.data = REC_TYPE_HANDSHAKE;
+    frameMsg.length.data = *len;
+    frameMsg.recVersion.data = HITLS_VERSION_TLS13;
+    uint32_t parseLen = 0;
+    FRAME_ParseMsgBody(&frameType, data, *len, &frameMsg, &parseLen);
+    ASSERT_EQ(frameMsg.body.hsMsg.type.data, NEW_SESSION_TICKET);
+    FRAME_NewSessionTicketMsg *newsessionTMsg = &frameMsg.body.hsMsg.body.newSessionTicket;
+    newsessionTMsg->ticketNonceSize.data = 0;
+    newsessionTMsg->ticketNonceSize.state = ASSIGNED_FIELD;
+    newsessionTMsg->ticketNonce.state = ASSIGNED_FIELD;
+    newsessionTMsg->ticketNonce.size = 0;
+    BSL_SAL_Free(newsessionTMsg->ticketNonce.data);
+    newsessionTMsg->ticketNonce.data = NULL;
+    ASSERT_EQ(parseLen, *len);
+    FRAME_PackRecordBody(&frameType, &frameMsg, data, bufSize, len);
+EXIT:
+    FRAME_CleanMsg(&frameType, &frameMsg);
+    return;
+}
+
+/** @
+* @test UT_TLS_TLS13_RFC8446_CONSISTENCY_RECV_TICKET_NONCE_ZEROLENGTH_MSG_TC001
+* @spec -
+* @title The ticketNonce length in the NewSessionTicket message received by the client is zero.
+* @precon nan
+* @brief    1. Use the default configuration items to configure the client and server. Expected result 1 is obtained.
+*           2. The client initiates a TLS over TCP connection request and receives the request from the client.
+            After receiving the Hello message, construct a New SessionTicket message with a ticketNonce length of zero
+            and send it to the client. Expected result 2 is obtained.
+* @expect   1. The initialization is successful.
+*           2. The link is set up successfully.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_TLS13_RFC8446_CONSISTENCY_RECV_TICKET_NONCE_ZEROLENGTH_MSG_TC001(void)
+{
+    FRAME_Init();
+    HsTestInfo testInfo = {0};
+    testInfo.version = HITLS_VERSION_TLS13;
+    testInfo.uioType = BSL_UIO_TCP;
+
+    ASSERT_EQ(NewConfig(&testInfo), HITLS_SUCCESS);
+    testInfo.config->isSupportNoClientCert = false;
+    testInfo.config->isSupportClientVerify = true;
+    RecWrapper wrapper = {
+        TRY_SEND_NEW_SESSION_TICKET,
+        REC_TYPE_HANDSHAKE,
+        false,
+        NULL,
+        Test_NewSessionTicketNonceLen0
+    };
+    RegisterWrapper(wrapper);
+    ASSERT_EQ(DoHandshake(&testInfo), HITLS_SUCCESS);
+EXIT:
+    ClearWrapper();
+    HITLS_CFG_FreeConfig(testInfo.config);
+    FRAME_FreeLink(testInfo.client);
+    FRAME_FreeLink(testInfo.server);
+}
+/* END_CASE */
