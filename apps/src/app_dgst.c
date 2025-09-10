@@ -30,6 +30,8 @@
 #include "app_help.h"
 #include "app_print.h"
 #include "app_utils.h"
+#include "app_sm.h"
+#include "app_keymgmt.h"
 #include "app_provider.h"
 
 #define MAX_BUFSIZE (1024 * 8)  // Indicates the length of a single digest during digest calculation.
@@ -48,7 +50,10 @@ typedef enum OptionChoice {
     HITLS_APP_OPT_DGST_VERIFY,
     HITLS_APP_OPT_DGST_SIGNATURE,
     HITLS_APP_OPT_DGST_USERID,
-    HITLS_APP_PROV_ENUM
+    HITLS_APP_PROV_ENUM,
+#ifdef HITLS_APP_SM_MODE
+    HITLS_SM_OPTIONS_ENUM,
+#endif
 } HITLSOptType;
 
 const HITLS_CmdOption g_dgstOpts[] = {
@@ -60,6 +65,9 @@ const HITLS_CmdOption g_dgstOpts[] = {
     {"signature", HITLS_APP_OPT_DGST_SIGNATURE, HITLS_APP_OPT_VALUETYPE_IN_FILE, "Signature to be verified"},
     {"userid", HITLS_APP_OPT_DGST_USERID, HITLS_APP_OPT_VALUETYPE_STRING, "User ID for SM2"},
     HITLS_APP_PROV_OPTIONS,
+#ifdef HITLS_APP_SM_MODE
+    HITLS_SM_OPTIONS,
+#endif
     {"file...", HITLS_APP_OPT_DGST_FILE, HITLS_APP_OPT_VALUETYPE_PARAMTERS, "Files to be digested"},
     {NULL}};
 
@@ -75,10 +83,17 @@ typedef struct {
     char *signatureFile;   // signature file for verification
     char *userid;          // user ID for SM2
     AppProvider *provider;
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param *smParam;
+#endif
 } SignInfo;
 
 static AlgInfo g_dgstInfo = {"sha256", CRYPT_MD_SHA256, 0};
-static SignInfo g_signInfo = {NULL, NULL, NULL, "1234567812345678", NULL};
+#ifdef HITLS_APP_SM_MODE
+    static SignInfo g_signInfo = {NULL, NULL, NULL, "1234567812345678", NULL, NULL};
+#else
+    static SignInfo g_signInfo = {NULL, NULL, NULL, "1234567812345678", NULL};
+#endif
 static int32_t g_argc = 0;
 static char **g_argv;
 static int32_t OptParse(char **outfile);
@@ -102,6 +117,11 @@ static int32_t CalculateDgst(char *outfile)
         ret = HITLS_APP_CRYPTO_FAIL;
         return ret;
     }
+#ifdef HITLS_APP_SM_MODE
+    if (g_signInfo.smParam->smTag == 1) {
+        g_signInfo.smParam->status = HITLS_APP_SM_STATUS_APPORVED;
+    }
+#endif
     if (g_dgstInfo.algId == CRYPT_MD_SHAKE128) {
         g_dgstInfo.digestSize = HITLS_APP_SHAKE128_SIZE;
     } else if (g_dgstInfo.algId == CRYPT_MD_SHAKE256) {
@@ -145,6 +165,21 @@ static int32_t GetReadBuf(uint8_t **buf, uint64_t *bufLen, char *inFile, uint32_
     return ret;
 }
 
+#ifdef HITLS_APP_SM_MODE
+static int32_t GetPkeyCtxFromUuid(SignInfo *signInfo, char *uuid, CRYPT_EAL_PkeyCtx **ctx)
+{
+    HITLS_APP_KeyInfo keyInfo = {0};
+    signInfo->smParam->uuid = uuid;
+    int32_t ret = HITLS_APP_FindKey(signInfo->provider, signInfo->smParam, CRYPT_PKEY_SM2, &keyInfo);
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("Failed to find key, errCode: 0x%0x.\n", ret);
+        return ret;
+    }
+    *ctx = keyInfo.pkeyCtx;
+    return HITLS_APP_SUCCESS;
+}
+#endif
+
 static int32_t CalculateSign(char *outfile, uint8_t *msgBuf, uint32_t msgBufLen)
 {
     int32_t ret = HITLS_APP_SUCCESS;
@@ -155,35 +190,54 @@ static int32_t CalculateSign(char *outfile, uint8_t *msgBuf, uint32_t msgBufLen)
     BSL_Buffer prv = {0};
     CRYPT_EAL_PkeyCtx *ctx = NULL;
     do {
-        ret = GetReadBuf(&prvBuf, &bufLen, g_signInfo.privateKeyFile, MAX_CERT_KEY_SIZE);
-        if (ret != HITLS_APP_SUCCESS) {
-            (void)AppPrintError("dgst: Failed to read the private key file\n");
-            break;
+#ifdef HITLS_APP_SM_MODE
+        if (g_signInfo.smParam->smTag == 1) {
+            ret = GetPkeyCtxFromUuid(&g_signInfo, g_signInfo.privateKeyFile, &ctx);
+            if (ret != HITLS_APP_SUCCESS) {
+                break;
+            }
+        } else {
+#endif
+            ret = GetReadBuf(&prvBuf, &bufLen, g_signInfo.privateKeyFile, MAX_CERT_KEY_SIZE);
+            if (ret != HITLS_APP_SUCCESS) {
+                (void)AppPrintError("dgst: Failed to read the private key file\n");
+                break;
+            }
+            prv.data = prvBuf;
+            prv.dataLen = bufLen;
+            ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), g_signInfo.provider->providerAttr,
+                BSL_CID_UNKNOWN, "PEM", "PRIKEY_PKCS8_UNENCRYPT", &prv, NULL, &ctx);
+            if (ret != CRYPT_SUCCESS) {
+                (void)AppPrintError("dgst: Failed to decode the private key, ret=%d\n", ret);
+                ret = HITLS_APP_CRYPTO_FAIL;
+                break;
+            }
+#ifdef HITLS_APP_SM_MODE
         }
-        prv.data = prvBuf;
-        prv.dataLen = bufLen;
-        ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), g_signInfo.provider->providerAttr,
-            BSL_CID_UNKNOWN, "PEM", "PRIKEY_PKCS8_UNENCRYPT", &prv, NULL, &ctx);
-        if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("dgst: Failed to decode the private key, ret=%d\n", ret);
-            ret = HITLS_APP_CRYPTO_FAIL;
-            break;
-        }
+#endif
         ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_SM2_USER_ID, g_signInfo.userid, strlen(g_signInfo.userid));
         if (ret != CRYPT_SUCCESS) {
             (void)AppPrintError("dgst: Failed to set the SM2 user ID, ret=%d\n", ret);
             ret = HITLS_APP_CRYPTO_FAIL;
             break;
         }
-        ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), CRYPT_RAND_SM4_CTR_DF,
-            g_signInfo.provider->providerAttr, NULL, 0, NULL);
-        if (ret != CRYPT_SUCCESS) {
-            AppPrintError("dgst: error in CRYPT_EAL_ProviderRandInitCtx. ret=%d\n", ret);
+#ifdef HITLS_APP_SM_MODE
+        if (g_signInfo.smParam->smTag == 1) {
+            g_signInfo.smParam->status = HITLS_APP_SM_STATUS_APPORVED;
+        }
+#endif
+        signLen = CRYPT_EAL_PkeyGetSignLen(ctx);
+        if (signLen == 0) {
+            (void)AppPrintError("dgst: Failed to get the signature length.\n");
             ret = HITLS_APP_CRYPTO_FAIL;
             break;
         }
-        signLen = CRYPT_EAL_PkeyGetSignLen(ctx);
-        signBuf = (uint8_t *)malloc(signLen);
+        signBuf = BSL_SAL_Malloc(signLen);
+        if (signBuf == NULL) {
+            (void)AppPrintError("dgst: Failed to allocate memory for the signature.\n");
+            ret = HITLS_APP_MEM_ALLOC_FAIL;
+            break;
+        }
         ret = CRYPT_EAL_PkeySign(ctx, g_dgstInfo.algId, msgBuf, msgBufLen, signBuf, &signLen);
         if (ret != CRYPT_SUCCESS) {
             (void)AppPrintError("dgst: Failed to sign the message, ret=%d\n", ret);
@@ -211,35 +265,58 @@ static int32_t CalculateSign(char *outfile, uint8_t *msgBuf, uint32_t msgBufLen)
     return ret;
 }
 
-static int32_t VerifySign(uint8_t *msgBuf, uint32_t msgBufLen)
+static int32_t GetPubKeyCtx(CRYPT_EAL_PkeyCtx **ctx)
 {
     int32_t ret = HITLS_APP_SUCCESS;
     uint8_t *pubBuf = NULL;
     uint64_t bufLen = 0;
+    BSL_Buffer pub = {0};
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+#ifdef HITLS_APP_SM_MODE
+    if (g_signInfo.smParam->smTag == 1) {
+        ret = GetPkeyCtxFromUuid(&g_signInfo, g_signInfo.publicKeyFile, &pkeyCtx);
+        if (ret == HITLS_APP_SUCCESS) {
+            *ctx = pkeyCtx;
+            return HITLS_APP_SUCCESS;
+        }
+    }
+#endif
+    ret = GetReadBuf(&pubBuf, &bufLen, g_signInfo.publicKeyFile, MAX_CERT_KEY_SIZE);
+    if (ret != HITLS_APP_SUCCESS) {
+        (void)AppPrintError("dgst: Failed to read the public key file\n");
+        return ret;
+    }
+    pub.data = pubBuf;
+    pub.dataLen = bufLen;
+    ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), g_signInfo.provider->providerAttr,
+        BSL_CID_UNKNOWN, "PEM", "PUBKEY_SUBKEY", &pub, NULL, &pkeyCtx);
+    if (ret != CRYPT_SUCCESS) {
+        (void)AppPrintError("dgst: Failed to decode the public key, errCode: 0x%0x.\n", ret);
+        BSL_SAL_ClearFree(pubBuf, bufLen);
+        return HITLS_APP_CRYPTO_FAIL;
+    }
+    BSL_SAL_ClearFree(pubBuf, bufLen);
+    *ctx = pkeyCtx;
+    (void)AppPrintError("dgst: Get pub key ctx success!\n");
+    return HITLS_APP_SUCCESS;
+}
+
+static int32_t VerifySign(uint8_t *msgBuf, uint32_t msgBufLen)
+{
+    int32_t ret = HITLS_APP_SUCCESS;
     uint8_t *signBuf = NULL;
     uint64_t signLen = 0;
     uint8_t *hexBuf = NULL;
     uint32_t hexLen;
-    BSL_Buffer pub = {0};
     CRYPT_EAL_PkeyCtx *ctx = NULL;
     do {
-        ret = GetReadBuf(&pubBuf, &bufLen, g_signInfo.publicKeyFile, MAX_CERT_KEY_SIZE);
+        ret = GetPubKeyCtx(&ctx);
         if (ret != HITLS_APP_SUCCESS) {
-            (void)AppPrintError("dgst: Failed to read the public key file\n");
             break;
         }
         ret = GetReadBuf(&signBuf, &signLen, g_signInfo.signatureFile, UINT32_MAX);
         if (ret != HITLS_APP_SUCCESS) {
             (void)AppPrintError("dgst: Failed to read the signature file\n");
-            break;
-        }
-        pub.data = pubBuf;
-        pub.dataLen = bufLen;
-        ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), g_signInfo.provider->providerAttr,
-            BSL_CID_UNKNOWN, "PEM", "PUBKEY_SUBKEY", &pub, NULL, &ctx);
-        if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("dgst: Failed to decode the public key, ret=%d\n", ret);
-            ret = HITLS_APP_CRYPTO_FAIL;
             break;
         }
         hexBuf = BSL_SAL_Malloc(signLen * 2 + 1);
@@ -256,6 +333,11 @@ static int32_t VerifySign(uint8_t *msgBuf, uint32_t msgBufLen)
             ret = HITLS_APP_CRYPTO_FAIL;
             break;
         }
+#ifdef HITLS_APP_SM_MODE
+        if (g_signInfo.smParam->smTag == 1) {
+            g_signInfo.smParam->status = HITLS_APP_SM_STATUS_APPORVED;
+        }
+#endif
         ret = CRYPT_EAL_PkeyVerify(ctx, g_dgstInfo.algId, msgBuf, msgBufLen, hexBuf, hexLen);
         if (ret != CRYPT_SUCCESS) {
             (void)AppPrintError("dgst: Failed to verify the message, ret=%d\n", ret);
@@ -266,15 +348,34 @@ static int32_t VerifySign(uint8_t *msgBuf, uint32_t msgBufLen)
     } while (0);
     BSL_SAL_FREE(signBuf);
     BSL_SAL_FREE(hexBuf);
-    BSL_SAL_ClearFree(pubBuf, bufLen);
     CRYPT_EAL_PkeyFreeCtx(ctx);
     return ret;
+}
+
+static int32_t CheckSmParam(SignInfo *signInfo)
+{
+#ifdef HITLS_APP_SM_MODE
+    if (signInfo->smParam->smTag == 1 && signInfo->smParam->workPath == NULL) {
+        AppPrintError("dgst: The workpath is not specified.\n");
+        return HITLS_APP_OPT_VALUE_INVALID;
+    }
+#else
+    (void) signInfo;
+#endif
+    return HITLS_APP_SUCCESS;
 }
 
 int32_t HITLS_DgstMain(int argc, char *argv[])
 {
     AppProvider appProvider = {"default", NULL, "provider=default"};
     g_signInfo.provider = &appProvider;
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
+    AppInitParam initParam = {&appProvider, &smParam};
+    g_signInfo.smParam = &smParam;
+#else
+    AppInitParam initParam = {&appProvider};
+#endif
     char *outfile = NULL;
     char *msgFile = NULL;
     uint8_t *msgBuf = NULL;
@@ -289,9 +390,13 @@ int32_t HITLS_DgstMain(int argc, char *argv[])
     if (mainRet != HITLS_APP_SUCCESS) {
         goto end;
     }
-
-    mainRet = HITLS_APP_LoadProvider(g_signInfo.provider->providerPath, g_signInfo.provider->providerName);
+    mainRet = CheckSmParam(&g_signInfo);
     if (mainRet != HITLS_APP_SUCCESS) {
+        goto end;
+    }
+    mainRet = HITLS_APP_Init(&initParam);
+    if (mainRet != HITLS_APP_SUCCESS) {
+        (void)AppPrintError("dgst: Failed to init the application, errCode: 0x%x.\n", mainRet);
         goto end;
     }
 
@@ -320,6 +425,7 @@ int32_t HITLS_DgstMain(int argc, char *argv[])
     }
 end:
     BSL_SAL_FREE(msgBuf);
+    HITLS_APP_Deinit(&initParam, mainRet);
     HITLS_APP_OptEnd();
     return mainRet;
 }
@@ -647,7 +753,7 @@ static int32_t FileSumAndOut(CRYPT_EAL_MdCTX *ctx, const char *outfile)
 
 static CRYPT_EAL_MdCTX *InitAlgDigest(CRYPT_MD_AlgId id)
 {
-    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_ProviderMdNewCtx(NULL, id, "provider=default"); // creating an MD Context
+    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_ProviderMdNewCtx(APP_GetCurrent_LibCtx(), id, g_signInfo.provider->providerAttr);
     if (ctx == NULL) {
         (void)AppPrintError("dgst: Failed to create the algorithm(%s) context\n", g_dgstInfo.algName);
         return NULL;
@@ -718,10 +824,22 @@ static int32_t OptParse(char **outfile)
                     return HITLS_APP_OPT_VALUE_INVALID;
                 }
                 break;
+#ifdef HITLS_APP_SM_MODE
+            case HITLS_SM_OPT_SM:
+            case HITLS_SM_OPT_UUID:
+            case HITLS_SM_OPT_WORKPATH:
+#endif
+            case HITLS_APP_OPT_PROVIDER:
+            case HITLS_APP_OPT_PROVIDER_PATH:
+            case HITLS_APP_OPT_PROVIDER_ATTR:
+                break;
             default:
                 return HITLS_APP_OPT_UNKOWN;
         }
         HITLS_APP_PROV_CASES(optType, g_signInfo.provider);
+#ifdef HITLS_APP_SM_MODE
+        HITLS_APP_SM_CASES(optType, g_signInfo.smParam);
+#endif
     }
     return HITLS_APP_SUCCESS;
 }

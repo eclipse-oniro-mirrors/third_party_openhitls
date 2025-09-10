@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include "app_enc.h"
 #include "app_keymgmt.h"
+#include "app_dgst.h"
 #include "app_errno.h"
 #include "app_help.h"
 #include "app_print.h"
@@ -1181,6 +1182,10 @@ void UT_HITLS_APP_KEYMGMT_TC015(void)
     ret = AsymSignAndVerify(keyInfo.pkeyCtx);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
+    char *argv2[] = {"keymgmt", "-getpub", "-uuid", smParam.uuid, SM_PARAM, NULL};
+    ret = HITLS_KeyMgmtMain(sizeof(argv2) / sizeof(argv2[0]) - 1, argv2);
+    ASSERT_EQ(ret, HITLS_APP_SUCCESS);
+
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(keyInfo.pkeyCtx);
     BSL_SAL_FREE(smParam.uuid);
@@ -1457,6 +1462,77 @@ void UT_HITLS_APP_KEYMGMT_TC021(void)
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
 EXIT:
+    AppTestUninit();
+    STUB_Reset(&stubInfo[0]);
+    STUB_Reset(&stubInfo[1]);
+#endif
+}
+/* END_CASE */
+
+#ifdef HITLS_APP_SM_MODE
+static int32_t SM2SignAndVerify(char *uuid)
+{
+    char *inFile = WORK_PATH "/test.txt";
+    char *outFile = WORK_PATH "/test.signature";
+    char pubkey[256] = {0};
+    (void)sprintf_s(pubkey, sizeof(pubkey), "%s/%s-pub.pem", WORK_PATH, uuid);
+
+    char *argv[] = {"dgst", "-md", "sm3", "-sign", uuid, SM_PARAM, "-out", outFile, inFile, NULL};
+    char *argv2[] = {"dgst", "-md", "sm3", "-verify", pubkey, SM_PARAM, "-signature", outFile, inFile, NULL};
+
+    int ret = CreateFile(inFile);
+    ASSERT_EQ(ret, HITLS_APP_SUCCESS);
+
+    ret = HITLS_DgstMain(sizeof(argv) / sizeof(argv[0]) - 1, argv);
+    ASSERT_EQ(ret, HITLS_APP_SUCCESS);
+
+    ret = HITLS_DgstMain(sizeof(argv2) / sizeof(argv2[0]) - 1, argv2);
+    ASSERT_EQ(ret, HITLS_APP_SUCCESS);
+
+    system("rm -f " WORK_PATH "/test.txt");
+    system("rm -f " WORK_PATH "/test.signature");
+
+EXIT:
+    return ret;
+}
+#endif
+
+/**
+ * @test UT_HITLS_APP_KEYMGMT_SM2_SIGN_VERIFY_TEST
+ * @spec  -
+ * @title  Test sm mode sm2 sign and verify interface; expect success
+ */
+/* BEGIN_CASE */
+void UT_HITLS_APP_KEYMGMT_SM2_SIGN_VERIFY_TEST(void)
+{
+#ifndef HITLS_APP_SM_MODE
+    SKIP_TEST();
+#else
+    STUB_Init();
+    FuncStubInfo stubInfo[2] = {0};
+    STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
+    STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+
+    char *uuid = NULL;
+    char *argv[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, NULL};
+
+    ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
+
+    int ret = HITLS_KeyMgmtMain(sizeof(argv) / sizeof(argv[0]) - 1, argv);
+    ASSERT_EQ(ret, HITLS_APP_SUCCESS);
+
+    uuid = GetUuidFromP12(WORK_PATH);
+    ASSERT_TRUE(uuid != NULL);
+
+    char *argv2[] = {"keymgmt", "-getpub", "-uuid", uuid, SM_PARAM, NULL};
+    ret = HITLS_KeyMgmtMain(sizeof(argv2) / sizeof(argv2[0]) - 1, argv2);
+    ASSERT_EQ(ret, HITLS_APP_SUCCESS);
+
+    ret = SM2SignAndVerify(uuid);
+    ASSERT_EQ(ret, HITLS_APP_SUCCESS);
+
+EXIT:
+    BSL_SAL_FREE(uuid);
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);

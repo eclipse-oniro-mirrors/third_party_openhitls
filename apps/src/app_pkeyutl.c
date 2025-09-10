@@ -34,6 +34,8 @@
 #include "app_print.h"
 #include "app_provider.h"
 #include "app_utils.h"
+#include "app_sm.h"
+#include "app_keymgmt.h"
 
 #define SM2_PUBKEY_LEN 65
 #define SM2_PRVKEY_LEN 33
@@ -58,7 +60,10 @@ typedef enum OptionChoice {
     HITLS_APP_OPT_PKEYUTL_INKEY,
     HITLS_APP_OPT_PKEYUTL_PEERKEY,
     HITLS_APP_OPT_PKEYUTL_USERID,
-    HITLS_APP_PROV_ENUM
+    HITLS_APP_PROV_ENUM,
+#ifdef HITLS_APP_SM_MODE
+    HITLS_SM_OPTIONS_ENUM,
+#endif
 } HITLSOptType;
 
 const HITLS_CmdOption g_pkeyUtlOpts[] = {
@@ -80,6 +85,9 @@ const HITLS_CmdOption g_pkeyUtlOpts[] = {
         "Key for the other side in key exchange."},
     {"userid", HITLS_APP_OPT_PKEYUTL_USERID, HITLS_APP_OPT_VALUETYPE_STRING, "User ID for SM2."},
     HITLS_APP_PROV_OPTIONS,
+#ifdef HITLS_APP_SM_MODE
+    HITLS_SM_OPTIONS,
+#endif
     {NULL}};
 
 typedef struct {
@@ -98,6 +106,9 @@ typedef struct {
         char *peerkeyFile;    // Key for the other side in key exchange
         char *userid;
         AppProvider *provider;
+#ifdef HITLS_APP_SM_MODE
+        HITLS_APP_SM_Param *smParam;
+#endif
 } PkeyUtlOpt;
 
 typedef int32_t (*PkeyUtlOptHandleFunc)(PkeyUtlOpt *);
@@ -280,6 +291,9 @@ static int32_t ParsepkeyUtlOpt(PkeyUtlOpt *pkeyUtlOpt)
             }
         }
         HITLS_APP_PROV_CASES(optType, pkeyUtlOpt->provider)
+#ifdef HITLS_APP_SM_MODE
+        HITLS_APP_SM_CASES(optType, pkeyUtlOpt->smParam);
+#endif
     }
     if (HITLS_APP_GetRestOptNum() != 0) {
         AppPrintError("Extra arguments given.\n");
@@ -392,35 +406,84 @@ static int32_t CheckParam(const PkeyUtlOpt opt)
             return HITLS_APP_INVALID_ARG;
         }
     }
+#ifdef HITLS_APP_SM_MODE
+    if (opt.smParam->smTag == 1 && opt.smParam->workPath == NULL) {
+        AppPrintError(" The workpath is not specified.\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+#endif
     return CheckFilePathLength(opt);
+}
+
+#ifdef HITLS_APP_SM_MODE
+static int32_t GetPkeyCtxFromUuid(PkeyUtlOpt *pkeyUtlOpt, char *uuid, CRYPT_EAL_PkeyCtx **ctx)
+{
+    HITLS_APP_KeyInfo keyInfo = {0};
+    pkeyUtlOpt->smParam->uuid = uuid;
+    int32_t ret = HITLS_APP_FindKey(pkeyUtlOpt->provider, pkeyUtlOpt->smParam, CRYPT_PKEY_SM2, &keyInfo);
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("Failed to find key, ret: 0x%08x\n", ret);
+        return ret;
+    }
+    *ctx = keyInfo.pkeyCtx;
+    return HITLS_APP_SUCCESS;
+}
+#endif
+
+static int32_t GetPubKeyCtx(PkeyUtlOpt *pkeyUtlOpt, CRYPT_EAL_PkeyCtx **ctx)
+{
+    int32_t ret = HITLS_APP_SUCCESS;
+    uint8_t *pubBuf = NULL;
+    uint64_t bufLen = 0;
+    BSL_Buffer pub = {0};
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+#ifdef HITLS_APP_SM_MODE
+    if (pkeyUtlOpt->smParam->smTag == 1) {
+        ret = GetPkeyCtxFromUuid(pkeyUtlOpt, pkeyUtlOpt->pubinFile, &pkeyCtx);
+        if (ret == HITLS_APP_SUCCESS) {
+            *ctx = pkeyCtx;
+            return HITLS_APP_SUCCESS;
+        }
+    }
+#endif
+    ret = GetReadBuf(&pubBuf, &bufLen, pkeyUtlOpt->pubinFile, MAX_CERT_KEY_SIZE);
+    if (ret != HITLS_APP_SUCCESS) {
+        (void)AppPrintError("pkeyutl: Failed to read the public key file\n");
+        return ret;
+    }
+    pub.data = pubBuf;
+    pub.dataLen = bufLen;
+    ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), pkeyUtlOpt->provider->providerAttr,
+        BSL_CID_UNKNOWN, "PEM", "PRIKEY_PKCS8_UNENCRYPT", &pub, NULL, &pkeyCtx);
+    if (ret != CRYPT_SUCCESS) {
+        (void)AppPrintError("pkeyutl: Failed to decode the private key, ret=%d\n", ret);
+        BSL_SAL_ClearFree(pubBuf, bufLen);
+        return HITLS_APP_CRYPTO_FAIL;
+    }
+    BSL_SAL_ClearFree(pubBuf, bufLen);
+    *ctx = pkeyCtx;
+    (void)AppPrintError("pkeyutl: Get pub key ctx success!\n");
+    return HITLS_APP_SUCCESS;
 }
 
 static int32_t PkeyEncrypt(PkeyUtlOpt *pkeyUtlOpt)
 {
     int32_t ret = HITLS_APP_SUCCESS;
-    uint8_t *pubBuf = NULL;
-    uint64_t bufLen = 0;
     uint8_t *plainText = NULL;
     uint64_t plainTextLen = 0;
     uint8_t *cipherText = NULL;
     uint32_t outLen = CIPHER_TEXT_BASE_LEN;
-    BSL_Buffer pub = {0};
     CRYPT_EAL_PkeyCtx *ctx = NULL;
     do {
-        ret = GetReadBuf(&pubBuf, &bufLen, pkeyUtlOpt->pubinFile, MAX_CERT_KEY_SIZE);
+        ret = GetPubKeyCtx(pkeyUtlOpt, &ctx);
         if (ret != HITLS_APP_SUCCESS) {
             break;
         }
-        pub.data = pubBuf;
-        pub.dataLen = bufLen;
-        ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), pkeyUtlOpt->provider->providerAttr,
-            BSL_CID_UNKNOWN, "PEM", "PRIKEY_PKCS8_UNENCRYPT", &pub, NULL, &ctx);
-        if (ret != CRYPT_SUCCESS) {
-            (void)AppPrintError("Failed to decode the private key, ret=%d\n", ret);
-            ret = HITLS_APP_CRYPTO_FAIL;
-            break;
+#ifdef HITLS_APP_SM_MODE
+        if (pkeyUtlOpt->smParam->smTag == 1) {
+            pkeyUtlOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
         }
-
+#endif
         ret = GetReadBuf(&plainText, &plainTextLen, pkeyUtlOpt->inFile, MAX_CERT_KEY_SIZE);
         if (ret != HITLS_APP_SUCCESS) {
             break;
@@ -452,7 +515,6 @@ static int32_t PkeyEncrypt(PkeyUtlOpt *pkeyUtlOpt)
         }
         BSL_UIO_Free(fileWriteUio);
     } while (0);
-    BSL_SAL_ClearFree(pub.data, pub.dataLen);
     BSL_SAL_FREE(cipherText);
     BSL_SAL_FREE(plainText);
     CRYPT_EAL_PkeyFreeCtx(ctx);
@@ -473,20 +535,34 @@ static int32_t PkeyDecrypt(PkeyUtlOpt *pkeyUtlOpt)
     uint32_t hexLen;
     CRYPT_EAL_PkeyCtx *ctx = NULL;
     do {
-        ret = GetReadBuf(&priBuf, &priLen, pkeyUtlOpt->prvinFile, MAX_CERT_KEY_SIZE);
-        if (ret != HITLS_APP_SUCCESS) {
-            AppPrintError("pkeyutl: Failed to read private key file for decryption.\n");
-            break;
+#ifdef HITLS_APP_SM_MODE
+        if (pkeyUtlOpt->smParam->smTag == 1) {
+            ret = GetPkeyCtxFromUuid(pkeyUtlOpt, pkeyUtlOpt->prvinFile, &ctx);
+            if (ret != HITLS_APP_SUCCESS) {
+                break;
+            }
+        } else {
+#endif
+            ret = GetReadBuf(&priBuf, &priLen, pkeyUtlOpt->prvinFile, MAX_CERT_KEY_SIZE);
+            if (ret != HITLS_APP_SUCCESS) {
+                AppPrintError("pkeyutl: Failed to read private key file for decryption.\n");
+                break;
+            }
+            prv.data = priBuf;
+            prv.dataLen = priLen;
+            ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), pkeyUtlOpt->provider->providerAttr,
+                BSL_CID_UNKNOWN, "PEM", "PRIKEY_PKCS8_UNENCRYPT", &prv, NULL, &ctx);
+            if (ret != CRYPT_SUCCESS) {
+                AppPrintError("pkeyutl: Failed to decode the private key, ret=%d\n", ret);
+                ret = HITLS_APP_CRYPTO_FAIL;
+                break;
+            }
+#ifdef HITLS_APP_SM_MODE
         }
-        prv.data = priBuf;
-        prv.dataLen = priLen;
-        ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), pkeyUtlOpt->provider->providerAttr,
-            BSL_CID_UNKNOWN, "PEM", "PRIKEY_PKCS8_UNENCRYPT", &prv, NULL, &ctx);
-        if (ret != CRYPT_SUCCESS) {
-            AppPrintError("pkeyutl: Failed to decode the private key, ret=%d\n", ret);
-            ret = HITLS_APP_CRYPTO_FAIL;
-            break;
+        if (pkeyUtlOpt->smParam->smTag == 1) {
+            pkeyUtlOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
         }
+#endif
         ret = GetReadBuf(&cipherText, &cipherLen, pkeyUtlOpt->inFile, UINT32_MAX);
         if (ret != HITLS_APP_SUCCESS) {
             AppPrintError("pkeyutl: Failed to read input ciphertext file.\n");
@@ -644,20 +720,31 @@ static int32_t PkeyDerive(PkeyUtlOpt *pkeyUtlOpt)
     BSL_Buffer prv = {0};
     uint8_t *buf = NULL;
     do {
-        ret = GetReadBuf(&priBuf, &priLen, pkeyUtlOpt->inkeyFile, MAX_CERT_KEY_SIZE);
-        if (ret != HITLS_APP_SUCCESS) {
-            AppPrintError("pkeyutl: Failed to read private key file for exchange.\n");
-            break;
+#ifdef HITLS_APP_SM_MODE
+        if (pkeyUtlOpt->smParam->smTag == 1) {
+            ret = GetPkeyCtxFromUuid(pkeyUtlOpt, pkeyUtlOpt->inkeyFile, &ctx);
+            if (ret != HITLS_APP_SUCCESS) {
+                break;
+            }
+        } else {
+#endif
+            ret = GetReadBuf(&priBuf, &priLen, pkeyUtlOpt->inkeyFile, MAX_CERT_KEY_SIZE);
+            if (ret != HITLS_APP_SUCCESS) {
+                AppPrintError("pkeyutl: Failed to read private key file for exchange.\n");
+                break;
+            }
+            prv.data = priBuf;
+            prv.dataLen = priLen;
+            ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), pkeyUtlOpt->provider->providerAttr,
+                BSL_CID_UNKNOWN, "PEM", "PRIKEY_PKCS8_UNENCRYPT", &prv, NULL, &ctx);
+            if (ret != CRYPT_SUCCESS) {
+                AppPrintError("pkeyutl: Failed to decode the private key, ret=%d\n", ret);
+                ret = HITLS_APP_CRYPTO_FAIL;
+                break;
+            }
+#ifdef HITLS_APP_SM_MODE
         }
-        prv.data = priBuf;
-        prv.dataLen = priLen;
-        ret = CRYPT_EAL_ProviderDecodeBuffKey(APP_GetCurrent_LibCtx(), pkeyUtlOpt->provider->providerAttr,
-            BSL_CID_UNKNOWN, "PEM", "PRIKEY_PKCS8_UNENCRYPT", &prv, NULL, &ctx);
-        if (ret != CRYPT_SUCCESS) {
-            AppPrintError("pkeyutl: Failed to decode the private key, ret=%d\n", ret);
-            ret = HITLS_APP_CRYPTO_FAIL;
-            break;
-        }
+#endif
         ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_SM2_USER_ID, pkeyUtlOpt->userid, strlen(pkeyUtlOpt->userid));
         if (ret != CRYPT_SUCCESS) {
             AppPrintError("pkeyutl: Failed to set SM2 user ID, ret=%d\n", ret);
@@ -729,6 +816,11 @@ static int32_t PkeyDerive(PkeyUtlOpt *pkeyUtlOpt)
                 AppPrintError("pkeyutl: Failed to get peer context, ret=%d\n", ret);
                 break;
             }
+#ifdef HITLS_APP_SM_MODE
+            if (pkeyUtlOpt->smParam->smTag == 1) {
+                pkeyUtlOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
+            }
+#endif
             ret = CRYPT_EAL_PkeyComputeShareKey(ctx, peerCtx, out, &outLen);
             if (ret != CRYPT_SUCCESS) {
                 AppPrintError("pkeyutl: Failed to compute shared key, ret=%d\n", ret);
@@ -753,6 +845,7 @@ static int32_t PkeyDerive(PkeyUtlOpt *pkeyUtlOpt)
     BSL_SAL_FREE(buf);
     pkeyUtlOpt->inRFile = NULL;
     BSL_SAL_ClearFree(prv.data, prv.dataLen);
+    BSL_SAL_CleanseData(out, outLen);
     CRYPT_EAL_PkeyFreeCtx(ctx);
     CRYPT_EAL_PkeyFreeCtx(peerCtx);
     return ret;
@@ -761,8 +854,16 @@ static int32_t PkeyDerive(PkeyUtlOpt *pkeyUtlOpt)
 int32_t HITLS_PkeyUtlMain(int argc, char *argv[])
 {
     AppProvider appProvider = {"default", NULL, "provider=default"};
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
+    AppInitParam initParam = {&appProvider, &smParam};
+    PkeyUtlOpt pkeyUtlOpt = {0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        "1234567812345678", &appProvider, &smParam};
+#else
+    AppInitParam initParam = {&appProvider};
     PkeyUtlOpt pkeyUtlOpt = {0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         "1234567812345678", &appProvider};
+#endif
     int32_t ret = HITLS_APP_SUCCESS;
     do {
         ret = HITLS_APP_OptBegin(argc, argv, g_pkeyUtlOpts);
@@ -785,11 +886,9 @@ int32_t HITLS_PkeyUtlMain(int argc, char *argv[])
         if (ret != HITLS_APP_SUCCESS) {
             break;
         }
-        ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), CRYPT_RAND_SM4_CTR_DF,
-            pkeyUtlOpt.provider->providerAttr, NULL, 0, NULL);
-        if (ret != CRYPT_SUCCESS) {
-            AppPrintError("pkeyutl: error in CRYPT_EAL_ProviderRandInitCtx. ret=%d\n", ret);
-            ret = HITLS_APP_CRYPTO_FAIL;
+        ret = HITLS_APP_Init(&initParam);
+        if (ret != HITLS_APP_SUCCESS) {
+            (void)AppPrintError("pkeyutl: Failed to init app, errCode: 0x%x.\n", ret);
             break;
         }
         if (pkeyUtlOpt.optEncrypt) {
@@ -800,7 +899,7 @@ int32_t HITLS_PkeyUtlMain(int argc, char *argv[])
             ret = PkeyDerive(&pkeyUtlOpt);
         }
     } while (false);
-    CRYPT_EAL_RandDeinitEx(APP_GetCurrent_LibCtx());
+    HITLS_APP_Deinit(&initParam, ret);
     HITLS_APP_OptEnd();
     return ret;
 }

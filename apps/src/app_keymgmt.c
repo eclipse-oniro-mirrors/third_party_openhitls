@@ -65,6 +65,7 @@ typedef enum OptionChoice {
     HITLS_APP_OPT_KEYMGMT_SALTLEN,
     HITLS_APP_OPT_KEYMGMT_GETVERSION,
     HITLS_APP_OPT_KEYMGMT_GETSTATUS,
+    HITLS_APP_OPT_KEYMGMT_GETPUB,
     HITLS_APP_OPT_KEYMGMT_SELFTEST,
     HITLS_APP_PROV_ENUM,
     HITLS_SM_OPTIONS_ENUM,
@@ -79,6 +80,7 @@ typedef struct {
     int32_t getVersionTag; // to get version.
     int32_t getStatusTag; // to get status.
     int32_t selfTestTag; // to do self test.
+    int32_t getPubTag; // to get public key.
     int32_t iter; // iteration count for generating p12 file.
     int32_t saltLen; // salt length for generating p12 file.
     AppProvider *provider;
@@ -94,6 +96,7 @@ typedef struct {
 static int32_t GetAlgId(const char *name);
 static void FreeKeyInfo(HITLS_APP_KeyInfo *keyInfo);
 static int32_t CheckAlgMatchForFind(int32_t requestAlgId, int32_t storedAlgId);
+static int32_t ReadAsymKey(AppProvider *provider, HITLS_APP_SM_Param *smParam, HITLS_APP_KeyInfo *keyInfo);
 
 static const HITLS_CmdOption g_keyMgmtOpts[] = {
     {"help", HITLS_APP_OPT_HELP, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Display this function summary"},
@@ -102,6 +105,7 @@ static const HITLS_CmdOption g_keyMgmtOpts[] = {
     {"erasekey", HITLS_APP_OPT_KEYMGMT_ERASEKEY, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Erase all keys"},
     {"getversion", HITLS_APP_OPT_KEYMGMT_GETVERSION, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Get version"},
     {"getstatus", HITLS_APP_OPT_KEYMGMT_GETSTATUS, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Get status"},
+    {"getpub", HITLS_APP_OPT_KEYMGMT_GETPUB, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Get public key"},
     {"selftest", HITLS_APP_OPT_KEYMGMT_SELFTEST, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Self test"},
     {"algid", HITLS_APP_OPT_KEYMGMT_ALGID, HITLS_APP_OPT_VALUETYPE_STRING, "Key usage algorithm"},
     {"iter", HITLS_APP_OPT_KEYMGMT_ITER, HITLS_APP_OPT_VALUETYPE_POSITIVE_INT,
@@ -128,20 +132,30 @@ static void KeyAttrOrderCvt(HITLS_APP_KeyAttr *attr, bool toByte)
     }
 }
 
-static char *GetKeyFullPath(const char *workPath, const char *uuid)
+static char *GetKeyFullPath(const char *workPath, const char *uuid, const char *suffix)
 {
     char *path = BSL_SAL_Malloc(APP_MAX_PATH_LEN);
     if (path == NULL) {
         AppPrintError("keymgmt: Failed to allocate memory.\n");
         return NULL;
     }
-    int32_t ret = sprintf_s(path, APP_MAX_PATH_LEN, "%s/%s.p12", workPath, uuid);
+    int32_t ret = sprintf_s(path, APP_MAX_PATH_LEN, "%s/%s%s", workPath, uuid, suffix);
     if (ret < 0) {
         BSL_SAL_Free(path);
         AppPrintError("keymgmt: Failed to get key full path, ret: %d.\n", ret);
         return NULL;
     }
     return path;
+}
+
+static char *GetKeyFilePath(const char *workPath, const char *uuid)
+{
+    return GetKeyFullPath(workPath, uuid, ".p12");
+}
+
+static char *GetPubKeyFilePath(const char *workPath, const char *uuid)
+{
+    return GetKeyFullPath(workPath, uuid, "-pub.pem");
 }
 
 static int32_t WriteKeyFile(KeyMgmtCmdOpt *keyMgmtOpt, const char *uuid, HITLS_PKCS12 *p12)
@@ -175,7 +189,7 @@ static int32_t WriteKeyFile(KeyMgmtCmdOpt *keyMgmtOpt, const char *uuid, HITLS_P
     encodeParam.encParam = encParam;
     encodeParam.macParam = macParam;
 
-    char *path = GetKeyFullPath(keyMgmtOpt->smParam->workPath, uuid);
+    char *path = GetKeyFilePath(keyMgmtOpt->smParam->workPath, uuid);
     if (path == NULL) {
         (void)AppPrintError("keymgmt: Failed to get key full path.\n");
         return HITLS_APP_INVALID_ARG;
@@ -474,7 +488,7 @@ static int32_t EraseKeyFile(char *path)
 
 static int32_t HITLS_APP_RmvKey(KeyMgmtCmdOpt *keyMgmtOpt, const char *uuid)
 {
-    char *path = GetKeyFullPath(keyMgmtOpt->smParam->workPath, uuid);
+    char *path = GetKeyFilePath(keyMgmtOpt->smParam->workPath, uuid);
     if (path == NULL) {
         return HITLS_APP_INVALID_ARG;
     }
@@ -525,6 +539,9 @@ static void HandleSomeOpt(KeyMgmtCmdOpt *keyMgmtOpt, HITLSOptType optType)
             break;
         case HITLS_APP_OPT_KEYMGMT_GETSTATUS:
             keyMgmtOpt->getStatusTag = 1;
+            break;
+        case HITLS_APP_OPT_KEYMGMT_GETPUB:
+            keyMgmtOpt->getPubTag = 1;
             break;
         case HITLS_APP_OPT_KEYMGMT_SELFTEST:
             keyMgmtOpt->selfTestTag = 1;
@@ -588,9 +605,10 @@ static int32_t CheckActionTag(KeyMgmtCmdOpt *keyMgmtOpt)
     count += keyMgmtOpt->getVersionTag;
     count += keyMgmtOpt->getStatusTag;
     count += keyMgmtOpt->selfTestTag;
+    count += keyMgmtOpt->getPubTag;
     if (count != 1) {
         AppPrintError("keymgmt: Only one action is allowed: -create, -delete, -erasekey, -getversion, -getstatus or " \
-            "-selftest.\n");
+            "-selftest, -getpub.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     return HITLS_APP_SUCCESS;
@@ -614,7 +632,7 @@ static int32_t CheckOptParam(KeyMgmtCmdOpt *keyMgmtOpt)
         keyMgmtOpt->selfTestTag == 1) {
         return HITLS_APP_SUCCESS;
     }
-    if (keyMgmtOpt->deleteTag == 1) {
+    if (keyMgmtOpt->deleteTag == 1 || keyMgmtOpt->getPubTag == 1) {
         if (keyMgmtOpt->smParam->uuid == NULL) {
             AppPrintError("keymgmt: The uuid is not specified.\n");
             return HITLS_APP_OPT_VALUE_INVALID;
@@ -847,6 +865,32 @@ static int32_t SelfTest(KeyMgmtCmdOpt *keyMgmtOpt)
     return HITLS_APP_SUCCESS;
 }
 
+static int32_t GetPub(KeyMgmtCmdOpt *keyMgmtOpt)
+{
+    HITLS_APP_KeyInfo keyInfo = {0};
+    int32_t ret = ReadAsymKey(keyMgmtOpt->provider, keyMgmtOpt->smParam, &keyInfo);
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
+    char *path = GetPubKeyFilePath(keyMgmtOpt->smParam->workPath, keyMgmtOpt->smParam->uuid);
+    if (path == NULL) {
+        AppPrintError("keymgmt: Failed to get public key full path.\n");
+        FreeKeyInfo(&keyInfo);
+        return HITLS_APP_INVALID_ARG;
+    }
+    ret = HITLS_APP_PrintPubKey(keyInfo.pkeyCtx, path, BSL_FORMAT_PEM);
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("keymgmt: Failed to write public key, errCode: 0x%x.\n", ret);
+        FreeKeyInfo(&keyInfo);
+        BSL_SAL_Free(path);
+        return ret;
+    }
+    AppPrintError("keymgmt: Public key written successfully.\n");
+    FreeKeyInfo(&keyInfo);
+    BSL_SAL_Free(path);
+    return HITLS_APP_SUCCESS;
+}
+
 static int32_t ProcessOptions(KeyMgmtCmdOpt *keyMgmtOpt)
 {
     if (keyMgmtOpt->eraseTag == 1) {
@@ -857,6 +901,9 @@ static int32_t ProcessOptions(KeyMgmtCmdOpt *keyMgmtOpt)
     }
     if (keyMgmtOpt->getStatusTag == 1) {
         return GetStatus(keyMgmtOpt);
+    }
+    if (keyMgmtOpt->getPubTag == 1) {
+        return GetPub(keyMgmtOpt);
     }
     if (keyMgmtOpt->selfTestTag == 1) {
         return SelfTest(keyMgmtOpt);
@@ -876,7 +923,7 @@ int32_t HITLS_KeyMgmtMain(int argc, char *argv[])
     AppProvider appProvider = {"default", NULL, "provider=default"};
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
     AppInitParam initParam = {&appProvider, &smParam};
-    KeyMgmtCmdOpt keyMgmtOpt = {1, -1, 0, 0, 0, 0, 0, 0, -1, -1, &appProvider, &smParam};
+    KeyMgmtCmdOpt keyMgmtOpt = {1, -1, 0, 0, 0, 0, 0, 0, 0, -1, -1, &appProvider, &smParam};
     if ((ret = HITLS_APP_OptBegin(argc, argv, g_keyMgmtOpts)) != HITLS_APP_SUCCESS) {
         AppPrintError("keymgmt: Error in opt begin.\n");
         goto End;
@@ -900,7 +947,7 @@ End:
 
 static int32_t ReadKeyFile(AppProvider *provider, HITLS_APP_SM_Param *smParam, HITLS_PKCS12 **p12)
 {
-    char *path = GetKeyFullPath(smParam->workPath, smParam->uuid);
+    char *path = GetKeyFilePath(smParam->workPath, smParam->uuid);
     if (path == NULL) {
         AppPrintError("keymgmt: Failed to get key full path.\n");
         return HITLS_APP_INVALID_ARG;
