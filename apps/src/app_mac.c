@@ -35,7 +35,6 @@
 #define MAX_BUFSIZE (1024 * 8)  // Indicates the length of a single mac during mac calculation.
 #define IS_SUPPORT_GET_EOF 1
 #define MAC_MAX_KEY_LEN 64
-#define MAC_MAX_IV_LENGTH 16
 
 typedef enum OptionChoice {
     HITLS_APP_OPT_MAC_ERR = -1,
@@ -47,9 +46,6 @@ typedef enum OptionChoice {
     HITLS_APP_OPT_MAC_BINARY,
     HITLS_APP_OPT_MAC_KEY,
     HITLS_APP_OPT_MAC_HEXKEY,
-    HITLS_APP_OPT_MAC_IV,
-    HITLS_APP_OPT_MAC_HEXIV,
-    HITLS_APP_OPT_MAC_TAGLEN,
     HITLS_APP_PROV_ENUM,
 #ifdef HITLS_APP_SM_MODE
     HITLS_SM_OPTIONS_ENUM,
@@ -69,12 +65,6 @@ const HITLS_CmdOption g_macOpts[] = {
         "Input encryption key as a string."},
     {"hexkey", HITLS_APP_OPT_MAC_HEXKEY, HITLS_APP_OPT_VALUETYPE_STRING,
         "Input encryption key in hexadecimal format (e.g., 0x1234ABCD)."},
-    {"iv", HITLS_APP_OPT_MAC_IV, HITLS_APP_OPT_VALUETYPE_STRING,
-        "Input initialization vector as a string."},
-    {"hexiv", HITLS_APP_OPT_MAC_HEXIV, HITLS_APP_OPT_VALUETYPE_STRING,
-        "Input initialization vector in hexadecimal format (e.g., 0xAABBCCDD)."},
-    {"taglen", HITLS_APP_OPT_MAC_TAGLEN, HITLS_APP_OPT_VALUETYPE_INT,
-        "Set authentication tag length."},
     HITLS_APP_PROV_OPTIONS,
 #ifdef HITLS_APP_SM_MODE
     HITLS_SM_OPTIONS,
@@ -92,9 +82,6 @@ typedef struct {
     char *key;
     char *hexKey;
     uint32_t keyLen;
-    char *iv;
-    char *hexIv;
-    uint32_t tagLen;
     AppProvider *provider;
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param *smParam;
@@ -145,31 +132,10 @@ static int32_t MacOptHexKey(MacOpt *macOpt)
     return HITLS_APP_SUCCESS;
 }
 
-static int32_t MacOptIv(MacOpt *macOpt)
-{
-    macOpt->iv = HITLS_APP_OptGetValueStr();
-    return HITLS_APP_SUCCESS;
-}
-
-static int32_t MacOptHexIv(MacOpt *macOpt)
-{
-    macOpt->hexIv = HITLS_APP_OptGetValueStr();
-    return HITLS_APP_SUCCESS;
-}
-
 static int32_t MacOptBinary(MacOpt *macOpt)
 {
     macOpt->isBinary = 1;
     return HITLS_APP_SUCCESS;
-}
-
-static int32_t MacOptTagLen(MacOpt *macOpt)
-{
-    int32_t ret = HITLS_APP_OptGetUint32(HITLS_APP_OptGetValueStr(), &(macOpt->tagLen));
-    if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("mac: Invalid tagLen value.\n");
-    }
-    return ret;
 }
 
 static int32_t MacOptAlg(MacOpt *macOpt)
@@ -192,10 +158,7 @@ static const MacOptHandleFuncMap g_macOptHandleFuncMap[] = {
     {HITLS_APP_OPT_MAC_OUT, MacOptOut},
     {HITLS_APP_OPT_MAC_KEY, MacOptKey},
     {HITLS_APP_OPT_MAC_HEXKEY, MacOptHexKey},
-    {HITLS_APP_OPT_MAC_IV, MacOptIv},
-    {HITLS_APP_OPT_MAC_HEXIV, MacOptHexIv},
     {HITLS_APP_OPT_MAC_BINARY, MacOptBinary},
-    {HITLS_APP_OPT_MAC_TAGLEN, MacOptTagLen},
     {HITLS_APP_OPT_MAC_ALG, MacOptAlg},
 };
 
@@ -258,23 +221,6 @@ static int32_t CheckParam(MacOpt *macOpt)
     if (ret != HITLS_APP_SUCCESS) {
         return ret;
     }
-    macOpt->algId = macOpt->algId < 0 ? CRYPT_MAC_HMAC_SHA256 : macOpt->algId;
-    if (macOpt->algId >= CRYPT_MAC_GMAC_AES128 && macOpt->algId <= CRYPT_MAC_GMAC_AES256) {
-        if (macOpt->iv == NULL && macOpt->hexIv == NULL) {
-            AppPrintError("mac: No iv entered.\n");
-            return HITLS_APP_OPT_VALUE_INVALID;
-        }
-        if (macOpt->iv != NULL && macOpt->hexIv != NULL) {
-            AppPrintError("mac: Cannot specify both iv and hexiv.\n");
-            return HITLS_APP_OPT_VALUE_INVALID;
-        }
-    } else {
-        if (macOpt->iv != NULL || macOpt->hexIv != NULL) {
-            AppPrintError("mac: iv is not supported for this algorithm.\n");
-            BSL_SAL_FREE(macOpt->iv);
-            BSL_SAL_FREE(macOpt->hexIv);
-        }
-    }
 
     if (macOpt->inFile != NULL && strlen((const char*)macOpt->inFile) > PATH_MAX) {
         AppPrintError("mac: The input file length is invalid.\n");
@@ -316,8 +262,18 @@ static int32_t GetMacKey(MacOpt *macOpt, uint8_t **key, uint32_t *keyLen)
         return GetKeyFromP12(macOpt, key, keyLen);
     }
 #endif
+    size_t len;
     if (macOpt->key != NULL) {
-        *key = (uint8_t*)BSL_SAL_Dump(macOpt->key, strlen(macOpt->key));
+        len = strlen((const char *)macOpt->key);
+    } else {
+        len = strlen((const char *)macOpt->hexKey);
+    }
+    if (len > UINT32_MAX) {
+        AppPrintError("mac: key length overflow.\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+    if (macOpt->key != NULL) {
+        *key = (uint8_t *)BSL_SAL_Dump(macOpt->key, strlen(macOpt->key));
         if (*key == NULL) {
             AppPrintError("mac: Failed to dump key, keyLen: %u.\n", strlen(macOpt->key));
             return HITLS_APP_MEM_ALLOC_FAIL;
@@ -367,47 +323,15 @@ static CRYPT_EAL_MacCtx *InitAlgMac(MacOpt *macOpt)
 static int32_t MacParamSet(CRYPT_EAL_MacCtx *ctx, MacOpt *macOpt)
 {
     int32_t ret = HITLS_APP_SUCCESS;
-    uint8_t *iv = NULL;
     uint32_t padding = CRYPT_PADDING_ZEROS;
-    uint32_t ivLen = MAC_MAX_IV_LENGTH;
 
     if (macOpt->algId == CRYPT_MAC_CBC_MAC_SM4) {
         ret = CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_CBC_MAC_PADDING, &padding, sizeof(CRYPT_PaddingType));
         if (ret != CRYPT_SUCCESS) {
             (void)AppPrintError("mac:Failed to set CBC MAC padding, ret=%d\n", ret);
-            return HITLS_APP_CRYPTO_FAIL;
+            ret = HITLS_APP_CRYPTO_FAIL;
         }
     }
-    if (macOpt->algId >= CRYPT_MAC_GMAC_AES128 && macOpt->algId <= CRYPT_MAC_GMAC_AES256) {
-        if (macOpt->iv != NULL) {
-            ivLen = strlen((const char*)macOpt->iv);
-            iv = (uint8_t *)macOpt->iv;
-        } else {
-            ret = HITLS_APP_HexToByte(macOpt->hexIv, &iv, &ivLen);
-            if (ret != HITLS_APP_SUCCESS) {
-                AppPrintError("mac: Invalid iv: %s.\n", macOpt->hexIv);
-                return ret;
-            }
-        }
-        do {
-            ret = CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_IV, macOpt->iv, ivLen);
-            if (ret != CRYPT_SUCCESS) {
-                (void)AppPrintError("mac:Failed to set GMAC IV, ret=%d\n", ret);
-                ret = HITLS_APP_CRYPTO_FAIL;
-                break;
-            }
-            ret = CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &(macOpt->tagLen), sizeof(int32_t));
-            if (ret != CRYPT_SUCCESS) {
-                (void)AppPrintError("mac:Failed to set GMAC TAGLEN, ret=%d\n", ret);
-                ret = HITLS_APP_CRYPTO_FAIL;
-                break;
-            }
-        } while (0);
-        if (macOpt->hexIv != NULL) {
-            BSL_SAL_FREE(iv);
-        }
-    }
-
     return ret;
 }
 
@@ -563,11 +487,10 @@ int32_t HITLS_MacMain(int argc, char *argv[])
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
     AppInitParam initParam = {&appProvider, &smParam};
-    MacOpt macOpt = {CRYPT_MAC_HMAC_SM3, 0, 0, NULL, {0}, 0, NULL, NULL, NULL, 0, NULL, NULL, 0, &appProvider,
-        &smParam};
+    MacOpt macOpt = {CRYPT_MAC_HMAC_SM3, 0, 0, NULL, {0}, 0, NULL, NULL, NULL, 0, &appProvider, &smParam};
 #else
     AppInitParam initParam = {&appProvider};
-    MacOpt macOpt = {CRYPT_MAC_HMAC_SHA256, 0, 0, NULL, {0}, 0, NULL, NULL, NULL, 0, NULL, NULL, 0, &appProvider};
+    MacOpt macOpt = {CRYPT_MAC_HMAC_SHA256, 0, 0, NULL, {0}, 0, NULL, NULL, NULL, 0, &appProvider};
 #endif
     do {
         mainRet = HITLS_APP_OptBegin(argc, argv, g_macOpts);

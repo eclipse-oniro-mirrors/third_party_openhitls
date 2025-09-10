@@ -44,6 +44,7 @@ typedef enum {
     HITLS_APP_OPT_PKEYOPT,
     HITLS_APP_OPT_CIPHER_ALG,
     HITLS_APP_OPT_PASS,
+    HITLS_APP_OPT_PUBOUT,
     HITLS_APP_OPT_OUT,
 } HITLSOptType;
 
@@ -53,6 +54,7 @@ const HITLS_CmdOption g_genPkeyOpts[] = {
     {"pkeyopt", HITLS_APP_OPT_PKEYOPT, HITLS_APP_OPT_VALUETYPE_STRING, "Set key options"},
     {"", HITLS_APP_OPT_CIPHER_ALG, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Any supported cipher"},
     {"pass", HITLS_APP_OPT_PASS, HITLS_APP_OPT_VALUETYPE_STRING, "Output file pass phrase source"},
+    {"pubout", HITLS_APP_OPT_PUBOUT, HITLS_APP_OPT_VALUETYPE_OUT_FILE, "Output public key"},
     {"out", HITLS_APP_OPT_OUT, HITLS_APP_OPT_VALUETYPE_OUT_FILE, "Output file"},
     {NULL},
 };
@@ -64,6 +66,7 @@ typedef struct {
 } InputGenKeyPara;
 
 typedef struct {
+    char *pubOut;
     char *outFilePath;
     char *passOutArg;
 } OutPutGenKeyPara;
@@ -240,6 +243,12 @@ static int32_t GenPkeyOptOut(GenPkeyOptCtx *optCtx)
     return HITLS_APP_SUCCESS;
 }
 
+static int32_t GenPkeyOptPubOut(GenPkeyOptCtx *optCtx)
+{
+    optCtx->outPara.pubOut = HITLS_APP_OptGetValueStr();
+    return HITLS_APP_SUCCESS;
+}
+
 static const GenPkeyOptHandleTable g_genPkeyOptHandleTable[] = {
     {HITLS_APP_OPT_ERR, GenPkeyOptErr},
     {HITLS_APP_OPT_HELP, GenPkeyOptHelp},
@@ -247,6 +256,7 @@ static const GenPkeyOptHandleTable g_genPkeyOptHandleTable[] = {
     {HITLS_APP_OPT_PKEYOPT, GenPkeyOpt},
     {HITLS_APP_OPT_CIPHER_ALG, GenPkeyOptCipher},
     {HITLS_APP_OPT_PASS, GenPkeyOptPassout},
+    {HITLS_APP_OPT_PUBOUT, GenPkeyOptPubOut},
     {HITLS_APP_OPT_OUT, GenPkeyOptOut},
 };
 
@@ -293,6 +303,13 @@ static int32_t HandleGenPkeyOpt(GenPkeyOptCtx *optCtx)
     optCtx->pkey = optCtx->genPkeyCtxFunc(&optCtx->genPkeyOptPara);
     if (optCtx->pkey == NULL) {
         return HITLS_APP_LOAD_KEY_FAIL;
+    }
+
+    if (optCtx->outPara.pubOut != NULL) {
+        ret = HITLS_APP_PrintPubKey(optCtx->pkey, optCtx->outPara.pubOut, BSL_FORMAT_PEM);
+        if (ret != HITLS_APP_SUCCESS) {
+            return ret;
+        }
     }
 
     // 4. Output the private key.

@@ -73,7 +73,7 @@ const HITLS_CmdOption g_kdfOpts[] = {
 #ifdef HITLS_APP_SM_MODE
     HITLS_SM_OPTIONS,
 #endif
-    {"kdfalg...", HITLS_APP_OPT_KDF_ALG, HITLS_APP_OPT_VALUETYPE_STRING, "Specify KDF algorithm (e.g.: pbkdf2)."},
+    {"kdfalg...", HITLS_APP_OPT_KDF_ALG, HITLS_APP_OPT_VALUETYPE_PARAMTERS, "Specify KDF algorithm (e.g.: pbkdf2)."},
     {NULL}};
 
 typedef struct {
@@ -229,13 +229,13 @@ static int32_t GetKdfAlg(KdfOpt *kdfOpt)
     }
     kdfOpt->kdfName = argv[0];
     kdfOpt->kdfId = HITLS_APP_GetCidByName(kdfOpt->kdfName, HITLS_APP_LIST_OPT_KDF_ALG);
-    if (kdfOpt->macId == BSL_CID_UNKNOWN) {
+    if (kdfOpt->kdfId == BSL_CID_UNKNOWN) {
         AppPrintError("Not support KDF algorithm.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     if (argc - 1 != 0) {
         AppPrintError("Extra arguments given.\n");
-        AppPrintError("mac: Use -help for summary.\n");
+        AppPrintError("kdf: Use -help for summary.\n");
         return HITLS_APP_OPT_UNKOWN;
     }
     return HITLS_APP_SUCCESS;
@@ -306,9 +306,19 @@ static CRYPT_EAL_KdfCTX *InitAlgKdf(KdfOpt *kdfOpt)
 
 static int32_t KdfParsePass(KdfOpt *kdfOpt, uint8_t **pass, uint32_t *passLen)
 {
+    size_t len;
     if (kdfOpt->pass != NULL) {
-        *passLen = strlen((const char*)kdfOpt->pass);
-        *pass = (uint8_t*)kdfOpt->pass;
+        len = strlen((const char *)kdfOpt->pass);
+    } else {
+        len = strlen((const char *)kdfOpt->hexPass);
+    }
+    if (len > UINT32_MAX) {
+        AppPrintError("kdf: pass length overflow.\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+    if (kdfOpt->pass != NULL) {
+        *passLen = (uint32_t)len;
+        *pass = (uint8_t *)kdfOpt->pass;
     } else {
         int32_t ret = HITLS_APP_HexToByte(kdfOpt->hexPass, pass, passLen);
         if (ret != HITLS_APP_SUCCESS) {
@@ -321,9 +331,19 @@ static int32_t KdfParsePass(KdfOpt *kdfOpt, uint8_t **pass, uint32_t *passLen)
 
 static int32_t KdfParseSalt(KdfOpt *kdfOpt, uint8_t **salt, uint32_t *saltLen)
 {
+    size_t len;
     if (kdfOpt->salt != NULL) {
-        *saltLen = strlen((const char*)kdfOpt->salt);
-        *salt = (uint8_t*)kdfOpt->salt;
+        len = strlen((const char *)kdfOpt->salt);
+    } else {
+        len = strlen((const char *)kdfOpt->hexSalt);
+    }
+    if (len > UINT32_MAX) {
+        AppPrintError("kdf: salt length overflow.\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+    if (kdfOpt->salt != NULL) {
+        *saltLen = (uint32_t)len;
+        *salt = (uint8_t *)kdfOpt->salt;
     } else {
         int32_t ret = HITLS_APP_HexToByte(kdfOpt->hexSalt, salt, saltLen);
         if (ret != HITLS_APP_SUCCESS) {

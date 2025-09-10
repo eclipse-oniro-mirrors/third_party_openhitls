@@ -45,8 +45,6 @@
 #define X509_DAY_SECONDS (24 * 60 * 60)
 #define X509_SET_SERIAL_PREFIX "0x"
 #define X509_MAX_MD_LEN 64
-#define X509_SHAKE128_DIGEST_LEN 16
-#define X509_SHAKE256_DIGEST_LEN 32
 
 typedef enum {
     HITLS_APP_OPT_IN = 2,
@@ -288,9 +286,9 @@ static int32_t PrintFingerPrint(const X509OptCtx *optCtx)
     uint8_t md[X509_MAX_MD_LEN] = {0};
     uint32_t mdLen = X509_MAX_MD_LEN;
     if (optCtx->printOpts.mdId == CRYPT_MD_SHAKE128) {
-        mdLen = X509_SHAKE128_DIGEST_LEN;
+        mdLen = HITLS_APP_SHAKE128_SIZE;
     } else if (optCtx->printOpts.mdId == CRYPT_MD_SHAKE256) {
-        mdLen = X509_SHAKE256_DIGEST_LEN;
+        mdLen = HITLS_APP_SHAKE256_SIZE;
     }
     int32_t ret = HITLS_X509_CertDigest(optCtx->cert, optCtx->printOpts.mdId, md, &mdLen);
     if (ret != 0) {

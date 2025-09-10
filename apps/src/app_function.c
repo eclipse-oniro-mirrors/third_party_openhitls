@@ -37,6 +37,7 @@
 #include "app_keymgmt.h"
 #include "app_client.h"
 #include "app_server.h"
+#include "app_pkeyutl.h"
 
 HITLS_CmdFunc g_cmdFunc[] = {
     {"help",     FUNC_TYPE_GENERAL,   HITLS_HelpMain},
@@ -61,6 +62,7 @@ HITLS_CmdFunc g_cmdFunc[] = {
 #endif
     {"s_client", FUNC_TYPE_GENERAL,   HITLS_ClientMain},
     {"s_server", FUNC_TYPE_GENERAL,   HITLS_ServerMain},
+    {"pkeyutl",  FUNC_TYPE_GENERAL,   HITLS_PkeyUtlMain},
     {NULL,      FUNC_TYPE_NONE, NULL}
 };
 static void AppGetFuncPrintfLen(size_t *maxLen)
