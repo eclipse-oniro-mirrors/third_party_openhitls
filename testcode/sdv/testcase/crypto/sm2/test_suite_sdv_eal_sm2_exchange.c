@@ -1038,7 +1038,8 @@ void SDV_CRYPTO_SM2_EXCHANGE_CHECK_TC002(Hex *prvKey, Hex *pubKey, Hex *r, Hex *
 {
     uint8_t out[500];
     uint32_t outLen = shareKey->len;
-    FuncStubInfo tmpRpInfo;
+    CRYPT_RandRegist(RandFunc);
+    CRYPT_RandRegistEx(RandFuncEx);
     uint8_t val[selfS->len];
     CRYPT_EAL_PkeyPrv prv = {0};
     CRYPT_EAL_PkeyPub pub = {0};
@@ -1079,7 +1080,8 @@ void SDV_CRYPTO_SM2_EXCHANGE_CHECK_TC002(Hex *prvKey, Hex *pubKey, Hex *r, Hex *
     ASSERT_TRUE(CRYPT_EAL_PkeyCtrl(ctx1, CRYPT_CTRL_SM2_DO_CHECK, peerS->x, peerS->len) == CRYPT_SUCCESS);
 
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    CRYPT_RandRegist(NULL);
+    CRYPT_RandRegistEx(NULL);
     CRYPT_EAL_PkeyFreeCtx(ctx1);
     CRYPT_EAL_PkeyFreeCtx(ctx2);
 }
