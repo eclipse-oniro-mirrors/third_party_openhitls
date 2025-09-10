@@ -35,8 +35,8 @@ typedef enum {
 
 typedef struct _HITLS_X509_VerifyParam {
     int32_t maxDepth;
-    int64_t time;
     uint32_t securityBits;
+    int64_t time;
     uint64_t flags;
 #ifdef HITLS_CRYPTO_SM2
     BSL_Buffer sm2UserId;
@@ -48,15 +48,19 @@ struct _HITLS_X509_StoreCtx {
     HITLS_X509_List *crl;
     BSL_SAL_RefCount references;
     HITLS_X509_VerifyParam verifyParam;
-    BslList *caPaths;                 // List of CA directory paths for on-demand loading (char*)
+    HITLS_X509_List *certChain;       // Certificate chain built during verification
     CRYPT_EAL_LibCtx *libCtx;         // Provider context
     const char *attrName;             // Provider attribute name
+#ifdef HITLS_PKI_X509_VFY_LOCATION
+    BslList *caPaths;                 // List of CA directory paths for on-demand loading (char*)
+#endif
+#ifdef HITLS_PKI_X509_VFY_CB
     int32_t error;                    // Error code
+    int32_t curDepth;                 // Current verification depth
     HITLS_X509_Cert *curCert;         // Current certificate being verified
     X509_STORECTX_VerifyCb verifyCb;  // Verification callback function
-    int32_t curDepth;                 // Current verification depth
     void *usrData;                    // user data
-    HITLS_X509_List *certChain;       // Certificate chain built during verification
+#endif
 };
 
 

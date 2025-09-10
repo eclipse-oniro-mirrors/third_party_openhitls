@@ -22,13 +22,13 @@
 #include "crypt_utils.h"
 #include "hitls_pki_errno.h"
 #include "hitls_x509_local.h"
-#ifdef HITLS_PKI_X509_CRT
+#ifdef HITLS_PKI_INFO_CRT
 #include "hitls_cert_local.h"
 #endif
-#ifdef HITLS_PKI_X509_CSR
+#ifdef HITLS_PKI_INFO_CSR
 #include "hitls_csr_local.h"
 #endif
-#ifdef HITLS_PKI_X509_CRL
+#ifdef HITLS_PKI_INFO_CRL
 #include "hitls_crl_local.h"
 #include "hitls_pki_crl.h"
 #endif
@@ -45,7 +45,7 @@
 #define HITLS_X509_UNSUPPORT_EXT "<Unsupported extension>\n"
 #define HITLS_X509_PRINT_NEW_LINE "\n"
 
-#if defined(HITLS_PKI_X509_CRT) || defined(HITLS_PKI_X509_CSR)
+#if defined(HITLS_PKI_INFO_CRT) || defined(HITLS_PKI_INFO_CSR)
 typedef struct {
     uint32_t type;
     const char *name;
@@ -77,7 +77,7 @@ static HITLS_X509_TypeNameMap g_gnNameMap[] = {
 
 #define HITLS_X509_KU_CNT (sizeof(g_keyUsageNameMap) / sizeof(g_keyUsageNameMap[0]))
 #define HITLS_X509_GN_NAME_CNT (sizeof(g_gnNameMap) / sizeof(g_gnNameMap[0]))
-#endif // HITLS_PKI_X509_CRT || HITLS_PKI_X509_CSR
+#endif // HITLS_PKI_INFO_CRT || HITLS_PKI_INFO_CSR
 
 static int32_t g_nameFlag = HITLS_PKI_PRINT_DN_RFC2253;
 
@@ -273,7 +273,7 @@ int32_t HITLS_PKI_PrintDnName(uint32_t layer, BslList *list, bool newLine, BSL_U
     return HITLS_PKI_SUCCESS;
 }
 
-#if defined(HITLS_PKI_X509_CRT) || defined(HITLS_PKI_X509_CSR) || defined(HITLS_PKI_X509_CRL)
+#if defined(HITLS_PKI_INFO_CRT) || defined(HITLS_PKI_INFO_CSR)
 static int32_t PrintBCons(HITLS_X509_Ext *ext, uint32_t layer, BSL_UIO *uio)
 {
     HITLS_X509_CertExt *certExt = ext->extData;
@@ -636,7 +636,7 @@ static int32_t PrintSignAlgInfo(uint32_t layer, HITLS_X509_Asn1AlgId *algId, BSL
 }
 #endif
 
-#ifdef HITLS_PKI_X509_CRT
+#ifdef HITLS_PKI_INFO_CRT
 static int32_t PrintCertTbs(uint32_t layer, HITLS_X509_CertTbs *tbs, BSL_UIO *uio)
 {
     /* version */
@@ -717,7 +717,7 @@ static int32_t PrintCert(void *val, BSL_UIO *uio)
 }
 #endif
 
-#ifdef HITLS_PKI_X509_CSR
+#ifdef HITLS_PKI_INFO_CSR
 static int32_t PrintReqExtension(BSL_ASN1_Buffer *reqExtension, uint32_t layer, BSL_UIO *uio)
 {
     HITLS_X509_Ext *ext = HITLS_X509_ExtNew(HITLS_X509_EXT_TYPE_CSR);
@@ -830,7 +830,7 @@ static int32_t PrintCsr(void *val, BSL_UIO *uio)
 }
 #endif
 
-#ifdef HITLS_PKI_X509_CRL
+#ifdef HITLS_PKI_INFO_CRL
 static int32_t CmpExtByCid(const void *pExt, const void *pCid)
 {
     const HITLS_X509_ExtEntry *ext = pExt;
@@ -1068,7 +1068,13 @@ int32_t HITLS_PKI_PrintCtrl(int32_t cmd, void *val, uint32_t valLen, BSL_UIO *ui
                 return HITLS_X509_ERR_INVALID_PARAM;
             }
             return PrintDnNameHash(0, val, uio);
-#ifdef HITLS_PKI_X509_CRT
+        case HITLS_PKI_PRINT_NEXTUPDATE:
+            if (valLen != sizeof(BSL_TIME)) {
+                BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
+                return HITLS_X509_ERR_INVALID_PARAM;
+            }
+            return BSL_PRINT_Time(0, val, uio);
+#ifdef HITLS_PKI_INFO_CRT
         case HITLS_PKI_PRINT_CERT:
             if (valLen != sizeof(HITLS_X509_Cert *)) {
                 BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
@@ -1076,13 +1082,7 @@ int32_t HITLS_PKI_PrintCtrl(int32_t cmd, void *val, uint32_t valLen, BSL_UIO *ui
             }
             return PrintCert(val, uio);
 #endif
-        case HITLS_PKI_PRINT_NEXTUPDATE:
-            if (valLen != sizeof(BSL_TIME)) {
-                BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
-                return HITLS_X509_ERR_INVALID_PARAM;
-            }
-            return BSL_PRINT_Time(0, val, uio);
-#ifdef HITLS_PKI_X509_CSR
+#ifdef HITLS_PKI_INFO_CSR
         case HITLS_PKI_PRINT_CSR:
             if (valLen != sizeof(HITLS_X509_Csr *)) {
                 BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
@@ -1090,7 +1090,7 @@ int32_t HITLS_PKI_PrintCtrl(int32_t cmd, void *val, uint32_t valLen, BSL_UIO *ui
             }
             return PrintCsr(val, uio);
 #endif
-#ifdef HITLS_PKI_X509_CRL
+#ifdef HITLS_PKI_INFO_CRL
         case HITLS_PKI_PRINT_CRL:
             if (valLen != sizeof(HITLS_X509_Crl *)) {
                 BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);

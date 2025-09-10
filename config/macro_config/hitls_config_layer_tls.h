@@ -363,6 +363,10 @@
     #endif
 #endif
 
+#if defined(HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION) && !defined(HITLS_BSL_SAL_FILE)
+    #define HITLS_BSL_SAL_FILE
+#endif
+
 #if defined(HITLS_TLS_PROTO_DTLS12) || defined(HITLS_TLS_PROTO_TLS13)
     #ifndef HITLS_TLS_EXTENSION_COOKIE
         #define HITLS_TLS_EXTENSION_COOKIE

@@ -26,7 +26,6 @@
 #error "[HiTLS] The tls-provider must work with crypto-provider"
 #endif
 
-
 #if defined(HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION) && !defined(HITLS_PKI_X509_VFY_LOCATION)
 #error "[HiTLS] The tls verify must work with pki vfy location"
 #endif
@@ -594,6 +593,11 @@ chacha20poly1305, chacha20, rsa"
     #error "[HiTLS] tls13 ciphersuite must work with suite_auth_rsa or suite_auth_ecdsa or suite_auth_psk"
     #endif
 #endif
+
+#if defined(HITLS_TLS_FEATURE_ETM) && !defined(HITLS_TLS_SUITE_CIPHER_CBC)
+#error "[HiTLS] The etm must work with cbc"
+#endif
+
 #endif /* HITLS_TLS */
 
 #ifdef HITLS_CRYPTO
@@ -775,14 +779,18 @@ chacha20poly1305, chacha20, rsa"
 
 #ifdef HITLS_PKI
 
-#if defined(HITLS_PKI_INFO) && !defined(HITLS_PKI_X509_CRT)
-#error "[HiTLS] The info must work with x509_crt_gen or x509_crt_parse."
+#if defined(HITLS_PKI_INFO_CRT) && !defined(HITLS_PKI_X509_CRT)
+#error "[HiTLS] The info_crt must work with x509_crt_gen or x509_crt_parse."
+#endif
+
+#if defined(HITLS_PKI_INFO_CSR) && !defined(HITLS_PKI_X509_CSR)
+#error "[HiTLS] The info_csr must work with x509_csr_gen or x509_csr_parse."
+#endif
+
+#if defined(HITLS_PKI_INFO_CRL) && !defined(HITLS_PKI_X509_CRL)
+#error "[HiTLS] The info_crl must work with x509_crl_gen or x509_crl_parse."
 #endif
 
 #endif /* HITLS_PKI */
-
-#if defined(HITLS_TLS_FEATURE_ETM) && !defined(HITLS_TLS_SUITE_CIPHER_CBC)
-#error "[HiTLS] The etm must work with cbc"
-#endif
 
 #endif /* HITLS_CONFIG_CHECK_H */

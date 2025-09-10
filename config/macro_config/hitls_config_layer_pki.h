@@ -71,6 +71,18 @@
 #endif
 
 #ifdef HITLS_PKI_X509_VFY
+    #ifndef HITLS_PKI_X509_VFY_DEFAULT
+        #define HITLS_PKI_X509_VFY_DEFAULT
+    #endif
+    #ifndef HITLS_PKI_X509_VFY_CB
+        #define HITLS_PKI_X509_VFY_CB
+    #endif
+    #ifndef HITLS_PKI_X509_VFY_LOCATION
+        #define HITLS_PKI_X509_VFY_LOCATION
+    #endif
+#endif
+
+#ifdef HITLS_PKI_X509_VFY_DEFAULT
     #ifndef HITLS_PKI_X509_CRT_PARSE
         #define HITLS_PKI_X509_CRT_PARSE
     #endif
@@ -79,11 +91,23 @@
     #endif
 #endif
 
-#if defined(HITLS_PKI_X509_VFY) || defined(HITLS_BSL_SAL_FILE)
-    #ifndef HITLS_PKI_X509_VFY_LOCATION
-        #define HITLS_PKI_X509_VFY_LOCATION
+
+#if defined(HITLS_PKI_X509_VFY_LOCATION) && !defined(HITLS_BSL_SAL_FILE)
+    #define HITLS_BSL_SAL_FILE
+#endif
+
+#if defined(HITLS_PKI_X509_VFY_CB) || defined(HITLS_PKI_X509_VFY_LOCATION)
+    #ifndef HITLS_PKI_X509_VFY_DEFAULT
+        #define HITLS_PKI_X509_VFY_DEFAULT
     #endif
 #endif
+
+#if defined(HITLS_PKI_X509_VFY_DEFAULT) || defined(HITLS_PKI_X509_VFY_CB) || defined(HITLS_PKI_X509_VFY_LOCATION)
+    #ifndef HITLS_PKI_X509_VFY
+        #define HITLS_PKI_X509_VFY
+    #endif
+#endif
+
 #ifdef HITLS_PKI_X509_CRT
     #ifndef HITLS_PKI_X509_CRT_GEN
         #define HITLS_PKI_X509_CRT_GEN
@@ -147,6 +171,24 @@
     defined(HITLS_PKI_PKCS12_PARSE)
     #ifndef HITLS_CRYPTO_KEY_DECODE
         #define HITLS_CRYPTO_KEY_DECODE
+    #endif
+#endif
+
+#if defined(HITLS_PKI_INFO)
+    #ifndef HITLS_PKI_INFO_CRT
+        #define HITLS_PKI_INFO_CRT
+    #endif
+    #ifndef HITLS_PKI_INFO_CSR
+        #define HITLS_PKI_INFO_CSR
+    #endif
+    #ifndef HITLS_PKI_INFO_CRL
+        #define HITLS_PKI_INFO_CRL
+    #endif
+#endif
+
+#if defined(HITLS_PKI_INFO_CRT) || defined(HITLS_PKI_INFO_CSR) || defined(HITLS_PKI_INFO_CRL)
+    #ifndef HITLS_PKI_INFO
+        #define HITLS_PKI_INFO
     #endif
 #endif
 

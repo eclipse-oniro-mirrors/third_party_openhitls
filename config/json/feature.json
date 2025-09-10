@@ -637,7 +637,15 @@
                             "deps": ["list", "obj", "asn1"]
                         },
                         "x509_vfy" : {
-                            "deps": ["x509_crt_parse", "x509_crl_parse"]
+                            "x509_vfy_default" : {
+                                "deps": ["x509_crt_parse", "x509_crl_parse"]
+                            },
+                            "x509_vfy_cb" : {
+                                "deps": ["x509_vfy_default"]
+                            },
+                            "x509_vfy_location" : {
+                                "deps": ["x509_vfy_default"]
+                            }
                         }
                     },
                     "pkcs12" : {
@@ -646,8 +654,16 @@
                         "deps": ["key_epki"]
                     },
                     "info": {
-                        "deps": ["uio_plt", "list", "obj", "asn1", "print"],
-                        "opts": ["x509_crt", "x509_crt_gen", "x509_crt_parse"]
+                        "info_crt": {
+                            "opts": ["x509_crt", "x509_crt_gen", "x509_crt_parse"]
+                        },
+                        "info_csr": {
+                            "opts": ["x509_csr", "x509_csr_gen", "x509_csr_parse"]
+                        },
+                        "info_crl": {
+                            "opts": ["x509_crl", "x509_crl_gen", "x509_crl_parse"]
+                        },
+                        "deps": ["uio_plt", "print"]
                     }
                 }
             }
@@ -1576,7 +1592,7 @@
                 ".include": ["bsl/pem/include"]
             },
             "pki_print" : {
-                ".features" : ["info"],
+                ".features" : ["info", "info_crt", "info_csr", "info_crl"],
                 ".srcs" : "pki/print/src/*",
                 ".deps" : ["pki::x509_common", "bsl::sal", "bsl::asn1", "bsl::print", "bsl::obj", "bsl::list", "crypto::codecskey"],
                 ".include": [
@@ -1587,7 +1603,7 @@
                 ]
             },
             "x509_verify" : {
-                ".features" : ["x509_vfy"],
+                ".features" : ["x509_vfy", "x509_vfy_default", "x509_vfy_cb", "x509_vfy_location"],
                 ".srcs" : "pki/x509_verify/src/*",
                 ".deps" : ["platform::Secure_C", "pki::x509_cert", "pki::x509_crl", "pki::x509_common"]
             },
