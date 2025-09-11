@@ -560,8 +560,6 @@ int32_t X509VfyBeforeCtrl(HITLS_X509_StoreCtx *storeCtx, int32_t cmd, void *val,
             return X509_SetCA(storeCtx, val, false);
         case HITLS_X509_STORECTX_SET_CRL:
             return X509_SetCRL(storeCtx, val);
-        case HITLS_X509_STORECTX_CLEAR_CRL:
-            return X509_ClearCRL(storeCtx);
 #ifdef HITLS_CRYPTO_SM2
         case HITLS_X509_STORECTX_SET_VFY_SM2_USERID:
             return HITLS_X509_SetSm2UserId(&storeCtx->verifyParam.sm2UserId, val, valLen);
@@ -572,12 +570,12 @@ int32_t X509VfyBeforeCtrl(HITLS_X509_StoreCtx *storeCtx, int32_t cmd, void *val,
         case HITLS_X509_STORECTX_SET_USR_DATA:
             return X509_SetUsrData(storeCtx, val, valLen);
 #endif
-        case HITLS_X509_STORECTX_GET_PARAM_FLAGS:
-            return X509_GetParamFlag(storeCtx, val, valLen);
 #ifdef HITLS_PKI_X509_VFY_LOCATION
         case HITLS_X509_STORECTX_ADD_CA_PATH:
             return X509_AddCAPath(storeCtx, val, valLen);
 #endif
+        case HITLS_X509_STORECTX_CLEAR_CRL:
+            return X509_ClearCRL(storeCtx);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;
@@ -597,6 +595,8 @@ int32_t X509VfyAllTimeCtrl(HITLS_X509_StoreCtx *storeCtx, int32_t cmd, void *val
         case HITLS_X509_STORECTX_GET_USR_DATA:
             return X509_GetUsrData(storeCtx, val, valLen);
 #endif
+        case HITLS_X509_STORECTX_GET_PARAM_FLAGS:
+            return X509_GetParamFlag(storeCtx, val, valLen);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;
