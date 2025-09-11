@@ -129,7 +129,7 @@ static int32_t GetRsaByStd(uint8_t **readBuf, uint64_t *readBufLen)
         size_t bufLen = 0;
         ssize_t readLen = getline(&buf, &bufLen, stdin);
         if (readLen <= 0) {
-            free(buf);
+            BSL_SAL_FREE(buf);
             (void)AppPrintError("Failed to obtain the standard input.\n");
             break;
         }
@@ -145,7 +145,7 @@ static int32_t GetRsaByStd(uint8_t **readBuf, uint64_t *readBufLen)
             rsaDataCapacity = newRsaDataCapacity;
         }
         if (memcpy_s(rsaData + rsaDataSize, rsaDataCapacity - rsaDataSize, buf, readLen) != 0) {
-            free(buf);
+            BSL_SAL_FREE(buf);
             BSL_SAL_FREE(rsaData);
             return HITLS_APP_SECUREC_FAIL;
         }
@@ -159,10 +159,10 @@ static int32_t GetRsaByStd(uint8_t **readBuf, uint64_t *readBufLen)
             i++;
         }
         if (isMatchRsaData && (strcmp(buf, tail[i]) == 0)) {
-            free(buf);
+            BSL_SAL_FREE(buf);
             break;
         }
-        free(buf);
+        BSL_SAL_FREE(buf);
     }
     *readBuf = rsaData;
     *readBufLen = rsaDataSize;

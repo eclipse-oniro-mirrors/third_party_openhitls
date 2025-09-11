@@ -31,6 +31,9 @@
 extern "C" {
 #endif
 
+#define APP_HEARTBEAT_LEN 17
+#define DEFAULT_DTLCP_PORT 54000
+
 /* Protocol types */
 typedef enum {
     APP_PROTOCOL_TLCP,
@@ -152,7 +155,7 @@ int CreateTCPListenSocket(APP_NetworkAddr *addr, int backlog);
  * @param addr Network address
  * @return Socket file descriptor or -1 on error
  */
-int CreateUDPListenSocket(APP_NetworkAddr *addr);
+int CreateUDPListenSocket(APP_NetworkAddr *addr, int timeout);
 
 /**
  * @brief Accept TCP connection
@@ -187,6 +190,10 @@ void PrintHandshakeState(HITLS_Ctx *ctx);
  * @return Success or error code
  */
 int ParseConnectString(const char *connectStr, APP_NetworkAddr *addr);
+
+int32_t GetHeartBeat(uint8_t *buffer, uint32_t *len);
+
+int32_t ParseHeartBeat(uint8_t *buffer, uint32_t len);
 
 #ifdef __cplusplus
 }

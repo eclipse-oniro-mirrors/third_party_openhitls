@@ -248,6 +248,8 @@ int32_t HITLS_APP_Init(AppInitParam *param);
 
 void HITLS_APP_Deinit(AppInitParam *param, int32_t ret);
 
+int32_t HITLS_APP_GetTime(int64_t *time);
+
 #ifdef __cplusplus
 }
 #endif

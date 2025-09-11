@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include "app_provider.h"
+#include "app_sm.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +59,9 @@ typedef struct {
     BSL_ParseFormat certFormat;
     BSL_ParseFormat keyFormat;
     AppProvider *provider;
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param *smParam;
+#endif
 } HITLS_ServerParams;
 
 /**

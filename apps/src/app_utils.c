@@ -1107,3 +1107,26 @@ void HITLS_APP_Deinit(AppInitParam *param, int32_t ret)
 #endif
     CRYPT_EAL_RandDeinitEx(APP_GetCurrent_LibCtx());
 }
+
+int32_t HITLS_APP_GetTime(int64_t *time)
+{
+    if (time == NULL) {
+        AppPrintError("Invalid time pointer.\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+    BSL_TIME sysTime = {0};
+    int32_t ret = BSL_SAL_SysTimeGet(&sysTime);
+    if (ret != BSL_SUCCESS) {
+        AppPrintError("Failed to get system time, errCode: 0x%x.\n", ret);
+        return HITLS_APP_SAL_FAIL;
+    }
+
+    int64_t utcTime = 0;
+    ret = BSL_SAL_DateToUtcTimeConvert(&sysTime, &utcTime);
+    if (ret != BSL_SUCCESS) {
+        AppPrintError("Failed to convert system time to utc time, errCode: 0x%x.\n", ret);
+        return HITLS_APP_SAL_FAIL;
+    }
+    *time = utcTime;
+    return HITLS_APP_SUCCESS;
+}

@@ -299,25 +299,6 @@ static int32_t HITLS_APP_WriteKey(KeyMgmtCmdOpt *keyMgmtOpt, HITLS_APP_KeyInfo *
     return ret;
 }
 
-static int32_t GetTimeInfo(int64_t *time)
-{
-    BSL_TIME sysTime = {0};
-    int32_t ret = BSL_SAL_SysTimeGet(&sysTime);
-    if (ret != BSL_SUCCESS) {
-        AppPrintError("keymgmt: Failed to get system time, errCode: 0x%x.\n", ret);
-        return HITLS_APP_SAL_FAIL;
-    }
-
-    int64_t utcTime = 0;
-    ret = BSL_SAL_DateToUtcTimeConvert(&sysTime, &utcTime);
-    if (ret != BSL_SUCCESS) {
-        AppPrintError("keymgmt: Failed to convert system time to utc time, errCode: 0x%x.\n", ret);
-        return HITLS_APP_SAL_FAIL;
-    }
-    *time = utcTime;
-    return HITLS_APP_SUCCESS;
-}
-
 static int32_t GenerateKeyAttr(int32_t algId, HITLS_APP_KeyAttr *attr,
     char **uuid)
 {
@@ -327,7 +308,7 @@ static int32_t GenerateKeyAttr(int32_t algId, HITLS_APP_KeyAttr *attr,
         AppPrintError("keymgmt: Failed to generate the uuid, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
-    ret = GetTimeInfo(&attr->createTime);
+    ret = HITLS_APP_GetTime(&attr->createTime);
     if (ret != HITLS_APP_SUCCESS) {
         return ret;
     }

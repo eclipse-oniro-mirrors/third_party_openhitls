@@ -37,11 +37,12 @@
 #include "cipher_suite.h"
 #include "hitls_session.h"
 #include "hitls_cert_type.h"
+#include "bsl_bytes.h"
 #include "bsl_sal.h"
 #include "bsl_err.h"
 #include "sal_file.h"
 
-#define DEFAULT_PORT 8888
+#define HEARTBEAT_STR "heartbeat"
 
 APP_ProtocolType ParseProtocolType(const char *protocolStr)
 {
@@ -77,7 +78,14 @@ HITLS_Config *CreateProtocolConfig(APP_ProtocolType protocol, AppProvider *provi
     if (config == NULL) {
         AppPrintError("Failed to create protocol configuration\n");
     }
-    
+#ifdef HITLS_APP_SM_MODE
+    int32_t ret = HITLS_CFG_SetSessionTicketSupport(config, false);
+    if (ret != HITLS_SUCCESS) {
+        HITLS_CFG_FreeConfig(config);
+        AppPrintError("Failed to set session ticket support, errCode: 0x%x.\n", ret);
+        return NULL;
+    }
+#endif
     return config;
 }
 
@@ -392,17 +400,6 @@ int CreateUDPSocket(APP_NetworkAddr *addr, int timeout)
         return -1;
     }
     
-    struct sockaddr_in localAddr;
-    memset_s(&localAddr, sizeof(localAddr), 0, sizeof(localAddr));
-    localAddr.sin_family = AF_INET;
-    localAddr.sin_addr.s_addr = INADDR_ANY; /* Bind to any address */
-    localAddr.sin_port = htons(DEFAULT_PORT);
-    if (BSL_SAL_SockBind(sockfd, (struct sockaddr *)&localAddr, sizeof(localAddr)) < 0) {
-        AppPrintError("Failed to bind UDP socket: %s\n", strerror(errno));
-        BSL_SAL_SockClose(sockfd);
-        return -1;
-    }
-
     /* Connect UDP socket to server */
     struct sockaddr_in serverAdd;
     memset_s(&serverAdd, sizeof(serverAdd), 0, sizeof(serverAdd));
@@ -473,12 +470,20 @@ int CreateTCPListenSocket(APP_NetworkAddr *addr, int backlog)
     return sockfd;
 }
 
-int CreateUDPListenSocket(APP_NetworkAddr *addr)
+int CreateUDPListenSocket(APP_NetworkAddr *addr, int timeout)
 {
     int sockfd = BSL_SAL_Socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         AppPrintError("Failed to create UDP listen socket: %s\n", strerror(errno));
         return -1;
+    }
+
+    if (timeout > 0) {
+        struct timeval tv;
+        tv.tv_sec = timeout;
+        tv.tv_usec = 0;
+        BSL_SAL_SetSockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        BSL_SAL_SetSockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
     }
     
     /* Bind to address */
@@ -510,10 +515,10 @@ int AcceptTCPConnection(int listenFd)
 {
     struct sockaddr_in clientAddr;
     socklen_t addrLen = sizeof(clientAddr);
-    
+    int flags = fcntl(listenFd, F_GETFL, 0);
+    fcntl(listenFd, F_SETFL, flags | O_NONBLOCK);
     int clientFd = accept(listenFd, (struct sockaddr *)&clientAddr, &addrLen);
     if (clientFd < 0) {
-        AppPrintError("Failed to accept connection: %s\n", strerror(errno));
         return -1;
     }
     
@@ -617,3 +622,44 @@ int ParseConnectString(const char *connectStr, APP_NetworkAddr *addr)
     
     return HITLS_APP_SUCCESS;
 }
+
+#ifdef HITLS_APP_SM_MODE
+int32_t GetHeartBeat(uint8_t *buffer, uint32_t *len)
+{
+    if (buffer == NULL || len == NULL || *len < APP_HEARTBEAT_LEN) {
+        AppPrintError("Invalid buffer or length.\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+
+    int64_t time = 0;
+    int ret = HITLS_APP_GetTime(&time);
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("Failed to get time, errCode: 0x%x.\n", ret);
+        return ret;
+    }
+    BSL_Uint64ToByte(time, (uint8_t *)&time);
+    const char *heartBeat = HEARTBEAT_STR;
+    (void)memcpy_s(buffer, APP_HEARTBEAT_LEN, heartBeat, strlen(heartBeat));
+    (void)memcpy_s(buffer + strlen(heartBeat), APP_HEARTBEAT_LEN - strlen(heartBeat), &time, sizeof(time));
+    *len = APP_HEARTBEAT_LEN;
+    return HITLS_APP_SUCCESS;
+}
+
+int32_t ParseHeartBeat(uint8_t *buffer, uint32_t len)
+{
+    if (buffer == NULL || len != APP_HEARTBEAT_LEN) {
+        AppPrintError("Invalid buffer or length.\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+
+    int ret = strncmp((const char *)buffer, HEARTBEAT_STR, strlen(HEARTBEAT_STR));
+    if (ret != 0) {
+        AppPrintError("Invalid heartbeat string.\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+    int64_t time = 0;
+    (void)memcpy_s(&time, sizeof(time), buffer + strlen(HEARTBEAT_STR), sizeof(time));
+    time = BSL_ByteToUint64((uint8_t *)&time);
+    return HITLS_APP_SUCCESS;
+}
+#endif

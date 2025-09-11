@@ -21,10 +21,15 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <unistd.h>
 #include "securec.h"
 #include "app_errno.h"
 #include "app_print.h"
 #include "app_opt.h"
+#include "app_provider.h"
+#include "app_sm.h"
+#include "app_keymgmt.h"
+#include "app_utils.h"
 #include "app_tls_common.h"
 #include "hitls.h"
 #include "hitls_cert_init.h"
@@ -39,6 +44,38 @@
 #include "bsl_log.h"
 
 #define HTTP_BUF_MAXLEN (18 * 1024) /* 18KB */
+#define DEFAULT_DTLCP_TIMEOUT 5
+
+static volatile bool g_loopFlag = true;
+
+static int ServerMainLoop(HITLS_Config *config, int listenFd, HITLS_ServerParams *params);
+
+/* Thread server parameters structure */
+typedef struct {
+    HITLS_Config *config;
+    int listenFd;
+    HITLS_ServerParams *params;
+    int ret;
+} ThreadServerArgs;
+
+static void *ThreadServerMainLoop(void *arg)
+{
+    ThreadServerArgs *threadArgs = (ThreadServerArgs *)arg;
+    threadArgs->ret = ServerMainLoop(threadArgs->config, threadArgs->listenFd, threadArgs->params);
+    g_loopFlag = false;
+    return NULL;
+}
+
+#ifdef HITLS_APP_SM_MODE
+static int32_t HeartBeatLoop(HITLS_Config *config, int listenFd, HITLS_ServerParams *params);
+
+static void *ThreadHeartBeatLoop(void *arg)
+{
+    ThreadServerArgs *threadArgs = (ThreadServerArgs *)arg;
+    threadArgs->ret = HeartBeatLoop(threadArgs->config, threadArgs->listenFd, threadArgs->params);
+    return NULL;
+}
+#endif
 
 /* Server option types */
 typedef enum {
@@ -71,6 +108,11 @@ typedef enum {
     HITLS_SERVER_OPT_CERTFORM,
     HITLS_SERVER_OPT_KEYFORM,
     HITLS_APP_PROV_ENUM,
+
+#ifdef HITLS_APP_SM_MODE
+    /* SM mode options */
+    HITLS_SM_OPTIONS_ENUM,
+#endif
     HITLS_SERVER_OPT_MAX,
 } HITLS_ServerOptType;
 
@@ -108,6 +150,10 @@ static const HITLS_CmdOption g_serverOptions[] = {
     
     {"help",        HITLS_APP_OPT_HELP,           HITLS_APP_OPT_VALUETYPE_NO_VALUE,    "Show help"},
     HITLS_APP_PROV_OPTIONS,
+#ifdef HITLS_APP_SM_MODE
+    /* SM mode options */
+    HITLS_SM_OPTIONS,
+#endif
     {NULL,          0,                            0,                                   NULL}
 };
 
@@ -122,8 +168,6 @@ static void InitServerParams(HITLS_ServerParams *params, AppProvider *provider)
     if (params == NULL || provider == NULL) {
         return;
     }
-    
-    memset_s(params, sizeof(HITLS_ServerParams), 0, sizeof(HITLS_ServerParams));
     
     /* Set default values */
     params->port = 4433;
@@ -261,6 +305,9 @@ static int ParseServerOptLoop(HITLS_ServerParams *params)
             }
         }
         HITLS_APP_PROV_CASES(optType, params->provider)
+#ifdef HITLS_APP_SM_MODE
+        HITLS_APP_SM_CASES(optType, params->smParam);
+#endif
     }
     if (HITLS_APP_GetRestOptNum() != 0) {
         AppPrintError("Extra arguments given.\n");
@@ -268,6 +315,19 @@ static int ParseServerOptLoop(HITLS_ServerParams *params)
         return HITLS_APP_OPT_UNKOWN;
     }
     return ret;
+}
+
+static int32_t CheckSmParam(HITLS_ServerParams *params)
+{
+#ifdef HITLS_APP_SM_MODE
+    if (params->smParam->smTag == 1 && params->smParam->workPath == NULL) {
+        AppPrintError("server: The workpath is not specified.\n");
+        return HITLS_APP_OPT_VALUE_INVALID;
+    }
+#else
+    (void) params;
+#endif
+    return HITLS_APP_SUCCESS;
 }
 
 static int ParseServerOptions(int argc, char *argv[], HITLS_ServerParams *params, AppProvider *provider)
@@ -292,6 +352,11 @@ static int ParseServerOptions(int argc, char *argv[], HITLS_ServerParams *params
     }
     
     HITLS_APP_OptEnd();
+
+    ret = CheckSmParam(params);
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
     return HITLS_APP_SUCCESS;
 }
 
@@ -364,9 +429,8 @@ static int CreateListenSocket(HITLS_ServerParams *params)
     
     /* Create listen socket based on protocol */
     APP_ProtocolType protocol = ParseProtocolType(params->protocol);
-
     if (protocol == APP_PROTOCOL_DTLCP) {
-        listenFd = CreateUDPListenSocket(&addr);
+        listenFd = CreateUDPListenSocket(&addr, DEFAULT_DTLCP_TIMEOUT);
     } else {
         listenFd = CreateTCPListenSocket(&addr, params->backlog);
     }
@@ -404,6 +468,44 @@ static BSL_UIO *CreateServerUIO(int clientFd, HITLS_ServerParams *params)
     return uio;
 }
 
+#ifdef HITLS_APP_SM_MODE
+static int32_t ReceiveKeyCallback(void *ctx, void *buf, uint32_t len)
+{
+    uint32_t readLen = 0;
+    int32_t ret = HITLS_Read(ctx, buf, len, &readLen);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    if (readLen != len) {
+        return HITLS_APP_ERR_SEND_DATA;
+    }
+    return HITLS_APP_SUCCESS;
+}
+
+static int32_t HandleSm(HITLS_Ctx *ctx, HITLS_ServerParams *params)
+{
+    int32_t ret = HITLS_APP_ReceiveKey(params->provider, params->smParam, -1, -1, ReceiveKeyCallback, ctx);
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("server: Failed to receive key: 0x%x\n", ret);
+        return ret;
+    }
+    AppPrintError("server: Received key from client successfully!\n");
+    /* Send response */
+    const char *response = "Received key successfully!";
+    uint32_t written = 0;
+    
+    ret = HITLS_Write(ctx, (const uint8_t *)response, strlen(response), &written);
+    if (ret == HITLS_SUCCESS) {
+        if (!params->quiet) {
+            AppPrintError("server: Sent %u bytes response to client\n", written);
+        }
+    } else {
+        AppPrintError("server: Failed to send response: 0x%x\n", ret);
+    }
+    return HITLS_APP_SUCCESS;
+}
+#endif
+
 static int HandleClientConnection(HITLS_Ctx *ctx, HITLS_ServerParams *params)
 {
     if (ctx == NULL || params == NULL) {
@@ -418,6 +520,9 @@ static int HandleClientConnection(HITLS_Ctx *ctx, HITLS_ServerParams *params)
     
     /* Perform handshake */
     do {
+        if (!g_loopFlag) {
+            return HITLS_APP_SUCCESS;
+        }
         ret = HITLS_Accept(ctx);
         if (ret == HITLS_SUCCESS) {
             break;
@@ -427,7 +532,7 @@ static int HandleClientConnection(HITLS_Ctx *ctx, HITLS_ServerParams *params)
             return HITLS_APP_ERR_HANDSHAKE;
         }
         /* Non-blocking I/O, retry */
-        BSL_SAL_Sleep(10000); /* Sleep 10ms */
+        usleep(10000); /* Sleep 10000us. */
     } while (ret == HITLS_REC_NORMAL_RECV_BUF_EMPTY || ret == HITLS_REC_NORMAL_IO_BUSY);
     
     if (!params->quiet) {
@@ -436,7 +541,11 @@ static int HandleClientConnection(HITLS_Ctx *ctx, HITLS_ServerParams *params)
         /* Print connection information */
         PrintConnectionInfo(ctx, params->state);
     }
-    
+#ifdef HITLS_APP_SM_MODE
+    if (params->smParam->smTag == 1) {
+        return HandleSm(ctx, params);
+    }
+#endif
     /* Handle data exchange */
     uint8_t buffer[HTTP_BUF_MAXLEN];
     uint32_t read_len = 0;
@@ -498,7 +607,7 @@ static int ServerMainLoop(HITLS_Config *config, int listenFd, HITLS_ServerParams
         AppPrintInfo("Server started, waiting for connections...\n");
     }
     
-    while (1) {
+    while (g_loopFlag) {
         int clientFd = -1;
         BSL_UIO *uio = NULL;
         HITLS_Ctx *ctx = NULL;
@@ -508,8 +617,13 @@ static int ServerMainLoop(HITLS_Config *config, int listenFd, HITLS_ServerParams
             clientFd = listenFd;
         } else {
             clientFd = AcceptTCPConnection(listenFd);
-            if (clientFd < 0) {
+            if (clientFd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                usleep(10000); /* Sleep 10000us. */
                 continue;
+            }
+            if (clientFd < 0) {
+                AppPrintError("Failed to accept connection: %s\n", strerror(errno));
+                break;
             }
         }
 
@@ -525,7 +639,7 @@ static int ServerMainLoop(HITLS_Config *config, int listenFd, HITLS_ServerParams
         int ret = HITLS_SetUio(ctx, uio);
         if (ret != HITLS_SUCCESS) {
             AppPrintError("Failed to set UIO: 0x%x\n", ret);
-            CleanupConnection(ctx, uio, -1);
+            CleanupConnection(ctx, uio, (protocol != APP_PROTOCOL_DTLCP) ? clientFd : -1);
             continue;
         }
         
@@ -535,7 +649,7 @@ static int ServerMainLoop(HITLS_Config *config, int listenFd, HITLS_ServerParams
             AppPrintError("Failed to handle client connection\n");
         }
         
-        CleanupConnection(ctx, uio, -1);
+        CleanupConnection(ctx, uio, (protocol != APP_PROTOCOL_DTLCP) ? clientFd : -1);
         
         connections++;
         
@@ -552,7 +666,6 @@ static int ServerMainLoop(HITLS_Config *config, int listenFd, HITLS_ServerParams
             break;
         }
     }
-    
     return HITLS_APP_SUCCESS;
 }
 
@@ -567,12 +680,157 @@ static void CleanupServerResources(HITLS_Config *config, int listenFd)
     }
 }
 
+static void SignalHandler(int sig)
+{
+    (void)sig;
+    g_loopFlag = false;
+}
+
+#ifdef HITLS_APP_SM_MODE
+static void *ThreadPeriodicTask(void *arg)
+{
+    int i = 0;
+    int seconds = 0;
+    struct timeval delay;
+    AppProvider *provider = (AppProvider *)arg;
+    if (provider == NULL) {
+        return NULL;
+    }
+    while (g_loopFlag) {
+        if (seconds == 0) {
+            (void)HITLS_APP_SM_PeriodicRandomCheck(provider);
+        }
+        for (i = 0; i < 1000; i++) { /* Sleep 1000 times, total 1s. */
+            if (!g_loopFlag) {
+                return NULL;
+            }
+            delay.tv_sec = 0;
+            delay.tv_usec = 1000; /* Sleep 1000us. */
+            select(0, NULL, NULL, NULL, &delay);
+        }
+        seconds++;
+        if (seconds == 86400) { /* 86400: 24 hours */
+            seconds = 0;
+        }
+    }
+    return NULL;
+}
+#endif
+
+static int32_t CreateConfigAndListenSocket(HITLS_ServerParams *params, HITLS_Config **config, int *listenFd)
+{
+    /* Create TLS configuration */
+    HITLS_Config *configTmp = CreateServerConfig(params);
+    if (configTmp == NULL) {
+        AppPrintError("Failed to create TLS configuration\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+    
+    /* Create listening socket */
+    int fd = CreateListenSocket(params);
+    if (fd < 0) {
+        AppPrintError("Failed to create listening socket\n");
+        HITLS_CFG_FreeConfig(configTmp);
+        return HITLS_APP_ERR_LISTEN;
+    }
+    *config = configTmp;
+    *listenFd = fd;
+    return HITLS_APP_SUCCESS;
+}
+
+static void RegisterSignal(void)
+{
+    (void)signal(SIGCHLD, SIG_IGN);
+    (void)signal(SIGINT, SignalHandler);
+    (void)signal(SIGTERM, SignalHandler);
+}
+
+static int32_t CreateServerThread(ThreadServerArgs *threadArgs1, ThreadServerArgs *threadArgs2,
+    AppProvider *appProvider)
+{
+    (void)threadArgs2;
+    (void)appProvider;
+    int ret = HITLS_APP_SUCCESS;
+    BSL_SAL_ThreadId thread1 = NULL;
+#ifdef HITLS_APP_SM_MODE
+    BSL_SAL_ThreadId thread2 = NULL;
+    BSL_SAL_ThreadId thread3 = NULL;
+#endif
+    do {
+        /* Start first thread for TLCP server */
+        ret = BSL_SAL_ThreadCreate(&thread1, ThreadServerMainLoop, threadArgs1);
+        if (ret != BSL_SUCCESS) {
+            AppPrintError("Failed to create tlcp server thread\n");
+            ret = HITLS_APP_SAL_FAIL;
+            break;
+        }
+#ifdef HITLS_APP_SM_MODE
+        if (threadArgs1->params->smParam->smTag != 1) {
+            break;
+        }
+        /* Start second thread for DTLCP server */
+        ret = BSL_SAL_ThreadCreate(&thread2, ThreadHeartBeatLoop, threadArgs2);
+        if (ret != BSL_SUCCESS) {
+            AppPrintError("Failed to create dtlcp server thread\n");
+            ret = HITLS_APP_SAL_FAIL;
+            break;
+        }
+        /* Start third thread for periodic task */
+        ret = BSL_SAL_ThreadCreate(&thread3, ThreadPeriodicTask, appProvider);
+        if (ret != BSL_SUCCESS) {
+            AppPrintError("Failed to create periodic task thread\n");
+            ret = HITLS_APP_SAL_FAIL;
+            break;
+        }
+#endif
+    } while (0);
+
+    if (ret != HITLS_APP_SUCCESS) {
+        g_loopFlag = false;
+    }
+
+    while (g_loopFlag) {
+        usleep(500000); /* 500000us */
+    }
+    BSL_SAL_ThreadClose(thread1);
+#ifdef HITLS_APP_SM_MODE
+    BSL_SAL_ThreadClose(thread2);
+    BSL_SAL_ThreadClose(thread3);
+#endif
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
+
+    /* Check return values from both threads */
+    if (threadArgs1->ret != HITLS_APP_SUCCESS) {
+        AppPrintError("server: tlcp server thread failed with error: 0x%x\n", threadArgs1->ret);
+        return threadArgs1->ret;
+    }
+#ifdef HITLS_APP_SM_MODE
+    if (threadArgs1->params->smParam->smTag == 1 && threadArgs2->ret != HITLS_APP_SUCCESS) {
+        AppPrintError("server: dtlcp server thread failed with error: 0x%x\n", threadArgs2->ret);
+        return threadArgs2->ret;
+    }
+#endif
+    return HITLS_APP_SUCCESS;
+}
+
 int HITLS_ServerMain(int argc, char *argv[])
 {
     AppProvider appProvider = {"default", NULL, "provider=default"};
     HITLS_ServerParams params = {0};
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param smParam = {0};
+    AppInitParam initParam = {&appProvider, &smParam};
+    params.smParam = &smParam;
+#else
+    AppInitParam initParam = {&appProvider};
+#endif
     HITLS_Config *config = NULL;
     int listenFd = -1;
+    HITLS_Config *dtlcpConfig = NULL;
+    int dtlcpListenFd = -1;
+    HITLS_ServerParams dtlcpParams = {0};
     int ret = HITLS_APP_SUCCESS;
     
     /* Initialize library */
@@ -599,48 +857,131 @@ int HITLS_ServerMain(int argc, char *argv[])
     if (ret != HITLS_APP_SUCCESS) {
         goto cleanup;
     }
-    if (HITLS_APP_LoadProvider(params.provider->providerPath, params.provider->providerName) != HITLS_APP_SUCCESS) {
+    ret = HITLS_APP_Init(&initParam);
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("Failed to initialize app, ret: %d.\n", ret);
+        goto cleanup;
+    }
+    
+    ret = CreateConfigAndListenSocket(&params, &config, &listenFd);
+    if (ret != HITLS_APP_SUCCESS) {
         goto cleanup;
     }
 
-    ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), CRYPT_RAND_SM4_CTR_DF,
-        params.provider->providerAttr, NULL, 0, NULL);
-    if (ret != CRYPT_SUCCESS) {
-        AppPrintError("Failed to initialize random: 0x%x\n", ret);
-        return HITLS_APP_INIT_FAILED;
+#ifdef HITLS_APP_SM_MODE
+    if (params.smParam->smTag == 1) {
+        (void)memcpy_s(&dtlcpParams, sizeof(dtlcpParams), &params, sizeof(params));
+        dtlcpParams.protocol = "dtlcp";
+        dtlcpParams.port = DEFAULT_DTLCP_PORT;
+
+        ret = CreateConfigAndListenSocket(&dtlcpParams, &dtlcpConfig, &dtlcpListenFd);
+        if (ret != HITLS_APP_SUCCESS) {
+            goto cleanup;
+        }
     }
-    
-    /* Create TLS configuration */
-    config = CreateServerConfig(&params);
-    if (config == NULL) {
-        AppPrintError("Failed to create TLS configuration\n");
-        ret = HITLS_APP_INVALID_ARG;
-        goto cleanup;
-    }
-    
-    /* Create listening socket */
-    listenFd = CreateListenSocket(&params);
-    if (listenFd < 0) {
-        AppPrintError("Failed to create listening socket\n");
-        ret = HITLS_APP_ERR_LISTEN;
-        goto cleanup;
-    }
-    
+#endif
     /* Handle SIGCHLD for child processes */
-    signal(SIGCHLD, SIG_IGN);
+    RegisterSignal();
     
-    /* Enter main server loop */
-    ret = ServerMainLoop(config, listenFd, &params);
-    
+    ThreadServerArgs threadArgs1 = {config, listenFd, &params, HITLS_APP_SUCCESS};
+    ThreadServerArgs threadArgs2 = {dtlcpConfig, dtlcpListenFd, &dtlcpParams, HITLS_APP_SUCCESS};
+    ret = CreateServerThread(&threadArgs1, &threadArgs2, &appProvider);
+    if (ret != HITLS_APP_SUCCESS) {
+        goto cleanup;
+    }
 cleanup:
     CleanupServerResources(config, listenFd);
-    
+    CleanupServerResources(dtlcpConfig, dtlcpListenFd);
     if (!params.quiet && ret == HITLS_APP_SUCCESS) {
         AppPrintInfo("Server completed successfully\n");
     }
-    
+    HITLS_APP_Deinit(&initParam, ret);
     /* Cleanup print UIO */
     AppPrintErrorUioUnInit();
     
     return ret;
 }
+
+#ifdef HITLS_APP_SM_MODE
+static int32_t HandleHeartBeat(HITLS_Ctx *ctx)
+{
+    int ret = HITLS_APP_SUCCESS;
+    do {
+        if (!g_loopFlag) {
+            return HITLS_APP_SUCCESS;
+        }
+        ret = HITLS_Accept(ctx);
+        if (ret == HITLS_SUCCESS) {
+            break;
+        }
+        if (ret != HITLS_REC_NORMAL_RECV_BUF_EMPTY && ret != HITLS_REC_NORMAL_IO_BUSY) {
+            AppPrintError("server: TLS handshake failed, errCode: 0x%x.\n", ret);
+            return HITLS_APP_ERR_HANDSHAKE;
+        }
+        /* Non-blocking I/O, retry */
+        usleep(10000); /* Sleep 10000us. */
+    } while (ret == HITLS_REC_NORMAL_RECV_BUF_EMPTY || ret == HITLS_REC_NORMAL_IO_BUSY);
+
+    uint8_t buffer[APP_HEARTBEAT_LEN];
+    uint32_t readLen = 0;
+    
+    while (g_loopFlag) {
+        ret = HITLS_Read(ctx, buffer, sizeof(buffer), &readLen);
+        if (ret != HITLS_SUCCESS || readLen != APP_HEARTBEAT_LEN) {
+            AppPrintError("server: Failed to read heartbeat data, errCode: 0x%x, readLen: %u.\n", ret, readLen);
+            return ret;
+        }
+        ret = ParseHeartBeat(buffer, readLen);
+        if (ret != HITLS_APP_SUCCESS) {
+            AppPrintError("server: Failed to parse heartbeat, errCode: 0x%x.\n", ret);
+            return ret;
+        }
+
+        readLen = sizeof(buffer);
+        ret = GetHeartBeat(buffer, &readLen);
+        if (ret != HITLS_APP_SUCCESS) {
+            AppPrintError("Failed to get heartbeat: 0x%x\n", ret);
+            return ret;
+        }
+        uint32_t written = 0;
+        ret = HITLS_Write(ctx, (const uint8_t *)buffer, readLen, &written);
+        if (ret != HITLS_SUCCESS) {
+            AppPrintError("Failed to send heartbeat, errCode: 0x%x\n", ret);
+            return ret;
+        }
+    }
+    return HITLS_APP_SUCCESS;
+}
+
+static int32_t HeartBeatLoop(HITLS_Config *config, int listenFd, HITLS_ServerParams *params)
+{
+    int ret = HITLS_APP_SUCCESS;
+    while (g_loopFlag) {
+        BSL_UIO *uio = NULL;
+        HITLS_Ctx *ctx = NULL;
+        int clientFd = listenFd;
+        /* Create UIO and TLS context */
+        uio = CreateServerUIO(clientFd, params);
+        ctx = HITLS_New(config);
+        if (uio == NULL || ctx == NULL) {
+            AppPrintError("server: Failed to create UIO or TLS context.\n");
+            CleanupConnection(ctx, uio, -1);
+            ret = HITLS_APP_ERR_CREATE_CTX;
+            break;
+        }
+        ret = HITLS_SetUio(ctx, uio);
+        if (ret != HITLS_SUCCESS) {
+            AppPrintError("server: Failed to set UIO, errCode: 0x%x.\n", ret);
+            CleanupConnection(ctx, uio, -1);
+            ret = HITLS_APP_UIO_FAIL;
+            break;
+        }
+        
+        /* Handle client connection */
+        ret = HandleHeartBeat(ctx);
+        CleanupConnection(ctx, uio, -1);
+    }
+    g_loopFlag = false;
+    return ret;
+}
+#endif
