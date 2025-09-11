@@ -246,7 +246,6 @@ parse_option()
 
 run_demos()
 {
-    exit_code=$?
     pushd ${HITLS_ROOT_DIR}/testcode/demo/build
     executales=$(find ./ -maxdepth 1 -type f -perm -a=x )
     for e in $executales
@@ -254,7 +253,7 @@ run_demos()
         if [[ ! "$e" == *"client"* ]] && [[ ! "$e" == *"server"* ]]; then
             echo "${e} start"
             eval "${e}"
-            if [ $exit_code -ne 0 ]; then
+            if [ $? -ne 0 ]; then
                 echo "Demo ${e} failed"
                 exit 1
             fi
@@ -263,26 +262,38 @@ run_demos()
 
     # run server and client in order.
     ./server &
-    if [ $exit_code -ne 0 ]; then
-        echo "Demo ${e} failed"
-        exit 1
-    fi
+    server_pid=$!
     sleep 1
     ./client
-    if [ $exit_code -ne 0 ]; then
-        echo "Demo ${e} failed"
+    client_rc=$?
+    if [ $client_rc -ne 0 ]; then
+        echo "Demo client failed"
         exit 1
     fi
+    # wait server to exit and get exit code
+    wait $server_pid
+    server_rc=$?
+    if [ $server_rc -ne 0 ]; then
+        echo "Demo server failed"
+        exit 1
+    fi
+
     # run tlcp server and client in order.
     ./tlcp_server &
-    if [ $exit_code -ne 0 ]; then
-        echo "Demo ${e} failed"
-        exit 1
-    fi
+    tlcp_server_pid=$!
     sleep 1
     ./tlcp_client
-    if [ $exit_code -ne 0 ]; then
-        echo "Demo ${e} failed"
+    tlcp_client_rc=$?
+    echo "tlcp_client_rc: $tlcp_client_rc"
+    if [ $tlcp_client_rc -ne 0 ]; then
+        echo "Demo tlcp client failed"
+        exit 1
+    fi
+    wait $tlcp_server_pid
+    tlcp_server_rc=$?
+    echo "tlcp_server_rc: $tlcp_server_rc"
+    if [ $tlcp_server_rc -ne 0 ]; then
+        echo "Demo tlcp server failed"
         exit 1
     fi
     popd

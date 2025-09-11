@@ -139,5 +139,5 @@ EXIT:
     CRYPT_EAL_PkeyFreeCtx(pubCtx);
     BSL_SAL_Free(shareKey);
     BSL_ERR_DeInit();
-    return 0;
+    return ret;
 }

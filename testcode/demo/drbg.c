@@ -83,5 +83,5 @@ EXIT:
     // Release the context memory.
     CRYPT_EAL_RandDeinit();
     BSL_ERR_DeInit();
-    return 0;
+    return ret;
 }

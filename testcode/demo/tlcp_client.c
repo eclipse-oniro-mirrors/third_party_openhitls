@@ -33,6 +33,7 @@ static int32_t HiTLSInit()
     }
     HITLS_CertMethodInit();
     HITLS_CryptMethodInit();
+    return 0;
 }
 
 int main(int32_t argc, char *argv[])

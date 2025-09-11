@@ -317,9 +317,6 @@ int32_t EAL_Md(CRYPT_MD_AlgId id, void *libCtx, const char *attr, const uint8_t 
         EAL_ERR_REPORT(CRYPT_EVENT_ERR, CRYPT_ALGO_MD, id, ret);
         goto EXIT;
     }
-    if (method.mdSize != 0) {
-        *outLen = method.mdSize;
-    }
 
 EXIT:
     method.freeCtx(data);
