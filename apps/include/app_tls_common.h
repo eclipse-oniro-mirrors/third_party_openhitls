@@ -26,6 +26,7 @@
 #include "hitls_cert.h"
 #include "crypt_eal_pkey.h"
 #include "app_provider.h"
+#include "app_sm.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,6 +61,9 @@ typedef struct {
     char *tlcpSignCert;
     char *tlcpSignKey;
     AppProvider *provider;
+#ifdef HITLS_APP_SM_MODE
+    HITLS_APP_SM_Param *smParam;
+#endif
 } APP_CertConfig;
 
 /**
@@ -93,17 +97,6 @@ int ConfigureCipherSuites(HITLS_Config *config, const char *cipherStr, APP_Proto
  * @return Certificate object or NULL on error
  */
 HITLS_X509_Cert *LoadCertFromFile(const char *certFile, BSL_ParseFormat format, AppProvider *provider);
-
-/**
- * @brief Load private key from file
- * @param keyFile Private key file path
- * @param format Key format
- * @param password Key password (can be NULL)
- * @param provider Provider configuration
- * @return Private key object or NULL on error
- */
-CRYPT_EAL_PkeyCtx *LoadKeyFromFile(const char *keyFile, BSL_ParseFormat format,
-    const char *password, AppProvider *provider);
 
 /**
  * @brief Configure certificate verification

@@ -238,6 +238,7 @@ CRYPT_EAL_PkeyCtx *HITLS_APP_GenRsaPkeyCtx(uint32_t bits);
 int32_t HITLS_APP_StrToHex(const char *str, uint8_t *hex, uint32_t *hexLen);
 
 typedef struct {
+    int32_t randAlgId;
     AppProvider *provider;
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param *smParam;

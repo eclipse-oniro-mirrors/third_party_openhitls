@@ -367,14 +367,14 @@ static int32_t CheckSmParam(SignInfo *signInfo)
 
 int32_t HITLS_DgstMain(int argc, char *argv[])
 {
-    AppProvider appProvider = {"default", NULL, "provider=default"};
+    AppProvider appProvider = {NULL, NULL, NULL};
     g_signInfo.provider = &appProvider;
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
-    AppInitParam initParam = {&appProvider, &smParam};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider, &smParam};
     g_signInfo.smParam = &smParam;
 #else
-    AppInitParam initParam = {&appProvider};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider};
 #endif
     char *outfile = NULL;
     char *msgFile = NULL;

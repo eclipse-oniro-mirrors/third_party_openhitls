@@ -391,7 +391,10 @@ static HITLS_Config *CreateClientConfig(HITLS_ClientParams *params)
         .tlcpEncKey = params->tlcpEncKey,
         .tlcpSignCert = params->tlcpSignCert,
         .tlcpSignKey = params->tlcpSignKey,
-        .provider = params->provider
+        .provider = params->provider,
+#ifdef HITLS_APP_SM_MODE
+        .smParam = params->smParam,
+#endif
     };
     
     ret = ConfCertVerification(config, &certConfig, !params->verifyNone, params->verifyDepth);
@@ -864,14 +867,14 @@ static int32_t CreateConfigAndConnection(HITLS_ClientParams *params, HITLS_Confi
 
 int HITLS_ClientMain(int argc, char *argv[])
 {
-    AppProvider appProvider = {"default", NULL, "provider=default"};
+    AppProvider appProvider = {NULL, NULL, NULL};
     HITLS_ClientParams params = {0};
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
-    AppInitParam initParam = {&appProvider, &smParam};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider, &smParam};
     params.smParam = &smParam;
 #else
-    AppInitParam initParam = {&appProvider};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider};
 #endif
     HITLS_Config *config = NULL;
     HITLS_Ctx *ctx = NULL;

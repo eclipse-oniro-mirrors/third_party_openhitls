@@ -86,6 +86,8 @@ int32_t HITLS_APP_SM_IntegrityCheck(AppProvider *provider);
 
 int32_t HITLS_APP_SM_PeriodicRandomCheck(AppProvider *provider);
 
+char *HITLS_APP_GetAppPath(void);
+
 #endif
 
 #ifdef __cplusplus

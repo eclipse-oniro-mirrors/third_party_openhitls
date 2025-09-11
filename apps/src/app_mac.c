@@ -483,13 +483,13 @@ static int32_t HandleMac(MacOpt *macOpt)
 int32_t HITLS_MacMain(int argc, char *argv[])
 {
     int32_t mainRet = HITLS_APP_SUCCESS;
-    AppProvider appProvider = {"default", NULL, "provider=default"};
+    AppProvider appProvider = {NULL, NULL, NULL};
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
-    AppInitParam initParam = {&appProvider, &smParam};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider, &smParam};
     MacOpt macOpt = {CRYPT_MAC_HMAC_SM3, 0, 0, NULL, {0}, 0, NULL, NULL, NULL, 0, &appProvider, &smParam};
 #else
-    AppInitParam initParam = {&appProvider};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider};
     MacOpt macOpt = {CRYPT_MAC_HMAC_SHA256, 0, 0, NULL, {0}, 0, NULL, NULL, NULL, 0, &appProvider};
 #endif
     do {

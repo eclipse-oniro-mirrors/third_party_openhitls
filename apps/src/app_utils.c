@@ -75,6 +75,14 @@
 #define APP_PASS_FILE_STR "file:"
 #define APP_PASS_FILE_STR_LEN ((int)(sizeof(APP_PASS_FILE_STR) - 1))
 
+#ifdef HITLS_APP_SM_MODE
+#define APP_SM_PROVIDER_NAME "libhitls_sm.so"
+#define APP_SM_PROVIDER_ATTR "provider=sm"
+#endif
+
+#define APP_DEFAULT_PROVIDER_NAME "default"
+#define APP_DEFAULT_PROVIDER_ATTR "provider=default"
+
 typedef struct defaultPassCBData {
     uint32_t maxLen;
     uint32_t minLen;
@@ -1039,17 +1047,62 @@ static int32_t InitRand(AppInitParam *param)
         AppPrintError("Failed to set pid, pid = %d.\n", pid);
         return HITLS_APP_INVALID_ARG;
     }
-    int32_t algId = param->smParam->smTag == 1 ? CRYPT_RAND_SM4_CTR_DF : CRYPT_RAND_SHA256;
-    int32_t ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), algId, param->provider->providerAttr,
-        (const uint8_t *)str, len, NULL);
+    if (param->smParam->smTag == 1 && param->randAlgId == CRYPT_RAND_SHA256) {
+        param->randAlgId = CRYPT_RAND_SM4_CTR_DF;
+    }
+    int32_t ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), param->randAlgId,
+        param->provider->providerAttr, (const uint8_t *)str, len, NULL);
 #else
-    int32_t ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), CRYPT_RAND_SHA256,
+    int32_t ret = CRYPT_EAL_ProviderRandInitCtx(APP_GetCurrent_LibCtx(), param->randAlgId,
         param->provider->providerAttr, NULL, 0, NULL);
 #endif
     if (ret != CRYPT_SUCCESS) {
         AppPrintError("Failed to init rand ctx, ret: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
+    return HITLS_APP_SUCCESS;
+}
+
+#ifdef HITLS_APP_SM_MODE
+static char *g_smProviderPath = NULL;
+static int32_t GetSmProviderPath(void)
+{
+    char *path = HITLS_APP_GetAppPath();
+    if (path == NULL) {
+        return HITLS_APP_INVALID_ARG;
+    }
+    char *lastSlash = strrchr(path, '/');
+    if (lastSlash == NULL) {
+        BSL_SAL_Free(path);
+        return HITLS_APP_INVALID_ARG;
+    }
+    lastSlash[0] = '\0';
+    g_smProviderPath = path;
+    return HITLS_APP_SUCCESS;
+}
+#endif
+
+static int32_t GetProviderParam(AppInitParam *param)
+{
+    if (param->provider->providerName != NULL || param->provider->providerAttr != NULL ||
+        param->provider->providerPath != NULL) {
+        return HITLS_APP_SUCCESS;
+    }
+#ifdef HITLS_APP_SM_MODE
+    if (param->smParam->smTag == 1) {
+        int32_t ret = GetSmProviderPath();
+        if (ret != HITLS_APP_SUCCESS) {
+            return ret;
+        }
+        param->provider->providerName = APP_SM_PROVIDER_NAME;
+        param->provider->providerPath = g_smProviderPath;
+        param->provider->providerAttr = APP_SM_PROVIDER_ATTR;
+        return HITLS_APP_SUCCESS;
+    }
+#endif
+    param->provider->providerName = APP_DEFAULT_PROVIDER_NAME;
+    param->provider->providerPath = NULL;
+    param->provider->providerAttr = APP_DEFAULT_PROVIDER_ATTR;
     return HITLS_APP_SUCCESS;
 }
 
@@ -1063,7 +1116,11 @@ int32_t HITLS_APP_Init(AppInitParam *param)
         param->smParam->status = HITLS_APP_SM_STATUS_INIT;
     }
 #endif
-    int32_t ret = HITLS_APP_LoadProvider(param->provider->providerPath, param->provider->providerName);
+    int32_t ret = GetProviderParam(param);
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
+    ret = HITLS_APP_LoadProvider(param->provider->providerPath, param->provider->providerName);
     if (ret != HITLS_APP_SUCCESS) {
         return ret;
     }
@@ -1082,6 +1139,10 @@ int32_t HITLS_APP_Init(AppInitParam *param)
         }
         param->smParam->passwordLen = strlen((const char *)param->smParam->password);
         param->smParam->status = HITLS_APP_SM_STATUS_KEY_PARAMETER_INPUT;
+        if (g_smProviderPath != NULL) {
+            BSL_SAL_FREE(g_smProviderPath);
+            param->provider->providerPath = NULL;
+        }
     }
 #endif
     return HITLS_APP_SUCCESS;

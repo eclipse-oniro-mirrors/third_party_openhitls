@@ -901,9 +901,9 @@ static int32_t ProcessOptions(KeyMgmtCmdOpt *keyMgmtOpt)
 int32_t HITLS_KeyMgmtMain(int argc, char *argv[])
 {
     int32_t ret;
-    AppProvider appProvider = {"default", NULL, "provider=default"};
+    AppProvider appProvider = {NULL, NULL, NULL};
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
-    AppInitParam initParam = {&appProvider, &smParam};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider, &smParam};
     KeyMgmtCmdOpt keyMgmtOpt = {1, -1, 0, 0, 0, 0, 0, 0, 0, -1, -1, &appProvider, &smParam};
     if ((ret = HITLS_APP_OptBegin(argc, argv, g_keyMgmtOpts)) != HITLS_APP_SUCCESS) {
         AppPrintError("keymgmt: Error in opt begin.\n");

@@ -29,6 +29,7 @@
 #include "app_print.h"
 #include "app_utils.h"
 #include "app_provider.h"
+#include "app_keymgmt.h"
 #include "app_utils.h"
 #include "hitls_config.h"
 #include "hitls_cert.h"
@@ -176,13 +177,44 @@ HITLS_X509_Cert *LoadCertFromFile(const char *certFile, BSL_ParseFormat format, 
     return cert;
 }
 
-CRYPT_EAL_PkeyCtx *LoadKeyFromFile(const char *keyFile, BSL_ParseFormat format, const char *password, AppProvider *provider)
+#ifdef HITLS_APP_SM_MODE
+static int32_t GetPkeyCtxFromUuid(AppProvider *provider, HITLS_APP_SM_Param *smParam, char *uuid,
+    CRYPT_EAL_PkeyCtx **ctx)
 {
+    HITLS_APP_KeyInfo keyInfo = {0};
+    HITLS_APP_SM_Param param = {0};
+    (void)memcpy_s(&param, sizeof(HITLS_APP_SM_Param), smParam, sizeof(HITLS_APP_SM_Param));
+    param.uuid = uuid;
+    int32_t ret = HITLS_APP_FindKey(provider, &param, CRYPT_PKEY_SM2, &keyInfo);
+    if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError("Failed to find key, errCode: 0x%x\n", ret);
+        return ret;
+    }
+    *ctx = keyInfo.pkeyCtx;
+    return HITLS_APP_SUCCESS;
+}
+#endif
+
+static CRYPT_EAL_PkeyCtx *LoadKeyFromFile(APP_CertConfig *certConfig, bool isSignKey)
+{
+    char *keyFile = isSignKey ? certConfig->tlcpSignKey : certConfig->tlcpEncKey;
+    BSL_ParseFormat format = certConfig->keyFormat;
+    const char *password = certConfig->keyPass;
+    AppProvider *provider = certConfig->provider;
+
     if (keyFile == NULL) {
         return NULL;
     }
     
     CRYPT_EAL_PkeyCtx *pkey = NULL;
+#ifdef HITLS_APP_SM_MODE
+    if (isSignKey && certConfig->smParam->smTag == 1) {
+        int32_t ret = GetPkeyCtxFromUuid(provider, certConfig->smParam, keyFile, &pkey);
+        if (ret == HITLS_APP_SUCCESS) {
+            return pkey;
+        }
+    }
+#endif
     
     /* Load private key using the existing utility function */
     char *pass = NULL;
@@ -200,7 +232,7 @@ CRYPT_EAL_PkeyCtx *LoadKeyFromFile(const char *keyFile, BSL_ParseFormat format, 
     }
     
     if (pass != NULL) {
-        BSL_SAL_Free(pass);
+        BSL_SAL_ClearFree(pass, strlen(password));
     }
     
     return pkey;
@@ -285,8 +317,7 @@ int ConfigureTLCPCertificates(HITLS_Config *config, APP_CertConfig *certConfig)
     if (certConfig->tlcpSignCert && certConfig->tlcpSignKey) {
         HITLS_X509_Cert *sign_cert = LoadCertFromFile(certConfig->tlcpSignCert, certConfig->certFormat,
             certConfig->provider);
-        CRYPT_EAL_PkeyCtx *sign_key = LoadKeyFromFile(certConfig->tlcpSignKey, certConfig->keyFormat,
-            certConfig->keyPass, certConfig->provider);
+        CRYPT_EAL_PkeyCtx *sign_key = LoadKeyFromFile(certConfig, true);
         
         if (sign_cert && sign_key) {
             ret = HITLS_CFG_SetTlcpCertificate(config, sign_cert, false, false); /* Signature cert */
@@ -313,8 +344,7 @@ int ConfigureTLCPCertificates(HITLS_Config *config, APP_CertConfig *certConfig)
     if (certConfig->tlcpEncCert && certConfig->tlcpEncKey) {
         HITLS_X509_Cert *enc_cert = LoadCertFromFile(certConfig->tlcpEncCert, certConfig->certFormat,
             certConfig->provider);
-        CRYPT_EAL_PkeyCtx *enc_key = LoadKeyFromFile(certConfig->tlcpEncKey, certConfig->keyFormat,
-            certConfig->keyPass, certConfig->provider);
+        CRYPT_EAL_PkeyCtx *enc_key = LoadKeyFromFile(certConfig, false);
         
         if (enc_cert && enc_key) {
             ret = HITLS_CFG_SetTlcpCertificate(config, enc_cert, false, true); /* Encryption cert */

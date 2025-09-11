@@ -474,7 +474,7 @@ int32_t HITLS_APP_SM_Init(AppProvider *provider, const char *workPath, char **pa
     return HITLS_APP_SUCCESS;
 }
 
-static char *GetAppPath(void)
+char *HITLS_APP_GetAppPath(void)
 {
     char *tempPath = BSL_SAL_Malloc(APP_MAX_PATH_LEN);
     if (tempPath == NULL) {
@@ -580,7 +580,7 @@ int32_t HITLS_APP_SM_IntegrityCheck(AppProvider *provider)
         return HITLS_APP_INVALID_ARG;
     }
 
-    char *appPath = GetAppPath();
+    char *appPath = HITLS_APP_GetAppPath();
     if (appPath == NULL) {
         AppPrintError("Failed to get app path.\n");
         return HITLS_APP_INVALID_ARG;

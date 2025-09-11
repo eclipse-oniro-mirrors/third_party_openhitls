@@ -29,6 +29,7 @@
 #include "app_function.h"
 #include "app_provider.h"
 #include "app_sm.h"
+#include "app_list.h"
 #include "app_utils.h"
 
 #define MAX_RANDOM_LEN 4096
@@ -41,6 +42,7 @@ typedef enum OptionChoice {
     HITLS_APP_OPT_RAND_HEX = 2,
     HITLS_APP_OPT_RAND_BASE64,
     HITLS_APP_OPT_RAND_OUT,
+    HITLS_APP_OPT_RAND_ALGORITHM,
     HITLS_APP_PROV_ENUM,
 #ifdef HITLS_APP_SM_MODE
     HITLS_SM_OPTIONS_ENUM,
@@ -51,6 +53,7 @@ typedef struct {
     int32_t randNumLen;
     char *outFile;
     int32_t format;
+    int32_t algId;
     AppProvider *provider;
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param *smParam;
@@ -63,6 +66,7 @@ HITLS_CmdOption g_randOpts[] = {
     {"base64", HITLS_APP_OPT_RAND_BASE64, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Base64-encoded output"},
     {"out", HITLS_APP_OPT_RAND_OUT, HITLS_APP_OPT_VALUETYPE_OUT_FILE, "Output file"},
     {"numbytes", HITLS_APP_OPT_RAND_NUMBITS, HITLS_APP_OPT_VALUETYPE_PARAMTERS, "Random byte length"},
+    {"algorithm", HITLS_APP_OPT_RAND_ALGORITHM, HITLS_APP_OPT_VALUETYPE_STRING, "Random algorithm"},
     HITLS_APP_PROV_OPTIONS,
 #ifdef HITLS_APP_SM_MODE
     HITLS_SM_OPTIONS,
@@ -91,14 +95,14 @@ static int32_t GetRandNumLen(int32_t *randNumLen)
 int32_t HITLS_RandMain(int argc, char **argv)
 {
     int32_t mainRet = HITLS_APP_SUCCESS;       // return value of the main function
-    AppProvider appProvider = {"default", NULL, "provider=default"};
+    AppProvider appProvider = {NULL, NULL, NULL};
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
-    AppInitParam initParam = {&appProvider, &smParam};
-    RandCmdOpt randCmdOpt = {0, NULL, HITLS_APP_FORMAT_BINARY, &appProvider, &smParam};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider, &smParam};
+    RandCmdOpt randCmdOpt = {0, NULL, HITLS_APP_FORMAT_BINARY, CRYPT_RAND_SHA256, &appProvider, &smParam};
 #else
-    AppInitParam initParam = {&appProvider};
-    RandCmdOpt randCmdOpt = {0, NULL, HITLS_APP_FORMAT_BINARY, &appProvider};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider};
+    RandCmdOpt randCmdOpt = {0, NULL, HITLS_APP_FORMAT_BINARY, CRYPT_RAND_SHA256, &appProvider};
 #endif
     mainRet = HITLS_APP_OptBegin(argc, argv, g_randOpts);
     if (mainRet != HITLS_APP_SUCCESS) {
@@ -109,6 +113,7 @@ int32_t HITLS_RandMain(int argc, char **argv)
     if (mainRet != HITLS_APP_SUCCESS) {
         goto end;
     }
+    initParam.randAlgId = randCmdOpt.algId;
     // GET the length of the random number to be generated.
     mainRet = GetRandNumLen(&randCmdOpt.randNumLen);
     if (mainRet != HITLS_APP_SUCCESS) {
@@ -154,6 +159,13 @@ static int32_t OptParse(RandCmdOpt *randCmdOpt)
                 break;
             case HITLS_APP_OPT_RAND_HEX:
                 randCmdOpt->format = HITLS_APP_FORMAT_HEX;
+                break;
+            case HITLS_APP_OPT_RAND_ALGORITHM:
+                randCmdOpt->algId = HITLS_APP_GetCidByName(HITLS_APP_OptGetValueStr(), HITLS_APP_LIST_OPT_RAND_ALG);
+                if (randCmdOpt->algId == BSL_CID_UNKNOWN) {
+                    AppPrintError("rand: The algorithm is not supported.\n");
+                    return HITLS_APP_OPT_VALUE_INVALID;
+                }
                 break;
             default:
                 break;

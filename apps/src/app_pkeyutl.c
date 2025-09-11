@@ -853,14 +853,14 @@ static int32_t PkeyDerive(PkeyUtlOpt *pkeyUtlOpt)
 
 int32_t HITLS_PkeyUtlMain(int argc, char *argv[])
 {
-    AppProvider appProvider = {"default", NULL, "provider=default"};
+    AppProvider appProvider = {NULL, NULL, NULL};
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
-    AppInitParam initParam = {&appProvider, &smParam};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider, &smParam};
     PkeyUtlOpt pkeyUtlOpt = {0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         "1234567812345678", &appProvider, &smParam};
 #else
-    AppInitParam initParam = {&appProvider};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider};
     PkeyUtlOpt pkeyUtlOpt = {0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         "1234567812345678", &appProvider};
 #endif
@@ -874,11 +874,6 @@ int32_t HITLS_PkeyUtlMain(int argc, char *argv[])
         ret = ParsepkeyUtlOpt(&pkeyUtlOpt);
         if (ret != HITLS_APP_SUCCESS) {
             AppPrintError("pkeyutl: error in ParsepkeyUtlOpt.\n");
-            break;
-        }
-        ret = HITLS_APP_LoadProvider(pkeyUtlOpt.provider->providerPath,
-            pkeyUtlOpt.provider->providerName);
-        if (ret != HITLS_APP_SUCCESS) {
             break;
         }
 

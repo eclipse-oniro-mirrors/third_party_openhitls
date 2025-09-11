@@ -150,6 +150,7 @@ static const CidInfo g_allRandAlgInfo[] = {
     {CRYPT_RAND_SHA256, "sha256"},
     {CRYPT_RAND_SHA384, "sha384"},
     {CRYPT_RAND_SHA512, "sha512"},
+    {CRYPT_RAND_SM3, "sm3"},
     {CRYPT_RAND_HMAC_SHA1, "hmac-sha1"},
     {CRYPT_RAND_HMAC_SHA224, "hmac-sha224"},
     {CRYPT_RAND_HMAC_SHA256, "hmac-sha256"},
@@ -161,6 +162,7 @@ static const CidInfo g_allRandAlgInfo[] = {
     {CRYPT_RAND_AES128_CTR_DF, "aes128-ctr-df"},
     {CRYPT_RAND_AES192_CTR_DF, "aes192-ctr-df"},
     {CRYPT_RAND_AES256_CTR_DF, "aes256-ctr-df"},
+    {CRYPT_RAND_SM4_CTR_DF, "sm4-ctr-df"},
 };
 
 #define RAND_ALG_CNT (sizeof(g_allRandAlgInfo) / sizeof(CidInfo))

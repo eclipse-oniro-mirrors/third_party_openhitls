@@ -1066,13 +1066,13 @@ int32_t HITLS_EncMain(int argc, char *argv[])
     int32_t encRet = -1; // return value of enc
     EncKeyParam keySet = {NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, 0};
     EncUio encUio = {NULL, NULL};
-    AppProvider appProvider = {"default", NULL, "provider=default"};
+    AppProvider appProvider = {NULL, NULL, NULL};
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param smParam = {NULL, 0, NULL, NULL, 0, HITLS_APP_SM_STATUS_OPEN};
-    AppInitParam initParam = {&appProvider, &smParam};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider, &smParam};
     EncCmdOpt encOpt = {1, NULL, NULL, NULL, -1, -1, -1, 0, &keySet, &encUio, &appProvider, &smParam};
 #else
-    AppInitParam initParam = {&appProvider};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider};
     EncCmdOpt encOpt = {1, NULL, NULL, NULL, -1, -1, -1, 0, &keySet, &encUio, &appProvider};
 #endif
     if ((encRet = HITLS_APP_OptBegin(argc, argv, g_encOpts)) != HITLS_APP_SUCCESS) {

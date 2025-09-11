@@ -396,7 +396,10 @@ static HITLS_Config *CreateServerConfig(HITLS_ServerParams *params)
         .tlcpEncKey = params->tlcpEncKey,
         .tlcpSignCert = params->tlcpSignCert,
         .tlcpSignKey = params->tlcpSignKey,
-        .provider = params->provider
+        .provider = params->provider,
+#ifdef HITLS_APP_SM_MODE
+        .smParam = params->smParam,
+#endif
     };
     
     ret = ConfCertVerification(config, &certConfig, params->verifyClient, params->verifyDepth);
@@ -581,7 +584,8 @@ static int HandleClientConnection(HITLS_Ctx *ctx, HITLS_ServerParams *params)
 static void CleanupConnection(HITLS_Ctx *ctx, BSL_UIO *uio, int clientFd)
 {
     if (ctx) {
-        HITLS_Close(ctx);
+        HITLS_Close(ctx); // send close
+        HITLS_Close(ctx); // read close
         HITLS_Free(ctx);
     }
     
@@ -817,14 +821,14 @@ static int32_t CreateServerThread(ThreadServerArgs *threadArgs1, ThreadServerArg
 
 int HITLS_ServerMain(int argc, char *argv[])
 {
-    AppProvider appProvider = {"default", NULL, "provider=default"};
+    AppProvider appProvider = {NULL, NULL, NULL};
     HITLS_ServerParams params = {0};
 #ifdef HITLS_APP_SM_MODE
     HITLS_APP_SM_Param smParam = {0};
-    AppInitParam initParam = {&appProvider, &smParam};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider, &smParam};
     params.smParam = &smParam;
 #else
-    AppInitParam initParam = {&appProvider};
+    AppInitParam initParam = {CRYPT_RAND_SHA256, &appProvider};
 #endif
     HITLS_Config *config = NULL;
     int listenFd = -1;
