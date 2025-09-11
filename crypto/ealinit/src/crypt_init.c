@@ -58,7 +58,7 @@ static int32_t ProviderModuleInit(uint64_t initOpt, int32_t alg)
 
 static void ProviderModuleFree(uint64_t initOpt)
 {
-    if (!(initOpt & CRYPT_EAL_INIT_PROVIDER) || (g_ealInitOpts & CRYPT_EAL_INIT_PROVIDER) == 0) {
+    if (!(initOpt & CRYPT_EAL_INIT_PROVIDER)) {
         return;
     }
     CRYPT_EAL_FreePreDefinedProviders();
@@ -93,7 +93,7 @@ static int32_t BslModuleInit(uint64_t initOpt)
 
 static void BslModuleFree(uint64_t initOpt)
 {
-    if (!(initOpt & CRYPT_EAL_INIT_BSL) || (g_ealInitOpts & CRYPT_EAL_INIT_BSL) == 0) {
+    if (!(initOpt & CRYPT_EAL_INIT_BSL)) {
         return;
     }
     BSL_GLOBAL_DeInit();
@@ -115,7 +115,7 @@ static void BslModuleFree(uint64_t initOpt)
 #if defined(HITLS_CRYPTO_DRBG)
 static void RandModuleFree(uint64_t initOpt)
 {
-    if (!(initOpt & CRYPT_EAL_INIT_RAND) || (g_ealInitOpts & CRYPT_EAL_INIT_RAND) == 0) {
+    if (!(initOpt & CRYPT_EAL_INIT_RAND)) {
         return;
     }
     CRYPT_EAL_RandDeinit();
@@ -165,7 +165,7 @@ static int32_t GlobalLockInit(uint64_t initOpt, int32_t alg)
 
 static void GlobalLockFree(uint64_t initOpt)
 {
-    if ((initOpt & CRYPT_EAL_INIT_LOCK) == 0 || (g_ealInitOpts & CRYPT_EAL_INIT_LOCK) == 0) {
+    if ((initOpt & CRYPT_EAL_INIT_LOCK) == 0) {
         return;
     }
 #ifdef HITLS_CRYPTO_ENTROPY
@@ -247,7 +247,7 @@ void CRYPT_EAL_Cleanup(uint64_t opts)
     RandModuleFree(initOpt);
     BslModuleFree(initOpt);
     GlobalLockFree(initOpt);
-    g_ealInitOpts = 0;
+    g_ealInitOpts &= (~opts);
 }
 
 #ifdef HITLS_CRYPTO_ASM_CHECK
