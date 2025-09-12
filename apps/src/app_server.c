@@ -931,6 +931,9 @@ static int32_t HandleHeartBeat(HITLS_Ctx *ctx)
     
     while (g_loopFlag) {
         ret = HITLS_Read(ctx, buffer, sizeof(buffer), &readLen);
+        if (ret == HITLS_CM_LINK_CLOSED) {
+            break;
+        }
         if (ret != HITLS_SUCCESS || readLen != APP_HEARTBEAT_LEN) {
             AppPrintError("server: Failed to read heartbeat data, errCode: 0x%x, readLen: %u.\n", ret, readLen);
             return ret;
