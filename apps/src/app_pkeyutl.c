@@ -873,7 +873,6 @@ int32_t HITLS_PkeyUtlMain(int argc, char *argv[])
         }
         ret = ParsepkeyUtlOpt(&pkeyUtlOpt);
         if (ret != HITLS_APP_SUCCESS) {
-            AppPrintError("pkeyutl: error in ParsepkeyUtlOpt.\n");
             break;
         }
 

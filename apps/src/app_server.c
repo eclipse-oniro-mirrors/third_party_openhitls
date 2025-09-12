@@ -347,7 +347,9 @@ static int ParseServerOptions(int argc, char *argv[], HITLS_ServerParams *params
 
     ret = ParseServerOptLoop(params);
     if (ret != HITLS_APP_SUCCESS) {
-        AppPrintError("Failed to parse server options: 0x%x\n", ret);
+        if (ret != HITLS_APP_HELP) {
+            AppPrintError("Failed to parse server options: 0x%x\n", ret);
+        }
         return ret;
     }
     
@@ -899,6 +901,7 @@ cleanup:
     if (!params.quiet && ret == HITLS_APP_SUCCESS) {
         AppPrintInfo("Server completed successfully\n");
     }
+    BSL_SAL_FREE(params.bindAddr);
     HITLS_APP_Deinit(&initParam, ret);
     /* Cleanup print UIO */
     AppPrintErrorUioUnInit();

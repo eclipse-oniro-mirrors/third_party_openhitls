@@ -298,7 +298,7 @@ static int ParseClientOptLoop(HITLS_ClientParams *params)
         AppPrintError("pkeyutl: Use -help for summary.\n");
         return HITLS_APP_OPT_UNKOWN;
     }
-    return HITLS_APP_SUCCESS;
+    return ret;
 }
 
 static int32_t CheckSmParam(HITLS_ClientParams *params)
@@ -335,7 +335,10 @@ int ParseClientOptions(int argc, char *argv[], HITLS_ClientParams *params, AppPr
     }
 
     int loopRet = ParseClientOptLoop(params);
-    if (loopRet != HITLS_APP_SUCCESS && loopRet != HITLS_APP_SUCCESS) {
+    if (loopRet != HITLS_APP_SUCCESS) {
+        if (loopRet != HITLS_APP_HELP) {
+            AppPrintError("Failed to parse client options: 0x%x\n", loopRet);
+        }
         return loopRet;
     }
     
