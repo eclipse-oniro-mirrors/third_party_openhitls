@@ -61,7 +61,7 @@ typedef struct {
 #endif // HITLS_CRYPTO_MD_MB
 
 typedef struct {
-    uint32_t id;
+    int32_t id;
     uint16_t blockSize;  // Block size processed by the hash algorithm at a time, which is used with other algorithms.
     uint16_t mdSize;     // Output length of the HASH algorithm
     MdNewCtx newCtx;     // generate md context

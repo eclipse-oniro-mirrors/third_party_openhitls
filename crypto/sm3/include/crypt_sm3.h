@@ -22,7 +22,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "crypt_types.h"
+
+#ifdef HITLS_CRYPTO_PROVIDER
 #include "bsl_params.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
