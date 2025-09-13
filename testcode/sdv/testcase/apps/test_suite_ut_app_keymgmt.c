@@ -117,6 +117,11 @@ static int32_t STUB_HITLS_APP_SM_IntegrityCheck(void)
     return HITLS_APP_SUCCESS;
 }
 
+static int32_t STUB_HITLS_APP_SM_RootUserCheck(void)
+{
+    return HITLS_APP_SUCCESS;
+}
+
 static int has_suffix(const char *filename, const char *suffix)
 {
     size_t len_filename = strlen(filename);
@@ -383,9 +388,10 @@ void UT_HITLS_APP_KEYMGMT_TC001(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *uuid = NULL;
     char *argv[] = {"keymgmt", "-create", "-algid", "sm4", SM_PARAM, NULL};
@@ -421,6 +427,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -437,9 +444,10 @@ void UT_HITLS_APP_KEYMGMT_TC002(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *uuid = NULL;
     char *argv[] = {"keymgmt", "-create", "-algid", "sm4_xts", SM_PARAM, NULL};
@@ -460,6 +468,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -500,9 +509,10 @@ void UT_HITLS_APP_KEYMGMT_TC003(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
     HITLS_APP_KeyInfo keyInfo = {0};
@@ -533,6 +543,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -551,9 +562,10 @@ void UT_HITLS_APP_KEYMGMT_TC004(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *argv[] = {"keymgmt", "-create", "-algid", "aes128_cbc", SM_PARAM, NULL};
 
@@ -565,6 +577,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -582,9 +595,10 @@ void UT_HITLS_APP_KEYMGMT_TC005(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
@@ -627,6 +641,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -644,9 +659,10 @@ void UT_HITLS_APP_KEYMGMT_TC006(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
@@ -672,6 +688,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -689,9 +706,10 @@ void UT_HITLS_APP_KEYMGMT_TC007(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *uuid = NULL;
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -726,6 +744,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -744,9 +763,10 @@ void UT_HITLS_APP_KEYMGMT_TC008(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
@@ -768,6 +788,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -785,9 +806,11 @@ void UT_HITLS_APP_KEYMGMT_TC009(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
+
     char *uuid1 = NULL;
     char *uuidArray[10] = {NULL};
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -856,6 +879,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -873,9 +897,10 @@ void UT_HITLS_APP_KEYMGMT_TC010(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
@@ -922,6 +947,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -940,9 +966,10 @@ void UT_HITLS_APP_KEYMGMT_TC011(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     HITLS_APP_KeyInfo keyInfo = {0};
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
@@ -979,6 +1006,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -996,9 +1024,10 @@ void UT_HITLS_APP_KEYMGMT_TC012(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     HITLS_APP_KeyInfo keyInfo = {0};
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
@@ -1035,6 +1064,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1053,9 +1083,10 @@ void UT_HITLS_APP_KEYMGMT_TC013(char *macAlgId)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *uuid = NULL;
     char *argv[] = {"keymgmt", "-create", "-algid", macAlgId, SM_PARAM, NULL};
@@ -1076,6 +1107,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1096,9 +1128,10 @@ void UT_HITLS_APP_KEYMGMT_TC014(int algId, char *macAlgId, int keyLen)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     HITLS_APP_KeyInfo keyInfo = {0};
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
@@ -1132,6 +1165,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1149,9 +1183,10 @@ void UT_HITLS_APP_KEYMGMT_TC015(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     HITLS_APP_KeyInfo keyInfo = {0};
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
@@ -1193,6 +1228,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1210,9 +1246,10 @@ void UT_HITLS_APP_KEYMGMT_TC016(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     HITLS_APP_SM_Param smParam = {NULL, 0, WORK_PATH, NULL, 0, HITLS_APP_SM_STATUS_CLOSE};
 
@@ -1245,6 +1282,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1256,9 +1294,10 @@ void UT_HITLS_APP_KEYMGMT_TC017(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     uint8_t data[4] = {0, 1, 2, 3};
     uint32_t dataLen = sizeof(data);
@@ -1325,6 +1364,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1341,9 +1381,10 @@ void UT_HITLS_APP_KEYMGMT_TC018(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *argv[] = {"keymgmt", "-create", "-algid", "sm4", SM_PARAM, NULL};
 
@@ -1372,6 +1413,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1388,9 +1430,10 @@ void UT_HITLS_APP_KEYMGMT_TC019(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *argv[] = {"keymgmt", "-getstatus", SM_PARAM, NULL};
 
@@ -1403,6 +1446,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1419,9 +1463,10 @@ void UT_HITLS_APP_KEYMGMT_TC020(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *argv[] = {"keymgmt", "-getversion", SM_PARAM, NULL};
 
@@ -1434,6 +1479,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1450,9 +1496,10 @@ void UT_HITLS_APP_KEYMGMT_TC021(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *argv[] = {"keymgmt", "-selftest", SM_PARAM, NULL};
 
@@ -1465,6 +1512,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */
@@ -1509,9 +1557,10 @@ void UT_HITLS_APP_KEYMGMT_SM2_SIGN_VERIFY_TEST(void)
     SKIP_TEST();
 #else
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *uuid = NULL;
     char *argv[] = {"keymgmt", "-create", "-algid", "sm2", SM_PARAM, NULL};
@@ -1536,6 +1585,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
 #endif
 }
 /* END_CASE */

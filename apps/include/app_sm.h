@@ -88,6 +88,8 @@ int32_t HITLS_APP_SM_PeriodicRandomCheck(AppProvider *provider);
 
 char *HITLS_APP_GetAppPath(void);
 
+int32_t HITLS_APP_SM_RootUserCheck(void);
+
 #endif
 
 #ifdef __cplusplus

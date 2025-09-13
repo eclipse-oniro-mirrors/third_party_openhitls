@@ -103,7 +103,7 @@ static void UserInfoOrderCvt(UserInfo *userInfo, bool toByte)
     }
 }
 
-static int32_t RootUserCheck(void)
+int32_t HITLS_APP_SM_RootUserCheck(void)
 {
     if (getuid() == 0) {
         AppPrintError("The current user is root, please use a non-root user to run the program.\n");
@@ -446,7 +446,7 @@ int32_t HITLS_APP_SM_Init(AppProvider *provider, const char *workPath, char **pa
 
     *status = HITLS_APP_SM_STATUS_SELFTEST;
 
-    int32_t ret = RootUserCheck();
+    int32_t ret = HITLS_APP_SM_RootUserCheck();
     if (ret != HITLS_APP_SUCCESS) {
         return ret;
     }

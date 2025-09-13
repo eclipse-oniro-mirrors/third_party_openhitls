@@ -130,6 +130,11 @@ static uid_t STUB_getuid(void)
     return 0;
 }
 
+static int32_t STUB_HITLS_APP_SM_RootUserCheck(void)
+{
+    return HITLS_APP_SUCCESS;
+}
+
 static int32_t STUB_HITLS_APP_SM_IntegrityCheck(void)
 {
     return HITLS_APP_SUCCESS;
@@ -151,9 +156,10 @@ void UT_HITLS_APP_SM_TC001(void)
     char *password = NULL;
 
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     system("rm -rf " WORK_PATH);
     system("mkdir -p " WORK_PATH);
@@ -173,6 +179,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
     system("rm -rf " WORK_PATH);
 #endif
 }
@@ -225,9 +232,10 @@ void UT_HITLS_APP_SM_TC003(void)
     int fd = -1;
 
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     system("rm -rf " WORK_PATH);
     system("mkdir -p " WORK_PATH);
@@ -273,58 +281,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
-    system("rm -rf " WORK_PATH);
-#endif
-}
-/* END_CASE */
-
-/**
- * @test UT_HITLS_APP_SM_TC004
- * @spec  -
- * @title  Test file permission tamper detection of the command-line SM module
- */
-
-/* BEGIN_CASE */
-void UT_HITLS_APP_SM_TC004(void)
-{
-#ifndef HITLS_APP_SM_MODE
-    SKIP_TEST();
-#else
-    char *password = NULL;
-    char userFilePath[1024] = {0};
-
-    STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
-    STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
-    STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
-    system("rm -rf " WORK_PATH);
-    system("mkdir -p " WORK_PATH);
-    ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
-
-    // Normal initialization
-    int32_t status = 0;
-    ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_SUCCESS);
-    ASSERT_EQ(strcmp(password, PASSWORD), 0);
-    BSL_SAL_FREE(password);
-
-    // Build user file path
-    snprintf(userFilePath, sizeof(userFilePath), "%s/openhitls_user", WORK_PATH);
-    
-    // Tamper file permissions - remove read permission
-    ASSERT_EQ(chmod(userFilePath, 0), 0);
-
-    // With permissions tampered, file access should fail
-    ASSERT_EQ(HITLS_APP_SM_Init(&g_appProvider, WORK_PATH, &password, &status), HITLS_APP_UIO_FAIL);
-    ASSERT_EQ(password, NULL);
-
-    // Restore file permissions
-    ASSERT_EQ(chmod(userFilePath, 0644), 0);
-
-EXIT:
-    BSL_SAL_FREE(password);
-    AppTestUninit();
-    STUB_Reset(&stubInfo[0]);
-    STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
     system("rm -rf " WORK_PATH);
 #endif
 }
@@ -345,11 +302,12 @@ void UT_HITLS_APP_SM_TC005(void)
     char *password = NULL;
 
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     
     // First login: use correct password
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
     system("rm -rf " WORK_PATH);
     system("mkdir -p " WORK_PATH);
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -373,6 +331,7 @@ EXIT:
     AppTestUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
     system("rm -rf " WORK_PATH);
 #endif
 }

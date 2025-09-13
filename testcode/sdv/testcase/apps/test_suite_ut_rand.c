@@ -39,6 +39,27 @@
 #define WORK_PATH "./rand_workpath"
 #define PASSWORD "12345678"
 
+#ifdef HITLS_CRYPTO_CMVP_SM_PURE_C
+#define HITLS_SM_PROVIDER_PATH "../../output/CMVP/C/lib"
+#endif
+
+#ifdef HITLS_CRYPTO_CMVP_SM_ARMV8_LE
+#define HITLS_SM_PROVIDER_PATH "../../output/CMVP/armv8_le/lib"
+#endif
+
+#ifdef HITLS_CRYPTO_CMVP_SM_X86_64
+#define HITLS_SM_PROVIDER_PATH "../../output/CMVP/x86_64/lib"
+#endif
+
+#define HITLS_SM_LIB_NAME "libhitls_sm.so"
+#define HITLS_SM_PROVIDER_ATTR "provider=sm"
+
+#define SM_PARAM \
+    "-sm", "-workpath", WORK_PATH, \
+    "-provider", HITLS_SM_LIB_NAME, \
+    "-provider-path", HITLS_SM_PROVIDER_PATH, \
+    "-provider-attr", HITLS_SM_PROVIDER_ATTR
+
 typedef struct {
     int argc;
     char **argv;
@@ -80,6 +101,11 @@ static int32_t STUB_BSL_UI_ReadPwdUtil(BSL_UI_ReadPwdParam *param, char *buff, u
 }
 
 static int32_t STUB_HITLS_APP_SM_IntegrityCheck(void)
+{
+    return HITLS_APP_SUCCESS;
+}
+
+static int32_t STUB_HITLS_APP_SM_RootUserCheck(void)
 {
     return HITLS_APP_SUCCESS;
 }
@@ -565,18 +591,20 @@ void UT_HITLS_APP_rand_TC0014(void)
     system("rm -rf " WORK_PATH);
     system("mkdir -p " WORK_PATH);
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
-    char *argv[7] = {"rand", "-sm", "-workpath", WORK_PATH, "-hex", "10", NULL};
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
+    char *argv[] = {"rand", SM_PARAM, "-hex", "10", NULL};
 
     ASSERT_EQ(AppInit(), HITLS_APP_SUCCESS);
-    ASSERT_EQ(HITLS_RandMain(6, argv), HITLS_APP_SUCCESS);
+    ASSERT_EQ(HITLS_RandMain(sizeof(argv) / sizeof(argv[0]) - 1, argv), HITLS_APP_SUCCESS);
 
 EXIT:
     AppUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
     system("rm -rf " WORK_PATH);
 #endif
     return;

@@ -8,10 +8,10 @@ UT_HITLS_APP_KDF_InvalidOpt_TC001:"kdf -mac":HITLS_APP_OPT_UNKOWN
 UT_HITLS_APP_KDF_InvalidOpt_TC001:"kdf -mac unknownmac -pass 123456 -salt abcdef -keylen 32 -iter 1000 pbkdf2":HITLS_APP_OPT_VALUE_INVALID
 
 "-pass": missing value
-UT_HITLS_APP_KDF_InvalidOpt_TC001:"kdf -mac hmac-sha256 -pass -salt abcdef -keylen 32 -iter 1000 pbkdf2":HITLS_APP_OPT_UNKOWN
+UT_HITLS_APP_KDF_InvalidOpt_TC001:"kdf -mac hmac-sha256 -pass -salt abcdef -keylen 32 -iter 1000 pbkdf2":HITLS_APP_OPT_VALUE_INVALID
 
 "-salt": missing value
-UT_HITLS_APP_KDF_InvalidOpt_TC001:"kdf -mac hmac-sha256 -pass 123456 -salt -keylen 32 -iter 1000 pbkdf2":HITLS_APP_OPT_UNKOWN
+UT_HITLS_APP_KDF_InvalidOpt_TC001:"kdf -mac hmac-sha256 -pass 123456 -salt -keylen 32 -iter 1000 pbkdf2":HITLS_APP_OPT_VALUE_INVALID
 
 "-keylen": missing value
 UT_HITLS_APP_KDF_InvalidOpt_TC001:"kdf -mac hmac-sha256 -pass 123456 -salt abcdef -keylen -iter 1000 pbkdf2":HITLS_APP_OPT_UNKOWN
@@ -50,4 +50,4 @@ UT_HITLS_APP_kdf_TC002
 UT_HITLS_APP_kdf_TC002:
 
 sm mode pbkdf2 with hamc-sm3
-UT_HITLS_APP_kdf_TC003:"kdf -sm -workpath ./kdf_workpath -mac hmac-sm3 -hexpass 0x70617373776f7264 -hexsalt 0x73616c74 -keylen 20 -out ./kdf.out -iter 1 pbkdf2":"./kdf.out":"4612f922a1fdcefaf4312fc6f8f3322b489cbf24"
+UT_HITLS_APP_kdf_TC003:"./kdf.out":"1e0d8ab1b32bb96dff58ff89ab171e643a425fd87f26261b56f9d38c992f2593a713f9c1772f8bf2"

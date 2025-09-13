@@ -42,11 +42,51 @@
 #define WORK_PATH "./kdf_workpath"
 #define PASSWORD "12345678"
 
+#ifdef HITLS_CRYPTO_CMVP_SM_PURE_C
+#define HITLS_SM_PROVIDER_PATH "../../output/CMVP/C/lib"
+#endif
+
+#ifdef HITLS_CRYPTO_CMVP_SM_ARMV8_LE
+#define HITLS_SM_PROVIDER_PATH "../../output/CMVP/armv8_le/lib"
+#endif
+
+#ifdef HITLS_CRYPTO_CMVP_SM_X86_64
+#define HITLS_SM_PROVIDER_PATH "../../output/CMVP/x86_64/lib"
+#endif
+
+#define HITLS_SM_LIB_NAME "libhitls_sm.so"
+#define HITLS_SM_PROVIDER_ATTR "provider=sm"
+
+#define SM_PARAM \
+    "-sm", "-workpath", WORK_PATH, \
+    "-provider", HITLS_SM_LIB_NAME, \
+    "-provider-path", HITLS_SM_PROVIDER_PATH, \
+    "-provider-attr", HITLS_SM_PROVIDER_ATTR
+
 typedef struct {
     int argc;
     char **argv;
     int expect;
 } OptTestData;
+
+static int32_t AppInit(void)
+{
+    int32_t ret = AppPrintErrorUioInit(stderr);
+    if (ret != HITLS_APP_SUCCESS) {
+        return ret;
+    }
+    if (APP_Create_LibCtx() == NULL) {
+        (void)AppPrintError("Create g_libCtx failed\n");
+        return HITLS_APP_INVALID_ARG;
+    }
+    return HITLS_APP_SUCCESS;
+}
+
+static void AppUninit(void)
+{
+    AppPrintErrorUioUnInit();
+    HITLS_APP_FreeLibCtx();
+}
 
 #ifdef HITLS_APP_SM_MODE
 static int32_t STUB_BSL_UI_ReadPwdUtil(BSL_UI_ReadPwdParam *param, char *buff, uint32_t *buffLen,
@@ -62,6 +102,11 @@ static int32_t STUB_BSL_UI_ReadPwdUtil(BSL_UI_ReadPwdParam *param, char *buff, u
 }
 
 static int32_t STUB_HITLS_APP_SM_IntegrityCheck(void)
+{
+    return HITLS_APP_SUCCESS;
+}
+
+static int32_t STUB_HITLS_APP_SM_RootUserCheck(void)
 {
     return HITLS_APP_SUCCESS;
 }
@@ -116,10 +161,10 @@ void UT_HITLS_APP_KDF_InvalidOpt_TC001(char *opts, int expectRet)
     char *tmp = strdup(opts);
     ASSERT_NE(tmp, NULL);
     PreProcArgs(tmp, &argc, argv);
-    ASSERT_EQ(AppPrintErrorUioInit(stderr), HITLS_APP_SUCCESS);
+    ASSERT_EQ(AppInit(), HITLS_APP_SUCCESS);
     ASSERT_EQ(HITLS_KdfMain(argc, argv), expectRet);
 EXIT:
-    AppPrintErrorUioUnInit();
+    AppUninit();
     BSL_SAL_Free(tmp);
 }
 /* END_CASE */
@@ -137,11 +182,11 @@ void UT_HITLS_APP_KDF_NormalOpt_TC001(char *opts, char *outFile, Hex *expectData
     char *tmp = strdup(opts);
     ASSERT_NE(tmp, NULL);
     PreProcArgs(tmp, &argc, argv);
-    ASSERT_EQ(AppPrintErrorUioInit(stderr), HITLS_APP_SUCCESS);
+    ASSERT_EQ(AppInit(), HITLS_APP_SUCCESS);
     ASSERT_EQ(HITLS_KdfMain(argc, argv), HITLS_APP_SUCCESS);
     ASSERT_EQ(CompareOutByData(outFile, expectData), HITLS_APP_SUCCESS);
 EXIT:
-    AppPrintErrorUioUnInit();
+    AppUninit();
     BSL_SAL_Free(tmp);
     remove(outFile);
 }
@@ -161,13 +206,13 @@ void UT_HITLS_APP_kdf_TC002(void)
     OptTestData testData[] = {
         {2, argv[0], HITLS_APP_HELP},
     };
-    ASSERT_EQ(AppPrintErrorUioInit(stderr), HITLS_APP_SUCCESS);
+    ASSERT_EQ(AppInit(), HITLS_APP_SUCCESS);
     for (int i = 0; i < (int)(sizeof(testData) / sizeof(OptTestData)); ++i) {
         int ret = HITLS_KdfMain(testData[i].argc, testData[i].argv);
         ASSERT_EQ(ret, testData[i].expect);
     }
 EXIT:
-    AppPrintErrorUioUnInit();
+    AppUninit();
     return;
 }
 /* END_CASE */
@@ -178,10 +223,9 @@ EXIT:
  * @brief  Enter parameters and return HITLS_APP_SUCCESS.
  */
 /* BEGIN_CASE */
-void UT_HITLS_APP_kdf_TC003(char *opts, char *outFile, Hex *expectData)
+void UT_HITLS_APP_kdf_TC003(char *outFile, Hex *expectData)
 {
 #ifndef HITLS_APP_SM_MODE
-    (void)opts;
     (void)outFile;
     (void)expectData;
     SKIP_TEST();
@@ -189,22 +233,22 @@ void UT_HITLS_APP_kdf_TC003(char *opts, char *outFile, Hex *expectData)
     system("rm -rf " WORK_PATH);
     system("mkdir -p " WORK_PATH);
     STUB_Init();
-    FuncStubInfo stubInfo[2] = {0};
+    FuncStubInfo stubInfo[3] = {0};
     STUB_Replace(&stubInfo[0], BSL_UI_ReadPwdUtil, STUB_BSL_UI_ReadPwdUtil);
     STUB_Replace(&stubInfo[1], HITLS_APP_SM_IntegrityCheck, STUB_HITLS_APP_SM_IntegrityCheck);
-    int argc = 0;
-    char *argv[KDF_MAX_ARGC] = {0};
-    char *tmp = strdup(opts);
-    ASSERT_NE(tmp, NULL);
-    PreProcArgs(tmp, &argc, argv);
-    ASSERT_EQ(AppPrintErrorUioInit(stderr), HITLS_APP_SUCCESS);
-    ASSERT_EQ(HITLS_KdfMain(argc, argv), HITLS_APP_SUCCESS);
+    STUB_Replace(&stubInfo[2], HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
+
+    char *argv[] = {"kdf", SM_PARAM, "-mac", "hmac-sm3", "-pass", "passwordPASSWORDpassword",
+        "-salt", "saltSALTsaltSALTsaltSALTsaltSALTsalt", "-keylen", "40", "-out", outFile,
+        "-iter", "1024", "pbkdf2", NULL};
+    ASSERT_EQ(AppInit(), HITLS_APP_SUCCESS);
+    ASSERT_EQ(HITLS_KdfMain(sizeof(argv) / sizeof(argv[0]) - 1, argv), HITLS_APP_SUCCESS);
     ASSERT_EQ(CompareOutByData(outFile, expectData), HITLS_APP_SUCCESS);
 EXIT:
-    AppPrintErrorUioUnInit();
-    BSL_SAL_Free(tmp);
+    AppUninit();
     STUB_Reset(&stubInfo[0]);
     STUB_Reset(&stubInfo[1]);
+    STUB_Reset(&stubInfo[2]);
     system("rm -rf " WORK_PATH);
     remove(outFile);
 #endif
