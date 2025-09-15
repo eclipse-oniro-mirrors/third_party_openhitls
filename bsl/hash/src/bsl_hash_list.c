@@ -138,8 +138,8 @@ static int32_t ListPush(BSL_List *list, uintptr_t userData, size_t userDataSize,
     if (node == NULL) {
         return BSL_INTERNAL_EXCEPTION;
     }
-    int32_t ret = isFront ? ListRawPushFront(&list->rawList, &node->rawNode)
-                          : ListRawPushBack(&list->rawList, &node->rawNode);
+    int32_t ret = isFront ? ListRawPushFront(&list->rawList, &node->rawNode) :
+                            ListRawPushBack(&list->rawList, &node->rawNode);
     if (ret != BSL_SUCCESS) {
         if (list->dataFunc.freeFunc != NULL) {
             list->dataFunc.freeFunc((void *)(node->userdata));

@@ -35,7 +35,7 @@ typedef struct {
         uint32_t u32;
         uint64_t u64;
     } num;
-    int32_t flag;
+    uint32_t flag;
 } BSL_PARAM_MAKER_DEF;
 
 #define PARAM_MAKER_MALLOCED_VALUE 1

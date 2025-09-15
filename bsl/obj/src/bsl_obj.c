@@ -600,13 +600,13 @@ char *BSL_OBJ_GetOidNumericString(const uint8_t *oid, uint32_t len)
     }
 
     char buffer[256] = {0};
-    if (snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "%d.%d", oid[0] / BSL_OBJ_ARCS_Y_MAX,
-        oid[0] % BSL_OBJ_ARCS_Y_MAX) < 0) {
+    if (snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "%u.%u", (unsigned int)(oid[0] / BSL_OBJ_ARCS_Y_MAX),
+        (unsigned int)(oid[0] % BSL_OBJ_ARCS_Y_MAX)) < 0) {
         return NULL;
     }
 
     uint64_t value = 0;
-    uint32_t currentPos = strlen(buffer);
+    uint32_t currentPos = (uint32_t)strlen(buffer);
     for (uint32_t i = 1; i < len; i++) {
         if (value > (UINT64_MAX >> 7)) {
             /* Overflow check */
@@ -621,22 +621,20 @@ char *BSL_OBJ_GetOidNumericString(const uint8_t *oid, uint32_t len)
         }
 
         value = (value << 7) | (oid[i] & 0x7F);
-        if (!(oid[i] & 0x80)) {
+        if (((oid[i] & 0x80) == 0)) {
             char temp[20] = {0};
             int32_t tempLen = snprintf_s(temp, sizeof(temp), sizeof(temp) - 1, ".%lu", value);
             if (tempLen < 0) {
                 BSL_ERR_PUSH_ERROR(BSL_INTERNAL_EXCEPTION);
                 return NULL;
             }
-            if (currentPos + tempLen >= sizeof(buffer)) {
+            if (currentPos + (uint32_t)tempLen >= sizeof(buffer)) {
                 BSL_ERR_PUSH_ERROR(BSL_INTERNAL_EXCEPTION);
                 return NULL;
             }
-            if (memcpy_s(buffer + currentPos, tempLen, temp, tempLen) != 0) {
-                BSL_ERR_PUSH_ERROR(BSL_INTERNAL_EXCEPTION);
-                return NULL;
-            }
-            currentPos += tempLen;
+            (void)memcpy_s(buffer + currentPos, (size_t)tempLen, temp, (size_t)tempLen);
+        
+            currentPos += (uint32_t)tempLen;
             value = 0;
         }
     }
@@ -659,7 +657,7 @@ static void BslEncodeOidPart(uint64_t num, uint8_t *output, uint32_t *offset)
         int32_t i = 0;
         uint64_t t = num;
         while (t > 0) {
-            temp[i] = (t & 0x7F) | 0x80;
+            temp[i] = (uint8_t)((t & 0x7F) | 0x80);
             i++;
             t >>= 7; // Process 7 bits each time.
         }
@@ -672,7 +670,7 @@ static void BslEncodeOidPart(uint64_t num, uint8_t *output, uint32_t *offset)
     }
 }
 
-static bool BslEncodeOidValueCheck(uint64_t *parts, uint32_t count)
+static bool BslEncodeOidValueCheck(uint64_t *parts, const uint32_t count)
 {
     // At least 2 pieces of data are required.
     if (count < 2 || parts[0] > BSL_OBJ_ARCS_X_MAX) {
