@@ -587,6 +587,12 @@ enum CRYPT_ERROR {
     CRYPT_CMVP_ERR_ALGO_SELFTEST,       /**< Algorithm selftest error in CMVP selftest. */
     CRYPT_CMVP_ERR_PAIRWISETEST,        /**< Pairwise test error in CMVP selftest. */
     CRYPT_CMVP_ERR_PARAM_CHECK,         /**< Parameter check error in CMVP selftest. */
+    CRYPT_CMVP_ERR_CIPHER_SELFTEST,     /**< Cipher selftest error in CMVP selftest. */
+    CRYPT_CMVP_ERR_MD_SELFTEST,         /**< Md selftest error in CMVP selftest. */
+    CRYPT_CMVP_ERR_MAC_SELFTEST,        /**< Mac selftest error in CMVP selftest. */
+    CRYPT_CMVP_ERR_KDF_SELFTEST,        /**< Kdf selftest error in CMVP selftest. */
+    CRYPT_CMVP_ERR_DRBG_SELFTEST,       /**< Drbg selftest error in CMVP selftest. */
+    CRYPT_CMVP_ERR_PKEY_SELFTEST,       /**< Pkey selftest error in CMVP selftest. */
 };
 #ifdef __cplusplus
 }

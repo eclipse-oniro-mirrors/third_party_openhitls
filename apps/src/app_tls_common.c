@@ -232,7 +232,7 @@ static CRYPT_EAL_PkeyCtx *LoadKeyFromFile(APP_CertConfig *certConfig, bool isSig
     }
     
     if (pass != NULL) {
-        BSL_SAL_ClearFree(pass, strlen(password));
+        BSL_SAL_ClearFree(pass, strlen(pass));
     }
     
     return pkey;

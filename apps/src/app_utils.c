@@ -1106,6 +1106,18 @@ static int32_t GetProviderParam(AppInitParam *param)
     return HITLS_APP_SUCCESS;
 }
 
+static void PrintSelfTestErrlog(AppInitParam *param, int32_t ret)
+{
+#ifdef HITLS_APP_SM_MODE
+    if (param->smParam->smTag == 1) {
+        HITLS_APP_SM_PrintSelfTestErrlog(ret);
+    }
+#else
+    (void)param;
+    (void)ret;
+#endif
+}
+
 int32_t HITLS_APP_Init(AppInitParam *param)
 {
     if (param == NULL) {
@@ -1122,6 +1134,7 @@ int32_t HITLS_APP_Init(AppInitParam *param)
     }
     ret = HITLS_APP_LoadProvider(param->provider->providerPath, param->provider->providerName);
     if (ret != HITLS_APP_SUCCESS) {
+        PrintSelfTestErrlog(param, ret);
         return ret;
     }
     ret = InitRand(param);

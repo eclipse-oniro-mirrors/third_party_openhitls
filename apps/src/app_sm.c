@@ -57,6 +57,16 @@
 #define CMVP_INTEGRITYKEY ""
 #endif
 
+#define HITLS_APP_SM_SM4_SELFTEST_FAILED "SM4 selftest failed.\n"
+#define HITLS_APP_SM_SM3_SELFTEST_FAILED "SM3 selftest failed.\n"
+#define HITLS_APP_SM_MAC_SELFTEST_FAILED "Mac selftest failed.\n"
+#define HITLS_APP_SM_DRBG_SELFTEST_FAILED "Drbg selftest failed.\n"
+#define HITLS_APP_SM_KDF_SELFTEST_FAILED "Pbkdf2-hmac-sm3 selftest failed.\n"
+#define HITLS_APP_SM_SM2_SELFTEST_FAILED "SM2 selftest failed.\n"
+#define HITLS_APP_SM_INTEGRITY_SELFTEST_FAILED "Integrity selftest failed.\n"
+#define HITLS_APP_SM_RANDOMNESS_SELFTEST_FAILED "Randomness selftest failed.\n"
+#define HITLS_APP_SM_PAIRWISETEST_SELFTEST_FAILED "SM2 key pairwise test failed.\n"
+
 typedef struct {
     int32_t version;
     int32_t deriveMacId;
@@ -373,12 +383,12 @@ static int32_t VerifyPassword(AppProvider *provider, UserInfo *userInfo, char *p
         return ret;
     }
     if (userInfo->userParam.dKeyLen != sizeof(derivedKey)) {
-        AppPrintError("The administrator password is incorrect.\n");
+        AppPrintError("The admin password is incorrect.\n");
         return HITLS_APP_INFO_CMP_FAIL;
     }
 
     if (memcmp(derivedKey, userInfo->userParam.dKey, userInfo->userParam.dKeyLen) != 0) {
-        AppPrintError("The administrator password is incorrect.\n");
+        AppPrintError("The admin password is incorrect.\n");
         return HITLS_APP_PASSWD_FAIL;
     }
 
@@ -595,6 +605,7 @@ int32_t HITLS_APP_SM_IntegrityCheck(AppProvider *provider)
 
     ret = VerifyAppHmac(provider, appPath, expectHmac, expectHmacLen);
     if (ret != HITLS_APP_SUCCESS) {
+        AppPrintError(HITLS_APP_SM_INTEGRITY_SELFTEST_FAILED);
         BSL_SAL_Free(appPath);
         return ret;
     }
@@ -686,5 +697,40 @@ int32_t HITLS_APP_SM_PeriodicRandomCheck(AppProvider *provider)
     uint32_t threshold = 1;
 
     return RandomSelftest(provider, groups, bitsPerGroup, retry, threshold);
+}
+
+void HITLS_APP_SM_PrintSelfTestErrlog(int32_t ret)
+{
+    switch (ret) {
+        case CRYPT_CMVP_ERR_CIPHER_SELFTEST:
+            AppPrintError(HITLS_APP_SM_SM4_SELFTEST_FAILED);
+            return;
+        case CRYPT_CMVP_ERR_MD_SELFTEST:
+            AppPrintError(HITLS_APP_SM_SM3_SELFTEST_FAILED);
+            return;
+        case CRYPT_CMVP_ERR_MAC_SELFTEST:
+            AppPrintError(HITLS_APP_SM_MAC_SELFTEST_FAILED);
+            return;
+        case CRYPT_CMVP_ERR_DRBG_SELFTEST:
+            AppPrintError(HITLS_APP_SM_DRBG_SELFTEST_FAILED);
+            return;
+        case CRYPT_CMVP_ERR_KDF_SELFTEST:
+            AppPrintError(HITLS_APP_SM_KDF_SELFTEST_FAILED);
+            return;
+        case CRYPT_CMVP_ERR_PKEY_SELFTEST:
+            AppPrintError(HITLS_APP_SM_SM2_SELFTEST_FAILED);
+            return;
+        case CRYPT_CMVP_ERR_INTEGRITY:
+            AppPrintError(HITLS_APP_SM_INTEGRITY_SELFTEST_FAILED);
+            return;
+        case CRYPT_CMVP_RANDOMNESS_ERR:
+            AppPrintError(HITLS_APP_SM_RANDOMNESS_SELFTEST_FAILED);
+            return;
+        case CRYPT_CMVP_ERR_PAIRWISETEST:
+            AppPrintError(HITLS_APP_SM_PAIRWISETEST_SELFTEST_FAILED);
+            return;
+        default:
+            return;
+    }
 }
 #endif

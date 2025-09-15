@@ -115,17 +115,17 @@ static bool PkeyKat(void *libCtx, const char *attrName)
 int32_t CMVP_SmKat(void *libCtx, const char *attrName)
 {
     bool ret = CipherKat(libCtx, attrName);
-    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_CIPHER_SELFTEST);
     ret = MdKat(libCtx, attrName);
-    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_MD_SELFTEST);
     ret = MacKat(libCtx, attrName);
-    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_MAC_SELFTEST);
     ret = DrbgKat(libCtx, attrName);
-    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_DRBG_SELFTEST);
     ret = KdfKat(libCtx, attrName);
-    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_KDF_SELFTEST);
     ret = PkeyKat(libCtx, attrName);
-    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    RETURN_RET_IF(ret == false, CRYPT_CMVP_ERR_PKEY_SELFTEST);
     return CRYPT_SUCCESS;
 }
 
