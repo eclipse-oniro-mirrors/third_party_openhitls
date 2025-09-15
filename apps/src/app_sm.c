@@ -373,12 +373,12 @@ static int32_t VerifyPassword(AppProvider *provider, UserInfo *userInfo, char *p
         return ret;
     }
     if (userInfo->userParam.dKeyLen != sizeof(derivedKey)) {
-        AppPrintError("Invalid user file.\n");
+        AppPrintError("The administrator password is incorrect.\n");
         return HITLS_APP_INFO_CMP_FAIL;
     }
 
     if (memcmp(derivedKey, userInfo->userParam.dKey, userInfo->userParam.dKeyLen) != 0) {
-        AppPrintError("Password is incorrect.\n");
+        AppPrintError("The administrator password is incorrect.\n");
         return HITLS_APP_PASSWD_FAIL;
     }
 
@@ -612,7 +612,7 @@ static int32_t RandomnessTest(CRYPT_SelftestCtx *selftestCtx, uint8_t *data, uin
 
     int32_t ret = CRYPT_CMVP_Selftest(selftestCtx, params);
     if (ret != CRYPT_SUCCESS) {
-        AppPrintError("Randomness test failed, errCode: 0x%x.\n", ret);
+        AppPrintError("Random number randomness check failed, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }
     return HITLS_APP_SUCCESS;
