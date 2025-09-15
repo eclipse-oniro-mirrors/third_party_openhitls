@@ -546,7 +546,7 @@ int32_t HITLS_GetFinishVerifyData(const HITLS_Ctx *ctx, void *buf, uint32_t bufL
 }
 #endif /* HITLS_TLS_FEATURE_RENEGOTIATION */
 
-#ifdef HITLS_TLS_PROTO_ALL
+#ifdef HITLS_TLS_CONFIG_VERSION
 int32_t HITLS_GetVersionSupport(const HITLS_Ctx *ctx, uint32_t *version)
 {
     if (ctx == NULL) {

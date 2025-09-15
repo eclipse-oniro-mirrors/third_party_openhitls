@@ -42,10 +42,13 @@
 static int32_t ConnectEventInIdleState(HITLS_Ctx *ctx)
 {
     ctx->isClient = true; // Set the configuration as a client
-    if (IS_SUPPORT_TLS(ctx->config.tlsConfig.version) && IS_SUPPORT_TLCP(ctx->config.tlsConfig.version)) {
-        ctx->config.tlsConfig.version &= ~TLCP11_VERSION_BIT;
+#if defined(HITLS_TLS_PROTO_TLCP11) && defined(HITLS_TLS_CONFIG_VERSION)
+    if (IS_SUPPORT_TLS(ctx->config.tlsConfig.originVersionMask) &&
+        IS_SUPPORT_TLCP(ctx->config.tlsConfig.originVersionMask)) {
         ctx->config.tlsConfig.originVersionMask &= ~TLCP11_VERSION_BIT;
+        HITLS_SetVersionForbid(ctx, TLCP11_VERSION_BIT);
     }
+#endif
 
     int32_t ret = CONN_Init(ctx);
     if (ret != HITLS_SUCCESS) {
@@ -336,6 +339,15 @@ static int32_t SetConnState(HITLS_Ctx *ctx, bool isClient)
     if (config->endpoint == HITLS_ENDPOINT_UNDEFINED) {
         config->endpoint = isClient ? HITLS_ENDPOINT_CLIENT : HITLS_ENDPOINT_SERVER;
     }
+#if defined(HITLS_TLS_PROTO_TLCP11) && defined(HITLS_TLS_CONFIG_VERSION)
+    if (isClient) {
+        if (IS_SUPPORT_TLS(ctx->config.tlsConfig.originVersionMask) &&
+            IS_SUPPORT_TLCP(ctx->config.tlsConfig.originVersionMask)) {
+            ctx->config.tlsConfig.originVersionMask &= ~TLCP11_VERSION_BIT;
+            HITLS_SetVersionForbid(ctx, TLCP11_VERSION_BIT);
+        }
+    }
+#endif
     if (config->endpoint == HITLS_ENDPOINT_CLIENT) {
         return HITLS_SetEndPoint(ctx, true);
     }

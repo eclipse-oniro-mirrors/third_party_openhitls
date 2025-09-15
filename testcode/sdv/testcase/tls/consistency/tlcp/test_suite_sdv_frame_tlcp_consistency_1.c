@@ -2215,3 +2215,44 @@ EXIT:
     FRAME_FreeLink(server);
 }
 /* END_CASE */
+
+/* @
+* @test  SDV_HITLS_TLCP_PATCH_TC003
+* @title  In the case of tls_all, only the tlcp version remains enabled for the client. When attempting to establish a
+*           connection with the tlcp server, the connection is expected to fail.
+* @precon  nan
+* @brief  1. The client is configured with tls_all version, while the server is initialized with the tlcp version
+*           configuration. Expected result 1.
+*         2. The client disables all versions except for the tlcp version. Expected result 2.
+*         3. Establish a link. Expected result 3.
+* @expect 1. The initialization is successful.
+*         2. Set successfully.
+*         3. The connection fails to be established and the client returns HITLS_MSG_HANDLE_UNSUPPORT_VERSION.
+@ */
+/* BEGIN_CASE */
+void SDV_HITLS_TLCP_PATCH_TC003()
+{
+    FRAME_Init();
+
+    HITLS_Config *c_config = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(c_config != NULL);
+    HITLS_Config *s_config = HITLS_CFG_NewTLCPConfig();
+    ASSERT_TRUE(s_config != NULL);
+
+    HITLS_CFG_SetVersionForbid(
+        c_config, SSLV3_VERSION_BIT | TLS10_VERSION_BIT | TLS11_VERSION_BIT | TLS12_VERSION_BIT | TLS13_VERSION_BIT);
+    ASSERT_EQ(c_config->minVersion, 0x0101);
+    ASSERT_EQ(c_config->maxVersion, 0x0101);
+    FRAME_LinkObj *client = FRAME_CreateTLCPLink(c_config, BSL_UIO_TCP, true);
+    ASSERT_TRUE(client != NULL);
+    FRAME_LinkObj *server = FRAME_CreateTLCPLink(s_config, BSL_UIO_TCP, false);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
+EXIT:
+    HITLS_CFG_FreeConfig(c_config);
+    HITLS_CFG_FreeConfig(s_config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */

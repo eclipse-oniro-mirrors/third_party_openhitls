@@ -311,7 +311,9 @@
                         "config_state": null,
                         "config_record_padding": null,
                         "config_user_data": null,
-                        "config_cipher_suite": null
+                        "config_cipher_suite": null,
+                        "config_version": null
+
                     },
                     "connection": {
                         "connection_info_negotiation": null

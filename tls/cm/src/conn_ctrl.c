@@ -36,7 +36,7 @@ int32_t HITLS_GetNegotiatedVersion(const HITLS_Ctx *ctx, uint16_t *version)
 }
 #endif
 
-#ifdef HITLS_TLS_PROTO_ALL
+#ifdef HITLS_TLS_CONFIG_VERSION
 int32_t HITLS_GetMaxProtoVersion(const HITLS_Ctx *ctx, uint16_t *maxVersion)
 {
     if (ctx == NULL || maxVersion == NULL) {

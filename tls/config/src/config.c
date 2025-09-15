@@ -731,7 +731,7 @@ HITLS_Config *HITLS_CFG_ProviderNewTLS12Config(HITLS_Lib_Ctx *libCtx, const char
 }
 #endif
 
-#ifdef HITLS_TLS_PROTO_ALL
+#ifdef HITLS_TLS_CONFIG_VERSION
 HITLS_Config *HITLS_CFG_NewTLSConfig(void)
 {
     return HITLS_CFG_ProviderNewTLSConfig(NULL, NULL);
@@ -997,6 +997,7 @@ int32_t HITLS_CFG_SetVersion(HITLS_Config *config, uint16_t minVersion, uint16_t
     return ret;
 }
 
+#ifdef HITLS_TLS_CONFIG_VERSION
 int32_t HITLS_CFG_SetVersionForbid(HITLS_Config *config, uint32_t noVersion)
 {
     if (config == NULL) {
@@ -1007,6 +1008,7 @@ int32_t HITLS_CFG_SetVersionForbid(HITLS_Config *config, uint32_t noVersion)
     ChangeMinMaxVersion(config->version, config->originVersionMask, &config->minVersion, &config->maxVersion);
     return HITLS_SUCCESS;
 }
+#endif
 
 static void GetCipherSuitesCnt(const uint16_t *cipherSuites, uint32_t cipherSuitesSize,
     uint32_t *tls13CipherSize, uint32_t *tlsCipherSize)
@@ -1735,7 +1737,7 @@ int32_t HITLS_CFG_GetClientOnceVerifySupport(HITLS_Config *config, bool *isSuppo
     return HITLS_SUCCESS;
 }
 #endif
-#ifdef HITLS_TLS_PROTO_ALL
+#ifdef HITLS_TLS_CONFIG_VERSION
 int32_t HITLS_CFG_GetMaxVersion(const HITLS_Config *config, uint16_t *maxVersion)
 {
     if (config == NULL || maxVersion == NULL) {
@@ -1921,7 +1923,7 @@ int32_t HITLS_CFG_GetSessionCacheSize(HITLS_Config *config, uint32_t *size)
 }
 #endif
 
-#ifdef HITLS_TLS_PROTO_ALL
+#ifdef HITLS_TLS_CONFIG_VERSION
 int32_t HITLS_CFG_GetVersionSupport(const HITLS_Config *config, uint32_t *version)
 {
     if ((config == NULL) || (version == NULL)) {

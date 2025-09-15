@@ -354,11 +354,12 @@ int32_t DefaultTLS13Config(HITLS_Config *config)
     return HITLS_SUCCESS;
 }
 #endif
-#ifdef HITLS_TLS_PROTO_ALL
+#ifdef HITLS_TLS_CONFIG_VERSION
 static int32_t SetDefaultTlsAllCipherSuites(HITLS_Config *config)
 {
+    int32_t ret = HITLS_SUCCESS;
 #ifdef HITLS_TLS_PROTO_TLS13
-    int32_t ret = SetTLS13DefaultCipherSuites(config);
+    ret = SetTLS13DefaultCipherSuites(config);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -384,7 +385,7 @@ static int32_t SetDefaultTlsAllCipherSuites(HITLS_Config *config)
     return ret;
 }
 #endif
-#ifdef HITLS_TLS_PROTO_ALL
+#ifdef HITLS_TLS_CONFIG_VERSION
 int32_t DefaultTlsAllConfig(HITLS_Config *config)
 {
     // Support full version

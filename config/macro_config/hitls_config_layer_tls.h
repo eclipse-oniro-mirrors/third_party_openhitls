@@ -71,12 +71,6 @@
     #endif
 #endif
 
-#if defined(HITLS_TLS_PROTO_TLS12) && defined(HITLS_TLS_PROTO_TLS13)
-    #ifndef HITLS_TLS_PROTO_ALL
-        #define HITLS_TLS_PROTO_ALL
-    #endif
-#endif
-
 // host
 #ifdef HITLS_TLS_HOST
     #ifndef HITLS_TLS_HOST_SERVER
@@ -333,6 +327,9 @@
     #endif
     #ifndef HITLS_TLS_CONFIG_CIPHER_SUITE
         #define HITLS_TLS_CONFIG_CIPHER_SUITE
+    #endif
+    #ifndef HITLS_TLS_CONFIG_VERSION
+        #define HITLS_TLS_CONFIG_VERSION
     #endif
 #endif
 

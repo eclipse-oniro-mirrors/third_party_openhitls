@@ -384,7 +384,7 @@ HITLS_Config *HitlsNewCtx(TLS_VERSION tlsVersion)
             hitlsConfig = HITLS_CFG_NewTLS13Config();
             break;
 #endif
-#ifdef HITLS_TLS_PROTO_ALL
+#ifdef HITLS_TLS_CONFIG_VERSION
         case TLS_ALL:
             LOG_DEBUG("HiTLS New TLS_ALL Ctx");
             hitlsConfig = HITLS_CFG_NewTLSConfig();
@@ -495,14 +495,12 @@ int HitlsSetCtx(HITLS_Config *outCfg, HLT_Ctx_Config *inCtxCfg)
         HITLS_CFG_SetSessionCacheMode(outCfg, inCtxCfg->setSessionCache);
     }
 #endif
-#ifdef HITLS_TLS_PROTO_ALL
     // Set the protocol version.
     if ((inCtxCfg->minVersion != 0) && (inCtxCfg->maxVersion != 0)) {
         LOG_DEBUG("HiTLS Set minVersion is %u maxVersion is %u", inCtxCfg->minVersion, inCtxCfg->maxVersion);
         ret = HITLS_CFG_SetVersion(outCfg, inCtxCfg->minVersion, inCtxCfg->maxVersion);
         ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetVersion Error ERROR");
     }
-#endif
     if (inCtxCfg->SupportType == SERVER_CFG_SET_TRUE) {
         HITLS_CFG_SetCipherServerPreference(outCfg, true);
     }
