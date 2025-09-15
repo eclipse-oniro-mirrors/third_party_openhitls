@@ -64,12 +64,13 @@ void HITLS_X509_FreeStoreCtxMock(HITLS_X509_StoreCtx *ctx)
     BSL_SAL_ReferencesFree(&ctx->references);
     BSL_SAL_Free(ctx);
 }
-
+#ifdef HITLS_PKI_X509_VFY_CB
 static int32_t HITLS_X509_VerifyCbkMock(int32_t errcode, HITLS_X509_StoreCtx *storeCtx)
 {
     (void)storeCtx;
     return errcode;
 }
+#endif
 
 HITLS_X509_StoreCtx *HITLS_X509_NewStoreCtxMock(void)
 {
@@ -94,7 +95,9 @@ HITLS_X509_StoreCtx *HITLS_X509_NewStoreCtxMock(void)
     ctx->verifyParam.securityBits = 128;
     ctx->verifyParam.flags |= HITLS_X509_VFY_FLAG_CRL_ALL;
     ctx->verifyParam.flags |= HITLS_X509_VFY_FLAG_SECBITS;
+#ifdef HITLS_PKI_X509_VFY_CB
     ctx->verifyCb = HITLS_X509_VerifyCbkMock;
+#endif
     BSL_SAL_ReferencesInit(&(ctx->references));
     return ctx;
 }
@@ -250,6 +253,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_X509_STORE_CTRL_NEW_FIELDS_FUNC_TC003(void)
 {
+#ifdef HITLS_PKI_X509_VFY_CB
     HITLS_X509_StoreCtx *store = HITLS_X509_StoreCtxNew();
     ASSERT_TRUE(store != NULL);
 
@@ -301,12 +305,16 @@ void SDV_X509_STORE_CTRL_NEW_FIELDS_FUNC_TC003(void)
 EXIT:
     HITLS_X509_StoreCtxFree(store);
     HITLS_X509_CertFree(cert);
+#else
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */
 
 /* BEGIN_CASE */
 void SDV_X509_STORE_CTRL_NEW_FIELDS_INVALID_FUNC_TC004(void)
 {
+#ifdef HITLS_PKI_X509_VFY_CB
     HITLS_X509_StoreCtx *store = HITLS_X509_StoreCtxNew();
     ASSERT_TRUE(store != NULL);
 
@@ -323,6 +331,9 @@ void SDV_X509_STORE_CTRL_NEW_FIELDS_INVALID_FUNC_TC004(void)
 
 EXIT:
     HITLS_X509_StoreCtxFree(store);
+#else
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */
 
@@ -598,6 +609,7 @@ EXIT:
 }
 /* END_CASE */
 
+#ifdef HITLS_PKI_X509_VFY_CB
 #define HITLS_X509_CBK_ERR (-1)
 
 static int32_t X509_STORECTX_VerifyCb1(int32_t err, HITLS_X509_StoreCtx *ctx)
@@ -646,6 +658,7 @@ static int32_t X509StoreCtrlCbk(HITLS_X509_StoreCtx *store, int cbkflag)
 
     return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_VERIFY_CB, &cbk, sizeof(X509_STORECTX_VerifyCb));
 }
+#endif
 
 /* BEGIN_CASE */
 void SDV_X509_BUILD_CERT_CHAIN_FUNC_TC008(char *rootPath, char *caPath, char *cert, char *rootcrlpath, char *cacrlpath, int flag, int cbk, int except)
@@ -676,7 +689,14 @@ void SDV_X509_BUILD_CERT_CHAIN_FUNC_TC008(char *rootPath, char *caPath, char *ce
     } else {
         ASSERT_EQ(BSL_LIST_COUNT(store->crl), 2);
     }
+#ifndef HITLS_PKI_X509_VFY_CB
+    if (cbk != 0) {
+        goto EXIT;
+    }
+#else
     ASSERT_EQ(X509StoreCtrlCbk(store, cbk), HITLS_PKI_SUCCESS);
+#endif
+
     int32_t depth = 3;
     ret = HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_PARAM_DEPTH, &depth, sizeof(depth));
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
@@ -958,6 +978,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_X509_STORE_CTRL_GET_CERT_CHAIN_FUNC_TC018(void)
 {
+#ifdef HITLS_PKI_X509_VFY_CB
     HITLS_X509_StoreCtx *store = HITLS_X509_StoreCtxNew();
     ASSERT_TRUE(store != NULL);
 
@@ -1036,9 +1057,13 @@ EXIT:
     HITLS_X509_CertFree(rootCert);
     HITLS_X509_CertFree(leafCert);
     BSL_LIST_FREE(inputChain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+#else
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */
 
+#ifdef HITLS_PKI_X509_VFY_CB
 int32_t HITLS_X509_CheckCertTimeStub(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_Cert *cert, int32_t depth)
 {
     int64_t start = 0;
@@ -1152,10 +1177,12 @@ static int32_t X509StoreCtrlCbk2(HITLS_X509_StoreCtx *store, int cbkflag)
     }
     return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_VERIFY_CB, &cbk, sizeof(X509_STORECTX_VerifyCb));
 }
+#endif
 
 /* BEGIN_CASE */
 void SDV_X509_BUILD_CERT_CHAIN_CBK_FUNC_TC001(int flag, int ecp)
 {
+#ifdef HITLS_PKI_X509_VFY_CB
     FuncStubInfo stubInfo = {0};
     STUB_Init();
     HITLS_X509_StoreCtx *store = HITLS_X509_StoreCtxNew();
@@ -1192,5 +1219,71 @@ EXIT:
     HITLS_X509_CertFree(entity);
     BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
     BSL_GLOBAL_DeInit();
+#else
+    (void)flag;
+    (void)ecp;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+#ifdef HITLS_PKI_X509_VFY_CB
+static int32_t X509StoreCbk3(int32_t err, HITLS_X509_StoreCtx *ctx)
+{
+    (void)ctx;
+    if (err == HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND) {
+        return 0;
+    }
+    return err;
+}
+static int32_t X509StoreCtrlCbk3(HITLS_X509_StoreCtx *store, int cbkflag)
+{
+    if (cbkflag == 0) {
+        return HITLS_PKI_SUCCESS;
+    }
+    X509_STORECTX_VerifyCb cbk = X509StoreCbk3;
+    return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_VERIFY_CB, &cbk, sizeof(X509_STORECTX_VerifyCb));
+}
+#endif
+
+/* BEGIN_CASE */
+void SDV_X509_BUILD_CERT_CHAIN_CBK_FUNC_TC002(int flag, int ecp)
+{
+#ifdef HITLS_PKI_X509_VFY_CB
+    HITLS_X509_StoreCtx *store = HITLS_X509_StoreCtxNew();
+    ASSERT_TRUE(store != NULL);
+    HITLS_X509_Cert *ca = NULL;
+    if (flag != HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND) {
+        ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/inter.der", store, &ca), HITLS_PKI_SUCCESS);
+    }
+    HITLS_X509_Cert *entity = NULL;
+    ASSERT_TRUE(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/end.der", store, &entity) != HITLS_PKI_SUCCESS);
+    if (flag != HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND) {
+        ASSERT_EQ(BSL_LIST_COUNT(store->store), 1);
+    }
+    HITLS_X509_List *chain = NULL;
+    HITLS_X509_Cert *root = NULL;
+    ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/ca.der", store, &root), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertChainBuild(store, false, entity, &chain), HITLS_PKI_SUCCESS);
+    if (flag != HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND) {
+        ASSERT_EQ(BSL_LIST_COUNT(store->store), 2);
+    }
+    ASSERT_EQ(X509StoreCtrlCbk3(store, flag), HITLS_PKI_SUCCESS);
+    int64_t timeval = time(NULL);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_TIME, &timeval, sizeof(timeval)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertVerify(store, chain), ecp);
+
+EXIT:
+    HITLS_X509_StoreCtxFree(store);
+    HITLS_X509_CertFree(root);
+    HITLS_X509_CertFree(ca);
+    HITLS_X509_CertFree(entity);
+    BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+    BSL_GLOBAL_DeInit();
+#else
+    (void)flag;
+    (void)ecp;
+    SKIP_TEST();
+#endif
 }
 /* END_CASE */

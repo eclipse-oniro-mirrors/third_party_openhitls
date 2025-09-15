@@ -722,12 +722,9 @@ int32_t X509_GetIssueFromChain(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *c
         *issue = tmp;
         return HITLS_PKI_SUCCESS;
     }
-#ifdef HITLS_PKI_X509_VFY_CB
-    return VerifyCertCbk(storeCtx, cert, storeCtx->curDepth, HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND);
-#else
+
     BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND);
     return HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND;
-#endif
 }
 
 #ifdef HITLS_PKI_X509_VFY_LOCATION
@@ -858,8 +855,12 @@ int32_t X509_FindIssueCert(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *certC
         }
     }
 #endif
+#ifdef HITLS_PKI_X509_VFY_CB
+    return VerifyCertCbk(storeCtx, cert, storeCtx->curDepth, HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND);
+#else
     BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND);
-    return ret;
+    return HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND;
+#endif
 }
 
 int32_t X509_BuildChain(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *certChain, HITLS_X509_Cert *cert,
@@ -877,6 +878,10 @@ int32_t X509_BuildChain(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *certChai
         ret = X509_FindIssueCert(storeCtx, certChain, cur, &issue, &isTrustCa);
         if (ret != HITLS_PKI_SUCCESS) {
             return ret;
+        }
+        if (issue == NULL) {
+            BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND);
+            return HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND;
         }
         // depth
 #ifdef HITLS_PKI_X509_VFY_CB
