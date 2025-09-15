@@ -220,15 +220,15 @@ int32_t PackAppendDataToBuf(PackPacket *pkt, const uint8_t *data, uint32_t size)
     return HITLS_SUCCESS;
 }
 
-int32_t PackReserveBytes(PackPacket *pkt, uint32_t size, uint8_t **buf)
+int32_t PackReserveBytes(PackPacket *pkt, uint32_t size, uint8_t **reservedBuf)
 {
     int32_t ret = PackMsBufferPrepare(pkt, size);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
 
-    if (buf != NULL) {
-        *buf = &(*pkt->buf)[*pkt->bufOffset];
+    if (reservedBuf != NULL) {
+        *reservedBuf = &(*pkt->buf)[*pkt->bufOffset];
     }
     return HITLS_SUCCESS;
 }
@@ -254,25 +254,25 @@ int32_t PackSkipBytes(PackPacket *pkt, uint32_t size)
     return HITLS_SUCCESS;
 }
 
-void PackCloseUint8Field(PackPacket *pkt, uint32_t position)
+void PackCloseUint8Field(const PackPacket *pkt, uint32_t position)
 {
     (*pkt->buf)[position] = (uint8_t)(*pkt->bufOffset - position - sizeof(uint8_t));
     return;
 }
 
-void PackCloseUint16Field(PackPacket *pkt, uint32_t position)
+void PackCloseUint16Field(const PackPacket *pkt, uint32_t position)
 {
     BSL_Uint16ToByte((uint16_t)(*pkt->bufOffset - position - sizeof(uint16_t)), &(*pkt->buf)[position]);
     return;
 }
 
-void PackCloseUint24Field(PackPacket *pkt, uint32_t position)
+void PackCloseUint24Field(const PackPacket *pkt, uint32_t position)
 {
     BSL_Uint24ToByte((uint32_t)(*pkt->bufOffset - position - UINT24_SIZE), &(*pkt->buf)[position]);
     return;
 }
 
-int32_t PackGetSubBuffer(PackPacket *pkt, uint32_t start, uint32_t *length, uint8_t **buf)
+int32_t PackGetSubBuffer(const PackPacket *pkt, uint32_t start, uint32_t *length, uint8_t **buf)
 {
     if (length == NULL) {
         return HITLS_NULL_INPUT;

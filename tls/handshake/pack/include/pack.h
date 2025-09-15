@@ -155,7 +155,7 @@ int32_t PackSkipBytes(PackPacket *pkt, uint32_t size);
  * @param   pkt [IN/OUT] Context for packing
  * @param   position [IN] The start position of the field
  */
-void PackCloseUint8Field(PackPacket *pkt, uint32_t position);
+void PackCloseUint8Field(const PackPacket *pkt, uint32_t position);
 
 /**
  * @brief   After finish packing a buffer with a uint16_t length, pack the length field at the start of the buffer.
@@ -163,7 +163,7 @@ void PackCloseUint8Field(PackPacket *pkt, uint32_t position);
  * @param   pkt [IN/OUT] Context for packing
  * @param   position [IN] The start position of the field
  */
-void PackCloseUint16Field(PackPacket *pkt, uint32_t position);
+void PackCloseUint16Field(const PackPacket *pkt, uint32_t position);
 
 /**
  * @brief   After finish packing a buffer with a uint24_t length, pack the length field at the start of the buffer.
@@ -171,7 +171,7 @@ void PackCloseUint16Field(PackPacket *pkt, uint32_t position);
  * @param   pkt [IN/OUT] Context for packing
  * @param   position [IN] The start position of the field
  */
-void PackCloseUint24Field(PackPacket *pkt, uint32_t position);
+void PackCloseUint24Field(const PackPacket *pkt, uint32_t position);
 
 /**
  * @brief   Get a subbuffer from the handshake buffer, which starts from the start position,
@@ -186,7 +186,7 @@ void PackCloseUint24Field(PackPacket *pkt, uint32_t position);
  * @retval  HITLS_SUCCESS success
  * @retval  HITLS_PACK_NOT_ENOUGH_BUF_LENGTH Start exceeds the current offset
  */
-int32_t PackGetSubBuffer(PackPacket *pkt, uint32_t start, uint32_t *length, uint8_t **buf);
+int32_t PackGetSubBuffer(const PackPacket *pkt, uint32_t start, uint32_t *length, uint8_t **buf);
 #ifdef __cplusplus
 }
 #endif /* end __cplusplus */

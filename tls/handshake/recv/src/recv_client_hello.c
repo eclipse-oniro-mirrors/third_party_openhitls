@@ -432,7 +432,7 @@ int32_t ServerSelectCipherSuite(TLS_Ctx *ctx, const ClientHelloMsg *clientHello)
 }
 
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
-static uint32_t MapLegacyVersionToBits(TLS_Ctx *ctx, uint16_t version)
+static uint32_t MapLegacyVersionToBits(const TLS_Ctx *ctx, uint16_t version)
 {
     uint32_t ret = 0;
     uint16_t versions[] = {HITLS_VERSION_DTLS12, HITLS_VERSION_TLS12, HITLS_VERSION_TLCP_DTLCP11};

@@ -909,7 +909,7 @@ static int ChangeVersionMask(HITLS_Config *config, uint16_t minVersion, uint16_t
     return HITLS_SUCCESS;
 }
 
-static int32_t CheckVersionValid(HITLS_Config *config, uint16_t minVersion, uint16_t maxVersion)
+static int32_t CheckVersionValid(const HITLS_Config *config, uint16_t minVersion, uint16_t maxVersion)
 {
     if ((minVersion < HITLS_VERSION_SSL30 && minVersion != 0) ||
         (minVersion == HITLS_VERSION_SSL30 && config->minVersion != HITLS_VERSION_SSL30) ||
