@@ -38,6 +38,12 @@ typedef void HITLS_CERT_X509;
 
 /**
  * @ingroup hitls_cert_type
+ * @brief   Describes the CRL
+ */
+typedef void HITLS_CERT_CRL;
+
+/**
+ * @ingroup hitls_cert_type
  * @brief   Describes the certificate key
  */
 typedef void HITLS_CERT_Key;
@@ -68,17 +74,26 @@ typedef struct BslList HITLS_CERT_Chain;
 
 /**
  * @ingroup hitls_cert_type
+ * @brief   Describes the CRL list
+ */
+typedef struct BslList HITLS_CERT_CRLList;
+
+/**
+ * @ingroup hitls_cert_type
  * @brief   ctrl option
  */
 typedef enum {
-    CERT_STORE_CTRL_SET_VERIFY_DEPTH,   /**< Set the certificate verification depth. */
+    CERT_STORE_CTRL_SET_VERIFY_DEPTH = 0,   /**< Set the certificate verification depth. */
     CERT_STORE_CTRL_ADD_CERT_LIST,      /**< Add ca and chain certificate to store */
+    CERT_STORE_CTRL_ADD_CRL_LIST,       /**< Add CRL list to store */
+    CERT_STORE_CTRL_CLEAR_CRL_LIST      ,/**< clear all CRL list */
 
-    CERT_CTRL_GET_ENCODE_LEN,           /**< Obtain the length of the certificate code. */
+    CERT_CTRL_GET_ENCODE_LEN = 200,           /**< Obtain the length of the certificate code. */
     CERT_CTRL_GET_PUB_KEY,              /**< Obtaining the Certificate Public Key (Release Required). */
     CERT_CTRL_GET_SIGN_ALGO,            /**< Obtain the certificate signature algorithm. */
 
-    CERT_KEY_CTRL_GET_SIGN_LEN,         /**< Obtain the signature length. */
+
+    CERT_KEY_CTRL_GET_SIGN_LEN = 400,         /**< Obtain the signature length. */
     CERT_KEY_CTRL_GET_TYPE,             /**< Obtaining the Key Type. */
     CERT_KEY_CTRL_GET_CURVE_NAME,       /**< Obtain the elliptic curve ID. */
     CERT_KEY_CTRL_GET_POINT_FORMAT,     /**< Obtains the format of the EC point. */

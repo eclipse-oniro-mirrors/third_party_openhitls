@@ -212,7 +212,6 @@ EXIT:
     HITLS_X509_DnListFree(dirNames);
     return NULL;
 }
-#endif
 
 static BslList* GenGeneralNameList(void)
 {
@@ -266,6 +265,7 @@ EXIT:
     BSL_LIST_FREE(names, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeGeneralName);
     return NULL;
 }
+#endif
 
 #ifdef HITLS_PKI_X509_CRL_GEN
 static int32_t SetCrlEntry(HITLS_X509_Crl *crl)

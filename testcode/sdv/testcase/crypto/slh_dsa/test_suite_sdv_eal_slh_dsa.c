@@ -21,6 +21,7 @@
 #include "bsl_err.h"
 #include "bsl_sal.h"
 #include "crypt_errno.h"
+#include "crypt_algid.h"
 #include "crypt_eal_pkey.h"
 #include "crypt_util_rand.h"
 #include "crypt_bn.h"
@@ -111,7 +112,7 @@ void SDV_CRYPTO_SLH_DSA_GENKEY_TC001(int isProvider)
     ASSERT_TRUE(pkey != NULL);
     ASSERT_TRUE(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_PARA_BY_ID, NULL, 0) == CRYPT_INVALID_ARG);
     ASSERT_TRUE(CRYPT_EAL_PkeyGen(pkey) == CRYPT_SLHDSA_ERR_INVALID_ALGID);
-    CRYPT_SLH_DSA_AlgId algId = CRYPT_SLH_DSA_SHA2_128S;
+    CRYPT_PKEY_ParaId algId = CRYPT_SLH_DSA_SHA2_128S;
     ASSERT_TRUE(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_PARA_BY_ID, (void *)&algId, sizeof(algId)) ==
                 CRYPT_SUCCESS);
     ASSERT_TRUE(CRYPT_EAL_PkeyGen(pkey) == CRYPT_SUCCESS);

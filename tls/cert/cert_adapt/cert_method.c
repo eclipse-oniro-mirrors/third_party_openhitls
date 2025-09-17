@@ -21,8 +21,8 @@
 #include "bsl_err_internal.h"
 #include "hitls_error.h"
 #include "hitls_cert_reg.h"
-#ifdef HITLS_TLS_FEATURE_PROVIDER
 #include "hitls_x509_adapt.h"
+#ifdef HITLS_TLS_FEATURE_PROVIDER
 #include "hitls_pki_x509.h"
 #endif /* HITLS_TLS_FEATURE_PROVIDER */
 #include "tls_config.h"
@@ -284,25 +284,42 @@ void SAL_CERT_KeyFree(const CERT_MgrCtx *mgrCtx, HITLS_CERT_Key *key)
 }
 
 /* change the error code when modifying the ctrl command */
-uint32_t g_tlsCertCtrlErrorCode[] = {
-    HITLS_CERT_STORE_CTRL_ERR_SET_VERIFY_DEPTH,
-    HITLS_CERT_STORE_CTRL_ERR_ADD_CERT_LIST,
-    HITLS_CERT_CTRL_ERR_GET_ENCODE_LEN,
-    HITLS_CERT_CTRL_ERR_GET_PUB_KEY,
-    HITLS_CERT_CTRL_ERR_GET_SIGN_ALGO,
-    HITLS_CERT_KEY_CTRL_ERR_GET_SIGN_LEN,
-    HITLS_CERT_KEY_CTRL_ERR_GET_TYPE,
-    HITLS_CERT_KEY_CTRL_ERR_GET_CURVE_NAME,
-    HITLS_CERT_KEY_CTRL_ERR_GET_POINT_FORMAT,
-    HITLS_CERT_KEY_CTRL_ERR_GET_SECBITS,
-    HITLS_CERT_KEY_CTRL_ERR_IS_ENC_USAGE,
-    HITLS_CERT_KEY_CTRL_ERR_IS_DIGITAL_SIGN_USAGE,
-    HITLS_CERT_KEY_CTRL_ERR_IS_KEY_CERT_SIGN_USAGE,
-    HITLS_CERT_KEY_CTRL_ERR_IS_KEY_AGREEMENT_USAGE,
-    HITLS_CERT_KEY_CTRL_ERR_GET_PARAM_ID,
-    HITLS_CERT_KEY_CTRL_ERR_IS_DATA_ENC_USAGE,
-    HITLS_CERT_KEY_CTRL_ERR_IS_NON_REPUDIATION_USAGE,
+
+static const struct {
+    HITLS_CERT_CtrlCmd cmd;
+    uint32_t err;
+} g_tlsCertCtrlErrorCode[] = {
+    { CERT_STORE_CTRL_SET_VERIFY_DEPTH, HITLS_CERT_STORE_CTRL_ERR_SET_VERIFY_DEPTH },
+    { CERT_STORE_CTRL_ADD_CERT_LIST, HITLS_CERT_STORE_CTRL_ERR_ADD_CERT_LIST },
+    { CERT_STORE_CTRL_ADD_CRL_LIST, HITLS_CERT_STORE_CTRL_ERR_ADD_CRL_LIST },
+
+    { CERT_CTRL_GET_ENCODE_LEN, HITLS_CERT_CTRL_ERR_GET_ENCODE_LEN },
+    { CERT_CTRL_GET_PUB_KEY, HITLS_CERT_CTRL_ERR_GET_PUB_KEY },
+    { CERT_CTRL_GET_SIGN_ALGO, HITLS_CERT_CTRL_ERR_GET_SIGN_ALGO },
+
+    { CERT_KEY_CTRL_GET_SIGN_LEN, HITLS_CERT_KEY_CTRL_ERR_GET_SIGN_LEN },
+    { CERT_KEY_CTRL_GET_TYPE, HITLS_CERT_KEY_CTRL_ERR_GET_TYPE },
+    { CERT_KEY_CTRL_GET_CURVE_NAME, HITLS_CERT_KEY_CTRL_ERR_GET_CURVE_NAME },
+    { CERT_KEY_CTRL_GET_POINT_FORMAT, HITLS_CERT_KEY_CTRL_ERR_GET_POINT_FORMAT },
+    { CERT_KEY_CTRL_GET_SECBITS, HITLS_CERT_KEY_CTRL_ERR_GET_SECBITS },
+    { CERT_KEY_CTRL_IS_KEYENC_USAGE, HITLS_CERT_KEY_CTRL_ERR_IS_ENC_USAGE },
+    { CERT_KEY_CTRL_IS_DIGITAL_SIGN_USAGE, HITLS_CERT_KEY_CTRL_ERR_IS_DIGITAL_SIGN_USAGE },
+    { CERT_KEY_CTRL_IS_KEY_CERT_SIGN_USAGE, HITLS_CERT_KEY_CTRL_ERR_IS_KEY_CERT_SIGN_USAGE },
+    { CERT_KEY_CTRL_IS_KEY_AGREEMENT_USAGE, HITLS_CERT_KEY_CTRL_ERR_IS_KEY_AGREEMENT_USAGE },
+    { CERT_KEY_CTRL_GET_PARAM_ID, HITLS_CERT_KEY_CTRL_ERR_GET_PARAM_ID },
+    { CERT_KEY_CTRL_IS_DATA_ENC_USAGE, HITLS_CERT_KEY_CTRL_ERR_IS_DATA_ENC_USAGE },
+    { CERT_KEY_CTRL_IS_NON_REPUDIATION_USAGE, HITLS_CERT_KEY_CTRL_ERR_IS_NON_REPUDIATION_USAGE },
 };
+
+static uint32_t GetTlsCertCtrlErrorCode(HITLS_CERT_CtrlCmd cmd)
+{
+    for (size_t i = 0; i < sizeof(g_tlsCertCtrlErrorCode) / sizeof(g_tlsCertCtrlErrorCode[0]); i++) {
+        if (g_tlsCertCtrlErrorCode[i].cmd == cmd) {
+            return g_tlsCertCtrlErrorCode[i].err;
+        }
+    }
+    return HITLS_CERT_CTRL_ERR_INVALID_CMD;
+}
 
 int32_t SAL_CERT_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store, HITLS_CERT_CtrlCmd cmd, void *in, void *out)
 {
@@ -312,7 +329,7 @@ int32_t SAL_CERT_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store, HITLS_
 #else
     ret = config->certMgrCtx->method.certStoreCtrl(config, store, cmd, in, out);
 #endif
-    return CheckCertCallBackRetVal("cert store ctrl", ret, BINLOG_ID16094, g_tlsCertCtrlErrorCode[cmd]);
+    return CheckCertCallBackRetVal("cert store ctrl", ret, BINLOG_ID16094, GetTlsCertCtrlErrorCode(cmd));
 }
 
 int32_t SAL_CERT_X509Ctrl(HITLS_Config *config, HITLS_CERT_X509 *cert, HITLS_CERT_CtrlCmd cmd, void *in, void *out)
@@ -328,7 +345,7 @@ int32_t SAL_CERT_X509Ctrl(HITLS_Config *config, HITLS_CERT_X509 *cert, HITLS_CER
 #else
     ret = config->certMgrCtx->method.certCtrl(config, cert, cmd, in, out);
 #endif
-    return CheckCertCallBackRetVal("cert ctrl", ret, BINLOG_ID16096, g_tlsCertCtrlErrorCode[cmd]);
+    return CheckCertCallBackRetVal("cert ctrl", ret, BINLOG_ID16096, GetTlsCertCtrlErrorCode(cmd));
 }
 
 int32_t SAL_CERT_KeyCtrl(HITLS_Config *config, HITLS_CERT_Key *key, HITLS_CERT_CtrlCmd cmd, void *in, void *out)
@@ -344,7 +361,7 @@ int32_t SAL_CERT_KeyCtrl(HITLS_Config *config, HITLS_CERT_Key *key, HITLS_CERT_C
 #else
     ret = config->certMgrCtx->method.keyCtrl(config, key, cmd, in, out);
 #endif
-    return CheckCertCallBackRetVal("key ctrl", ret, BINLOG_ID16098, g_tlsCertCtrlErrorCode[cmd]);
+    return CheckCertCallBackRetVal("key ctrl", ret, BINLOG_ID16098, GetTlsCertCtrlErrorCode(cmd));
 }
 
 int32_t SAL_CERT_CreateSign(HITLS_Ctx *ctx, HITLS_CERT_Key *key, CERT_SignParam *signParam)
@@ -418,4 +435,15 @@ int32_t SAL_CERT_CheckPrivateKey(HITLS_Config *config, HITLS_CERT_X509 *cert, HI
 #endif
     return CheckCertCallBackRetVal(
         "check cert and private key", ret, BINLOG_ID15538, HITLS_CERT_ERR_CHECK_CERT_AND_KEY);
+}
+
+HITLS_CERT_CRLList *SAL_CERT_CrlParse(HITLS_Config *config, const uint8_t *buf, uint32_t len,
+    HITLS_ParseType type, HITLS_ParseFormat format)
+{
+    return HITLS_X509_Adapt_CrlParse(config, buf, len, type, format);
+}
+
+void SAL_CERT_CrlFree(HITLS_CERT_CRLList *crlList)
+{
+    HITLS_X509_Adapt_CrlFree(crlList);
 }

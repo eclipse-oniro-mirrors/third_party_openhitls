@@ -1114,7 +1114,8 @@
                     "crypto/ecdsa/include",
                     "crypto/sm2/include",
                     "crypto/curve25519/include",
-                    "crypto/provider/include"
+                    "crypto/provider/include",
+                    "crypto/provider/src/mgr"
                 ]
             },
             "util": {

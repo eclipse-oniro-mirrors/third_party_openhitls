@@ -17,6 +17,7 @@
 #ifdef HITLS_CRYPTO_MLKEM
 #include "securec.h"
 #include "crypt_errno.h"
+#include "crypt_algid.h"
 #include "bsl_sal.h"
 #include "bsl_err_internal.h"
 #include "eal_pkey_local.h"
@@ -137,6 +138,7 @@ CRYPT_ML_KEM_Ctx *CRYPT_ML_KEM_DupCtx(CRYPT_ML_KEM_Ctx *ctx)
         }
         newCtx->dkLen = ctx->dkLen;
     }
+    newCtx->libCtx = ctx->libCtx;
     return newCtx;
 }
 
