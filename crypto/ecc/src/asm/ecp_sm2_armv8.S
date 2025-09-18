@@ -16,7 +16,6 @@
 #include "hitls_build.h"
 #ifdef HITLS_CRYPTO_CURVE_SM2
 #include "crypt_arm.h"
-.file	"ecp_sm2_armv8.S"
 
 #define	s0 x7
 #define	s1 x8
