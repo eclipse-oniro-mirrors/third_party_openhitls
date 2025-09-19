@@ -1110,7 +1110,7 @@ static void PrintSelfTestErrlog(AppInitParam *param, int32_t ret)
 {
 #ifdef HITLS_APP_SM_MODE
     if (param->smParam->smTag == 1) {
-        HITLS_APP_SM_PrintSelfTestErrlog(ret);
+        HITLS_APP_SM_PrintLog(ret);
     }
 #else
     (void)param;

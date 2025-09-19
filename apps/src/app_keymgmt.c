@@ -365,7 +365,7 @@ static int32_t CreateAsymKey(KeyMgmtCmdOpt *keyMgmtOpt, int32_t algId, HITLS_APP
     keyMgmtOpt->smParam->status = HITLS_APP_SM_STATUS_APPORVED;
     int32_t ret = CRYPT_EAL_PkeyGen(pkeyCtx);
     if (ret != CRYPT_SUCCESS) {
-        HITLS_APP_SM_PrintSelfTestErrlog(ret);
+        HITLS_APP_SM_PrintLog(ret);
         CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
         AppPrintError("keymgmt: Failed to generate the asym key, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
@@ -838,7 +838,7 @@ static int32_t SelfTest(KeyMgmtCmdOpt *keyMgmtOpt)
     BSL_PARAM_InitValue(&params[0], CRYPT_PARAM_CMVP_SELFTEST_TYPE, BSL_PARAM_TYPE_INT32, &type, sizeof(type));
     int32_t ret = CRYPT_CMVP_Selftest(selftestCtx, params);
     if (ret != CRYPT_SUCCESS) {
-        HITLS_APP_SM_PrintSelfTestErrlog(ret);
+        HITLS_APP_SM_PrintLog(ret);
         AppPrintError("keymgmt: Failed to self test, errCode: 0x%x.\n", ret);
         CRYPT_CMVP_SelftestFreeCtx(selftestCtx);
         return HITLS_APP_CRYPTO_FAIL;
@@ -1353,7 +1353,7 @@ static int32_t CreateAndCheckAsymKey(AppProvider *provider, uint8_t *prv, uint32
     ret = CRYPT_EAL_PkeyPairCheck(pkeyCtx, pkeyCtx);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-        HITLS_APP_SM_PrintSelfTestErrlog(ret);
+        HITLS_APP_SM_PrintLog(ret);
         AppPrintError("keymgmt: Check asymmetric key pairwise failed, errCode: 0x%x.\n", ret);
         return HITLS_APP_CRYPTO_FAIL;
     }

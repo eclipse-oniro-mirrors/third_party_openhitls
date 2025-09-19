@@ -90,7 +90,7 @@ char *HITLS_APP_GetAppPath(void);
 
 int32_t HITLS_APP_SM_RootUserCheck(void);
 
-void HITLS_APP_SM_PrintSelfTestErrlog(int32_t ret);
+void HITLS_APP_SM_PrintLog(int32_t ret);
 
 #endif
 

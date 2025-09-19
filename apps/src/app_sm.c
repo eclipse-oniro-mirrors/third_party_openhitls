@@ -699,7 +699,7 @@ int32_t HITLS_APP_SM_PeriodicRandomCheck(AppProvider *provider)
     return RandomSelftest(provider, groups, bitsPerGroup, retry, threshold);
 }
 
-void HITLS_APP_SM_PrintSelfTestErrlog(int32_t ret)
+void HITLS_APP_SM_PrintLog(int32_t ret)
 {
     switch (ret) {
         case CRYPT_CMVP_ERR_CIPHER_SELFTEST:
