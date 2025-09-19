@@ -247,7 +247,7 @@ void ServerSendMalformedRecordHeaderMsg(HLT_FrameHandle *handle, TestPara *testP
     }
 
     //Wait for the local end.
-    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) == 0);
+    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) != 0);
 
     //Confirm the final status.
     ASSERT_TRUE(((HITLS_Ctx *)(serverRes->ssl))->state == CM_STATE_ALERTED);
@@ -1549,7 +1549,7 @@ void SDV_TLS_TLS12_RFC5246_CONSISTENCY_NEGOTIATE_CIPHERSUITE_TC001(int version, 
     ASSERT_TRUE(clientRes != NULL);
     ASSERT_EQ(HLT_RpcTlsConnect(remoteProcess, clientRes->sslId), HITLS_REC_NORMAL_RECV_UNEXPECT_MSG);
 
-    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) == 0);
+    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) != 0);
 
 EXIT:
     HLT_CleanFrameHandle();

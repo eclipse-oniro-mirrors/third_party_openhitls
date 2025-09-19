@@ -203,7 +203,7 @@ int HLT_TlsAcceptBlock(void *ssl)
     process = GetProcess();
     switch (process->tlsType) {
         case HITLS:
-            return HitlsAccept(ssl);
+            return *(int *)HitlsAccept(ssl);
         default:
             return ERROR;
     }
@@ -227,9 +227,14 @@ int HLT_GetTlsAcceptResult(HLT_Tls_Res* tlsRes)
         ret = HLT_RpcGetTlsAcceptResult(tlsRes->acceptId);
     } else {
         // Indicates that the local process accepts the request.
-        pthread_join(tlsRes->acceptId, NULL);
+        int *tmp = NULL;
+        pthread_join(tlsRes->acceptId, (void**)&tmp);
+        if (tmp == NULL) {
+            return ERROR;
+        }
+        ret = *tmp;
         tlsRes->acceptId = 0;
-        return SUCCESS;
+        return ret;
     }
     tlsRes->acceptId = 0;
     return ret;

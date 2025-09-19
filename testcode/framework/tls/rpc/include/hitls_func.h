@@ -65,7 +65,7 @@ int HitlsSetSsl(void *ssl, HLT_Ssl_Config *sslConfig);
 /**
 * @brief HiTLS waits for a TLS connection.
 */
-int HitlsAccept(void *ssl);
+void *HitlsAccept(void *ssl);
 
 /**
 * @brief The HiTLS initiates a TLS connection.
