@@ -26,6 +26,11 @@
 #error "[HiTLS] The tls-provider must work with crypto-provider"
 #endif
 
+
+#if defined(HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION) && !defined(HITLS_PKI_X509_VFY_LOCATION)
+#error "[HiTLS] The tls verify must work with pki vfy location"
+#endif
+
 #if (defined(HITLS_TLS_FEATURE_PHA) || defined(HITLS_TLS_FEATURE_KEY_UPDATE)) && !defined(HITLS_TLS_PROTO_TLS13)
     #error "[HiTLS] Integrity check must work with TLS13"
 #endif

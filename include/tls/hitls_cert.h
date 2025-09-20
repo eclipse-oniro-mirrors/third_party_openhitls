@@ -996,6 +996,17 @@ int32_t HITLS_CFG_FreeCert(HITLS_Config *config, HITLS_CERT_X509 *cert);
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_FreeKey(HITLS_Config *config, HITLS_CERT_Key *key);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Load the verification file from the directory.
+ *
+ * @param   config  [OUT] TLS link configuration
+ * @param   path  [IN] Directory path
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_LoadVerifyDir(HITLS_Config *config, const char *path);
 #ifdef __cplusplus
 }
 #endif

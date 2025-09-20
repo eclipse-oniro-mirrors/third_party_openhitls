@@ -20,6 +20,7 @@
 #ifdef HITLS_PKI_X509_VFY
 #include <stdint.h>
 #include "bsl_asn1.h"
+#include "bsl_list.h"
 #include "hitls_pki_x509.h"
 #include "sal_atomic.h"
 
@@ -47,6 +48,7 @@ struct _HITLS_X509_StoreCtx {
     HITLS_X509_List *crl;
     BSL_SAL_RefCount references;
     HITLS_X509_VerifyParam verifyParam;
+    BslList *caPaths;                 // List of CA directory paths for on-demand loading (char*)
     CRYPT_EAL_LibCtx *libCtx;         // Provider context
     const char *attrName;             // Provider attribute name
 };
@@ -59,6 +61,8 @@ int32_t HITLS_X509_VerifyParamAndExt(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_L
  * You can configure not to verify or only verify the terminal certificate
  */
 int32_t HITLS_X509_VerifyCrl(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *chain);
+
+int32_t HITLS_X509_GetIssuerFromStore(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_Cert *cert, HITLS_X509_Cert **issuer);
 
 #ifdef __cplusplus
 }
