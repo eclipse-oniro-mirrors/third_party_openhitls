@@ -636,13 +636,14 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
-void SDV_BSL_ASN1_ENCODE_ENCRYPTED_PRIKEY_BUFF_TC001(char *path, int fileType, int hmacId, int symId, int saltLen,
-    Hex *pwd, int itCnt, Hex *asn1)
+void SDV_BSL_ASN1_ENCODE_ENCRYPTED_PRIKEY_BUFF_TC001(char *path, int fileType, int keyType, int hmacId, int symId,
+    int saltLen, Hex *pwd, int itCnt, Hex *asn1, int isProvider)
 {
     RegisterLogFunc();
     CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
     BSL_Buffer encodeAsn1 = {0};
     BSL_Buffer encodeAsn1Out = {0};
+    CRYPT_EAL_PkeyCtx *decodeCtx = NULL;
     CRYPT_Pbkdf2Param param = {0};
     param.pbesId = BSL_CID_PBES2;
     param.pbkdfId = BSL_CID_PBKDF2;
@@ -653,11 +654,24 @@ void SDV_BSL_ASN1_ENCODE_ENCRYPTED_PRIKEY_BUFF_TC001(char *path, int fileType, i
     param.saltLen = saltLen;
     param.itCnt = itCnt;
     CRYPT_EncodeParam paramEx = {CRYPT_DERIVE_PBKDF2, &param};
-    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_UNKNOWN, fileType, path, pwd->x, pwd->len, &pkeyCtx), CRYPT_SUCCESS);
-    
+#ifdef HITLS_CRYPTO_PROVIDER
+    if (isProvider) {
+        BSL_Buffer pwdBuf = {pwd->x, pwd->len};
+        ASSERT_EQ(CRYPT_EAL_ProviderDecodeFileKey(NULL, NULL, keyType, BSL_FORMAT_UNKNOWN, NULL, path, &pwdBuf,
+            &pkeyCtx), CRYPT_SUCCESS);
+    } else {
+#else
+        (void)isProvider;
+#endif
+        (void)keyType;
+        ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_UNKNOWN, fileType, path, pwd->x, pwd->len, &pkeyCtx),
+            CRYPT_SUCCESS);
+#ifdef HITLS_CRYPTO_PROVIDER
+    }
+#endif
+
     ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkeyCtx, &paramEx, BSL_FORMAT_ASN1, fileType, &encodeAsn1), CRYPT_SUCCESS);
-    CRYPT_EAL_PkeyCtx *decodeCtx = NULL;
     ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_ASN1, fileType, &encodeAsn1, pwd->x, pwd->len, &decodeCtx),
         CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(decodeCtx, NULL, BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, &encodeAsn1Out),
