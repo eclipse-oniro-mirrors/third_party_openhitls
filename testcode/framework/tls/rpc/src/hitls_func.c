@@ -539,7 +539,7 @@ int HitlsSetCtx(HITLS_Config *outCfg, HLT_Ctx_Config *inCtxCfg)
 #ifdef HITLS_TLS_SUITE_CIPHER_CBC
     // Whether encrypt-then-mac is supported
     LOG_DEBUG("HiTLS Set Support EncryptThenMac is %d", inCtxCfg->isEncryptThenMac);
-    ret = HITLS_CFG_SetEncryptThenMac(outCfg, (uint32_t)inCtxCfg->isEncryptThenMac);
+    ret = HITLS_CFG_SetEncryptThenMac(outCfg, inCtxCfg->isEncryptThenMac);
     ASSERT_RETURN(ret == SUCCESS, "HITLS_CFG_SetEncryptThenMac ERROR");
 #endif
     // ECC Point Format Configuration for Asymmetric Algorithms
@@ -910,7 +910,7 @@ int HitlsSetSession(void *ssl, void *session)
 
 int HitlsSessionReused(void *ssl)
 {
-    uint8_t isReused = 0;
+    bool isReused = false;
     (void)ssl;
 #ifdef HITLS_TLS_FEATURE_SESSION
     int32_t ret;

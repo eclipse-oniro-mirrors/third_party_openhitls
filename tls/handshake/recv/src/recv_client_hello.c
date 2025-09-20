@@ -835,9 +835,9 @@ static int32_t ResumeCheckExtendedMasterScret(TLS_Ctx *ctx, const ClientHelloMsg
         return HITLS_SUCCESS;
     }
     (void)clientHello;
-    uint8_t haveExtMasterSecret = false;
+    bool haveExtMasterSecret = false;
     HITLS_SESS_GetHaveExtMasterSecret(*sess, &haveExtMasterSecret);
-    if (haveExtMasterSecret != 0) {
+    if (haveExtMasterSecret) {
         if (!clientHello->extension.flag.haveExtendedMasterSecret) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17051, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "ExtendedMasterSecret err", 0, 0, 0, 0);

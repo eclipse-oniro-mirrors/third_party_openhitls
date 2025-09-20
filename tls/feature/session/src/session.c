@@ -324,7 +324,7 @@ int32_t HITLS_SESS_SetHaveExtMasterSecret(HITLS_Session *sess, uint8_t haveExtMa
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_SESS_GetHaveExtMasterSecret(HITLS_Session *sess, uint8_t *haveExtMasterSecret)
+int32_t HITLS_SESS_GetHaveExtMasterSecret(HITLS_Session *sess, bool *haveExtMasterSecret)
 {
     if (sess == NULL || haveExtMasterSecret == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16735, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "input null", 0, 0, 0, 0);
@@ -333,7 +333,7 @@ int32_t HITLS_SESS_GetHaveExtMasterSecret(HITLS_Session *sess, uint8_t *haveExtM
     }
 
     BSL_SAL_ThreadReadLock(sess->lock);
-    *haveExtMasterSecret = (uint8_t)sess->haveExtMasterSecret;
+    *haveExtMasterSecret = sess->haveExtMasterSecret;
     BSL_SAL_ThreadUnlock(sess->lock);
     return HITLS_SUCCESS;
 }

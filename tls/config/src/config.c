@@ -1151,13 +1151,13 @@ int32_t HITLS_CFG_SetTmpDh(HITLS_Config *config, HITLS_CRYPT_Key *dhPkey)
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetDhAutoSupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetDhAutoSupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportDhAuto;
+    *isSupport = config->isSupportDhAuto;
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_CONFIG_MANUAL_DH */
@@ -1561,35 +1561,35 @@ int32_t HITLS_CFG_SetSessionTicketSupport(HITLS_Config *config, bool support)
 #endif
 
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
-int32_t HITLS_CFG_GetRenegotiationSupport(const HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetRenegotiationSupport(const HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportRenegotiation;
+    *isSupport = config->isSupportRenegotiation;
     return HITLS_SUCCESS;
 }
 #endif
 
-int32_t HITLS_CFG_GetExtenedMasterSecretSupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetExtenedMasterSecretSupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportExtendMasterSecret;
+    *isSupport = config->isSupportExtendMasterSecret;
     return HITLS_SUCCESS;
 }
 
 #if defined(HITLS_TLS_FEATURE_SESSION_TICKET)
-int32_t HITLS_CFG_GetSessionTicketSupport(const HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetSessionTicketSupport(const HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportSessionTicket;
+    *isSupport = config->isSupportSessionTicket;
     return HITLS_SUCCESS;
 }
 
@@ -1633,13 +1633,13 @@ int32_t HITLS_CFG_SetClientOnceVerifySupport(HITLS_Config *config, bool support)
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetClientOnceVerifySupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetClientOnceVerifySupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportClientOnceVerify;
+    *isSupport = config->isSupportClientOnceVerify;
     return HITLS_SUCCESS;
 }
 #endif
@@ -1917,33 +1917,29 @@ int32_t HITLS_CFG_SetDtlsPostHsTimeoutVal(HITLS_Config *config, uint32_t timeout
 #endif
 
 #ifdef HITLS_TLS_SUITE_CIPHER_CBC
-int32_t HITLS_CFG_SetEncryptThenMac(HITLS_Config *config, uint32_t encryptThenMacType)
+int32_t HITLS_CFG_SetEncryptThenMac(HITLS_Config *config, bool encryptThenMacType)
 {
     if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    if (encryptThenMacType == 0) {
-        config->isEncryptThenMac = false;
-    } else {
-        config->isEncryptThenMac = true;
-    }
+    config->isEncryptThenMac = encryptThenMacType;
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetEncryptThenMac(const HITLS_Config *config, uint32_t *encryptThenMacType)
+int32_t HITLS_CFG_GetEncryptThenMac(const HITLS_Config *config, bool *encryptThenMacType)
 {
     if (config == NULL || encryptThenMacType == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *encryptThenMacType = (uint32_t)config->isEncryptThenMac;
+    *encryptThenMacType = config->isEncryptThenMac;
     return HITLS_SUCCESS;
 }
 #endif
 
 #ifdef HITLS_TLS_PROTO_DTLS
-int32_t HITLS_CFG_IsDtls(const HITLS_Config *config, uint8_t *isDtls)
+int32_t HITLS_CFG_IsDtls(const HITLS_Config *config, bool *isDtls)
 {
     if (config == NULL || isDtls == NULL) {
         return HITLS_NULL_INPUT;
@@ -1993,21 +1989,17 @@ uint32_t HITLS_CFG_GetTicketNums(HITLS_Config *config)
 }
 #endif
 #ifdef HITLS_TLS_FEATURE_FLIGHT
-int32_t HITLS_CFG_SetFlightTransmitSwitch(HITLS_Config *config, uint8_t isEnable)
+int32_t HITLS_CFG_SetFlightTransmitSwitch(HITLS_Config *config, bool isEnable)
 {
     if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    if (isEnable == 0) {
-        config->isFlightTransmitEnable = false;
-    } else {
-        config->isFlightTransmitEnable = true;
-    }
+    config->isFlightTransmitEnable = isEnable;
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetFlightTransmitSwitch(const HITLS_Config *config, uint8_t *isEnable)
+int32_t HITLS_CFG_GetFlightTransmitSwitch(const HITLS_Config *config, bool *isEnable)
 {
     if (config == NULL || isEnable == NULL) {
         return HITLS_NULL_INPUT;

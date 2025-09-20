@@ -702,33 +702,33 @@ int32_t HITLS_CFG_SetVerifyNoneSupport(HITLS_Config *config, bool support)
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetVerifyNoneSupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetVerifyNoneSupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportVerifyNone;
+    *isSupport = config->isSupportVerifyNone;
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetClientVerifySupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetClientVerifySupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportClientVerify;
+    *isSupport = config->isSupportClientVerify;
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetNoClientCertSupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetNoClientCertSupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportNoClientCert;
+    *isSupport = config->isSupportNoClientCert;
     return HITLS_SUCCESS;
 }
 

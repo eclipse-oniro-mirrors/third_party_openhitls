@@ -2118,7 +2118,7 @@ int32_t HITLS_CFG_GetDescription(const HITLS_Cipher *cipher, uint8_t *buf, int32
  * @return  HITLS_SUCCESS Obtained successfully.
  *          HITLS_NULL_INPUT The input parameter pointer is NULL.
  */
-int32_t HITLS_CIPHER_IsAead(const HITLS_Cipher *cipher, uint8_t *isAead)
+int32_t HITLS_CIPHER_IsAead(const HITLS_Cipher *cipher, bool *isAead)
 {
     if (cipher == NULL || isAead == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);

@@ -1111,9 +1111,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_PSKTICKET_FUNC_TC001(int version, int con
             HITLS_SESS_Free(session);
             session = NULL;
 
-            uint8_t isReused = 0;
+            bool isReused = false;
             ASSERT_TRUE(HITLS_IsSessionReused(clientSsl, &isReused) == HITLS_SUCCESS);
-            ASSERT_TRUE(isReused == 0);
+            ASSERT_TRUE(isReused == false);
         }
 
         session = HITLS_GetDupSession(clientSsl);

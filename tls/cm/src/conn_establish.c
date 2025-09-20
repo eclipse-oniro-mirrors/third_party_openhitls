@@ -532,28 +532,28 @@ int32_t HITLS_GetHandShakeState(const HITLS_Ctx *ctx, uint32_t *state)
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_IsHandShaking(const HITLS_Ctx *ctx, uint8_t *isHandShaking)
+int32_t HITLS_IsHandShaking(const HITLS_Ctx *ctx, bool *isHandShaking)
 {
     if (ctx == NULL || isHandShaking == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isHandShaking = 0;
+    *isHandShaking = false;
     uint32_t state = GetConnState(ctx);
     if ((state == CM_STATE_HANDSHAKING) || (state == CM_STATE_RENEGOTIATION)) {
-        *isHandShaking = 1;
+        *isHandShaking = true;
     }
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_IsBeforeHandShake(const HITLS_Ctx *ctx, uint8_t *isBefore)
+int32_t HITLS_IsBeforeHandShake(const HITLS_Ctx *ctx, bool *isBefore)
 {
     if (ctx == NULL || isBefore == NULL) {
         return HITLS_NULL_INPUT;
     }
-    *isBefore = 0;
+    *isBefore = false;
     if (GetConnState(ctx) == CM_STATE_IDLE) {
-        *isBefore = 1;
+        *isBefore = true;
     }
     return HITLS_SUCCESS;
 }
@@ -654,7 +654,7 @@ static int32_t CheckRenegotiateValid(HITLS_Ctx *ctx)
         return HITLS_NULL_INPUT;
     }
 
-    uint8_t isSupport = false;
+    bool isSupport = false;
 
     (void)HITLS_GetRenegotiationSupport(ctx, &isSupport);
     /* Renegotiation is disabled */

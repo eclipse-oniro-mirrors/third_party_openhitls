@@ -382,17 +382,13 @@ int32_t HITLS_GetSelectedAlpnProto(HITLS_Ctx *ctx, uint8_t **proto, uint32_t *pr
 }
 #endif
 
-int32_t HITLS_IsServer(const HITLS_Ctx *ctx, uint8_t *isServer)
+int32_t HITLS_IsServer(const HITLS_Ctx *ctx, bool *isServer)
 {
     if (ctx == NULL || isServer == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isServer = 0;
-    if (ctx->isClient == false) {
-        *isServer = 1;
-    }
-
+    *isServer = !ctx->isClient;
     return HITLS_SUCCESS;
 }
 
@@ -496,7 +492,7 @@ int32_t HITLS_SetSigalgsList(HITLS_Ctx *ctx, const uint16_t *signAlgs, uint16_t 
 }
 
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
-int32_t HITLS_GetRenegotiationSupport(const HITLS_Ctx *ctx, uint8_t *isSupportRenegotiation)
+int32_t HITLS_GetRenegotiationSupport(const HITLS_Ctx *ctx, bool *isSupportRenegotiation)
 {
     if (ctx == NULL) {
         return HITLS_NULL_INPUT;
@@ -624,13 +620,13 @@ HITLS_TrustedCAList *HITLS_GetClientCAList(const HITLS_Ctx *ctx)
 }
 #endif
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
-int32_t HITLS_GetSecureRenegotiationSupport(const HITLS_Ctx *ctx, uint8_t *isSecureRenegotiation)
+int32_t HITLS_GetSecureRenegotiationSupport(const HITLS_Ctx *ctx, bool *isSecureRenegotiation)
 {
     if (ctx == NULL || isSecureRenegotiation == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSecureRenegotiation = (uint8_t)ctx->negotiatedInfo.isSecureRenegotiation;
+    *isSecureRenegotiation = ctx->negotiatedInfo.isSecureRenegotiation;
     return HITLS_SUCCESS;
 }
 #endif

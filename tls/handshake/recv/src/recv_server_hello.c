@@ -147,10 +147,9 @@ static int32_t ClientCheckExtendedMasterSecret(TLS_Ctx *ctx, const ServerHelloMs
         does not contain the extension, the client MUST abort the
         handshake.  */
     if (ctx->negotiatedInfo.isResume && ctx->session != NULL) {
-        uint8_t haveExtMasterSecret;
+        bool haveExtMasterSecret;
         HITLS_SESS_GetHaveExtMasterSecret(ctx->session, &haveExtMasterSecret);
-        bool preEms = haveExtMasterSecret != 0;
-        if (serverHello->haveExtendedMasterSecret != preEms) {
+        if (serverHello->haveExtendedMasterSecret != haveExtMasterSecret) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17083, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "ExtendedMasterSecret err", 0, 0, 0, 0);
             ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_HANDSHAKE_FAILURE);
@@ -527,7 +526,7 @@ static int32_t ClientCheckResumeServerHello(TLS_Ctx *ctx, const ServerHelloMsg *
 {
     uint16_t version = 0;
     uint16_t cipherSuite = 0;
-    uint8_t haveExtMasterSecret = 0;
+    bool haveExtMasterSecret = false;
 
     HITLS_SESS_GetProtocolVersion(ctx->session, &version);
     HITLS_SESS_GetCipherSuite(ctx->session, &cipherSuite);
@@ -552,7 +551,7 @@ static int32_t ClientCheckResumeServerHello(TLS_Ctx *ctx, const ServerHelloMsg *
     }
 
     /* Check the extended master secret information */
-    if (serverHello->haveExtendedMasterSecret != (bool)haveExtMasterSecret) {
+    if (serverHello->haveExtendedMasterSecret != haveExtMasterSecret) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15275, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "session resume error:can not downgrade from extended master secret.", 0, 0, 0, 0);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_HANDSHAKE_FAILURE);

@@ -129,9 +129,9 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
     }
 #ifdef HITLS_TLS_FEATURE_FLIGHT
     /* if isFlightTransmitEnable is enabled, the stored handshake information needs to be sent */
-    uint8_t isFlightTransmitEnable = 0;
+    bool isFlightTransmitEnable = false;
     (void)HITLS_GetFlightTransmitSwitch(ctx, &isFlightTransmitEnable);
-    if (isFlightTransmitEnable == 1) {
+    if (isFlightTransmitEnable) {
         ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
         if (ret == BSL_UIO_IO_BUSY) {
             BSL_ERR_PUSH_ERROR(HITLS_REC_NORMAL_IO_BUSY);

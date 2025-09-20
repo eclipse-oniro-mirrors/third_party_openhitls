@@ -244,7 +244,7 @@ void UT_TLS_CFG_SET_GET_NOCLIENTCERTSUPPORT_API_TC001(int tlsVersion)
     FRAME_Init();
     HITLS_Config *config = NULL;
     bool support = -1;
-    uint8_t isSupport = -1;
+    bool isSupport = -1;
     ASSERT_TRUE(HITLS_CFG_SetNoClientCertSupport(config, support) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetNoClientCertSupport(config, &isSupport) == HITLS_NULL_INPUT);
 
@@ -306,7 +306,7 @@ void UT_TLS_CFG_SET_GET_CLIENTVERIFYSUPPORT_API_TC001(int tlsVersion)
     FRAME_Init();
     HITLS_Config *config = NULL;
     bool support = -1;
-    uint8_t isSupport = -1;
+    bool isSupport = false;
     ASSERT_TRUE(HITLS_CFG_SetClientVerifySupport(config, support) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetClientVerifySupport(config, &isSupport) == HITLS_NULL_INPUT);
 
@@ -766,7 +766,7 @@ EXIT:
 void UT_TLS_CFG_CIPHER_ISAEAD_API_TC001(void)
 {
     const HITLS_Cipher *cipher = NULL;
-    uint8_t isAead = false;
+    bool isAead = false;
     ASSERT_TRUE(HITLS_CIPHER_IsAead(cipher, &isAead) == HITLS_NULL_INPUT);
 
     const uint16_t cipherID = HITLS_RSA_WITH_AES_128_GCM_SHA256;
@@ -1024,7 +1024,7 @@ void UT_TLS_CFG_SET_GET_RENEGOTIATIONSUPPORT_FUNC_TC001()
     FRAME_LinkObj *clientRes;
     FRAME_LinkObj *serverRes;
     HITLS_Config *config = NULL;
-    uint8_t supportrenegotiation;
+    bool supportrenegotiation = false;
     config = HITLS_CFG_NewTLS12Config();
     ASSERT_TRUE(config != NULL);
 
@@ -1442,7 +1442,7 @@ void UT_TLS_CFG_GET_SECURE_RENEGOTIATIONSUPPORET_API_TC001(void)
     HitlsInit();
     HITLS_Config *config = NULL;
     HITLS_Ctx *ctx = NULL;
-    uint8_t isSecureRenegotiation = 0;
+    bool isSecureRenegotiation = false;
     ASSERT_TRUE(HITLS_GetSecureRenegotiationSupport(NULL, &isSecureRenegotiation) == HITLS_NULL_INPUT);
 
     config = HITLS_CFG_NewTLS12Config();

@@ -59,9 +59,9 @@ static int32_t ClientPrepareSession(TLS_Ctx *ctx)
     }
 
     if (ctx->session != NULL) {
-        uint8_t haveExtMasterSecret = 0;
+        bool haveExtMasterSecret = false;
         HITLS_SESS_GetHaveExtMasterSecret(ctx->session, &haveExtMasterSecret);
-        if (haveExtMasterSecret == 0 && ctx->config.tlsConfig.isSupportExtendMasterSecret) {
+        if (!haveExtMasterSecret && ctx->config.tlsConfig.isSupportExtendMasterSecret) {
             HITLS_SESS_Free(ctx->session);
             ctx->session = NULL;
             return HITLS_SUCCESS;
