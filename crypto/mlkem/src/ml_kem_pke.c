@@ -423,14 +423,23 @@ static void DecodeBits11(int16_t *polyF, const uint8_t *a)
     }
 }
 
-static void DecodeBits12(int16_t *polyF, const uint8_t *a)
+static int32_t DecodeBits12(int16_t *polyF, const uint8_t *a)
 {
     uint32_t i;
     for (i = 0; i < MLKEM_N / 2; i++) {
         // 3 byte data is decoded into 2 polyF elements, value & 0xFFF is used to obtain 12 bits.
         polyF[2 * i] = ((a[3 * i + 0] >> 0) | ((uint16_t)a[3 * i + 1] << 8)) & 0xFFF;
         polyF[2 * i + 1] = ((a[3 * i + 1] >> 4) | ((uint16_t)a[3 * i + 2] << 4)) & 0xFFF;
+        /* According to Section 7.2 of NIST.FIPS.203, when decapsulating, use ByteDecode and ByteEncode
+         * to check that the data does not change after decoding and re-encoding. This is equivalent to
+         * checking that there is no data that exceeds the modulus q after decoding.
+         */
+        if (polyF[2 * i] >= MLKEM_Q || polyF[2 * i + 1] >= MLKEM_Q) {
+            BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+            return CRYPT_INVALID_ARG;
+        }
     }
+    return CRYPT_SUCCESS;
 }
 
 // Decodes a byte array into an array of d-bit integers for 1 ≤ d ≤ 12.
@@ -453,7 +462,7 @@ static void ByteDecode(int16_t *polyF, const uint8_t *a, uint8_t bit)
             DecodeBits11(polyF, a);
             break;
         case 12:
-            DecodeBits12(polyF, a);
+            (void)DecodeBits12(polyF, a);
             break;
         default:
             break;
@@ -604,7 +613,7 @@ static int32_t PkeEncrypt(const CRYPT_ML_KEM_Ctx *ctx, uint8_t *ct, const uint8_
 
     // Step 21
     for (i = 0; i < k; i++) {
-        ByteDecode(st.vectorE[i], ek + MLKEM_CIPHER_LEN * i, MLKEM_BITS_OF_Q);
+        GOTO_ERR_IF(DecodeBits12(st.vectorE[i], ek + MLKEM_CIPHER_LEN * i), ret);
     }
     MLKEM_MatrixMulAdd(k, st.vectorE, st.vectorS, NULL, polyVectorC2, PRE_COMPUT_TABLE_NTT);
 
@@ -737,7 +746,15 @@ int32_t MLKEM_DecapsInternal(const CRYPT_ML_KEM_Ctx *ctx, uint8_t *ct, uint32_t 
     uint8_t mh[MLKEM_SEED_LEN + CRYPT_SHA3_256_DIGESTSIZE];    // m′ and h
     uint8_t kr[CRYPT_SHA3_512_DIGESTSIZE];    // K' and r'
 
-    int32_t ret = PkeDecrypt(algInfo, mh, dk, ct);  // Step 5: 𝑚′ ← K-PKE.Decrypt(dkPKE, 𝑐)
+    // NIST.FIPS.203: test = H(dk[384k : 768k + 32]) and check test == h
+    int32_t ret = HashFuncH(ek, 384 * ctx->info->k + 32, mh, CRYPT_SHA3_256_DIGESTSIZE);
+    RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
+    if (memcmp(h, mh, CRYPT_SHA3_256_DIGESTSIZE) != 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MLKEM_INVALID_PRVKEY);
+        return CRYPT_MLKEM_INVALID_PRVKEY;
+    }
+
+    ret = PkeDecrypt(algInfo, mh, dk, ct);  // Step 5: 𝑚′ ← K-PKE.Decrypt(dkPKE, 𝑐)
     RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
     // Step 6: (K′,r′) ← G(m′ || h)
     (void)memcpy_s(mh + MLKEM_SEED_LEN, CRYPT_SHA3_256_DIGESTSIZE, h, CRYPT_SHA3_256_DIGESTSIZE);
