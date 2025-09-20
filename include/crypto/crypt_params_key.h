@@ -28,6 +28,8 @@ extern "C" {
 #define CRYPT_PARAM_PKEY_PROCESS_ARGS                       (CRYPT_PARAM_PKEY_BASE + 3)
 #define CRYPT_PARAM_PKEY_HE_CIPHERTEXT1                     (CRYPT_PARAM_PKEY_BASE + 4)
 #define CRYPT_PARAM_PKEY_HE_CIPHERTEXT2                     (CRYPT_PARAM_PKEY_BASE + 5)
+#define CRYPT_PARAM_PKEY_SIG_PAD_MODE                       (CRYPT_PARAM_PKEY_BASE + 6)
+#define CRYPT_PARAM_PKEY_SIG_PAD_DIGEST                     (CRYPT_PARAM_PKEY_BASE + 7)
 
 #define CRYPT_PARAM_KDF_BASE                                100
 #define CRYPT_PARAM_KDF_PASSWORD                            (CRYPT_PARAM_KDF_BASE + 1)
@@ -175,6 +177,12 @@ extern "C" {
 #define CRYPT_PARAM_DECODE_TARGET_ATTR_NAME                 (CRYPT_PARAM_DECODE_BASE + 12)
 #define CRYPT_PARAM_DECODE_PROVIDER_CTX                     (CRYPT_PARAM_DECODE_BASE + 13)
 #define CRYPT_PARAM_DECODE_FLAG_FREE_OUTDATA                (CRYPT_PARAM_DECODE_BASE + 14)
+
+#define CRYPT_PARAM_CIPHER_BASE                             4600
+#define CRYPT_PARAM_CIPHER_AEAD_IV_LEN                      (CRYPT_PARAM_CIPHER_BASE + 1)
+
+#define CRYPT_PARAM_MAC_BASE                                4700
+#define CRYPT_PARAM_MAC_MAC_DIGEST                          (CRYPT_PARAM_MAC_BASE + 1)
 
 #define CRYPT_PARAM_CAP_TLS_GROUP_BASE                      5000
 #define CRYPT_PARAM_CAP_TLS_GROUP_IANA_GROUP_NAME           (CRYPT_PARAM_CAP_TLS_GROUP_BASE + 1)
