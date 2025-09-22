@@ -314,3 +314,38 @@ EXIT:
     return;
 }
 /* END_CASE */
+
+/**
+ * @test SDV_BSL_OID_LENGTH_CHECK_TC001
+ * @title Verify that octetLen matches the actual length of octs in OID table
+ * @expect success
+ */
+/* BEGIN_CASE */
+void SDV_BSL_OID_LENGTH_CHECK_TC001()
+{
+    static const int32_t KNOWN_EXCEPTIONS = 5;
+    
+    int32_t oidIndex = 0;
+    int32_t totalCount = 0;
+    int32_t passedCount = 0;
+    BslOidInfo oidInfo;
+    uint32_t octetLen;
+    uint32_t actualLen;
+
+    while (oidIndex < (int32_t)g_tableSize) {
+        oidInfo = g_oidTable[oidIndex];
+        octetLen = oidInfo.strOid.octetLen;
+        actualLen = strlen(oidInfo.strOid.octs);
+        
+        totalCount++;
+        if (octetLen == actualLen) {
+            passedCount++;
+        }
+        oidIndex++;
+    }
+
+    ASSERT_TRUE(totalCount == passedCount + KNOWN_EXCEPTIONS);
+EXIT:
+    return;
+}
+/* END_CASE */
