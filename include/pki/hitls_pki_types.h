@@ -100,10 +100,7 @@ typedef enum {
     HITLS_X509_EXT_GET_AKI,                     /** get the Authority Key Identifier form the crl/cert/csr. */
     HITLS_X509_EXT_GET_KUSAGE,                  /** get the key usage form the crl/cert/csr.
                                                     Note: If key usage is not set, return 0xffff. */
-    HITLS_X509_EXT_GET_BCONS,                   /** Not supported yet. */
-    HITLS_X509_EXT_GET_SAN,                     /** Not supported yet. */
-    HITLS_X509_EXT_GET_GENERIC,                 /** Get a generic extension by OID.
-                                                    Note: Only supported for custom extensions. */
+    HITLS_X509_EXT_GET_BCONS,                   /** Get the basic constraints extension. */
 
     HITLS_X509_EXT_CHECK_SKI = 0x0600,          /** Check if ski is exists. */
 

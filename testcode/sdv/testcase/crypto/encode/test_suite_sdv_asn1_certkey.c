@@ -702,8 +702,8 @@ void SDV_BSL_ASN1_ENCODE_ENCRYPTED_PRIKEY_BUFF_TC001(char *path, int fileType, i
     } else {
 #else
         (void)isProvider;
-#endif
         (void)keyType;
+#endif
         ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_UNKNOWN, fileType, path, pwd->x, pwd->len, &pkeyCtx),
             CRYPT_SUCCESS);
 #ifdef HITLS_CRYPTO_PROVIDER

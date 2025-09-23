@@ -1221,49 +1221,32 @@ EXIT:
 }
 /* END_CASE */
 
-#if defined(HITLS_PKI_X509_CRT_PARSE) && defined(HITLS_CRYPTO_PROVIDER)
-
-static int32_t test = 0;
-static int32_t marked = 0;
-
-static void *STUB_BSL_SAL_Malloc_cert(uint32_t size)
-{
-    if (marked <= test) {
-        marked++;
-        return malloc(size);
-    }
-    return NULL;
-}
-#endif
-
-/**
- * @test SDV_X509_CERT_PARSE_STUB_TC001
- * title 1. Test the cert parse with stub malloc fail
- *
- */
 /* BEGIN_CASE */
-void SDV_X509_CERT_PARSE_STUB_TC001(int format, char *path, int maxTriggers)
+void SDV_X509_CERT_GET_BCONS_TEST_TC001(int format, char *path, int critical, int isCa, int pathLen)
 {
-#if !defined(HITLS_PKI_X509_CRT_PARSE) || !defined(HITLS_CRYPTO_PROVIDER)
-    (void)format;
-    (void)path;
-    (void)maxTriggers;
-    SKIP_TEST();
-#else
     TestMemInit();
-    STUB_Init();
-    FuncStubInfo tmpRpInfo;
     HITLS_X509_Cert *cert = NULL;
-    test = maxTriggers;
-    marked = 0;
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_cert);
-    for (int i = 208; i > 0; i--) {
-        marked = 0;
-        test--;
-        ASSERT_NE(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
-    }
+    ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
+    HITLS_X509_ExtBCons bc = {0};
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_GET_BCONS, &bc, sizeof(HITLS_X509_ExtBCons)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(bc.isCa, isCa);
+    ASSERT_EQ(bc.maxPathLen, pathLen);
+    ASSERT_EQ(bc.critical, critical);
 EXIT:
-    STUB_Reset(&tmpRpInfo);
-#endif
+    HITLS_X509_CertFree(cert);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_X509_CERT_GET_BCONS_TEST_TC002(int format, char *path)
+{
+    TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
+    HITLS_X509_ExtBCons bc = {0};
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_GET_BCONS, &bc, sizeof(HITLS_X509_ExtBCons)),
+        HITLS_X509_ERR_EXT_NO_BCONS);
+EXIT:
+    HITLS_X509_CertFree(cert);
 }
 /* END_CASE */

@@ -1248,28 +1248,27 @@ static int32_t GetExtKeyUsage(HITLS_X509_Ext *ext, uint32_t *val, uint32_t valLe
     return HITLS_PKI_SUCCESS;
 }
 
-/* Generic extension get: user provides DER-encoded OID buffer and output buffer */
-static int32_t GetGenericExt(HITLS_X509_Ext *ext, HITLS_X509_ExtGeneric *generic, uint32_t valLen)
+static int32_t GetExtBCons(HITLS_X509_Ext *ext, uint32_t *val, uint32_t valLen)
 {
-    if (valLen != sizeof(HITLS_X509_ExtGeneric) ||
-        generic->oid.data == NULL || generic->oid.dataLen == 0 || generic->value.data != NULL) {
+    if (val == NULL || valLen != sizeof(HITLS_X509_ExtBCons)) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
         return HITLS_X509_ERR_INVALID_PARAM;
     }
-    BSL_ASN1_Buffer oidBuf = {BSL_ASN1_TAG_OBJECT_ID, generic->oid.dataLen, generic->oid.data};
-    HITLS_X509_ExtEntry *extEntry = BSL_LIST_Search(ext->extList, &oidBuf, CmpExtByOid, NULL);
-    if (extEntry == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_EXT_NOT_FOUND);
-        return HITLS_X509_ERR_EXT_NOT_FOUND;
+    HITLS_X509_CertExt *certExt = (HITLS_X509_CertExt *)ext->extData;
+    if ((certExt->extFlags & HITLS_X509_EXT_FLAG_BCONS) == 0) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_EXT_NO_BCONS);
+        return HITLS_X509_ERR_EXT_NO_BCONS;
     }
-
-    generic->value.data = BSL_SAL_Dump(extEntry->extnValue.buff, extEntry->extnValue.len);
-    if (generic->value.data == NULL) {
-        BSL_ERR_PUSH_ERROR(BSL_DUMP_FAIL);
-        return BSL_DUMP_FAIL;
+    HITLS_X509_ExtBCons *bCons = (HITLS_X509_ExtBCons *)val;
+    BslCid cid = BSL_CID_CE_BASICCONSTRAINTS;
+    HITLS_X509_ExtEntry *entry = BSL_LIST_Search(ext->extList, &cid, CmpExtByCid, NULL);
+    if (entry == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_EXT_UNKNOWN_ERROR);
+        return HITLS_X509_ERR_EXT_UNKNOWN_ERROR;
     }
-    generic->value.dataLen = extEntry->extnValue.len;
-    generic->critical = extEntry->critical;
+    bCons->isCa = certExt->isCa;
+    bCons->maxPathLen = certExt->maxPathLen;
+    bCons->critical = entry->critical;
     return HITLS_PKI_SUCCESS;
 }
 
@@ -1288,8 +1287,8 @@ static int32_t GetExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t 
                 (DecodeExtCb)X509_ParseCrlNumber);
         case HITLS_X509_EXT_GET_KUSAGE:
             return GetExtKeyUsage(ext, val, valLen);
-        case HITLS_X509_EXT_GET_GENERIC:
-            return GetGenericExt(ext, (HITLS_X509_ExtGeneric *)val, valLen);
+        case HITLS_X509_EXT_GET_BCONS:
+            return GetExtBCons(ext, val, valLen);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;
