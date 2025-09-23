@@ -90,44 +90,18 @@ EXIT:
  * @title   测试UT_HITLS_APP_PKEYUTL_TC001函数
  */
 /* BEGIN_CASE */
-void UT_HITLS_APP_PKEYUTL_TC001()
+void UT_HITLS_APP_PKEYUTL_TC001(char *opts, int expectRet)
 {
-    char *argv[][20] = {
-        {"pkeyutl", "-encrypt", "-pubin", TEST_PUB_PATH, "-in", TEST_INFILE_PATH, "-out", TEST_FILE_PATH},
-        {"pkeyutl", "-decrypt", "-prvin", TEST_PRV_PATH, "-in", TEST_FILE_PATH, "-out", TEST_DECFILE_PATH},
-        {"pkeyutl", "-derive", "-inkey", TEST_PEERPRV_PATH, "-outR", "R2.bin", "-outr", "r2.bin"},
-        {"pkeyutl", "-derive", "-inkey", TEST_PRV_PATH, "-peerkey", TEST_PEERPUB_PATH, "-inR", "R2.bin",
-            "-outR", "R1.bin", "-out", "share1.key"},
-        {"pkeyutl", "-derive", "-inkey", TEST_PEERPRV_PATH, "-peerkey", TEST_PUB_PATH, "-inR", "R1.bin",
-            "-inr", "r2.bin", "-out", "share2.key"},
-    };
-
-    OptTestData testData[] = {
-        {8, argv[0], HITLS_APP_SUCCESS},
-        {8, argv[1], HITLS_APP_SUCCESS},
-        {8, argv[2], HITLS_APP_SUCCESS},
-        {12, argv[3], HITLS_APP_SUCCESS},
-        {12, argv[4], HITLS_APP_SUCCESS}
-    };
-
-    if (APP_GetCurrent_LibCtx() == NULL) {
-        if (APP_Create_LibCtx() == NULL) {
-            (void)AppPrintError("Create g_libCtx failed\n");
-            return;
-        }
-    }
-
+    int argc = 0;
+    char *argv[PKEYUTL_MAX_ARGC] = {0};
+    char *tmp = strdup(opts);
+    ASSERT_NE(tmp, NULL);
+    PreProcArgs(tmp, &argc, argv);
     ASSERT_EQ(AppPrintErrorUioInit(stderr), HITLS_APP_SUCCESS);
-    for (int i = 0; i < (int)(sizeof(testData) / sizeof(OptTestData)); ++i) {
-        int ret = HITLS_PkeyUtlMain(testData[i].argc, testData[i].argv);
-        fflush(stdout);
-        freopen("/dev/tty", "w", stdout);
-        ASSERT_EQ(ret, testData[i].expect);
-    }
-
+    ASSERT_EQ(HITLS_PkeyUtlMain(argc, argv), expectRet);
 EXIT:
     AppPrintErrorUioUnInit();
-    return;
+    BSL_SAL_Free(tmp);
 }
 /* END_CASE */
 
@@ -139,7 +113,6 @@ EXIT:
 /* BEGIN_CASE */
 void UT_HITLS_APP_PKEYUTL_InvaildOpt_TC001(char *opts, int expectRet)
 {
-    printf("----------------------------------PKEYUTL_InvaildOpt:");
     int argc = 0;
     char *argv[PKEYUTL_MAX_ARGC] = {0};
     char *tmp = strdup(opts);
@@ -175,5 +148,12 @@ EXIT:
     AppPrintErrorUioUnInit();
     BSL_SAL_Free(tmp);
     remove(outFile);
+    remove("R1.bin");
+    remove("R2.bin");
+    remove("share1.key");
+    remove("share2.key");
+    remove("r1.bin");
+    remove("r2.bin");
+    remove("out_test.bin");
 }
 /* END_CASE */
