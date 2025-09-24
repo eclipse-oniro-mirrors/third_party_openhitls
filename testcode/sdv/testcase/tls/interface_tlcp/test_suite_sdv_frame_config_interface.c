@@ -1169,13 +1169,8 @@ void UT_TLS_CFG_SET_GROUPS_FUNC_TC001(int version)
     ASSERT_TRUE(testInfo.client != NULL);
     testInfo.server = FRAME_CreateLinkWithCert(testInfo.config, BSL_UIO_TCP, &certInfo);
     ASSERT_TRUE(testInfo.server != NULL);
-    if (version == TLS1_2) {
-        ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, testInfo.isClient, HS_STATE_BUTT),
-            HITLS_MSG_HANDLE_CIPHER_SUITE_ERR);
-    } else {
-        ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, testInfo.isClient, HS_STATE_BUTT),
-            HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP);
-    }
+    ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, testInfo.isClient, HS_STATE_BUTT),
+        HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP);
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
     FRAME_FreeLink(testInfo.client);

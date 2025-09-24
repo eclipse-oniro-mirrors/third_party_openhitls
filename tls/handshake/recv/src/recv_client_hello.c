@@ -1106,14 +1106,14 @@ static int32_t ServerCheckVersionDowngrade(TLS_Ctx *ctx, const ClientHelloMsg *c
         }
         return HITLS_SUCCESS;
     }
-    
+
     if (ctx->negotiatedInfo.version < ctx->config.tlsConfig.maxVersion) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15335, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "server supports a higher protocol version.", 0, 0, 0, 0);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INAPPROPRIATE_FALLBACK);
         return HITLS_MSG_HANDLE_ERR_INAPPROPRIATE_FALLBACK;
     }
-    
+
     return HITLS_SUCCESS;
 }
 
