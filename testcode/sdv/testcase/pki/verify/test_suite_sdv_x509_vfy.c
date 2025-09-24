@@ -1287,3 +1287,39 @@ EXIT:
 #endif
 }
 /* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_X509_VERIFY_CERT_CHAIN_FUNC_TC001(void)
+{
+    HITLS_X509_StoreCtx *store = HITLS_X509_StoreCtxNew();
+    ASSERT_TRUE(store != NULL);
+    HITLS_X509_Cert *ca = NULL;
+    HITLS_X509_Cert *root = NULL;
+    HITLS_X509_Cert *entity = NULL;
+    ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/ca.der", store, &root), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/inter.der", store, &ca), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(BSL_LIST_COUNT(store->store), 2);
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, "../testdata/cert/chain/rsa-pss-v3/end.der", &entity),
+        HITLS_PKI_SUCCESS);
+    HITLS_X509_List *chain = BSL_LIST_New(sizeof(HITLS_X509_Cert *));
+    ASSERT_TRUE(chain != NULL);
+    ASSERT_EQ(X509_AddCertToChainTest(chain, entity), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(X509_AddCertToChainTest(chain, ca), HITLS_PKI_SUCCESS);
+    HITLS_X509_CertExt *certExt = (HITLS_X509_CertExt *)ca->tbs.ext.extData;
+    certExt->extFlags &= ~HITLS_X509_EXT_FLAG_BCONS;
+    ASSERT_EQ(HITLS_X509_CertVerify(store, chain), HITLS_X509_ERR_VFY_INVALID_CA);
+    certExt->extFlags |= HITLS_X509_EXT_FLAG_BCONS;
+    certExt->isCa = false;
+    ASSERT_EQ(HITLS_X509_CertVerify(store, chain), HITLS_X509_ERR_VFY_INVALID_CA);
+    certExt->isCa = true;
+    certExt->extFlags |= HITLS_X509_EXT_FLAG_KUSAGE;
+    certExt->keyUsage &= ~HITLS_X509_EXT_KU_KEY_CERT_SIGN;
+    ASSERT_EQ(HITLS_X509_CertVerify(store, chain), HITLS_X509_ERR_VFY_KU_NO_CERTSIGN);
+EXIT:
+    HITLS_X509_StoreCtxFree(store);
+    HITLS_X509_CertFree(root);
+    HITLS_X509_CertFree(ca);
+    HITLS_X509_CertFree(entity);
+    BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+}
+/* END_CASE */

@@ -43,15 +43,12 @@ typedef struct {
  * @ingroup crypt_eal_pkey
  * @brief Create a new asymmetric key context by key management information.
  *
- * @param pkey [IN/OUT] The asymmetric key context to be created.
  * @param pkeyAlgInfo [IN] The key management information.
  * @param keyRef [IN] The reference to the key.
- * @param keyRefLen [IN] The length of the key reference.
  *
- * @return CRYPT_SUCCESS on success, CRYPT_ERROR on failure.
+ * @return pkey on success, NULL on failure.
  */
-CRYPT_EAL_PkeyCtx *CRYPT_EAL_MakeKeyByPkeyAlgInfo(CRYPT_EAL_PkeyMgmtInfo *pkeyAlgInfo, void *keyRef,
-    uint32_t keyRefLen);
+CRYPT_EAL_PkeyCtx *CRYPT_EAL_MakeKeyByPkeyAlgInfo(CRYPT_EAL_PkeyMgmtInfo *pkeyAlgInfo, void *keyRef);
 
 /**
  * @ingroup crypt_eal_pkey

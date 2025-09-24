@@ -1232,6 +1232,36 @@ static int32_t X509_GetVerifyCertChain(HITLS_X509_StoreCtx *storeCtx, HITLS_X509
     return HITLS_PKI_SUCCESS;
 }
 
+int32_t X509_VerifyCa(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *chain)
+{
+#ifdef HITLS_PKI_X509_VFY_CB
+    (void)storeCtx;
+#endif
+    HITLS_X509_Cert *cert = BSL_LIST_GET_FIRST(chain);
+    int32_t depth = 1;
+    for (cert = BSL_LIST_GET_NEXT(chain); cert != NULL; cert = BSL_LIST_GET_NEXT(chain)) {
+        HITLS_X509_CertExt *certExt = (HITLS_X509_CertExt *)cert->tbs.ext.extData;
+        /**
+         * If the basic constraints extension is not present in a version 3 certificate,
+         * or the extension is present but the cA boolean is not asserted,
+         * then the certified public key MUST NOT be used to verify certificate signatures.
+         */
+        VFYCBK_FAIL_IF(((cert->tbs.version == HITLS_X509_VERSION_3) &&
+            ((certExt->extFlags & HITLS_X509_EXT_FLAG_BCONS) == 0 || !certExt->isCa)), storeCtx, cert, depth,
+            HITLS_X509_ERR_VFY_INVALID_CA);
+        /**
+         * Conforming CAs MUST include this extension
+         * in certificates that contain public keys that are used to validate digital signatures on
+         * other public key certificates or CRLs.
+         */
+        VFYCBK_FAIL_IF(((certExt->extFlags & HITLS_X509_EXT_FLAG_KUSAGE) != 0) &&
+            ((certExt->keyUsage & HITLS_X509_EXT_KU_KEY_CERT_SIGN) == 0), storeCtx, cert, depth,
+            HITLS_X509_ERR_VFY_KU_NO_CERTSIGN);
+        depth++;
+    }
+    return HITLS_PKI_SUCCESS;
+}
+
 int32_t HITLS_X509_CertVerify(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *chain)
 {
     if (storeCtx == NULL || chain == NULL) {
@@ -1248,6 +1278,10 @@ int32_t HITLS_X509_CertVerify(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *ch
         return ret;
     }
     ret = HITLS_X509_VerifyParamAndExt(storeCtx, storeCtx->certChain);
+    if (ret != HITLS_PKI_SUCCESS) {
+        goto EXIT;
+    }
+    ret = X509_VerifyCa(storeCtx, storeCtx->certChain);
     if (ret != HITLS_PKI_SUCCESS) {
         goto EXIT;
     }
