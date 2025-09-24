@@ -39,35 +39,26 @@ typedef struct {
 
 static void *DefaultDrbgNew(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId)
 {
-    void *randCtx = NULL;
-    CRYPT_RandSeedMethod seedMethond = {0};
-    int32_t ret = EAL_SetDefaultEntropyMeth(&seedMethond);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return NULL;
-    }
-
     int32_t index = 0;
     BSL_Param randParam[CRYPT_DRBG_PARAM_NUM] = {{0}, {0}, {0}, {0}, {0}, BSL_PARAM_END};
     (void)BSL_PARAM_InitValue(&randParam[index++], CRYPT_PARAM_RAND_SEED_GETENTROPY, BSL_PARAM_TYPE_FUNC_PTR,
-        seedMethond.getEntropy, 0);
+        provCtx->seedMethod.getEntropy, 0);
     (void)BSL_PARAM_InitValue(&randParam[index++], CRYPT_PARAM_RAND_SEED_CLEANENTROPY, BSL_PARAM_TYPE_FUNC_PTR,
-        seedMethond.cleanEntropy, 0);
+        provCtx->seedMethod.cleanEntropy, 0);
     (void)BSL_PARAM_InitValue(&randParam[index++], CRYPT_PARAM_RAND_SEED_GETNONCE, BSL_PARAM_TYPE_FUNC_PTR,
-        seedMethond.getNonce, 0);
+        provCtx->seedMethod.getNonce, 0);
     (void)BSL_PARAM_InitValue(&randParam[index++], CRYPT_PARAM_RAND_SEED_CLEANNONCE, BSL_PARAM_TYPE_FUNC_PTR,
-        seedMethond.cleanNonce, 0);
+        provCtx->seedMethod.cleanNonce, 0);
     (void)BSL_PARAM_InitValue(&randParam[index++], CRYPT_PARAM_RAND_SEEDCTX, BSL_PARAM_TYPE_CTX_PTR,
-        provCtx->pool, 0);
+        provCtx->seedCtx, 0);
 
-    randCtx = DRBG_New(provCtx->libCtx, algId, randParam);
+    void *randCtx = DRBG_New(provCtx->libCtx, algId, randParam);
     if (randCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_PROVIDER_NOT_SUPPORT);
         return NULL;
     }
     return randCtx;
 }
-
 
 static void *CRYPT_EAL_IsoRandNewCtx(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algId, BSL_Param *param)
 {
@@ -79,6 +70,17 @@ static void *CRYPT_EAL_IsoRandNewCtx(CRYPT_EAL_IsoProvCtx *provCtx, int32_t algI
     }
 #endif
     BSL_Param *getEnt = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEED_GETENTROPY);
+    BSL_Param *cleanEnt = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEED_CLEANENTROPY);
+    BSL_Param *getNonce = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEED_GETNONCE);
+    BSL_Param *cleanNonce = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEED_CLEANNONCE);
+    BSL_Param *ctx = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEEDCTX);
+
+    if (getEnt == NULL && ((cleanEnt != NULL && cleanEnt->value != NULL) ||
+        (getNonce != NULL && getNonce->value != NULL) || (cleanNonce != NULL && cleanNonce->value != NULL) ||
+        (ctx != NULL && ctx->value != NULL))) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return NULL;
+    }
     if (param == NULL || getEnt == NULL) {
         return DefaultDrbgNew(provCtx, algId);
     }

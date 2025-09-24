@@ -23,6 +23,7 @@
 #include "bsl_errno.h"
 #include "bsl_params.h"
 #include "bsl_err_internal.h"
+#include "eal_entropy.h"
 #include "crypt_algid.h"
 #include "crypt_errno.h"
 #include "crypt_utils.h"
@@ -247,8 +248,10 @@ static void CRYPT_EAL_IsoProvFree(void *provCtx)
         return;
     }
     CRYPT_EAL_IsoProvCtx *temp = (CRYPT_EAL_IsoProvCtx *)provCtx;
-    CRYPT_EAL_SeedPoolFree(temp->pool);
-    CRYPT_EAL_EsFree(temp->es);
+    if (temp->es != NULL) {
+        CRYPT_EAL_SeedPoolFree(temp->seedCtx);
+        CRYPT_EAL_EsFree(temp->es);
+    }
     BSL_SAL_Free(provCtx);
 }
 
@@ -299,7 +302,7 @@ EXIT:
     return ret;
 }
 
-static int32_t CreateSeedPool(CRYPT_EAL_SeedPoolCtx **seedPool, CRYPT_EAL_Es **es)
+static int32_t CreateSeedPool(void **seedCtx, CRYPT_EAL_Es **es)
 {
     CRYPT_EAL_SeedPoolCtx *poolTemp = NULL;
     CRYPT_EAL_Es *esTemp = NULL;
@@ -324,8 +327,46 @@ static int32_t CreateSeedPool(CRYPT_EAL_SeedPoolCtx **seedPool, CRYPT_EAL_Es **e
         return ret;
     }
 
-    *seedPool = poolTemp;
+    *seedCtx = poolTemp;
     *es = esTemp;
+    return CRYPT_SUCCESS;
+}
+
+static int32_t SetEntropyMethod(CRYPT_EAL_IsoProvCtx *provCtx, BSL_Param *param)
+{
+    BSL_Param *getEnt = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEED_GETENTROPY);
+    BSL_Param *cleanEnt = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEED_CLEANENTROPY);
+    BSL_Param *getNonce = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEED_GETNONCE);
+    BSL_Param *cleanNonce = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEED_CLEANNONCE);
+    BSL_Param *ctx = BSL_PARAM_FindParam(param, CRYPT_PARAM_RAND_SEEDCTX);
+
+    if (getEnt == NULL && ((cleanEnt != NULL && cleanEnt->value != NULL) ||
+        (getNonce != NULL && getNonce->value != NULL) || (cleanNonce != NULL && cleanNonce->value != NULL) ||
+        (ctx != NULL && ctx->value != NULL))) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+
+    if (getEnt != NULL) {
+        provCtx->seedMethod.getEntropy = getEnt->value;
+        provCtx->seedMethod.cleanEntropy = cleanEnt != NULL ? cleanEnt->value : NULL;
+        provCtx->seedMethod.getNonce = getNonce != NULL ? getNonce->value : NULL;
+        provCtx->seedMethod.cleanNonce = cleanNonce != NULL ? cleanNonce->value : NULL;
+        provCtx->seedCtx = ctx != NULL ? ctx->value : NULL;
+        return CRYPT_SUCCESS;
+    }
+
+    int32_t ret = EAL_SetDefaultEntropyMeth(&provCtx->seedMethod);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+
+    ret = CreateSeedPool(&provCtx->seedCtx, &provCtx->es);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
     return CRYPT_SUCCESS;
 }
 
@@ -342,7 +383,7 @@ static int32_t IsoCreateProvCtx(void *libCtx, CRYPT_EAL_ProvMgrCtx *mgrCtx, BSL_
         return ret;
     }
     CRYPT_EAL_SetRandCallBackEx((CRYPT_EAL_RandFuncEx)CRYPT_EAL_RandbytesEx);
-    ret = CreateSeedPool(&temp->pool, &temp->es);
+    ret = SetEntropyMethod(temp, param);
     if (ret != CRYPT_SUCCESS) {
         BSL_SAL_Free(temp);
         return ret;

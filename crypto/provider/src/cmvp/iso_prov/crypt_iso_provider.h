@@ -44,7 +44,8 @@ typedef struct EalIsoProvCtx {
     void *libCtx;
     void *mgrCtx;
     CRYPT_EAL_Es *es;
-    CRYPT_EAL_SeedPoolCtx *pool;
+    void *seedCtx;
+    CRYPT_RandSeedMethod seedMethod;
     CRYPT_EAL_CMVP_LogFunc runLog;
 } CRYPT_EAL_IsoProvCtx;
 
