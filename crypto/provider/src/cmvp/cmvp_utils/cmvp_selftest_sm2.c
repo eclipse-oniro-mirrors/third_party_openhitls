@@ -537,7 +537,7 @@ EXIT:
     return ret;
 }
 
-bool CRYPT_CMVP_SelftestSM2Consistency(void)
+static bool CRYPT_CMVP_SelftestSM2Consistency(void)
 {
     return SM2_Consistency_Sign() && SM2_Consistency_Crypt();
 }
