@@ -769,9 +769,15 @@ int32_t CRYPT_DECODE_Pkcs8PrvDecrypt(CRYPT_EAL_LibCtx *libctx, const char *attrN
 }
 #endif /* HITLS_CRYPTO_KEY_EPKI */
 
-int32_t CRYPT_DECODE_ConstructBufferOutParam(BSL_Param **outParam, uint8_t *buffer, uint32_t bufferLen)
+int32_t CRYPT_DECODE_ConstructBufferOutParam(const BSL_Param *inParam, BSL_Param **outParam, uint8_t *buffer,
+    uint32_t bufferLen)
 {
-    BSL_Param *result = BSL_SAL_Calloc(2, sizeof(BSL_Param));
+    uint32_t count = 2;
+    const BSL_Param *encParam = BSL_PARAM_FindConstParam(inParam, CRYPT_PARAM_DECODE_PASSWORD);
+    if (encParam != NULL) {
+        count++;
+    }
+    BSL_Param *result = BSL_SAL_Calloc(count, sizeof(BSL_Param));
     if (result == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return CRYPT_MEM_ALLOC_FAIL;
@@ -782,6 +788,14 @@ int32_t CRYPT_DECODE_ConstructBufferOutParam(BSL_Param **outParam, uint8_t *buff
         BSL_SAL_Free(result);
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
+    }
+    if (encParam != NULL) {
+        ret = BSL_PARAM_InitValue(&result[1], encParam->key, encParam->valueType, encParam->value, encParam->valueLen);
+        if (ret != CRYPT_SUCCESS) {
+            BSL_SAL_Free(result);
+            BSL_ERR_PUSH_ERROR(ret);
+            return ret;
+        }
     }
     *outParam = result;
     return ret;

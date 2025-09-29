@@ -354,7 +354,7 @@ void ServerSendMalformedRecordHeaderMsg(HLT_FrameHandle *handle, TestPara *testP
         ASSERT_TRUE(HLT_RpcTlsConnect(remoteProcess, clientRes->sslId) != 0);
     }
     // Wait for the local.
-    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) == 0);
+    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) != 0);
     // Confirm the final status.
 
     ASSERT_TRUE(((HITLS_Ctx *)(serverRes->ssl))->state == CM_STATE_ALERTED);

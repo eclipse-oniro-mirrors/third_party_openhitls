@@ -324,7 +324,7 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC002(void)
     clientRes = HLT_ProcessTlsConnect(remoteProcess, TLS1_3, clientConfig, NULL);
     ASSERT_TRUE(clientRes == NULL);
 
-    ASSERT_EQ(HLT_GetTlsAcceptResult(serverRes), 0);
+    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) != 0);
 EXIT:
     HLT_FreeAllProcess();
     ClearWrapper();
@@ -386,7 +386,7 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC003(void)
     clientRes = HLT_ProcessTlsConnect(remoteProcess, TLS1_3, clientConfig, NULL);
     ASSERT_TRUE(clientRes == NULL);
 
-    ASSERT_EQ(HLT_GetTlsAcceptResult(serverRes), 0);
+    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) != 0);
 EXIT:
     HLT_FreeAllProcess();
     ClearWrapper();

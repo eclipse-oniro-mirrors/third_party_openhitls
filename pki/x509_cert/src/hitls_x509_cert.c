@@ -823,8 +823,8 @@ int32_t HITLS_X509_CheckIssued(HITLS_X509_Cert *issue, HITLS_X509_Cert *subject,
      * then the certified public key MUST NOT be used to verify certificate signatures.
      */
     HITLS_X509_CertExt *certExt = (HITLS_X509_CertExt *)issue->tbs.ext.extData;
-    if (issue->tbs.version == HITLS_X509_VERSION_3 && (certExt->extFlags & HITLS_X509_EXT_FLAG_BCONS) == 0 &&
-        !certExt->isCa) {
+    if (issue->tbs.version == HITLS_X509_VERSION_3 && ((certExt->extFlags & HITLS_X509_EXT_FLAG_BCONS) == 0 ||
+        !certExt->isCa)) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_CERT_NOT_CA);
         return HITLS_X509_ERR_CERT_NOT_CA;
     }

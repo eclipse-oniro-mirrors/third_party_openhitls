@@ -511,7 +511,7 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_EMPTY_RECORDS_FUNC_TC001(int rec_type)
 
     ASSERT_EQ(HLT_RpcTlsConnect(remoteProcess, clientRes->sslId), HITLS_REC_ERR_RECV_UNEXPECTED_MSG);
 
-    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) == 0);
+    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) != 0);
     ASSERT_EQ(HLT_RpcTlsGetAlertFlag(remoteProcess, clientRes->sslId), ALERT_FLAG_SEND);
     ASSERT_EQ(
         (ALERT_Description)HLT_RpcTlsGetAlertDescription(remoteProcess, clientRes->sslId),ALERT_UNEXPECTED_MESSAGE);

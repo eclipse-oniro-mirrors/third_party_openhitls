@@ -121,7 +121,7 @@ static int32_t HITLS_X509_ParseNameNode(BSL_ASN1_Buffer *asn, HITLS_X509_NameNod
 
     // parse string
     if (*temp != BSL_ASN1_TAG_UTF8STRING && *temp != BSL_ASN1_TAG_PRINTABLESTRING &&
-        *temp != BSL_ASN1_TAG_IA5STRING) {
+        *temp != BSL_ASN1_TAG_IA5STRING && *temp != BSL_ASN1_TAG_T61STRING) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_PARSE_STR);
         return HITLS_X509_ERR_PARSE_STR;
     }

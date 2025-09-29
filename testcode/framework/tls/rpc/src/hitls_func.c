@@ -796,24 +796,26 @@ int HitlsSetSsl(void *ssl, HLT_Ssl_Config *sslConfig)
     return SUCCESS;
 }
 
-int HitlsAccept(void *ssl)
+void *HitlsAccept(void *ssl)
 {
-    int ret, tryNum;
-    tryNum = 0;
+    static int ret;
+    int timeout = TIME_OUT_SEC;
+    if (getenv("SSL_TIMEOUT") != NULL) {
+        timeout = atoi(getenv("SSL_TIMEOUT"));
+    }
+    time_t start = time(NULL);
     LOG_DEBUG("HiTLS Tls Accept Ing...");
     do {
         ret = HITLS_Accept(ssl);
         usleep(1000); // stay 1000us
-        tryNum++;
-    } while ((ret == HITLS_REC_NORMAL_RECV_BUF_EMPTY ||
-            ret == HITLS_REC_NORMAL_IO_BUSY) &&
-            (tryNum < FUNC_TIME_OUT_SEC * 1000)); // usleep(1000) after each attemp.
+    } while ((ret == HITLS_REC_NORMAL_RECV_BUF_EMPTY || ret == HITLS_REC_NORMAL_IO_BUSY) &&
+            ((time(NULL) - start < timeout))); // usleep(1000) after each attemp.
     if (ret != SUCCESS) {
         LOG_ERROR("HITLS_Accept Error is %d", ret);
     } else {
         LOG_DEBUG("HiTLS Tls Accept Success");
     }
-    return ret;
+    return &ret;
 }
 
 int HitlsConnect(void *ssl)

@@ -845,3 +845,30 @@ EXIT:
 }
 /* END_CASE */
 
+/* BEGIN_CASE */
+void SDV_PKI_PARSE_CERT_FILE_CONTAIN_T61_TC001(int algId, int format, char *path)
+{
+#if defined(HITLS_PKI_X509_CRT) && defined(HITLS_BSL_SAL_FILE)
+    if (PkiSkipTest(algId, format)) {
+        SKIP_TEST();
+    }
+
+    HITLS_X509_Cert *cert = NULL;
+    HITLS_X509_Cert *certCpy = NULL;
+    BSL_Buffer buff = {0};
+
+    TestMemInit();
+    ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertGenBuff(format, cert, &buff), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertParseBuff(format, &buff, &certCpy), HITLS_PKI_SUCCESS);
+EXIT:
+    BSL_SAL_Free(buff.data);
+    HITLS_X509_CertFree(cert);
+    HITLS_X509_CertFree(certCpy);
+#else
+    UnusedParam2(algId, format, path);
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+

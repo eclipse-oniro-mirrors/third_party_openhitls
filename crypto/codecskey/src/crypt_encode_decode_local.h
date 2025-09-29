@@ -126,7 +126,8 @@ int32_t CRYPT_EAL_ParseAsn1SubPubkey(uint8_t *buff, uint32_t buffLen, void **eal
 int32_t CRYPT_DECODE_AlgoIdAsn1Buff(uint8_t *buff, uint32_t buffLen, BSL_ASN1_DecTemplCallBack keyInfoCb,
     BSL_ASN1_Buffer *algoId, uint32_t algoIdNum);
 
-int32_t CRYPT_DECODE_ConstructBufferOutParam(BSL_Param **outParam, uint8_t *buffer, uint32_t bufferLen);
+int32_t CRYPT_DECODE_ConstructBufferOutParam(const BSL_Param *inParam, BSL_Param **outParam, uint8_t *buffer,
+    uint32_t bufferLen);
 
 int32_t CRYPT_DECODE_ParseSubKeyInfo(uint8_t *buff, uint32_t buffLen, BSL_ASN1_Buffer *pubAsn1, bool isComplete);
 

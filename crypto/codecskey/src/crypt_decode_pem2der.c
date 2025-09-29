@@ -103,7 +103,7 @@ int32_t DECODER_Pem2DerDecode(void *ctx, const BSL_Param *inParam, BSL_Param **o
         return ret;
     }
     decoderCtx->outType = dataType;
-    return CRYPT_DECODE_ConstructBufferOutParam(outParam, asn1Encode, asn1Len);
+    return CRYPT_DECODE_ConstructBufferOutParam(inParam, outParam, asn1Encode, asn1Len);
 }
 
 void DECODER_Pem2DerFreeOutData(void *ctx, BSL_Param *outParam)

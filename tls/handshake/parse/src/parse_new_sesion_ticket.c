@@ -32,16 +32,12 @@
 static int32_t ParseTicketNonce(ParsePacket *pkt, NewSessionTicketMsg *msg)
 {
     uint8_t ticketNonceSize = 0;
-    const char *logStr = BINGLOG_STR("ParseOneByteLengthField fail");
+    const char *logStr = BINGLOG_STR("ParseTicketNonce fail");
     int32_t ret = ParseOneByteLengthField(pkt, &ticketNonceSize, &msg->ticketNonce);
     if (ret == HITLS_PARSE_INVALID_MSG_LEN) {
         return ParseErrorProcess(pkt->ctx, HITLS_PARSE_INVALID_MSG_LEN, BINLOG_ID17010, logStr, ALERT_DECODE_ERROR);
     } else if (ret == HITLS_MEMALLOC_FAIL) {
         return ParseErrorProcess(pkt->ctx, HITLS_MEMALLOC_FAIL, BINLOG_ID17011, logStr, ALERT_INTERNAL_ERROR);
-    }
-
-    if (ticketNonceSize == 0) {
-        return ParseErrorProcess(pkt->ctx, HITLS_PARSE_INVALID_MSG_LEN, BINLOG_ID17012, logStr, ALERT_DECODE_ERROR);
     }
 
     msg->ticketNonceSize = (uint32_t)ticketNonceSize;
