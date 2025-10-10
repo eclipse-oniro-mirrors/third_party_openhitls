@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "securec.h"
 #include "bsl_errno.h"
 #include "bsl_obj.h"
@@ -28,6 +29,20 @@
 
 extern BslOidInfo g_oidTable[];
 extern uint32_t g_tableSize;
+
+static int32_t PthreadRunOnce(uint32_t *onceControl, BSL_SAL_ThreadInitRoutine initFunc)
+{
+    if (onceControl == NULL || initFunc == NULL) {
+        return BSL_SAL_ERR_BAD_PARAM;
+    }
+
+    pthread_once_t *tmpOnce = (pthread_once_t *)onceControl;
+    if (pthread_once(tmpOnce, initFunc) != 0) {
+        return BSL_SAL_ERR_UNKNOWN;
+    }
+    return BSL_SUCCESS;
+}
+
 /**
  * @test SDV_BSL_OBJ_CID_OID_FUNC_TC001
  * @title check whether the relative sequence of cid and oid tables is corrent
@@ -67,7 +82,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_OBJ_CREATE_SIGN_ID_TC001(void)
 {
-#ifndef HITLS_BSL_HASH
+#ifndef HITLS_BSL_OBJ_CUSTOM
     SKIP_TEST();
 #else
     BslCid signId = BSL_CID_MAX - 1;
@@ -75,6 +90,7 @@ void SDV_BSL_OBJ_CREATE_SIGN_ID_TC001(void)
     BslCid hashId = BSL_CID_MAX - 2;
 
     TestMemInit();
+    (void)BSL_SAL_CallBack_Ctrl(BSL_SAL_THREAD_RUN_ONCE_CB_FUNC, PthreadRunOnce);
     ASSERT_EQ(BSL_OBJ_CreateSignId(signId, asymId, hashId), BSL_SUCCESS);
 
     BslCid retrievedAsymId = BSL_OBJ_GetAsymAlgIdFromSignId(signId);
@@ -139,7 +155,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_OBJ_CREATE_TC001()
 {
-#ifndef HITLS_BSL_HASH
+#ifndef HITLS_BSL_OBJ_CUSTOM
     SKIP_TEST();
 #else
     char *testOidName = "TEST-OID";
@@ -152,6 +168,7 @@ void SDV_BSL_OBJ_CREATE_TC001()
     char aesOidData[] = "\140\206\110\1\145\3\4\1\2";
 
     TestMemInit();
+    (void)BSL_SAL_CallBack_Ctrl(BSL_SAL_THREAD_RUN_ONCE_CB_FUNC, PthreadRunOnce);
     ASSERT_EQ(BSL_OBJ_Create(aesOidData, 9, aesOidName, aesCid), BSL_SUCCESS);
 
     ASSERT_EQ(BSL_OBJ_Create(testOidData, 9, testOidName, testCid), BSL_SUCCESS);
@@ -191,7 +208,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_OBJ_HASH_TABLE_LOOKUP_TC001()
 {
-#ifndef HITLS_BSL_HASH
+#ifndef HITLS_BSL_OBJ_CUSTOM
     SKIP_TEST();
 #else
     int32_t ret;
@@ -213,6 +230,7 @@ void SDV_BSL_OBJ_HASH_TABLE_LOOKUP_TC001()
     testOid2.flags = BSL_OID_GLOBAL;
 
     TestMemInit();
+    (void)BSL_SAL_CallBack_Ctrl(BSL_SAL_THREAD_RUN_ONCE_CB_FUNC, PthreadRunOnce);
     ret = BSL_OBJ_Create(testOidData1, sizeof(testOidData1), testOidName1, testCid1);
     ASSERT_EQ(BSL_SUCCESS, ret);
 

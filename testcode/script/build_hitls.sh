@@ -65,7 +65,7 @@ down_depend_code()
 
     if [ ! -d "${HITLS_ROOT_DIR}/platform/Secure_C/src" ]; then
         cd ${HITLS_ROOT_DIR}/platform
-        git clone https://gitee.com/openeuler/libboundscheck.git  Secure_C
+        git clone https://gitee.com/openeuler/libboundscheck.git Secure_C
     fi
 }
 
