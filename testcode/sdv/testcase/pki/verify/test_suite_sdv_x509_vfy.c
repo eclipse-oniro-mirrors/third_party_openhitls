@@ -102,8 +102,8 @@ HITLS_X509_StoreCtx *HITLS_X509_NewStoreCtxMock(void)
     return ctx;
 }
 
-static int32_t HITLS_BuildChain(BslList *list, int type,
-    char *path1, char *path2, char *path3, char *path4, char *path5)
+static int32_t HITLS_BuildChain(BslList *list, int type, char *path1, char *path2, char *path3, char *path4,
+                                char *path5)
 {
     int32_t ret;
     char *path[] = {path1, path2, path3, path4, path5};
@@ -158,8 +158,8 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
-void SDV_X509_STORE_VFY_CRL_FUNC_TC001(int type, int expResult, char *path1, char *path2, char *path3,
-    char *crl1, char *crl2)
+void SDV_X509_STORE_VFY_CRL_FUNC_TC001(int type, int expResult, char *path1, char *path2, char *path3, char *crl1,
+                                       char *crl2)
 {
     int ret;
     TestMemInit();
@@ -269,19 +269,24 @@ void SDV_X509_STORE_CTRL_NEW_FIELDS_FUNC_TC003(void)
     /* Test error field */
     int32_t errorVal = 12345;
     int32_t ret;
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_ERROR, &errorVal, sizeof(int32_t)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_ERROR, &errorVal, sizeof(int32_t)),
+              HITLS_PKI_SUCCESS);
     ASSERT_EQ(store->error, errorVal);
 
     int32_t getErrorVal = 0;
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_ERROR, &getErrorVal, sizeof(int32_t)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_ERROR, &getErrorVal, sizeof(int32_t)),
+              HITLS_PKI_SUCCESS);
     ASSERT_EQ(getErrorVal, errorVal);
 
     /* Test current field */
     HITLS_X509_Cert *cert = NULL;
-    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, "../testdata/cert/asn1/rsa2048ssa-pss.crt", &cert), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, "../testdata/cert/asn1/rsa2048ssa-pss.crt", &cert),
+              HITLS_PKI_SUCCESS);
 
     HITLS_X509_Cert *getCurrentCert = NULL;
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_CUR_CERT, &getCurrentCert, sizeof(HITLS_X509_Cert *)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(
+        HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_CUR_CERT, &getCurrentCert, sizeof(HITLS_X509_Cert *)),
+        HITLS_PKI_SUCCESS);
 
     /* Test verify callback field */
     int32_t (*testCallback)(int32_t, HITLS_X509_StoreCtx*) = X509StoreCtrlCbkSuc;
@@ -290,27 +295,34 @@ void SDV_X509_STORE_CTRL_NEW_FIELDS_FUNC_TC003(void)
     ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_VERIFY_CB, testCallback, sizeof(testCallback)), HITLS_PKI_SUCCESS);
     ASSERT_EQ(store->verifyCb, testCallback);
 
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_VERIFY_CB, &getCallback, sizeof(getCallback)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_VERIFY_CB, &getCallback, sizeof(getCallback)),
+              HITLS_PKI_SUCCESS);
     ASSERT_EQ(getCallback, testCallback);
 
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_USR_DATA, &ret, sizeof(void *)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_USR_DATA, &ret, sizeof(void *)),
+              HITLS_PKI_SUCCESS);
     ASSERT_EQ(store->usrData, &ret);
     void *tmp = NULL;
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_USR_DATA, &tmp, sizeof(void *)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_USR_DATA, &tmp, sizeof(void *)),
+              HITLS_PKI_SUCCESS);
     ASSERT_EQ(tmp, &ret);
 
     /* Test current depth field */
     int32_t depthVal = 5;
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_CUR_DEPTH, &depthVal, sizeof(int32_t)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_CUR_DEPTH, &depthVal, sizeof(int32_t)),
+              HITLS_PKI_SUCCESS);
     ASSERT_EQ(store->curDepth, depthVal);
 
     int32_t getDepthVal = 0;
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_CUR_DEPTH, &getDepthVal, sizeof(int32_t)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_CUR_DEPTH, &getDepthVal, sizeof(int32_t)),
+              HITLS_PKI_SUCCESS);
     ASSERT_EQ(getDepthVal, depthVal);
 
     /* Test invalid parameters */
-    ASSERT_NE(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_ERROR, &errorVal, sizeof(int32_t) - 1), HITLS_PKI_SUCCESS);
-    ASSERT_NE(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_ERROR, &getErrorVal, sizeof(int32_t) - 1), HITLS_PKI_SUCCESS);
+    ASSERT_NE(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_ERROR, &errorVal, sizeof(int32_t) - 1),
+              HITLS_PKI_SUCCESS);
+    ASSERT_NE(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_ERROR, &getErrorVal, sizeof(int32_t) - 1),
+              HITLS_PKI_SUCCESS);
 EXIT:
     HITLS_X509_StoreCtxFree(store);
     HITLS_X509_CertFree(cert);
@@ -332,7 +344,8 @@ void SDV_X509_STORE_CTRL_NEW_FIELDS_INVALID_FUNC_TC004(void)
     ASSERT_NE(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_ERROR, NULL, sizeof(int32_t)), HITLS_PKI_SUCCESS);
 
     ASSERT_NE(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_USR_DATA, NULL, 0), HITLS_PKI_SUCCESS);
-    ASSERT_NE(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_USR_DATA, NULL, sizeof(int32_t)), HITLS_PKI_SUCCESS);
+    ASSERT_NE(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_USR_DATA, NULL, sizeof(int32_t)),
+              HITLS_PKI_SUCCESS);
 
     /* Test with invalid command */
     int32_t val = 0;
@@ -389,7 +402,7 @@ void SDV_X509_BUILD_CERT_CHAIN_FUNC_TC001(char *rootPath, char *caPath, char *ce
 
     ASSERT_TRUE(HITLS_AddCertToStoreTest(cert, store, &entity) != HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_AddCrlToStoreTest(crlPath, store, &crl), HITLS_PKI_SUCCESS);
-    
+
     ASSERT_EQ(BSL_LIST_COUNT(store->crl), 1);
     if (withIntCa) {
         ASSERT_EQ(BSL_LIST_COUNT(store->store), 2);
@@ -454,7 +467,6 @@ EXIT:
 }
 /* END_CASE */
 
-
 static int32_t X509_AddCertToChainTest(HITLS_X509_List *chain, HITLS_X509_Cert *cert)
 {
     int ref;
@@ -468,7 +480,6 @@ static int32_t X509_AddCertToChainTest(HITLS_X509_List *chain, HITLS_X509_Cert *
     }
     return ret;
 }
-
 
 /* BEGIN_CASE */
 void SDV_X509_BUILD_CERT_CHAIN_FUNC_TC003(void)
@@ -670,7 +681,8 @@ static int32_t X509StoreCtrlCbk(HITLS_X509_StoreCtx *store, int cbkflag)
 #endif
 
 /* BEGIN_CASE */
-void SDV_X509_BUILD_CERT_CHAIN_FUNC_TC008(char *rootPath, char *caPath, char *cert, char *rootcrlpath, char *cacrlpath, int flag, int cbk, int except)
+void SDV_X509_BUILD_CERT_CHAIN_FUNC_TC008(char *rootPath, char *caPath, char *cert, char *rootcrlpath, char *cacrlpath,
+                                          int flag, int cbk, int except)
 {
     TestMemInit();
     HITLS_X509_StoreCtx *store = HITLS_X509_StoreCtxNew();
@@ -733,7 +745,6 @@ EXIT:
 }
 /* END_CASE */
 
-
 /* BEGIN_CASE */
 void SDV_X509_BUILD_CERT_CHAIN_FUNC_TC009(void)
 {
@@ -791,10 +802,9 @@ EXIT:
 }
 /* END_CASE */
 
-
 /* BEGIN_CASE */
 void SDV_X509_SM2_CERT_USERID_FUNC_TC001(char *caCertPath, char *interCertPath, char *entityCertPath,
-    int isUseDefaultUserId)
+                                         int isUseDefaultUserId)
 {
     TestMemInit();
     TestRandInit();
@@ -811,7 +821,8 @@ void SDV_X509_SM2_CERT_USERID_FUNC_TC001(char *caCertPath, char *interCertPath, 
     ASSERT_EQ(BSL_LIST_COUNT(storeCtx->store), 2);
     if (isUseDefaultUserId != 0) {
         ASSERT_EQ(HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_SET_VFY_SM2_USERID, sm2DefaultUserid,
-            strlen(sm2DefaultUserid)), 0);
+                                          strlen(sm2DefaultUserid)),
+                  0);
     }
     ASSERT_EQ(HITLS_X509_CertChainBuild(storeCtx, false, entityCert, &chain), 0);
     ASSERT_EQ(HITLS_X509_CertVerify(storeCtx, chain), HITLS_PKI_SUCCESS);
@@ -830,7 +841,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_FUNC_TC001(void)
     TestMemInit();
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
-    
+
     // Test adding additional CA path
     const char *testPath1 = "/usr/local/ssl/certs";
     int32_t ret =
@@ -839,17 +850,14 @@ void SDV_X509_STORE_LOAD_CA_PATH_FUNC_TC001(void)
 
     ret = HITLS_X509_StoreCtxCtrl(NULL, HITLS_X509_STORECTX_ADD_CA_PATH, (void *)testPath1, strlen(testPath1));
     ASSERT_EQ(ret, HITLS_X509_ERR_INVALID_PARAM);
-    
-    ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH,
-                                  NULL, strlen(testPath1));
+
+    ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH, NULL, strlen(testPath1));
     ASSERT_EQ(ret, HITLS_X509_ERR_INVALID_PARAM);
 
-    ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH,
-                                  (void *)testPath1, 0);
+    ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH, (void *)testPath1, 0);
     ASSERT_EQ(ret, HITLS_X509_ERR_INVALID_PARAM);
 
-    ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH,
-                                  (void *)testPath1, 4097);
+    ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH, (void *)testPath1, 4097);
     ASSERT_EQ(ret, HITLS_X509_ERR_INVALID_PARAM);
 
 EXIT:
@@ -865,7 +873,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC001(void)
     HITLS_X509_List *chain = NULL;
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
-    
+
     // Add additional CA paths
     const char *caPath = "../testdata/tls/certificate/pem/rsa_sha256";
     int32_t ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH, (void *)caPath, strlen(caPath));
@@ -875,7 +883,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC001(void)
     const char *certToVerify = "../testdata/tls/certificate/pem/rsa_sha256/client.pem";
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_PEM, certToVerify, &cert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
-   
+
     // Build certificate chain with on-demand CA loading from multiple paths
     ret = HITLS_X509_CertChainBuild(storeCtx, true, cert, &chain);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
@@ -883,7 +891,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC001(void)
 
     uint32_t chainLength = BSL_LIST_COUNT(chain);
     ASSERT_TRUE(chainLength >= 1);
-    
+
     // Verify the certificate chain
     ret = HITLS_X509_CertVerify(storeCtx, chain);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
@@ -902,7 +910,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC002(void)
     HITLS_X509_List *chain = NULL;
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
-    
+
     // Add additional CA paths
     const char *caPath = "../testdata/tls/certificate/pem/ed25519";
     int32_t ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH, (void *)caPath, strlen(caPath));
@@ -912,7 +920,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC002(void)
     const char *certToVerify = "../testdata/tls/certificate/pem/rsa_sha256/client.pem";
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_PEM, certToVerify, &cert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
-   
+
     // Build certificate chain with on-demand CA loading from multiple paths
     ret = HITLS_X509_CertChainBuild(storeCtx, true, cert, &chain);
     ASSERT_EQ(ret, HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND);
@@ -931,7 +939,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC003(void)
     HITLS_X509_List *chain = NULL;
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
-    
+
     // Add additional CA paths
     const char *caPath = "../testdata/tls/certificate/pem/test_dir";
     int32_t ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH, (void *)caPath, strlen(caPath));
@@ -941,7 +949,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC003(void)
     const char *certToVerify = "../testdata/tls/certificate/pem/rsa_sha256/client.pem";
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_PEM, certToVerify, &cert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
-   
+
     // Build certificate chain with on-demand CA loading from multiple paths
     ret = HITLS_X509_CertChainBuild(storeCtx, true, cert, &chain);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
@@ -961,7 +969,7 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC004(void)
     HITLS_X509_List *chain = NULL;
     HITLS_X509_StoreCtx *storeCtx = HITLS_X509_StoreCtxNew();
     ASSERT_NE(storeCtx, NULL);
-    
+
     // Add additional CA paths
     const char *caPath = "../testdata/tls/certificate/pem/test_dir";
     int32_t ret = HITLS_X509_StoreCtxCtrl(storeCtx, HITLS_X509_STORECTX_ADD_CA_PATH, (void *)caPath, strlen(caPath));
@@ -969,10 +977,10 @@ void SDV_X509_STORE_LOAD_CA_PATH_CHAIN_BUILD_TC004(void)
 
     // Load the certificate to be verified
     const char *certToVerify = "../testdata/tls/certificate/pem/ecdsa_sha256/client.pem";
-    
+
     ret = HITLS_X509_CertParseFile(BSL_FORMAT_PEM, certToVerify, &cert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
-   
+
     // Build certificate chain with on-demand CA loading from multiple paths
     ret = HITLS_X509_CertChainBuild(storeCtx, true, cert, &chain);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
@@ -993,7 +1001,8 @@ void SDV_X509_STORE_CTRL_GET_CERT_CHAIN_FUNC_TC018(void)
 
     // Test getting certificate chain when it's NULL (before verification)
     HITLS_X509_List *certChain = NULL;
-    int32_t ret = HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_CERT_CHAIN, &certChain, sizeof(HITLS_X509_List *));
+    int32_t ret =
+        HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_GET_CERT_CHAIN, &certChain, sizeof(HITLS_X509_List *));
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_EQ(certChain, NULL);
 
@@ -1198,10 +1207,12 @@ void SDV_X509_BUILD_CERT_CHAIN_CBK_FUNC_TC001(int flag, int ecp)
     ASSERT_TRUE(store != NULL);
     HITLS_X509_Cert *ca = NULL;
     if (flag != HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND) {
-        ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/inter.der", store, &ca), HITLS_PKI_SUCCESS);
+        ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/inter.der", store, &ca),
+                  HITLS_PKI_SUCCESS);
     }
     HITLS_X509_Cert *entity = NULL;
-    ASSERT_TRUE(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/end.der", store, &entity) != HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/end.der", store, &entity) !=
+                HITLS_PKI_SUCCESS);
     if (flag != HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND) {
         ASSERT_EQ(BSL_LIST_COUNT(store->store), 1);
     }
@@ -1216,7 +1227,8 @@ void SDV_X509_BUILD_CERT_CHAIN_CBK_FUNC_TC001(int flag, int ecp)
     }
     ASSERT_EQ(X509StoreCtrlCbk2(store, flag), HITLS_PKI_SUCCESS);
     int64_t timeval = time(NULL);
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_TIME, &timeval, sizeof(timeval)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_TIME, &timeval, sizeof(timeval)),
+              HITLS_PKI_SUCCESS);
     TestReplace(&stubInfo, flag);
     ASSERT_EQ(HITLS_X509_CertVerify(store, chain), ecp);
 
@@ -1263,10 +1275,12 @@ void SDV_X509_BUILD_CERT_CHAIN_CBK_FUNC_TC002(int flag, int ecp)
     ASSERT_TRUE(store != NULL);
     HITLS_X509_Cert *ca = NULL;
     if (flag != HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND) {
-        ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/inter.der", store, &ca), HITLS_PKI_SUCCESS);
+        ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/inter.der", store, &ca),
+                  HITLS_PKI_SUCCESS);
     }
     HITLS_X509_Cert *entity = NULL;
-    ASSERT_TRUE(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/end.der", store, &entity) != HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/end.der", store, &entity) !=
+                HITLS_PKI_SUCCESS);
     if (flag != HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND) {
         ASSERT_EQ(BSL_LIST_COUNT(store->store), 1);
     }
@@ -1279,7 +1293,8 @@ void SDV_X509_BUILD_CERT_CHAIN_CBK_FUNC_TC002(int flag, int ecp)
     }
     ASSERT_EQ(X509StoreCtrlCbk3(store, flag), HITLS_PKI_SUCCESS);
     int64_t timeval = time(NULL);
-    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_TIME, &timeval, sizeof(timeval)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_TIME, &timeval, sizeof(timeval)),
+              HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertVerify(store, chain), ecp);
 
 EXIT:
@@ -1309,7 +1324,7 @@ void SDV_X509_VERIFY_CERT_CHAIN_FUNC_TC001(void)
     ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/rsa-pss-v3/inter.der", store, &ca), HITLS_PKI_SUCCESS);
     ASSERT_EQ(BSL_LIST_COUNT(store->store), 2);
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, "../testdata/cert/chain/rsa-pss-v3/end.der", &entity),
-        HITLS_PKI_SUCCESS);
+              HITLS_PKI_SUCCESS);
     HITLS_X509_List *chain = BSL_LIST_New(sizeof(HITLS_X509_Cert *));
     ASSERT_TRUE(chain != NULL);
     ASSERT_EQ(X509_AddCertToChainTest(chain, entity), HITLS_PKI_SUCCESS);
@@ -1329,6 +1344,48 @@ EXIT:
     HITLS_X509_CertFree(root);
     HITLS_X509_CertFree(ca);
     HITLS_X509_CertFree(entity);
+    BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_X509_BUILD_MLDSA_CERT_CHAIN_FUNC_TC001(void)
+{
+    HITLS_X509_StoreCtx *store = HITLS_X509_StoreCtxNew();
+    ASSERT_TRUE(store != NULL);
+    HITLS_X509_Cert *ca = NULL;
+    int32_t ret = HITLS_AddCertToStoreTest("../testdata/cert/chain/mldsa-v3/inter.crt", store, &ca);
+    ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
+
+    HITLS_X509_Cert *entity = NULL;
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_PEM, "../testdata/cert/chain/mldsa-v3/end.crt", &entity),
+              HITLS_PKI_SUCCESS);
+    HITLS_X509_Cert *entityWithInvalidKu = NULL;
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_PEM,
+                                       "../testdata/cert/chain/mldsa-v3/end_with_invalid_key_usage.crt",
+                                       &entityWithInvalidKu),
+              HITLS_PKI_SUCCESS);
+    HITLS_X509_List *chain = NULL;
+    ret = HITLS_X509_CertChainBuild(store, false, entity, &chain);
+    ASSERT_TRUE(ret == HITLS_PKI_SUCCESS);
+    BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+
+    HITLS_X509_Cert *root = NULL;
+    ASSERT_EQ(HITLS_AddCertToStoreTest("../testdata/cert/chain/mldsa-v3/root.crt", store, &root), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertChainBuild(store, false, entity, &chain), HITLS_PKI_SUCCESS);
+
+    ASSERT_EQ(HITLS_X509_CertVerify(store, chain), HITLS_PKI_SUCCESS);
+    BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+
+    ASSERT_EQ(HITLS_X509_CertChainBuild(store, false, entityWithInvalidKu, &chain), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(HITLS_X509_CertVerify(store, chain) != HITLS_PKI_SUCCESS);
+
+EXIT:
+    HITLS_X509_StoreCtxFree(store);
+    HITLS_X509_CertFree(root);
+    HITLS_X509_CertFree(ca);
+    HITLS_X509_CertFree(entity);
+    HITLS_X509_CertFree(entityWithInvalidKu);
     BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
 }
 /* END_CASE */

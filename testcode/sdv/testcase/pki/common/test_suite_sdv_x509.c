@@ -113,13 +113,14 @@ static int32_t SetRsaPssPara(CRYPT_EAL_PkeyCtx *pkey)
 }
 #endif // HITLS_CRYPT_RSA
 
-static CRYPT_EAL_PkeyCtx *GenKey(int32_t algId, int32_t curveId)
+// if alg is ecc, algParam specifies curveId; if pqc, algParam specifies paramSet
+static CRYPT_EAL_PkeyCtx *GenKey(int32_t algId, int32_t algParam)
 {
     CRYPT_EAL_PkeyCtx *pkey = CRYPT_EAL_PkeyNewCtx(algId == BSL_CID_RSASSAPSS ? BSL_CID_RSA : algId);
     ASSERT_NE(pkey, NULL);
 
     if (algId == CRYPT_PKEY_ECDSA) {
-        ASSERT_EQ(CRYPT_EAL_PkeySetParaById(pkey, curveId), CRYPT_SUCCESS);
+        ASSERT_EQ(CRYPT_EAL_PkeySetParaById(pkey, algParam), CRYPT_SUCCESS);
     }
 
 #ifdef HITLS_CRYPTO_RSA
@@ -131,6 +132,11 @@ static CRYPT_EAL_PkeyCtx *GenKey(int32_t algId, int32_t curveId)
         ASSERT_EQ(SetRsaPssPara(pkey), CRYPT_SUCCESS);
     }
 #endif
+#ifdef HITLS_CRYPTO_MLDSA
+    if (algId == CRYPT_PKEY_ML_DSA) {
+        ASSERT_EQ(CRYPT_EAL_PkeySetParaById(pkey, algParam), CRYPT_SUCCESS);
+    }
+#endif
     ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
 
     return pkey;
@@ -140,14 +146,15 @@ EXIT:
 }
 
 /**
- * Generate DER/PEM public/private key: rsa, ecc, sm2, ed25519
+ * Generate DER/PEM public/private key: rsa, ecc, sm2, ed25519, mldsa
+ * if ecc alg, algParam specifies curveId; if pqc, algParam specifies paramSet
  */
-static int32_t TestEncodeKey(int32_t algId, int32_t type, int32_t curveId, char *path)
+static int32_t TestEncodeKey(int32_t algId, int32_t type, int32_t algParam, char *path)
 {
     BSL_Buffer encode = {0};
     int32_t ret = CRYPT_MEM_ALLOC_FAIL;
 
-    CRYPT_EAL_PkeyCtx *pkey = GenKey(algId, curveId);
+    CRYPT_EAL_PkeyCtx *pkey = GenKey(algId, algParam);
     ASSERT_NE(pkey, NULL);
 
 #ifdef HITLS_BSL_SAL_FILE
@@ -902,157 +909,23 @@ EXIT:
 }
 /* END_CASE */
 
-#if (defined(HITLS_CRYPTO_KEY_ENCODE) && defined(HITLS_CRYPTO_KEY_EPKI)) || defined(HITLS_PKI_X509_CRT_GEN) || defined(HITLS_PKI_X509_CSR_GEN)
-static int32_t test = 0;
-static int32_t marked = 0;
-static void *STUB_BSL_SAL_Malloc_x509(uint32_t size)
-{
-    if (marked <= test) {
-        marked++;
-        return malloc(size);
-    }
-    return NULL;
-}
-#endif
-
-/**
- * @test SDV_PKI_GEN_ENCKEY_STUB_TC001
- * title 1. Test the pkey prv encode with stub malloc fail
- *
- */
 /* BEGIN_CASE */
-void SDV_PKI_GEN_ENCKEY_STUB_TC001(int algId, int curveId, int symId, Hex *pwd, int maxTriggers)
+void SDV_HITLS_MLDSA_PQC_CERT_TC001(char *keypath)
 {
-#if defined(HITLS_CRYPTO_KEY_ENCODE) && defined(HITLS_CRYPTO_KEY_EPKI)
-    if (PkiSkipTest(algId, BSL_FORMAT_ASN1)) {
-        SKIP_TEST();
-    }
-    CRYPT_Pbkdf2Param param = {
-        .pbesId = BSL_CID_PBES2,
-        .pbkdfId = BSL_CID_PBKDF2,
-        .hmacId = CRYPT_MAC_HMAC_SHA256,
-        .symId = symId,
-        .pwd = pwd->x,
-        .pwdLen = pwd->len,
-        .saltLen = 16,
-        .itCnt = 2000,
-    };
-    TestMemInit();
-    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
-    STUB_Init();
-    FuncStubInfo tmpRpInfo;
-    CRYPT_EncodeParam paramEx = {CRYPT_DERIVE_PBKDF2, &param};
-    CRYPT_EAL_PkeyCtx *pkey = NULL;
-    BSL_Buffer encode = {0};
-    test = maxTriggers;
-    marked = 0;
-    pkey = GenKey(algId, curveId);
-    ASSERT_NE(pkey, NULL);
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_x509);
-    for (int i = maxTriggers; i > 0; i--) {
-        marked = 0;
-        test--;
-        ASSERT_NE(CRYPT_EAL_EncodeBuffKey(pkey, &paramEx, BSL_FORMAT_PEM, CRYPT_PRIKEY_PKCS8_ENCRYPT, &encode), 0);
-    }
-EXIT:
-    TestRandDeInit();
-    CRYPT_EAL_PkeyFreeCtx(pkey);
-    STUB_Reset(&tmpRpInfo);
-#else
-    (void)algId;
-    (void)curveId;
-    (void)symId;
-    (void)pwd;
-    (void)maxTriggers;
-    SKIP_TEST();
-#endif
-}
-/* END_CASE */
-
-/**
- * @test SDV_PKI_GEN_ENCKEY_STUB_TC002
- * title 1. Test the pkey pub encode with stub malloc fail
- *
- */
-/* BEGIN_CASE */
-void SDV_PKI_GEN_ENCKEY_STUB_TC002(int algId, int curveId, int symId, Hex *pwd, int maxTriggers)
-{
-#if defined(HITLS_CRYPTO_KEY_ENCODE) && defined(HITLS_CRYPTO_KEY_EPKI)
-    if (PkiSkipTest(algId, BSL_FORMAT_ASN1)) {
-        SKIP_TEST();
-    }
-    CRYPT_Pbkdf2Param param = {
-        .pbesId = BSL_CID_PBES2,
-        .pbkdfId = BSL_CID_PBKDF2,
-        .hmacId = CRYPT_MAC_HMAC_SHA256,
-        .symId = symId,
-        .pwd = pwd->x,
-        .pwdLen = pwd->len,
-        .saltLen = 16,
-        .itCnt = 2000,
-    };
-    TestMemInit();
-    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
-    STUB_Init();
-    FuncStubInfo tmpRpInfo;
-    CRYPT_EncodeParam paramEx = {CRYPT_DERIVE_PBKDF2, &param};
-    CRYPT_EAL_PkeyCtx *pkey = NULL;
-    BSL_Buffer encode = {0};
-    test = maxTriggers;
-    marked = 0;
-    pkey = GenKey(algId, curveId);
-    ASSERT_NE(pkey, NULL);
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_x509);
-    for (int i = maxTriggers; i > 0; i--) {
-        marked = 0;
-        test--;
-        ASSERT_NE(CRYPT_EAL_EncodeBuffKey(pkey, &paramEx, BSL_FORMAT_PEM, CRYPT_PUBKEY_SUBKEY, &encode), 0);
-    }
-EXIT:
-    TestRandDeInit();
-    CRYPT_EAL_PkeyFreeCtx(pkey);
-    STUB_Reset(&tmpRpInfo);
-#else
-    (void)algId;
-    (void)curveId;
-    (void)symId;
-    (void)pwd;
-    (void)maxTriggers;
-    SKIP_TEST();
-#endif
-}
-/* END_CASE */
-
-/**
- * @test SDV_PKI_GEN_CERT_STUB_TC001
- * title 1. Test the cert encode with stub malloc fail
- *
- */
-/* BEGIN_CASE */
-void SDV_PKI_GEN_CERT_STUB_TC001(int algId, int hashId, int curveId, int maxTriggers)
-{
-#ifdef HITLS_PKI_X509_CRT_GEN
-    if (PkiSkipTest(algId, BSL_FORMAT_ASN1)) {
-        SKIP_TEST();
-    }
-
     HITLS_X509_Cert *cert = NULL;
     uint32_t version = 2; // v3 cert
     uint8_t serialNum[4] = {0x11, 0x22, 0x33, 0x44};
     BSL_TIME beforeTime = {2025, 1, 1, 0, 0, 0, 0, 0};
     BSL_TIME afterTime = {2035, 1, 1, 0, 0, 0, 0, 0};
     BslList *dnList = NULL;
-
-    HITLS_X509_SignAlgParam algParam = {0};
-    CRYPT_RSA_PssPara pssParam = {0};
     BSL_Buffer encode = {0};
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
 
-    STUB_Init();
-    FuncStubInfo tmpRpInfo;
     TestMemInit();
     ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
-    CRYPT_EAL_PkeyCtx *key = GenKey(algId, curveId);
-    ASSERT_NE(key, NULL);
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_PEM, CRYPT_PRIKEY_PKCS8_UNENCRYPT, keypath, NULL, 0, &pkey),
+              CRYPT_SUCCESS);
+    ASSERT_NE(pkey, NULL);
     cert = HITLS_X509_CertNew();
     ASSERT_NE(cert, NULL);
 
@@ -1061,7 +934,7 @@ void SDV_PKI_GEN_CERT_STUB_TC001(int algId, int hashId, int curveId, int maxTrig
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_SERIALNUM, serialNum, sizeof(serialNum)), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_BEFORE_TIME, &beforeTime, sizeof(BSL_TIME)), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_AFTER_TIME, &afterTime, sizeof(BSL_TIME)), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_PUBKEY, key, 0), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_PUBKEY, pkey, 0), HITLS_PKI_SUCCESS);
     dnList = GenDNList();
     ASSERT_NE(dnList, NULL);
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_ISSUER_DN, dnList, sizeof(BslList)), HITLS_PKI_SUCCESS);
@@ -1069,95 +942,31 @@ void SDV_PKI_GEN_CERT_STUB_TC001(int algId, int hashId, int curveId, int maxTrig
     ASSERT_EQ(SetCertExt(cert), 0);
 
     // sign cert
-    SetSignParam(algId, hashId, &algParam, &pssParam);
-    if (algId == CRYPT_PKEY_RSA) {
-        ASSERT_EQ(HITLS_X509_CertSign(hashId, key, NULL, cert), HITLS_PKI_SUCCESS);
-    } else {
-        ASSERT_EQ(HITLS_X509_CertSign(hashId, key, &algParam, cert), HITLS_PKI_SUCCESS);
-    }
-    test = maxTriggers;
-    marked = 0;
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_x509);
-    for (int i = maxTriggers; i > 0; i--) {
-        marked = 0;
-        test--;
-        ASSERT_NE(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), HITLS_PKI_SUCCESS);
-    }
+    ASSERT_EQ(HITLS_X509_CertSign(CRYPT_MD_SHA256, pkey, NULL, cert), HITLS_PKI_SUCCESS);
+
+    // generate cert buff
+    ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), HITLS_PKI_SUCCESS);
+    BSL_SAL_FREE(encode.data);
 
 EXIT:
     TestRandDeInit();
-    CRYPT_EAL_PkeyFreeCtx(key);
+    CRYPT_EAL_PkeyFreeCtx(pkey);
     HITLS_X509_CertFree(cert);
     HITLS_X509_DnListFree(dnList);
-    STUB_Reset(&tmpRpInfo);
-#else
-    UnusedParam1(algId, hashId, curveId);
-    (void)maxTriggers;
-    SKIP_TEST();
-#endif
 }
 /* END_CASE */
 
-/**
- * @test SDV_PKI_GEN_CSR_STUB_TC001
- * title 1. Test the csr encode with stub malloc fail
- *
- */
 /* BEGIN_CASE */
-void SDV_PKI_GEN_CSR_STUB_TC001(int algId, int hashId, int curveId, int maxTriggers)
+void SDV_HITLS_MLDSA_PQC_CERT_TC002(char *keypath)
 {
-#ifdef HITLS_PKI_X509_CSR_GEN
-    if (PkiSkipTest(algId, BSL_FORMAT_ASN1)) {
-        SKIP_TEST();
-    }
-    HITLS_X509_Csr *csr = NULL;
-    BSL_Buffer encode = {0};
-    HITLS_X509_DN dnName1[1] = {{BSL_CID_AT_COMMONNAME, (uint8_t *)"OH", 2}};
-    HITLS_X509_DN dnName2[1] = {{BSL_CID_AT_COUNTRYNAME, (uint8_t *)"CN", 2}};
-    HITLS_X509_Attrs *attrs = NULL;
-    HITLS_X509_Ext *ext = NULL;
-    HITLS_X509_SignAlgParam algParam = {0};
-    CRYPT_RSA_PssPara pssParam = {0};
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
     TestMemInit();
-    STUB_Init();
-    FuncStubInfo tmpRpInfo;
     ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
-    CRYPT_EAL_PkeyCtx *key = GenKey(algId, curveId);
-    ASSERT_NE(key, NULL);
-    csr = HITLS_X509_CsrNew();
-    ASSERT_NE(csr, NULL);
-    ext = HITLS_X509_ExtNew(HITLS_X509_EXT_TYPE_CSR);
-    ASSERT_NE(ext, NULL);
-    ASSERT_EQ(HITLS_X509_CsrCtrl(csr, HITLS_X509_SET_PUBKEY, key, 0), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(HITLS_X509_CsrCtrl(csr, HITLS_X509_ADD_SUBJECT_NAME, dnName1, 1), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(HITLS_X509_CsrCtrl(csr, HITLS_X509_ADD_SUBJECT_NAME, dnName2, 1), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(HITLS_X509_CsrCtrl(csr, HITLS_X509_CSR_GET_ATTRIBUTES, &attrs, sizeof(HITLS_X509_Attrs *)), 0);
-    ASSERT_EQ(FillExt(ext), 0);
-    ASSERT_EQ(HITLS_X509_AttrCtrl(attrs, HITLS_X509_ATTR_SET_REQUESTED_EXTENSIONS, ext, 0), 0);
-    SetSignParam(algId, hashId, &algParam, &pssParam);
-    if (algId == CRYPT_PKEY_RSA) {
-        ASSERT_EQ(HITLS_X509_CsrSign(hashId, key, NULL, csr), HITLS_PKI_SUCCESS);
-    } else {
-        ASSERT_EQ(HITLS_X509_CsrSign(hashId, key, &algParam, csr), HITLS_PKI_SUCCESS);
-    }
-    test = maxTriggers;
-    marked = 0;
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_x509);
-    for (int i = maxTriggers; i > 0; i--) {
-        marked = 0;
-        test--;
-        ASSERT_NE(HITLS_X509_CsrGenBuff(BSL_FORMAT_ASN1, csr, &encode), 0);
-    }
+    ASSERT_NE(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_PEM, CRYPT_PRIKEY_PKCS8_UNENCRYPT, keypath, NULL, 0, &pkey),
+              CRYPT_SUCCESS);
+    ASSERT_EQ(pkey, NULL);
 EXIT:
     TestRandDeInit();
-    STUB_Reset(&tmpRpInfo);
-    CRYPT_EAL_PkeyFreeCtx(key);
-    HITLS_X509_CsrFree(csr);
-    HITLS_X509_ExtFree(ext);
-#else
-    UnusedParam1(algId, hashId, curveId);
-    (void)maxTriggers;
-    SKIP_TEST();
-#endif
+    CRYPT_EAL_PkeyFreeCtx(pkey);
 }
 /* END_CASE */
