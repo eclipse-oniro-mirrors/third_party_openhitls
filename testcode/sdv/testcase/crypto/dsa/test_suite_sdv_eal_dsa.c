@@ -49,9 +49,9 @@ extern int32_t CryptDsaFips1864GenPq(CRYPT_DSA_Ctx *ctx, DSA_FIPS186_4_Para *fip
 extern int32_t CryptDsaFips1864ValidatePq(int32_t algId, void *libCtx, const char *mdAttr, uint32_t type,
     BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t counter);
 extern int32_t CryptDsaFips1864GenUnverifiableG(CRYPT_DSA_Para *dsaPara);
-extern int32_t CryptDsaFips1864GenVerifiableG(DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara);
+extern int32_t CryptDsaFips1864GenVerifiableG(void *libCtx, const char *mdAttr, DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara);
 extern int32_t CryptDsaFips1864PartialValidateG(const CRYPT_DSA_Para *dsaPara);
-extern int32_t CryptDsaFips1864ValidateG(DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara);
+extern int32_t CryptDsaFips1864ValidateG(void *libCtx, const char *mdAttr, DSA_FIPS186_4_Para *fipsPara, BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara);
 
 int32_t STUB_RandRangeK(void *libCtx, BN_BigNum *r, const BN_BigNum *p)
 {
@@ -971,8 +971,8 @@ void SDV_CRYPTO_DSA_GEN_G_FUNC_TC002(int algId, int index, Hex *seed, char *pHex
     DSA_FIPS186_4_Para fipsPara = {algId, index, 0, 0};
     BSL_Buffer seedTmp = {seed->x, seed->len};
     CRYPT_DSA_Para dsaPara = {p, q, NULL};
-    ASSERT_EQ(CRYPT_DSA_Fips186_4_GenVerifiable_G(&fipsPara, &seedTmp, &dsaPara), CRYPT_SUCCESS);
-    ASSERT_EQ(CRYPT_DSA_Fips186_4_Validate_G(&fipsPara, &seedTmp, &dsaPara), CRYPT_SUCCESS);
+    ASSERT_EQ(CryptDsaFips1864GenVerifiableG(NULL, NULL, &fipsPara, &seedTmp, &dsaPara), CRYPT_SUCCESS);
+    ASSERT_EQ(CryptDsaFips1864ValidateG(NULL, NULL, &fipsPara, &seedTmp, &dsaPara), CRYPT_SUCCESS);
 EXIT:
     BN_Destroy(p);
     BN_Destroy(q);
@@ -999,7 +999,7 @@ void SDV_CRYPTO_DSA_GEN_G_FUNC_TC003(int algId, int index, Hex *seed, char *pHex
     DSA_FIPS186_4_Para fipsPara = {algId, index, 0, 0};
     BSL_Buffer seedTmp = {seed->x, seed->len};
     CRYPT_DSA_Para dsaPara = {p, q, NULL};
-    ASSERT_EQ(CRYPT_DSA_Fips186_4_GenVerifiable_G(&fipsPara, &seedTmp, &dsaPara), CRYPT_DSA_ERR_TRY_CNT);
+    ASSERT_EQ(CryptDsaFips1864GenVerifiableG(NULL, NULL, &fipsPara, &seedTmp, &dsaPara), CRYPT_DSA_ERR_TRY_CNT);
 EXIT:
     BN_Destroy(p);
     BN_Destroy(q);
@@ -1009,7 +1009,40 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
-void SDV_CRYPTO_DSA_KEY_PAIR_GEN_BY_PARAM_FUNC_TC001()
+void SDV_CRYPTO_DSA_GEN_G_FUNC_TC004(int algId, int index, Hex *seed, char *pHex, char *qHex, char *gHex)
+{
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)algId;
+    (void)index;
+    (void)seed;
+    (void)pHex;
+    (void)qHex;
+    (void)gHex;
+    SKIP_TEST();
+#else
+    BN_BigNum *p = NULL;
+    BN_BigNum *q = NULL;
+    BN_BigNum *gReq = NULL;
+    ASSERT_EQ(BN_Hex2Bn(&p, pHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&q, qHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&gReq, gHex), CRYPT_SUCCESS);
+    DSA_FIPS186_4_Para fipsPara = {algId, index, 0, 0};
+    BSL_Buffer seedTmp = {seed->x, seed->len};
+    CRYPT_DSA_Para dsaPara = {p, q, NULL};
+    ASSERT_EQ(CryptDsaFips1864GenVerifiableG(NULL, NULL, &fipsPara, &seedTmp, &dsaPara), CRYPT_SUCCESS);
+    ASSERT_EQ(CryptDsaFips1864ValidateG(NULL, NULL, &fipsPara, &seedTmp, &dsaPara), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Cmp(dsaPara.g, gReq), 0);
+EXIT:
+    BN_Destroy(p);
+    BN_Destroy(q);
+    BN_Destroy(gReq);
+    BN_Destroy(dsaPara.g);
+#endif
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_DSA_KEY_PAIR_GEN_BY_PARAM_FUNC_TC001(int flag, int gIndex)
 {
 #ifndef HITLS_CRYPTO_DSA_GEN_PARA
     (void)flag;
