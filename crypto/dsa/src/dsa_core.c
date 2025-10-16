@@ -662,25 +662,17 @@ static void RefreshCtx(CRYPT_DSA_Ctx *ctx, BN_BigNum *x, BN_BigNum *y, int32_t r
 }
 
 /* Security length from NIST.FIPS.186-4 4.2 */
-static uint32_t DSA_Fips186_4_validate_LN(uint32_t L, uint32_t N, int isGen, int type)
+static uint32_t DSAFips1864ValidateSecurityLength(uint32_t pBits, uint32_t qBits, int type)
 {
     if (type == CRYPT_DSA_FFC_PARAM) {
-        if (L == 3072 && N == 256) { // If Pbits = 3072 and Qbits = 256.
+        if (pBits >= 3072 && qBits >= 256) { // L >= 3072 and N >= 256.
             return 128; // Secure length is 128.
         }
-        if (L == 2048 && (N == 224 || N == 256)) { // If Pbits = 2048 and Qbits = 224 or 256.
+        if (pBits >= 2048 && qBits >= 224) { // L >= 2048 and N >= 224.
             return 112; // Secure length is 112.
         }
-        /* Security strength of 80 bits is no longer considered adequate, and is retained only for compatibility. */
-        if (isGen == 1) {
-            return 0;
-        }
-        if (L == 1024 && N == 160) { // If Pbits = 1024 and Qbits = 160.
+        if (pBits >= 1024 && qBits >= 160) { // L >= 1024 and N >= 160.
             return 80; // Secure length is 80.
-        }
-    } else if (type == CRYPT_DH_FFC_PARAM) {
-        if (L == 2048 && (N == 224 || N == 256)) { // If Pbits = 2048 and Qbits = 224 or 256.
-            return 112; // Secure length is 112.
         }
     }
     return 0;
@@ -726,10 +718,10 @@ ERR:
 // Generate private key, from SP800-56Ar3 5_6_1_1_4
 static int32_t DSA_GenPrivateKey(void *libCtx, const CRYPT_DSA_Para *para, BN_BigNum *privKey)
 {
-    uint32_t L = BN_Bits(para->p);
-    uint32_t N = BN_Bits(para->q);
-    RETURN_RET_IF(DSA_Fips186_4_validate_LN(L, N, 1, CRYPT_DSA_FFC_PARAM) == 0, CRYPT_DSA_PARA_ERROR);
-    int32_t ret = CRYPT_DSA_Fips186_4_PartialValidate_G(para);
+    uint32_t pBits = BN_Bits(para->p);
+    uint32_t qBits = BN_Bits(para->q);
+    RETURN_RET_IF(DSAFips1864ValidateSecurityLength(pBits, qBits, CRYPT_DSA_FFC_PARAM) == 0, CRYPT_DSA_PARA_ERROR);
+    int32_t ret = CryptDsaFips1864PartialValidateG(para);
     RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
     
     ret = CRYPT_MEM_ALLOC_FAIL;
@@ -1279,9 +1271,9 @@ int32_t CRYPT_DSA_Fips186_4_Gen_PQ(DSA_FIPS186_4_Para *fipsPara, uint32_t type,
     BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t *counter)
 {
     BSL_Buffer msg = {NULL, 0};
-    RETURN_RET_IF(DSA_Fips186_4_validate_LN(fipsPara->L, fipsPara->N, 1, type) == 0, CRYPT_DSA_PARA_ERROR);
-    uint32_t outLen = CRYPT_EAL_MdGetDigestSize(fipsPara->algId);
-    RETURN_RET_IF(seed->dataLen * 8 < fipsPara->N || outLen * 8 < fipsPara->N, CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
+    RETURN_RET_IF(DSAFips1864ValidateSecurityLength(fipsPara->l, fipsPara->n, type) == 0, CRYPT_DSA_PARA_ERROR);
+    uint32_t outLen = CRYPT_GetMdSizeById(fipsPara->algId);
+    RETURN_RET_IF(seed->dataLen * 8 < fipsPara->n || outLen * 8 < fipsPara->n, CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
     BN_Optimizer *opt = BN_OptimizerCreate();
     RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
     (void)OptimizerStart(opt);
@@ -1337,10 +1329,10 @@ int32_t CryptDsaFips1864ValidatePq(int32_t algId, void *libCtx, const char *mdAt
     BSL_Buffer *seed, CRYPT_DSA_Para *dsaPara, uint32_t counter)
 {
     BSL_Buffer msg = {NULL, 0};
-    uint32_t L = BN_Bits(dsaPara->p);
-    uint32_t N = BN_Bits(dsaPara->q);
-    RETURN_RET_IF(DSA_Fips186_4_validate_LN(L, N, 0, type) == 0, CRYPT_DSA_PARA_ERROR);
-    RETURN_RET_IF(seed->dataLen * 8 < N || counter > 4 * L - 1, CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
+    uint32_t pBits = BN_Bits(dsaPara->p);
+    uint32_t qBits = BN_Bits(dsaPara->q);
+    RETURN_RET_IF(DSAFips1864ValidateSecurityLength(pBits, qBits, type) == 0, CRYPT_DSA_PARA_ERROR);
+    RETURN_RET_IF(seed->dataLen * 8 < qBits || counter > 4 * pBits - 1, CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
     BN_Optimizer *opt = BN_OptimizerCreate();
     RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
     (void)OptimizerStart(opt);
