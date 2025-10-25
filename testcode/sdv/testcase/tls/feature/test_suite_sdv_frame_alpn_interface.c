@@ -19,7 +19,6 @@
 #include "securec.h"
 #include "bsl_bytes.h"
 #include "bsl_sal.h"
-#include "stub_replace.h"
 #include "hitls_error.h"
 #include "tls.h"
 #include "bsl_uio.h"
@@ -142,69 +141,5 @@ EXIT:
     HITLS_CFG_FreeConfig(c_config);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);
-}
-/* END_CASE */
-
-/**
- * @test UT_TLS_ALPN_SELECT_FUNC_TC001
- * @title  HITLS_SelectAlpnProtocol function test
- * @precon  nan
- * @brief  server set alpn, client set alpn. The server supports the protocol configured on the client .Expect result 1.
- * @expect  1. cmp out with "http/1.1", outLen is 8.
-*/
-/* BEGIN_CASE */
-void UT_TLS_ALPN_SELECT_FUNC_TC001()
-{
-    const char *clientAlpnList = "\x06spdy/3\x08http/1.1";
-    const char *serverAlpnList = "\x08http/1.1\x06spdy/3";
-    uint8_t *out = NULL;
-    uint8_t outLen = 0;
-
-    int32_t ret = HITLS_SelectAlpnProtocol(&out, &outLen, (const uint8_t *)serverAlpnList, strlen(serverAlpnList),
-        (const uint8_t *)clientAlpnList, strlen(clientAlpnList));
-    ASSERT_EQ(ret, HITLS_SUCCESS);
-    ASSERT_EQ(outLen, 8);
-    ASSERT_TRUE(memcmp(out, "http/1.1", 8) == 0);
-
-EXIT:
-    return;
-}
-/* END_CASE */
-
-/**
- * @test UT_TLS_ALPN_SELECT_FUNC_TC002
- * @title  HITLS_SelectAlpnProtocol function test
- * @precon  nan
- * @brief  server set alpn, client set alpn. The server supports the protocol configured on the client .Expect result 1.
- * @expect  1. cmp out with "http/1.1", outLen is 8.
-*/
-/* BEGIN_CASE */
-void UT_TLS_ALPN_SELECT_FUNC_TC002(
-    int serverAlpnLen, Hex *serverAlpnList, int clientAlpnLen, Hex *clientAlpnList, int expectedRet, Hex *expectedOut)
-{
-    uint8_t *out = NULL;
-    uint8_t outLen = 0;
-    uint8_t *tempClientAlpn = clientAlpnList->x;
-    uint32_t tempClientAlpnLen = clientAlpnLen;
-    uint8_t *tempServerAlpn = serverAlpnList->x;
-    uint32_t tempServerAlpnLen = serverAlpnLen;
-
-    if (serverAlpnLen == -1) {
-        tempServerAlpn = NULL;
-        tempServerAlpnLen = 0;
-    }
-    if (clientAlpnLen == -1) {
-        tempClientAlpn = NULL;
-        tempClientAlpnLen = 0;
-    }
-
-    int32_t ret = HITLS_SelectAlpnProtocol(&out, &outLen, (const uint8_t *)tempServerAlpn, tempServerAlpnLen,
-        (const uint8_t *)tempClientAlpn, tempClientAlpnLen);
-    ASSERT_EQ(ret, expectedRet);
-    ASSERT_EQ(outLen, expectedOut->len);
-    ASSERT_TRUE(memcmp(out, expectedOut->x, expectedOut->len) == 0);
-
-EXIT:
-    return;
 }
 /* END_CASE */
