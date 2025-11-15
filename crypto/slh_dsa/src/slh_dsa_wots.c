@@ -137,14 +137,14 @@ int32_t WotsSign(uint8_t *sig, uint32_t *sigLen, const uint8_t *msg, uint32_t ms
     }
     for (uint32_t i = 0; i < len; i++) {
         ctx->adrsOps.setChainAddr(&skAdrs, i);
-        uint8_t sk[MAX_MDSIZE] = {0};
+        uint8_t sk[MAX_MDSIZE] = {0}; // xmss needs 64 bytes, slh needs 32 bytes
         ret = ctx->hashFuncs.prf(ctx, &skAdrs, sk);
         if (ret != 0) {
             goto ERR;
         }
         ctx->adrsOps.setChainAddr(adrs, i);
         ret = WotsChain(sk, n, 0, msgw[i], ctx->prvKey.pub.seed, adrs, ctx, sig + i * n);
-        BSL_SAL_CleanseData(sk, SLH_DSA_MAX_N);
+        BSL_SAL_CleanseData(sk, MAX_MDSIZE);
         if (ret != 0) {
             goto ERR;
         }
