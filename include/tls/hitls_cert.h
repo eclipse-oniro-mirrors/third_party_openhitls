@@ -954,7 +954,6 @@ int32_t HITLS_CFG_ClearVerifyCrls(HITLS_Config *config);
  */
 #define HITLS_CFG_SetVerifyFlags(config, verifyFlags) \
     HITLS_CFG_CtrlSetVerifyParams(config, NULL, CERT_STORE_CTRL_SET_VERIFY_FLAGS, verifyFlags, NULL)
-
 /**
  * @ingroup hitls_cert
  * @brief   Load CRL from file and add it into the verify store of the TLS context.

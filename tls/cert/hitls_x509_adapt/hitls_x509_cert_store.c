@@ -80,6 +80,9 @@ int32_t HITLS_X509_Adapt_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store
             return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_CLEAR_CRL, NULL, 0);
         case CERT_STORE_CTRL_ADD_CA_PATH:
             return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_ADD_CA_PATH, input, strlen(input));
+        case CERT_STORE_CTRL_SET_VERIFY_FLAGS:
+            return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_PARAM_FLAGS,
+                (int64_t *)input, sizeof(uint64_t));
         default:
             return HITLS_CERT_SELF_ADAPT_ERR;
     }
