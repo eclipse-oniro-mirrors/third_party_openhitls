@@ -20,6 +20,7 @@
 #include "eal_kdf_local.h"
 #include "crypt_errno.h"
 #include "bsl_sal.h"
+#include "bsl_errno.h"
 #include "bsl_params.h"
 #include "crypt_params_key.h"
 #include "stub_replace.h"
