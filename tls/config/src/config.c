@@ -287,6 +287,7 @@ static int32_t GroupCfgDeepCopy(HITLS_Config *destConfig, const HITLS_Config *sr
             if (destConfig->groupInfo[i].name == NULL) {
                 return HITLS_MEMALLOC_FAIL;
             }
+            destConfig->groupInfolen++;
 #endif
         }
     }
