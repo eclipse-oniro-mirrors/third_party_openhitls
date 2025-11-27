@@ -2194,3 +2194,51 @@ EXIT:
 }
 /* END_CASE */
 
+/* @
+* @test  UT_TLS_CFG_SET_SESSION_CACHE_SIZE_FUNC_TC001
+* @title  Test the cache session capability when sessCacheSize is set to 0
+* @brief
+*   1. Create a config object.
+*   2. Set sessCacheSize to 0.
+*   3. Set session ticket support to false.
+*   4. Verify the number of session caches.
+* @expect
+*   1. HITLS_CFG_SetSessionCacheSize returns HITLS_SUCCESS.
+*   2. Expected session cache quantity is 1.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_SET_SESSION_CACHE_SIZE_FUNC_TC001(void)
+{
+    HitlsInit();
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    ASSERT_TRUE(HITLS_CFG_SetSessionCacheSize(config, 0) == HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_SetSessionTicketSupport(config, false) == HITLS_SUCCESS);
+
+    client = FRAME_CreateLink(config, BSL_UIO_TCP);
+    server = FRAME_CreateLink(config, BSL_UIO_TCP);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_EQ(BSL_HASH_Size(client->ssl->globalConfig->sessMgr->hash), 1);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void UT_TLS_CFG_GET_CCM8_CIPHERSUITE_TC001(char *stdName)
+{
+    const HITLS_Cipher *cipher = NULL;
+    cipher = HITLS_CFG_GetCipherSuiteByStdName((const uint8_t *)stdName);
+    ASSERT_TRUE(cipher != NULL);
+    ASSERT_EQ(cipher->strengthBits, 64);
+EXIT:
+    return;
+}
+/* END_CASE */

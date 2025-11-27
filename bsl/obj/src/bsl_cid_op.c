@@ -233,7 +233,7 @@ BslCid BSL_OBJ_GetSignIdFromHashAndAsymId(BslCid asymAlg, BslCid hashAlg)
     }
     (void)BSL_SAL_ThreadUnlock(g_signHashRwLock);
 
-    if (ret != BSL_SUCCESS) {
+    if (signCid == BSL_CID_UNKNOWN) {
         BSL_ERR_PUSH_ERROR(BSL_OBJ_ERR_FIND_HASH_TABLE);
     }
 
