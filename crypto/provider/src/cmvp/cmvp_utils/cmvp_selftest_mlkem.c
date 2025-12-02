@@ -132,8 +132,8 @@ static bool TestMlkemEncapsDecaps(void *libCtx, const char *attrName, const CMVP
     GOTO_EXIT_IF(cipherVec == NULL, CRYPT_CMVP_COMMON_ERR);
 
     sharedKeyVec = CMVP_StringsToBins(vector->k, &sharedKeyVecLen);
-    GOTO_EXIT_IF(sharedKeyVec == NULL, CRYPT_CMVP_COMMON_ERR);
-
+    GOTO_ERR_IF_TRUE(sharedKeyVec == NULL, CRYPT_CMVP_COMMON_ERR);
+    
     // regist rand function
     MLKEM_SEED_VECTOR = vector->m;
     CRYPT_RandRegist(TestVectorRandom);
