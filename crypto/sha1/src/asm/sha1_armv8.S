@@ -185,6 +185,7 @@ g_kExt:
 .global SHA1_Step
 .type   SHA1_Step, %function
 SHA1_Step:
+AARCH64_PACIASP
     cmp     x1, #64
     b.lo    .Lend_sha1
 
@@ -453,6 +454,7 @@ SHA1_Step:
     ldp     x29, x30, [sp], #96
 
 .Lend_sha1:
+AARCH64_AUTIASP
     ret
 .size   SHA1_Step, .-SHA1_Step
 
@@ -474,6 +476,7 @@ SHA1_Step:
 .balign 16
 .type   SHA1CryptoExt, %function
 SHA1CryptoExt:
+AARCH64_PACIASP
     /* load k */
     adrp    x3, g_kExt
     add     x3, x3, :lo12:g_kExt
@@ -637,7 +640,7 @@ SHA1CryptoExt:
 
     st1     {v17.4s}, [x2], #16
     st1     {v18.s}[0], [x2]
-
+AARCH64_AUTIASP
     ret
 .size   SHA1CryptoExt, .-SHA1CryptoExt
 

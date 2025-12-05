@@ -23,20 +23,6 @@
 #include "bsl_err_internal.h"
 #include "sha2_core.h"
 #include "bsl_sal.h"
-#include "crypt_types.h"
-
-#define SHA256_INIT_ARRAY {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19}
-
-static const uint32_t SHA256_INIT_STATE[8] = SHA256_INIT_ARRAY;
-
-struct CryptSha256Ctx {
-    uint32_t h[CRYPT_SHA2_256_DIGESTSIZE / sizeof(uint32_t)]; /* 256 bits for SHA256 state */
-    uint32_t block[CRYPT_SHA2_256_BLOCKSIZE / sizeof(uint32_t)]; /* 512 bits block cache */
-    uint32_t lNum, hNum;                                           /* input bits counter, max 2^64 bits */
-    uint32_t blocklen;                                     /* block length */
-    uint32_t outlen;                                       /* digest output length */
-    uint32_t errorCode; /* error Code */
-};
 
 CRYPT_SHA2_256_Ctx *CRYPT_SHA2_256_NewCtx(void)
 {
@@ -55,13 +41,12 @@ void CRYPT_SHA2_256_FreeCtx(CRYPT_SHA2_256_Ctx *ctx)
     BSL_SAL_ClearFree(ctx, sizeof(CRYPT_SHA2_256_Ctx));
 }
 
-int32_t CRYPT_SHA2_256_Init(CRYPT_SHA2_256_Ctx *ctx, BSL_Param *param)
+int32_t CRYPT_SHA2_256_Init(CRYPT_SHA2_256_Ctx *ctx)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    (void) param;
     (void)memset_s(ctx, sizeof(CRYPT_SHA2_256_Ctx), 0, sizeof(CRYPT_SHA2_256_Ctx));
     /**
      * @RFC 4634 6.1 SHA-224 and SHA-256 Initialization
@@ -78,6 +63,12 @@ int32_t CRYPT_SHA2_256_Init(CRYPT_SHA2_256_Ctx *ctx, BSL_Param *param)
     (void)memcpy_s(ctx->h, sizeof(SHA256_INIT_STATE), SHA256_INIT_STATE, sizeof(SHA256_INIT_STATE));
     ctx->outlen = CRYPT_SHA2_256_DIGESTSIZE;
     return CRYPT_SUCCESS;
+}
+
+int32_t CRYPT_SHA2_256_InitEx(CRYPT_SHA2_256_Ctx *ctx, void *param)
+{
+    (void)param;
+    return CRYPT_SHA2_256_Init(ctx);
 }
 
 int32_t CRYPT_SHA2_256_Deinit(CRYPT_SHA2_256_Ctx *ctx)
@@ -271,13 +262,12 @@ int32_t CRYPT_SHA2_256_GetParam(CRYPT_SHA2_256_Ctx *ctx, BSL_Param *param)
 #endif
 
 #ifdef HITLS_CRYPTO_SHA224
-int32_t CRYPT_SHA2_224_Init(CRYPT_SHA2_224_Ctx *ctx, BSL_Param *param)
+int32_t CRYPT_SHA2_224_Init(CRYPT_SHA2_224_Ctx *ctx)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    (void) param;
     (void)memset_s(ctx, sizeof(CRYPT_SHA2_224_Ctx), 0, sizeof(CRYPT_SHA2_224_Ctx));
     /**
      * @RFC 4634 6.1 SHA-224 and SHA-256 Initialization
@@ -301,6 +291,12 @@ int32_t CRYPT_SHA2_224_Init(CRYPT_SHA2_224_Ctx *ctx, BSL_Param *param)
     ctx->h[7] = 0xbefa4fa4UL;
     ctx->outlen = CRYPT_SHA2_224_DIGESTSIZE;
     return CRYPT_SUCCESS;
+}
+
+int32_t CRYPT_SHA2_224_InitEx(CRYPT_SHA2_224_Ctx *ctx, void *param)
+{
+    (void)param;
+    return CRYPT_SHA2_224_Init(ctx);
 }
 
 #ifdef HITLS_CRYPTO_PROVIDER
