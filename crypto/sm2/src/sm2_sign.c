@@ -553,7 +553,7 @@ ERR:
 int32_t CRYPT_SM2_SignData(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t dataLen,
     uint8_t *sign, uint32_t *signLen)
 {
-    int32_t ret = CRYPT_MEM_ALLOC_FAIL;
+    int32_t ret = CRYPT_SUCCESS;
     RETURN_RET_IF((ctx == NULL || sign == NULL || signLen == NULL || ((data == NULL) && (dataLen != 0))),
         CRYPT_NULL_INPUT);
 
@@ -569,11 +569,7 @@ int32_t CRYPT_SM2_SignData(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32
     BN_BigNum *d = BN_Create(keyBits);
     BN_BigNum *r = BN_Create(keyBits);
     BN_BigNum *s = BN_Create(keyBits);
-    if (r == NULL || s == NULL || d == NULL) {
-        ret = CRYPT_MEM_ALLOC_FAIL;
-        BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
-    }
+    GOTO_ERR_IF_TRUE((r == NULL || s == NULL || d == NULL), CRYPT_MEM_ALLOC_FAIL);
 
     GOTO_ERR_IF_EX(BN_Bin2Bn(d, data, dataLen), ret);
     GOTO_ERR_IF_EX(Sm2SignCore(ctx, d, r, s), ret);
@@ -710,7 +706,7 @@ ERR:
 int32_t CRYPT_SM2_VerifyData(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t dataLen,
     const uint8_t *sign, uint32_t signLen)
 {
-    int32_t ret = CRYPT_MEM_ALLOC_FAIL;
+    int32_t ret = CRYPT_SUCCESS;
     RETURN_RET_IF(((ctx == NULL) || ((data == NULL) && (dataLen != 0)) || (sign == NULL) || (signLen == 0)),
         CRYPT_NULL_INPUT);
     RETURN_RET_IF((ctx->pkey == NULL || ctx->pkey->pubkey == NULL), CRYPT_SM2_NO_PUBKEY);
@@ -720,11 +716,7 @@ int32_t CRYPT_SM2_VerifyData(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint
     BN_BigNum *e = BN_Create(keyBits);
     BN_BigNum *r = BN_Create(keyBits);
     BN_BigNum *s = BN_Create(keyBits);
-    if (r == NULL || s == NULL || e == NULL) {
-        ret = CRYPT_MEM_ALLOC_FAIL;
-        BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
-    }
+    GOTO_ERR_IF_TRUE((r == NULL || s == NULL || e == NULL), CRYPT_MEM_ALLOC_FAIL);
 
     GOTO_ERR_IF_EX(BN_Bin2Bn(e, data, dataLen), ret);
     GOTO_ERR_IF(CRYPT_EAL_DecodeSign(sign, signLen, r, s), ret);
