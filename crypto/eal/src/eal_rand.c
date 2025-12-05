@@ -918,6 +918,7 @@ void CRYPT_EAL_RandDeinitEx(CRYPT_EAL_LibCtx *libCtx)
     }
     EAL_RandDeinit(localLibCtx->drbg);
     localLibCtx->drbg = NULL;
+    CRYPT_RandRegistEx(NULL);
     return;
 #else
     (void) libCtx;
@@ -930,6 +931,7 @@ void CRYPT_EAL_RandDeinit(void)
 {
     EAL_RandDeinit(g_globalRndCtx);
     g_globalRndCtx = NULL;
+    CRYPT_RandRegist(NULL);
     return;
 }
 
