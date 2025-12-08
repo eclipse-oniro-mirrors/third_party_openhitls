@@ -342,7 +342,6 @@ EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(signdata);
     BSL_SAL_FREE(rawBuff);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -364,7 +363,8 @@ void SDV_BSL_ASN1_PARSE_PUBKEY_FILE_TC001(char *path, int fileType, int mdId, He
 
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-    BSL_GLOBAL_DeInit();
+    CRYPT_EAL_PkeyFreeCtx(reDecPkeyCtx);
+    BSL_SAL_FREE(reEnc.data);
 }
 /* END_CASE */
 
@@ -378,7 +378,6 @@ void SDV_BSL_ASN1_PARSE_SUBPUBKEY_TC001(int encodeType, Hex *subKeyInfo)
 
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pctx);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -452,7 +451,6 @@ void SDV_BSL_ASN1_PARSE_PRIKEY_FILE_TC001(int isProvider, char *path, int fileTy
 EXIT:
     BSL_SAL_Free(signdata);
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -526,7 +524,6 @@ EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     CRYPT_EAL_PkeyFreeCtx(reDecPkeyCtx);
     BSL_SAL_FREE(reEnc.data);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -592,7 +589,6 @@ void SDV_BSL_ASN1_PARSE_ENCPK8_TC001(int isProvider, char *path, int fileType, c
 EXIT:
     BSL_SAL_Free(signdata);
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -634,7 +630,6 @@ void SDV_BSL_ASN1_ENCODE_PUBKEY_BUFF_TC001(char *path, int fileType, int isCompl
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(encodeAsn1.data);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -658,7 +653,6 @@ EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(encodePem.data);
     BSL_SAL_FREE(pem);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -676,7 +670,6 @@ void SDV_BSL_ASN1_ENCODE_PRIKEY_BUFF_TC001(char *path, int fileType, Hex *asn1)
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(encodeAsn1.data);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -728,7 +721,97 @@ EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(encodeAsn1.data);
     BSL_SAL_FREE(encodeAsn1Out.data);
-    BSL_GLOBAL_DeInit();
+    TestRandDeInit();
+}
+/* END_CASE */
+
+static int32_t GetPkcs8EncPkeyCtx(int keyType, int isProvider,
+    int hmacId, int symId, Hex *pwd, int saltLen, int itCnt,
+    CRYPT_EncodeParam *outParamEx, CRYPT_Pbkdf2Param *outPbkdf2, CRYPT_EAL_PkeyCtx **outPkeyCtx)
+{
+    outPbkdf2->pbesId = BSL_CID_PBES2;
+    outPbkdf2->pbkdfId = BSL_CID_PBKDF2;
+    outPbkdf2->hmacId = hmacId;
+    outPbkdf2->symId = symId;
+    outPbkdf2->pwd = pwd->x;
+    outPbkdf2->pwdLen = pwd->len;
+    outPbkdf2->saltLen = saltLen;
+    outPbkdf2->itCnt = itCnt;
+    *outParamEx = (CRYPT_EncodeParam){CRYPT_DERIVE_PBKDF2, outPbkdf2};
+    /* create and generate pkey */
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+#ifdef HITLS_CRYPTO_PROVIDER
+    if (isProvider) {
+        pkeyCtx = CRYPT_EAL_ProviderPkeyNewCtx(NULL, keyType, CRYPT_EAL_PKEY_UNKNOWN_OPERATE, "provider=default");
+    } else {
+#else
+    (void)isProvider;
+#endif
+    pkeyCtx = CRYPT_EAL_PkeyNewCtx(keyType);
+#ifdef HITLS_CRYPTO_PROVIDER
+    }
+#endif
+    ASSERT_TRUE(pkeyCtx != NULL);
+
+    uint8_t e[] = {1, 0, 1};
+    CRYPT_EAL_PkeyPara para = {0};
+    para.id = CRYPT_PKEY_RSA;
+    para.para.rsaPara.e = e;
+    para.para.rsaPara.eLen = 3;
+    para.para.rsaPara.bits = 2048;
+    ASSERT_EQ(CRYPT_EAL_PkeySetPara(pkeyCtx, &para), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkeyCtx), CRYPT_SUCCESS);
+
+    *outPkeyCtx = pkeyCtx;
+    return CRYPT_SUCCESS;
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    return CRYPT_INVALID_ARG;
+}
+
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_ENCODE_ENCRYPTED_PRIKEY_BUFF_TC002(int fileType, int keyType, int hmacId, int symId,
+    int saltLen, Hex *pwd, int itCnt, int mdId, Hex *msg, int isProvider)
+{
+    RegisterLogFunc();
+    CRYPT_RandRegist(RandFunc);
+    CRYPT_RandRegistEx(RandFuncEx);
+
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+    CRYPT_EAL_PkeyCtx *decodeCtx = NULL;
+    BSL_Buffer encPk8 = {0};
+    BSL_Buffer reEncPk8 = {0};
+    uint8_t *signdata = NULL;
+    CRYPT_Pbkdf2Param param = {0};
+    CRYPT_EncodeParam paramEx = {0};
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    ASSERT_EQ(GetPkcs8EncPkeyCtx(keyType, isProvider, hmacId, symId, pwd, saltLen, itCnt,
+        &paramEx, &param, &pkeyCtx), CRYPT_SUCCESS);
+    /* encode -> encrypted pkcs8 */
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkeyCtx, &paramEx, BSL_FORMAT_ASN1, fileType, &encPk8), CRYPT_SUCCESS);
+    /* decode the encrypted pkcs8 */
+    ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_ASN1, fileType, &encPk8, pwd->x, pwd->len, &decodeCtx),
+        CRYPT_SUCCESS);
+
+    /* sign with decoded key (no expected signature compare) */
+    uint32_t signLen = CRYPT_EAL_PkeyGetSignLen(decodeCtx);
+    signdata = (uint8_t *)BSL_SAL_Malloc(signLen);
+    ASSERT_TRUE(signdata != NULL);
+    if (CRYPT_EAL_PkeyGetId(decodeCtx) == CRYPT_PKEY_RSA) {
+        int32_t pkcsv15 = mdId;
+        ASSERT_EQ(CRYPT_EAL_PkeyCtrl(decodeCtx, CRYPT_CTRL_SET_RSA_EMSA_PKCSV15, &pkcsv15, sizeof(pkcsv15)), 0);
+    }
+    ASSERT_EQ(CRYPT_EAL_PkeySign(decodeCtx, mdId, msg->x, msg->len, signdata, &signLen), CRYPT_SUCCESS);
+
+    /* encode again -> encrypted pkcs8 */
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(decodeCtx, &paramEx, BSL_FORMAT_ASN1, fileType, &reEncPk8), CRYPT_SUCCESS);
+
+EXIT:
+    BSL_SAL_Free(signdata);
+    CRYPT_EAL_PkeyFreeCtx(decodeCtx);
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    BSL_SAL_FREE(encPk8.data);
+    BSL_SAL_FREE(reEncPk8.data);
     TestRandDeInit();
 }
 /* END_CASE */
@@ -754,7 +837,6 @@ void SDV_BSL_ASN1_ENCODE_PRAPSSPRIKEY_BUFF_TC001(char *path, int fileType, int s
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(encodeAsn1.data);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -822,7 +904,6 @@ void SDV_BSL_ASN1_ENCODE_RSAPSS_PUBLICKEY_BUFF_TC002(char *path, Hex *asn1)
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(encodeAsn1.data);
-    BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
 
@@ -875,7 +956,6 @@ void SDV_BSL_ASN1_PARSE_BUFF_PROVIDER_TC001(char *formatStr, char *typeStr, char
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(data);
-    BSL_GLOBAL_DeInit();
 #endif
 }
 /* END_CASE */
@@ -915,40 +995,22 @@ void SDV_BSL_ASN1_PARSE_BUFF_PROVIDER_TC002(char *providerPath, char *providerNa
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     CRYPT_EAL_LibCtxFree(libCtx);
-    BSL_GLOBAL_DeInit();
 #endif
 }
 /* END_CASE */
 
-#ifdef HITLS_CRYPTO_PROVIDER
-
-static int32_t test = 0;
-static int32_t marked = 0;
-static void *STUB_BSL_SAL_Malloc_cert(uint32_t size)
-{
-    if (marked <= test) {
-        marked++;
-        return malloc(size);
-    }
-    return NULL;
-}
-
-#endif
-
 /**
  * @test SDV_BSL_ASN1_PARSE_BUFF_STUB_TC001
  * title 1. Test the decode provider with stub malloc fail
- * 
  */
 /* BEGIN_CASE */
-void SDV_BSL_ASN1_PARSE_BUFF_STUB_TC001(char *formatStr, char *typeStr, char *path, Hex *password, int maxTriggers)
+void SDV_BSL_ASN1_PARSE_BUFF_STUB_TC001(char *formatStr, char *typeStr, char *path, Hex *password)
 {
 #ifndef HITLS_CRYPTO_PROVIDER
     (void)formatStr;
     (void)typeStr;
     (void)path;
     (void)password;
-    (void)maxTriggers;
     SKIP_TEST();
 #else
     CRYPT_EAL_Init(CRYPT_EAL_INIT_CPU|CRYPT_EAL_INIT_PROVIDER|CRYPT_EAL_INIT_PROVIDER_RAND);
@@ -960,22 +1022,33 @@ void SDV_BSL_ASN1_PARSE_BUFF_STUB_TC001(char *formatStr, char *typeStr, char *pa
     BSL_Buffer encode = {data, dataLen};
     BSL_Buffer pass = {password->x, password->len};
     CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
-    test = maxTriggers;
-    marked = 0;
-    STUB_Init();
-    FuncStubInfo tmpRpInfo;
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_cert);
-    for (int i = maxTriggers; i > 0; i--) {
-        marked = 0;
-        test--;
+    uint32_t totalMallocCount = 0;
+
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
+
+    /* Phase 1: Probe - count malloc calls during successful execution */
+    STUB_EnableMallocFail(false);
+    STUB_ResetMallocCount();
+    ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, formatStr, typeStr, &encode,
+        &pass, &pkeyCtx), CRYPT_SUCCESS);
+    totalMallocCount = STUB_GetMallocCallCount();
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    pkeyCtx = NULL;
+
+    /* Phase 2: Test - iteratively fail each malloc */
+    STUB_EnableMallocFail(true);
+    for (uint32_t i = 0; i < totalMallocCount; i++) {
+        STUB_ResetMallocCount();
+        STUB_SetMallocFailIndex(i);
         ASSERT_NE(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, formatStr, typeStr, &encode,
             &pass, &pkeyCtx), CRYPT_SUCCESS);
     }
 EXIT:
     STUB_Reset(&tmpRpInfo);
     BSL_SAL_FREE(data);
-    BSL_GLOBAL_DeInit();
-#endif
+    STUB_RESTORE(BSL_SAL_Malloc);
+    CRYPT_EAL_Cleanup(CRYPT_EAL_INIT_CPU|CRYPT_EAL_INIT_PROVIDER|CRYPT_EAL_INIT_PROVIDER_RAND);
+    #endif
 }
 /* END_CASE */
 
@@ -1010,6 +1083,7 @@ void SDV_CRYPT_EAL_PROVIDER_DECODE_FILE_KEY_STUB_TC001(char *path, char *formatS
     SKIP_TEST();
 #else
     RegisterLogFunc();
+    CRYPT_EAL_Init(CRYPT_EAL_INIT_CPU|CRYPT_EAL_INIT_PROVIDER|CRYPT_EAL_INIT_PROVIDER_RAND);
     CRYPT_RandRegist(RandFunc);
     CRYPT_RandRegistEx(RandFuncEx);
     CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
@@ -1043,7 +1117,7 @@ EXIT:
     STUB_RESTORE(CRYPT_EAL_PkeyGetId);
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx2);
-    BSL_GLOBAL_DeInit();
+    CRYPT_EAL_Cleanup(CRYPT_EAL_INIT_CPU|CRYPT_EAL_INIT_PROVIDER|CRYPT_EAL_INIT_PROVIDER_RAND);
 #endif
 }
 /* END_CASE */
@@ -1067,6 +1141,7 @@ void SDV_CRYPT_EAL_PROVIDER_DECODE_FILE_KEY_STUB_TC002(char *path, char *formatS
     (void)pkeyAlgId;
     SKIP_TEST();
 #else
+    CRYPT_EAL_Init(CRYPT_EAL_INIT_CPU|CRYPT_EAL_INIT_PROVIDER|CRYPT_EAL_INIT_PROVIDER_RAND);
     RegisterLogFunc();
     CRYPT_RandRegist(RandFunc);
     CRYPT_RandRegistEx(RandFuncEx);
@@ -1084,7 +1159,7 @@ void SDV_CRYPT_EAL_PROVIDER_DECODE_FILE_KEY_STUB_TC002(char *path, char *formatS
 EXIT:
     STUB_RESTORE(CRYPT_EAL_PkeyGetId);
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
-    BSL_GLOBAL_DeInit();
+    CRYPT_EAL_Cleanup(CRYPT_EAL_INIT_CPU|CRYPT_EAL_INIT_PROVIDER|CRYPT_EAL_INIT_PROVIDER_RAND);
 #endif
 }
 /* END_CASE */

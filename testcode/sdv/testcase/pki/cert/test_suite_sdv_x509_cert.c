@@ -1251,3 +1251,46 @@ EXIT:
     HITLS_X509_CertFree(cert);
 }
 /* END_CASE */
+
+/**
+ * @test SDV_X509_CERT_PARSE_STUB_TC001
+ * title 1. Test the cert parse with stub malloc fail (adaptive)
+ *
+ */
+/* BEGIN_CASE */
+void SDV_X509_CERT_PARSE_STUB_TC001(int format, char *path)
+{
+#if !defined(HITLS_PKI_X509_CRT_PARSE) || !defined(HITLS_CRYPTO_PROVIDER)
+    (void)format;
+    (void)path;
+    SKIP_TEST();
+#else
+    TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    uint32_t totalMallocCount = 0;
+
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
+
+    /* Phase 1: Probe - count malloc calls during successful execution */
+    STUB_EnableMallocFail(false);
+    STUB_ResetMallocCount();
+    ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
+    totalMallocCount = STUB_GetMallocCallCount();
+    HITLS_X509_CertFree(cert);
+    cert = NULL;
+
+    /* Phase 2: Test - iteratively fail each malloc */
+    STUB_EnableMallocFail(true);
+    for (uint32_t i = 0; i < totalMallocCount; i++) {
+        STUB_ResetMallocCount();
+        STUB_SetMallocFailIndex(i);
+        ASSERT_NE(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
+        cert = NULL;
+    }
+
+EXIT:
+    HITLS_X509_CertFree(cert);
+    STUB_RESTORE(BSL_SAL_Malloc);
+#endif
+}
+/* END_CASE */
