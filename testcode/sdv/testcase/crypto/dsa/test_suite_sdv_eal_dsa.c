@@ -1089,6 +1089,7 @@ void SDV_CRYPTO_DSA_KEY_PAIR_GEN_BY_PARAM_FUNC_TC001(int flag, int gIndex, int i
 #ifndef HITLS_CRYPTO_DSA_GEN_PARA
     (void)flag;
     (void)gIndex;
+    (void)isProvider;
     SKIP_TEST();
 #else
     uint32_t type = CRYPT_DSA_FFC_PARAM;
