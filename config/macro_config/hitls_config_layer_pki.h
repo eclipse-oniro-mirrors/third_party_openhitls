@@ -79,6 +79,11 @@
     #endif
 #endif
 
+#if defined(HITLS_PKI_X509_VFY) && defined(HITLS_BSL_SAL_FILE)
+    #ifndef HITLS_PKI_X509_VFY_LOCATION
+        #define HITLS_PKI_X509_VFY_LOCATION
+    #endif
+#endif
 #ifdef HITLS_PKI_X509_CRT
     #ifndef HITLS_PKI_X509_CRT_GEN
         #define HITLS_PKI_X509_CRT_GEN

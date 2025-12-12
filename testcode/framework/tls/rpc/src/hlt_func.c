@@ -562,7 +562,7 @@ HLT_Ctx_Config* HLT_NewCtxConfigTLCP(char *setFile, const char *key, bool isClie
     (void)setFile;
     Process *localProcess;
 
-    HLT_Ctx_Config *ctxConfig = (HLT_Ctx_Config*)calloc(sizeof(HLT_Ctx_Config), 1u);
+    HLT_Ctx_Config *ctxConfig = (HLT_Ctx_Config*)calloc(1u, sizeof(HLT_Ctx_Config));
     if (ctxConfig == NULL) {
         return NULL;
     }
@@ -1373,6 +1373,12 @@ int HLT_SetAlpnProtosSelectCb(HLT_Ctx_Config *ctxConfig, char *callback, char *u
         LOG_ERROR("HLT_SetAlpnDataCb failed.");
         return ERROR;
     }
+    return SUCCESS;
+}
+
+int HLT_SetDtlsCookieExchangeSupport(HLT_Ctx_Config *ctxConfig, bool isSupport)
+{
+    ctxConfig->isSupportDtlsCookieExchange = isSupport;
     return SUCCESS;
 }
 

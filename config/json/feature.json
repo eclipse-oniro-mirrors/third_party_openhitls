@@ -283,7 +283,8 @@
                         "config_cert": {
                             "config_cert_verify_param": null,
                             "config_cert_load_file": null,
-                            "config_cert_callback": null
+                            "config_cert_callback": null,
+                            "config_cert_verify_location": null
                         },
                         "config_key_usage": null,
                         "config_state": null,
@@ -991,7 +992,8 @@
                 ".include": [
                     "crypto/eal/src",
                     "crypto/entropy/include",
-                    "crypto/ealinit/include"
+                    "crypto/ealinit/include",
+                    "include/bsl"
                 ]
             },
             "provider": {

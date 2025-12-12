@@ -98,6 +98,7 @@
 #include "cert_method.h"
 #include "bsl_list.h"
 #include "session_mgr.h"
+#include "hitls_x509_verify.h"
 #define DEFAULT_DESCRIPTION_LEN 128
 #define ERROR_HITLS_GROUP 1
 #define ERROR_HITLS_SIGNATURE 0xffffu
@@ -325,7 +326,7 @@ void UT_TLS_CFG_SET_GET_EXTENEDMASTERSECRETSUPPORT_API_TC001(int tlsVersion)
     FRAME_Init();
     HITLS_Config *config = NULL;
     bool support = -1;
-    uint8_t isSupport = -1;
+    bool isSupport = -1;
     ASSERT_TRUE(HITLS_CFG_SetExtenedMasterSecretSupport(config, support) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetExtenedMasterSecretSupport(config, &isSupport) == HITLS_NULL_INPUT);
 
@@ -386,7 +387,7 @@ void  UT_TLS_CFG_SET_GET_POSTHANDSHAKEAUTHSUPPORT_API_TC001(int tlsVersion)
     FRAME_Init();
     HITLS_Config *config = NULL;
     bool support = -1;
-    uint8_t isSupport = -1;
+    bool isSupport = -1;
     ASSERT_TRUE(HITLS_CFG_SetPostHandshakeAuthSupport(config, support) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetPostHandshakeAuthSupport(config, &isSupport) == HITLS_NULL_INPUT);
 
@@ -610,7 +611,7 @@ void UT_TLS_CFG_SET_GET_ENCRYPTTHENMAC_API_TC001(int tlsVersion)
 {
     FRAME_Init();
     HITLS_Config *config = NULL;
-    uint32_t encryptThenMacType = 0;
+    bool encryptThenMacType = false;
 
     ASSERT_TRUE(HITLS_CFG_SetEncryptThenMac(config, encryptThenMacType) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetEncryptThenMac(config, &encryptThenMacType) == HITLS_NULL_INPUT);
@@ -627,13 +628,13 @@ void UT_TLS_CFG_SET_GET_ENCRYPTTHENMAC_API_TC001(int tlsVersion)
     }
 
     ASSERT_TRUE(HITLS_CFG_GetEncryptThenMac(config, NULL) == HITLS_NULL_INPUT);
-    encryptThenMacType = 1;
+    encryptThenMacType = true;
     ASSERT_TRUE(HITLS_CFG_SetEncryptThenMac(config, encryptThenMacType) == HITLS_SUCCESS);
-    encryptThenMacType = 2;
+    encryptThenMacType = true;
     ASSERT_TRUE(HITLS_CFG_SetEncryptThenMac(config, encryptThenMacType) == HITLS_SUCCESS);
-    ASSERT_TRUE(config->isEncryptThenMac = true);
+    ASSERT_TRUE(config->isEncryptThenMac == true);
 
-    uint32_t getencryptThenMacType = -1;
+    bool getencryptThenMacType = false;
     ASSERT_TRUE(HITLS_CFG_GetEncryptThenMac(config, &getencryptThenMacType) == HITLS_SUCCESS);
     ASSERT_TRUE(getencryptThenMacType == config->isEncryptThenMac);
 EXIT:
@@ -660,7 +661,7 @@ void UT_TLS_CFG_IS_DTLS_API_TC001(int tlsVersion)
 {
     FRAME_Init();
     HITLS_Config *config = NULL;
-    uint8_t isDtls = false;
+    bool isDtls = false;
 
     ASSERT_TRUE(HITLS_CFG_IsDtls(config, &isDtls) == HITLS_NULL_INPUT);
     switch (tlsVersion) {
@@ -1596,7 +1597,7 @@ void UT_TLS_CFG_SET_GET_DHAUTOSUPPORT_TC001(int tlsVersion)
     FRAME_Init();
     HITLS_Config *config = NULL;
     bool support = -1;
-    uint8_t isSupport = -1;
+    bool isSupport = -1;
     ASSERT_TRUE(HITLS_CFG_SetDhAutoSupport(config, support) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetDhAutoSupport(config, &isSupport) == HITLS_NULL_INPUT);
 
@@ -1686,5 +1687,100 @@ void UT_TLS_CFG_SET_KeyLogCb_TC001()
     ASSERT_EQ(HITLS_CFG_GetKeyLogCb(config), Test_HITLS_KeyLogCb);
 EXIT:
     HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_CFG_LOADVERIFYDIR_MULTI_PATH_TC001
+* @title  Test HITLS_CFG_LoadVerifyDir with multiple CA paths
+* @brief
+*   1. Create a config object.
+*   2. Pass in a string containing multiple paths (such as "/tmp/ca1:/tmp/ca2:/tmp/ca3").
+*   3. Call HITLS_CFG_LoadVerifyDir.
+*   4. Check that the number and content of caPaths in the cert store are consistent with the input.
+* @expect
+*   1. The interface returns success.
+*   2. The number and content of paths in the cert store are consistent with the input.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_LOADVERIFYDIR_MULTI_PATH_TC001(void)
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    const char *multi_path = "/tmp/ca1:/tmp/ca2:/tmp/ca3:/tmp/ca3";
+    int32_t ret = HITLS_CFG_LoadVerifyDir(config, multi_path);
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+
+    HITLS_CERT_Store *store = SAL_CERT_GetCertStore(config->certMgrCtx);
+    ASSERT_TRUE(store != NULL);
+
+    HITLS_X509_StoreCtx *storeCtx = (HITLS_X509_StoreCtx *)store;
+    BslList *caPaths = storeCtx->caPaths;
+    ASSERT_TRUE(caPaths != NULL);
+
+    int expect_count = 3;
+    int actual_count = BSL_LIST_COUNT(caPaths);
+    ASSERT_TRUE(actual_count == expect_count);
+
+    const char *expect_paths[] = {"/tmp/ca1", "/tmp/ca2", "/tmp/ca3"};
+    for (int i = 0; i < expect_count; ++i) {
+        const char *path = (const char *)BSL_LIST_GetIndexNode(i, caPaths);
+        ASSERT_TRUE(path != NULL);
+        ASSERT_TRUE(strcmp(path, expect_paths[i]) == 0);
+    }
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test  UT_TLS_CFG_SET_SESSION_CACHE_SIZE_FUNC_TC001
+* @title  Test the cache session capability when sessCacheSize is set to 0
+* @brief
+*   1. Create a config object.
+*   2. Set sessCacheSize to 0.
+*   3. Set session ticket support to false.
+*   4. Verify the number of session caches.
+* @expect
+*   1. HITLS_CFG_SetSessionCacheSize returns HITLS_SUCCESS.
+*   2. Expected session cache quantity is 1.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_SET_SESSION_CACHE_SIZE_FUNC_TC001(void)
+{
+    HitlsInit();
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+
+    ASSERT_TRUE(HITLS_CFG_SetSessionCacheSize(config, 0) == HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_SetSessionTicketSupport(config, false) == HITLS_SUCCESS);
+
+    client = FRAME_CreateLink(config, BSL_UIO_TCP);
+    server = FRAME_CreateLink(config, BSL_UIO_TCP);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_EQ(BSL_HASH_Size(client->ssl->globalConfig->sessMgr->hash), 1);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void UT_TLS_CFG_GET_CCM8_CIPHERSUITE_TC001(char *stdName)
+{
+    const HITLS_Cipher *cipher = NULL;
+    cipher = HITLS_CFG_GetCipherSuiteByStdName((const uint8_t *)stdName);
+    ASSERT_TRUE(cipher != NULL);
+    ASSERT_EQ(cipher->strengthBits, 64);
+EXIT:
+    return;
 }
 /* END_CASE */

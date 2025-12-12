@@ -254,6 +254,14 @@ static int32_t ProcessEcdheCipherSuite(TLS_Ctx *ctx, const ClientHelloMsg *clien
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_SUITE_KX_ECDHE */
+
+#ifdef HITLS_TLS_CONFIG_MANUAL_DH
+static bool IsDHEAvailable(TLS_Ctx *ctx)
+{
+    return ctx->config.tlsConfig.isSupportDhAuto || ctx->config.tlsConfig.dhTmpCb != NULL ||
+           ctx->config.tlsConfig.dhTmp != NULL;
+}
+#endif /* HITLS_TLS_CONFIG_MANUAL_DH */
 /**
 * @brief Check whether the server supports the cipher suite.
 *
@@ -268,9 +276,8 @@ static int32_t ProcessEcdheCipherSuite(TLS_Ctx *ctx, const ClientHelloMsg *clien
 static int32_t ServerNegotiateCipher(TLS_Ctx *ctx, const ClientHelloMsg *clientHello, uint16_t cipher)
 {
     CipherSuiteInfo cipherSuiteInfo = {0};
-    int32_t ret = 0;
 
-    ret = CFG_GetCipherSuiteInfo(cipher, &cipherSuiteInfo);
+    int32_t ret = CFG_GetCipherSuiteInfo(cipher, &cipherSuiteInfo);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15215, BSL_LOG_LEVEL_INFO, BSL_LOG_BINLOG_TYPE_RUN,
             "get cipher suite info fail when processing client hello.", 0, 0, 0, 0);
@@ -297,6 +304,11 @@ static int32_t ServerNegotiateCipher(TLS_Ctx *ctx, const ClientHelloMsg *clientH
 #endif /* HITLS_TLS_SUITE_KX_ECDHE */
         case HITLS_KEY_EXCH_DHE:
         case HITLS_KEY_EXCH_DHE_PSK:
+#ifdef HITLS_TLS_CONFIG_MANUAL_DH
+            /* Check if DH key can be generated for DHE/DHE_PSK cipher suites */
+            ret = IsDHEAvailable(ctx) ? HITLS_SUCCESS : HITLS_MSG_HANDLE_UNSUPPORT_CIPHER_SUITE;
+            break;
+#endif /* HITLS_TLS_CONFIG_MANUAL_DH */
         case HITLS_KEY_EXCH_RSA:
 #ifdef HITLS_TLS_PROTO_TLCP11
         case HITLS_KEY_EXCH_ECC:
@@ -340,7 +352,7 @@ static int32_t Tls13ServerNegotiateCipher(TLS_Ctx *ctx, const ClientHelloMsg *cl
 #endif /* HITLS_TLS_PROTO_TLS13 */
 static int32_t CheckCipherSuite(TLS_Ctx *ctx, const ClientHelloMsg *clientHello, uint16_t cipherSuite)
 {
-    if (!IsCipherSuiteAllowed(ctx, cipherSuite)) {
+    if (!IsCipherSuiteAllowed(ctx, cipherSuite, true)) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17046, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "No proper cipher suite", 0, 0, 0, 0);
         return HITLS_CONFIG_UNSUPPORT_CIPHER_SUITE;
@@ -835,9 +847,9 @@ static int32_t ResumeCheckExtendedMasterScret(TLS_Ctx *ctx, const ClientHelloMsg
         return HITLS_SUCCESS;
     }
     (void)clientHello;
-    uint8_t haveExtMasterSecret = false;
+    bool haveExtMasterSecret = false;
     HITLS_SESS_GetHaveExtMasterSecret(*sess, &haveExtMasterSecret);
-    if (haveExtMasterSecret != 0) {
+    if (haveExtMasterSecret) {
         if (!clientHello->extension.flag.haveExtendedMasterSecret) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17051, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "ExtendedMasterSecret err", 0, 0, 0, 0);
@@ -1106,14 +1118,14 @@ static int32_t ServerCheckVersionDowngrade(TLS_Ctx *ctx, const ClientHelloMsg *c
         }
         return HITLS_SUCCESS;
     }
-    
+
     if (ctx->negotiatedInfo.version < ctx->config.tlsConfig.maxVersion) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15335, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "server supports a higher protocol version.", 0, 0, 0, 0);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INAPPROPRIATE_FALLBACK);
         return HITLS_MSG_HANDLE_ERR_INAPPROPRIATE_FALLBACK;
     }
-    
+
     return HITLS_SUCCESS;
 }
 
@@ -2050,7 +2062,11 @@ static int32_t SelectVersion(TLS_Ctx *ctx, const ClientHelloMsg *clientHello, ui
                 (version <= HITLS_VERSION_SSL30)) {
                 /* TLS1.3 must have an available PSK or certificate, and TLS1.3 cannot negotiate SSL versions earlier
                  * than SSL3.0. */
-                continue;
+                BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
+                BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17355, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                    "tls1.3 handshake state error: TLS1.3 must have an available PSK or certificate", 0, 0, 0, 0);
+                ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_HANDSHAKE_FAILURE);
+                return HITLS_MSG_HANDLE_UNSUPPORT_VERSION;
             }
             /* rfc8446 4.2.1 The server must be ready to receive ClientHello that contains the supportedVersions
              * extension but does not contain 0x0304 in the version list, Therefore, if a matching version is found,

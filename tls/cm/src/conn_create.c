@@ -145,9 +145,9 @@ void HITLS_Free(HITLS_Ctx *ctx)
     ctx->rwstate = HITLS_NOTHING;
 #endif
     CONN_Deinit(ctx);
-    BSL_UIO_Free(ctx->uio);
+    BSL_UIO_FreeChain(ctx->uio);
 #ifdef HITLS_TLS_FEATURE_FLIGHT
-    BSL_UIO_Free(ctx->rUio);
+    BSL_UIO_FreeChain(ctx->rUio);
     ctx->rUio = NULL;
 #endif
     ctx->uio = NULL;
@@ -191,7 +191,7 @@ int32_t HITLS_SetReadUio(HITLS_Ctx *ctx, BSL_UIO *uio)
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15662, BSL_LOG_LEVEL_WARN, BSL_LOG_BINLOG_TYPE_RUN,
             "Warning: Repeated uio setting.", 0, 0, 0, 0);
         /* Release the original UIO */
-        BSL_UIO_Free(ctx->rUio);
+        BSL_UIO_FreeChain(ctx->rUio);
     }
 
     ctx->rUio = uio;
@@ -274,7 +274,7 @@ int32_t HITLS_SetUio(HITLS_Ctx *ctx, BSL_UIO *uio)
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15253, BSL_LOG_LEVEL_WARN, BSL_LOG_BINLOG_TYPE_RUN,
             "Warning: Repeated uio setting.", 0, 0, 0, 0);
         /* Release the original read UIO */
-        BSL_UIO_Free(ctx->rUio);
+        BSL_UIO_FreeChain(ctx->rUio);
     }
     ctx->rUio = uio;
 #endif
@@ -371,10 +371,6 @@ int32_t HITLS_GetSelectedAlpnProto(HITLS_Ctx *ctx, uint8_t **proto, uint32_t *pr
         return HITLS_NULL_INPUT;
     }
 
-    if (ctx->negotiatedInfo.alpnSelected == NULL) {
-        return HITLS_NULL_INPUT;
-    }
-
     *proto = ctx->negotiatedInfo.alpnSelected;
     *protoLen = ctx->negotiatedInfo.alpnSelectedSize;
 
@@ -382,17 +378,13 @@ int32_t HITLS_GetSelectedAlpnProto(HITLS_Ctx *ctx, uint8_t **proto, uint32_t *pr
 }
 #endif
 
-int32_t HITLS_IsServer(const HITLS_Ctx *ctx, uint8_t *isServer)
+int32_t HITLS_IsServer(const HITLS_Ctx *ctx, bool *isServer)
 {
     if (ctx == NULL || isServer == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isServer = 0;
-    if (ctx->isClient == false) {
-        *isServer = 1;
-    }
-
+    *isServer = !ctx->isClient;
     return HITLS_SUCCESS;
 }
 
@@ -496,7 +488,7 @@ int32_t HITLS_SetSigalgsList(HITLS_Ctx *ctx, const uint16_t *signAlgs, uint16_t 
 }
 
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
-int32_t HITLS_GetRenegotiationSupport(const HITLS_Ctx *ctx, uint8_t *isSupportRenegotiation)
+int32_t HITLS_GetRenegotiationSupport(const HITLS_Ctx *ctx, bool *isSupportRenegotiation)
 {
     if (ctx == NULL) {
         return HITLS_NULL_INPUT;
@@ -624,13 +616,13 @@ HITLS_TrustedCAList *HITLS_GetClientCAList(const HITLS_Ctx *ctx)
 }
 #endif
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
-int32_t HITLS_GetSecureRenegotiationSupport(const HITLS_Ctx *ctx, uint8_t *isSecureRenegotiation)
+int32_t HITLS_GetSecureRenegotiationSupport(const HITLS_Ctx *ctx, bool *isSecureRenegotiation)
 {
     if (ctx == NULL || isSecureRenegotiation == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSecureRenegotiation = (uint8_t)ctx->negotiatedInfo.isSecureRenegotiation;
+    *isSecureRenegotiation = ctx->negotiatedInfo.isSecureRenegotiation;
     return HITLS_SUCCESS;
 }
 #endif

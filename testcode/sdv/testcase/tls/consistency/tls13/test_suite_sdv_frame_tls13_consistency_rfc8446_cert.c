@@ -2202,3 +2202,120 @@ EXIT:
     FRAME_FreeLink(testInfo.server);
 }
 /* END_CASE */
+
+/* BEGIN_CASE */
+void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSS_PARAMETER_CHECK()
+{
+    FRAME_Init();
+    HITLS_Config *config_c = HITLS_CFG_NewTLS12Config();
+    HITLS_Config *config_s = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config_c != NULL);
+    ASSERT_TRUE(config_s != NULL);
+    uint16_t signAlgs_s[] = {CERT_SIG_SCHEME_RSA_PSS_PSS_SHA256, CERT_SIG_SCHEME_RSA_PSS_PSS_SHA512};
+    HITLS_CFG_SetSignature(config_s, signAlgs_s, sizeof(signAlgs_s) / sizeof(uint16_t));
+    uint16_t cipherSuite[] = {HITLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256};
+    HITLS_CFG_SetCipherSuites(config_s, cipherSuite, sizeof(cipherSuite) / sizeof(uint16_t));
+    FRAME_CertInfo certInfo = {
+        "rsa_pss_sha256/rsa_pss_root.der",
+        "rsa_pss_sha256/rsa_pss_intCa.der",
+        "rsa_pss_sha256/rsa_pss_dev_sha512.der",
+        0,
+        "rsa_pss_sha256/rsa_pss_dev_sha512.key.der",
+        0,
+    };
+    FRAME_LinkObj *client = FRAME_CreateLinkWithCert(config_c, BSL_UIO_TCP, &certInfo);
+    FRAME_LinkObj *server = FRAME_CreateLinkWithCert(config_s, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_TRUE(server != NULL);
+    int32_t ret = FRAME_CreateConnection(client, server, true, HS_STATE_BUTT);
+    ASSERT_EQ(ret, HITLS_SUCCESS);
+    ASSERT_EQ(server->ssl->negotiatedInfo.signScheme, CERT_SIG_SCHEME_RSA_PSS_PSS_SHA512);
+EXIT:
+    HITLS_CFG_FreeConfig(config_c);
+    HITLS_CFG_FreeConfig(config_s);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/** @
+* @test SDV_TLS13_RFC8446_SHA1_EE_CERT_TC001
+* @spec -
+* @title Tls1.3 sets up a SHA-1 certificate with a security level of 1, expecting the connection to fail.
+* @precon nan
+* @brief    1. Create a TLS1.3 configuration, first load the SHA1 certificate, then set the security level to 1, and
+                establish the connection. Expected result 1 is obtained.
+* @expect   1.  Link establishment failed, sending SHA1 certificate will be prohibited when checking security
+                level strength.
+@ */
+/* BEGIN_CASE */
+void SDV_TLS13_RFC8446_SHA1_EE_CERT_TC001(void)
+{
+    FRAME_Init();
+    HITLS_Config *config = NULL;
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    FRAME_CertInfo certInfo = {
+        "ecdsa_sha1/ca-nist521.der",
+        "ecdsa_sha1/inter-nist521.der",
+        "ecdsa_sha1/end384-sha1.der",
+        0,
+        "ecdsa_sha1/end384-sha1.key.der",
+        0,
+    };
+
+    config = HITLS_CFG_NewTLS13Config();
+    ASSERT_TRUE(config != NULL);
+    client = FRAME_CreateLinkWithCert(config, BSL_UIO_TCP, &certInfo);
+    server = FRAME_CreateLinkWithCert(config, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_TRUE(server != NULL);
+
+    HITLS_SetSecurityLevel(client->ssl, 1);
+    HITLS_SetSecurityLevel(server->ssl, 1);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, false, TRY_SEND_CERTIFICATE), HITLS_SUCCESS);
+    int32_t ret = HITLS_Accept(server->ssl);
+    ASSERT_EQ(ret, HITLS_CERT_ERR_INSECURE_SIG_ALG);
+
+    ALERT_Info alertInfo = {0};
+    ALERT_GetInfo(server->ssl, &alertInfo);
+    ASSERT_EQ(alertInfo.level, ALERT_LEVEL_FATAL);
+    ASSERT_EQ(alertInfo.description, ALERT_INTERNAL_ERROR);
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+
+/* BEGIN_CASE */
+void UT_TLS_TLS13_RFC8446_SIGALG_SELECT_TC001(int ecPrefer)
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS13Config();
+    ASSERT_TRUE(config != NULL);
+
+    uint16_t signAlgs1[] = {CERT_SIG_SCHEME_RSA_PSS_RSAE_SHA256, CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256};
+    uint16_t signAlgs2[] = {CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256, CERT_SIG_SCHEME_RSA_PSS_RSAE_SHA256};
+    uint16_t *clientSign = ecPrefer == 1 ? signAlgs2 : signAlgs1;
+    uint16_t *serverSign = ecPrefer == 1 ? signAlgs1 : signAlgs2;
+
+    HITLS_CFG_SetSignature(config, clientSign, sizeof(signAlgs1) / sizeof(uint16_t));
+    FRAME_LinkObj *client = FRAME_CreateLink(config, BSL_UIO_TCP);
+    HITLS_CFG_SetSignature(config, serverSign, sizeof(signAlgs2) / sizeof(uint16_t));
+    FRAME_LinkObj *server = FRAME_CreateLink(config, BSL_UIO_TCP);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+    HITLS_SignHashAlgo peerSignScheme;
+    HITLS_GetPeerSignScheme(client->ssl, &peerSignScheme);
+    ASSERT_EQ(ecPrefer == 1 ? CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256 : CERT_SIG_SCHEME_RSA_PSS_RSAE_SHA256, peerSignScheme);
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */

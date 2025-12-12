@@ -131,7 +131,7 @@ static const CipherSuiteInfo g_cipherSuiteList[] = {
         KEY_BLOCK_PARTITON_LENGTH(12u, 16u, 0u, 0u, 0u, 8u),
         VERSION_SCOPE(HITLS_VERSION_TLS13, HITLS_VERSION_TLS13, 0u, 0u),
         .cipherType = HITLS_AEAD_CIPHER,
-        .strengthBits = 128},
+        .strengthBits = 64},
 #endif
 #ifdef HITLS_TLS_SUITE_RSA_WITH_AES_128_CBC_SHA
     {.enable = true,
@@ -1397,7 +1397,7 @@ static const CipherSuiteInfo g_cipherSuiteList[] = {
         KEY_BLOCK_PARTITON_LENGTH(4u, 16u, 0u, 0u, 8u, 8u),
         VERSION_SCOPE(HITLS_VERSION_TLS12, HITLS_VERSION_TLS12, HITLS_VERSION_DTLS12, HITLS_VERSION_DTLS12),
         .cipherType = HITLS_AEAD_CIPHER,
-        .strengthBits = 128},
+        .strengthBits = 64},
 #endif
 #ifdef HITLS_TLS_SUITE_RSA_WITH_AES_256_CCM
     {.enable = true,
@@ -1429,7 +1429,7 @@ static const CipherSuiteInfo g_cipherSuiteList[] = {
         KEY_BLOCK_PARTITON_LENGTH(4u, 32u, 0u, 0u, 8u, 8u),
         VERSION_SCOPE(HITLS_VERSION_TLS12, HITLS_VERSION_TLS12, HITLS_VERSION_DTLS12, HITLS_VERSION_DTLS12),
         .cipherType = HITLS_AEAD_CIPHER,
-        .strengthBits = 256},
+        .strengthBits = 64},
 #endif
 #ifdef HITLS_TLS_PROTO_TLCP11
 #ifdef HITLS_TLS_SUITE_ECDHE_SM4_CBC_SM3
@@ -2110,25 +2110,6 @@ int32_t HITLS_CFG_GetDescription(const HITLS_Cipher *cipher, uint8_t *buf, int32
     return GetCipherSuiteDescription(cipher, buf, len);
 }
 
-/**
- * @brief   Determine whether to use the AEAD algorithm based on the cipher suite information.
- *
- * @param   cipher [IN] Cipher suite information
- * @param   isAead [OUT] Indicates whether to use the AEAD algorithm.
- * @return  HITLS_SUCCESS Obtained successfully.
- *          HITLS_NULL_INPUT The input parameter pointer is NULL.
- */
-int32_t HITLS_CIPHER_IsAead(const HITLS_Cipher *cipher, uint8_t *isAead)
-{
-    if (cipher == NULL || isAead == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
-        return HITLS_NULL_INPUT;
-    }
-
-    *isAead = (cipher->cipherType == HITLS_AEAD_CIPHER);
-    return HITLS_SUCCESS;
-}
-
 const HITLS_Cipher *HITLS_CFG_GetCipherByID(uint16_t cipherSuite)
 {
     int32_t index = FindCipherSuiteIndexByCipherSuite(cipherSuite);
@@ -2151,3 +2132,24 @@ int32_t HITLS_CFG_GetCipherSuite(const HITLS_Cipher *cipher, uint16_t *cipherSui
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_CONFIG_CIPHER_SUITE */
+
+#ifdef HITLS_TLS_CONNECTION_INFO_NEGOTIATION
+/**
+ * @brief   Determine whether to use the AEAD algorithm based on the cipher suite information.
+ *
+ * @param   cipher [IN] Cipher suite information
+ * @param   isAead [OUT] Indicates whether to use the AEAD algorithm.
+ * @return  HITLS_SUCCESS Obtained successfully.
+ *          HITLS_NULL_INPUT The input parameter pointer is NULL.
+ */
+int32_t HITLS_CIPHER_IsAead(const HITLS_Cipher *cipher, bool *isAead)
+{
+    if (cipher == NULL || isAead == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
+        return HITLS_NULL_INPUT;
+    }
+
+    *isAead = (cipher->cipherType == HITLS_AEAD_CIPHER);
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_CONNECTION_INFO_NEGOTIATION */

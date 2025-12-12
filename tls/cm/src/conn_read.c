@@ -503,13 +503,13 @@ int32_t HITLS_Peek(HITLS_Ctx *ctx, uint8_t *data, uint32_t bufSize, uint32_t *re
     return ret;
 }
 
-int32_t HITLS_ReadHasPending(const HITLS_Ctx *ctx, uint8_t *isPending)
+int32_t HITLS_ReadHasPending(const HITLS_Ctx *ctx, bool *isPending)
 {
     if (ctx == NULL || isPending == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isPending = APP_GetReadPendingBytes(ctx) > 0 || REC_ReadHasPending(ctx) ? 1 : 0;
+    *isPending = (APP_GetReadPendingBytes(ctx) > 0 || REC_ReadHasPending(ctx));
 
     return HITLS_SUCCESS;
 }

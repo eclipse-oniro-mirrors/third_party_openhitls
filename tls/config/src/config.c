@@ -271,6 +271,7 @@ static int32_t GroupCfgDeepCopy(HITLS_Config *destConfig, const HITLS_Config *sr
         if (destConfig->groupInfo == NULL) {
             return HITLS_MEMALLOC_FAIL;
         }
+        destConfig->groupInfoSize = srcConfig->groupInfolen;
         for (uint32_t i = 0; i < srcConfig->groupInfolen; i++) {
             destConfig->groupInfo[i] = srcConfig->groupInfo[i];
             destConfig->groupInfo[i].name =
@@ -278,9 +279,8 @@ static int32_t GroupCfgDeepCopy(HITLS_Config *destConfig, const HITLS_Config *sr
             if (destConfig->groupInfo[i].name == NULL) {
                 return HITLS_MEMALLOC_FAIL;
             }
+            destConfig->groupInfolen++;
         }
-        destConfig->groupInfoSize = srcConfig->groupInfolen;
-        destConfig->groupInfolen = srcConfig->groupInfolen;
     }
 #endif
     return HITLS_SUCCESS;
@@ -318,6 +318,7 @@ static int32_t SignAlgorithmsCfgDeepCopy(HITLS_Config *destConfig, const HITLS_C
         if (destConfig->sigSchemeInfo == NULL) {
             return HITLS_MEMALLOC_FAIL;
         }
+        destConfig->sigSchemeInfoSize = srcConfig->sigSchemeInfolen;
         for (uint32_t i = 0; i < srcConfig->sigSchemeInfolen; i++) {
             destConfig->sigSchemeInfo[i] = srcConfig->sigSchemeInfo[i];
             destConfig->sigSchemeInfo[i].name =
@@ -325,9 +326,8 @@ static int32_t SignAlgorithmsCfgDeepCopy(HITLS_Config *destConfig, const HITLS_C
             if (destConfig->sigSchemeInfo[i].name == NULL) {
                 return HITLS_MEMALLOC_FAIL;
             }
+            destConfig->sigSchemeInfolen++;
         }
-        destConfig->sigSchemeInfoSize = srcConfig->sigSchemeInfolen;
-        destConfig->sigSchemeInfolen = srcConfig->sigSchemeInfolen;
     }
 #endif
     return HITLS_SUCCESS;
@@ -1087,7 +1087,7 @@ int32_t HITLS_CFG_SetGroups(HITLS_Config *config, const uint16_t *groups, uint32
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
 int32_t HITLS_CFG_SetCookieGenCb(HITLS_Config *config, HITLS_AppGenCookieCb callback)
 {
-    if (config == NULL || callback == NULL) {
+    if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
@@ -1097,7 +1097,7 @@ int32_t HITLS_CFG_SetCookieGenCb(HITLS_Config *config, HITLS_AppGenCookieCb call
 
 int32_t HITLS_CFG_SetCookieVerifyCb(HITLS_Config *config, HITLS_AppVerifyCookieCb callback)
 {
-    if (config == NULL || callback == NULL) {
+    if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
@@ -1107,7 +1107,7 @@ int32_t HITLS_CFG_SetCookieVerifyCb(HITLS_Config *config, HITLS_AppVerifyCookieC
 
 int32_t HITLS_CFG_SetDtlsTimerCb(HITLS_Config *config, HITLS_DtlsTimerCb callback)
 {
-    if (config == NULL || callback == NULL) {
+    if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
@@ -1151,13 +1151,13 @@ int32_t HITLS_CFG_SetTmpDh(HITLS_Config *config, HITLS_CRYPT_Key *dhPkey)
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetDhAutoSupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetDhAutoSupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportDhAuto;
+    *isSupport = config->isSupportDhAuto;
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_CONFIG_MANUAL_DH */
@@ -1528,7 +1528,7 @@ int32_t HITLS_CFG_SetPskIdentityHint(HITLS_Config *config, const uint8_t *hint, 
 // Configure clientCb, which is used to obtain the PSK through identity hints
 int32_t HITLS_CFG_SetPskClientCallback(HITLS_Config *config, HITLS_PskClientCb callback)
 {
-    if (config == NULL || callback == NULL) {
+    if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
@@ -1539,7 +1539,7 @@ int32_t HITLS_CFG_SetPskClientCallback(HITLS_Config *config, HITLS_PskClientCb c
 // Set serverCb to obtain the PSK through identity.
 int32_t HITLS_CFG_SetPskServerCallback(HITLS_Config *config, HITLS_PskServerCb callback)
 {
-    if (config == NULL || callback == NULL) {
+    if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
@@ -1561,35 +1561,35 @@ int32_t HITLS_CFG_SetSessionTicketSupport(HITLS_Config *config, bool support)
 #endif
 
 #ifdef HITLS_TLS_FEATURE_RENEGOTIATION
-int32_t HITLS_CFG_GetRenegotiationSupport(const HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetRenegotiationSupport(const HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportRenegotiation;
+    *isSupport = config->isSupportRenegotiation;
     return HITLS_SUCCESS;
 }
 #endif
 
-int32_t HITLS_CFG_GetExtenedMasterSecretSupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetExtenedMasterSecretSupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportExtendMasterSecret;
+    *isSupport = config->isSupportExtendMasterSecret;
     return HITLS_SUCCESS;
 }
 
 #if defined(HITLS_TLS_FEATURE_SESSION_TICKET)
-int32_t HITLS_CFG_GetSessionTicketSupport(const HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetSessionTicketSupport(const HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportSessionTicket;
+    *isSupport = config->isSupportSessionTicket;
     return HITLS_SUCCESS;
 }
 
@@ -1633,13 +1633,13 @@ int32_t HITLS_CFG_SetClientOnceVerifySupport(HITLS_Config *config, bool support)
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetClientOnceVerifySupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetClientOnceVerifySupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportClientOnceVerify;
+    *isSupport = config->isSupportClientOnceVerify;
     return HITLS_SUCCESS;
 }
 #endif
@@ -1734,7 +1734,42 @@ int32_t HITLS_CFG_SetAlpnProtosSelectCb(HITLS_Config *config, HITLS_AlpnSelectCb
 
     return HITLS_SUCCESS;
 }
-#endif
+
+int32_t HITLS_SelectAlpnProtocol(uint8_t **out, uint8_t *outLen, const uint8_t *servAlpnList, uint32_t servAlpnListLen,
+    const uint8_t *clientAlpnList, uint32_t clientAlpnListLen)
+{
+     bool nullInput = out == NULL || outLen == NULL || clientAlpnList == NULL || servAlpnList == NULL ||
+        servAlpnListLen == 0 || clientAlpnListLen == 0;
+    if (nullInput == true) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16690, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "intput null", 0, 0, 0, 0);
+        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
+        return HITLS_NULL_INPUT;
+    }
+
+    /* Add the check on alpnList. The expected format is |protoLen1|proto1|protoLen2|proto2|...| */
+    if (AlpnListValidationCheck(servAlpnList, servAlpnListLen) != HITLS_SUCCESS ||
+        AlpnListValidationCheck(clientAlpnList, clientAlpnListLen) != HITLS_SUCCESS) {
+        return HITLS_CONFIG_INVALID_LENGTH;
+    }
+
+    for (uint32_t i = 0; i < servAlpnListLen;) {
+        for (uint32_t j = 0; j < clientAlpnListLen;) {
+            if (servAlpnList[i] == clientAlpnList[j] &&
+                (memcmp(&servAlpnList[i + 1], &clientAlpnList[j + 1], servAlpnList[i]) == 0)) {
+                *out = (uint8_t *)(uintptr_t)&servAlpnList[i + 1];
+                *outLen = servAlpnList[i];
+                return HITLS_SUCCESS;
+            }
+            j = j + clientAlpnList[j];
+            ++j;
+        }
+        i = i + servAlpnList[i];
+        ++i;
+    }
+
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_FEATURE_ALPN */
 #if defined(HITLS_TLS_FEATURE_SESSION_ID)
 int32_t HITLS_CFG_SetSessionIdCtx(HITLS_Config *config, const uint8_t *sessionIdCtx, uint32_t len)
 {
@@ -1917,33 +1952,29 @@ int32_t HITLS_CFG_SetDtlsPostHsTimeoutVal(HITLS_Config *config, uint32_t timeout
 #endif
 
 #ifdef HITLS_TLS_SUITE_CIPHER_CBC
-int32_t HITLS_CFG_SetEncryptThenMac(HITLS_Config *config, uint32_t encryptThenMacType)
+int32_t HITLS_CFG_SetEncryptThenMac(HITLS_Config *config, bool encryptThenMacType)
 {
     if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    if (encryptThenMacType == 0) {
-        config->isEncryptThenMac = false;
-    } else {
-        config->isEncryptThenMac = true;
-    }
+    config->isEncryptThenMac = encryptThenMacType;
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetEncryptThenMac(const HITLS_Config *config, uint32_t *encryptThenMacType)
+int32_t HITLS_CFG_GetEncryptThenMac(const HITLS_Config *config, bool *encryptThenMacType)
 {
     if (config == NULL || encryptThenMacType == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *encryptThenMacType = (uint32_t)config->isEncryptThenMac;
+    *encryptThenMacType = config->isEncryptThenMac;
     return HITLS_SUCCESS;
 }
 #endif
 
 #ifdef HITLS_TLS_PROTO_DTLS
-int32_t HITLS_CFG_IsDtls(const HITLS_Config *config, uint8_t *isDtls)
+int32_t HITLS_CFG_IsDtls(const HITLS_Config *config, bool *isDtls)
 {
     if (config == NULL || isDtls == NULL) {
         return HITLS_NULL_INPUT;
@@ -1993,21 +2024,17 @@ uint32_t HITLS_CFG_GetTicketNums(HITLS_Config *config)
 }
 #endif
 #ifdef HITLS_TLS_FEATURE_FLIGHT
-int32_t HITLS_CFG_SetFlightTransmitSwitch(HITLS_Config *config, uint8_t isEnable)
+int32_t HITLS_CFG_SetFlightTransmitSwitch(HITLS_Config *config, bool isEnable)
 {
     if (config == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    if (isEnable == 0) {
-        config->isFlightTransmitEnable = false;
-    } else {
-        config->isFlightTransmitEnable = true;
-    }
+    config->isFlightTransmitEnable = isEnable;
     return HITLS_SUCCESS;
 }
 
-int32_t HITLS_CFG_GetFlightTransmitSwitch(const HITLS_Config *config, uint8_t *isEnable)
+int32_t HITLS_CFG_GetFlightTransmitSwitch(const HITLS_Config *config, bool *isEnable)
 {
     if (config == NULL || isEnable == NULL) {
         return HITLS_NULL_INPUT;

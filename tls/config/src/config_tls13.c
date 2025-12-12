@@ -110,13 +110,13 @@ int32_t HITLS_CFG_SetPostHandshakeAuthSupport(HITLS_Config *config, bool support
     config->isSupportPostHandshakeAuth = support;
     return HITLS_SUCCESS;
 }
-int32_t HITLS_CFG_GetPostHandshakeAuthSupport(HITLS_Config *config, uint8_t *isSupport)
+int32_t HITLS_CFG_GetPostHandshakeAuthSupport(HITLS_Config *config, bool *isSupport)
 {
     if (config == NULL || isSupport == NULL) {
         return HITLS_NULL_INPUT;
     }
 
-    *isSupport = (uint8_t)config->isSupportPostHandshakeAuth;
+    *isSupport = config->isSupportPostHandshakeAuth;
     return HITLS_SUCCESS;
 }
 #endif

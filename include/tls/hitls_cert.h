@@ -366,7 +366,9 @@ int32_t HITLS_CFG_LoadCertFile(HITLS_Config *config, const char *file, HITLS_Par
  *
  * @param   config [OUT] TLS link configuration
  * @param   buf    [IN] Certificate data
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
  * @param   bufLen [IN] Data length
+ *        the bufLen should exclude the end '\0'
  * @param   format [IN] Data format
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
@@ -412,7 +414,9 @@ int32_t HITLS_LoadCertFile(HITLS_Ctx *ctx, const char *file, HITLS_ParseFormat f
  *
  * @param   ctx   [OUT] TLS link object
  * @param   buf    [IN] Certificate data
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
  * @param   bufLen [IN] Data length
+ *        the bufLen should exclude the end '\0'
  * @param   format [IN] Data format
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
@@ -488,7 +492,9 @@ int32_t HITLS_CFG_ProviderLoadKeyFile(HITLS_Config *config, const char *file, co
  *
  * @param   config [OUT] TLS link configuration
  * @param   buf    [IN] Private key data
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
  * @param   bufLen [IN] Data length
+ *        the bufLen should exclude the end '\0'
  * @param   format [IN] Data format
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
@@ -569,7 +575,9 @@ int32_t HITLS_ProviderLoadKeyFile(HITLS_Ctx *ctx, const char *file, const char *
  *
  * @param   ctx   [OUT] TLS link object.
  * @param   buf    [IN] Private key data.
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
  * @param   bufLen [IN] Data length.
+ *        the bufLen should exclude the end '\0'
  * @param   format [IN] Data format.
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
@@ -641,7 +649,9 @@ int32_t HITLS_CFG_AddCertToStore(HITLS_Config *config, HITLS_CERT_X509 *cert,
  *
  * @param   config [IN] TLS link configuration
  * @param   buf [IN] Certificate file or buffer
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
  * @param   len [IN] bufLen
+ *        the bufLen should exclude the end '\0'
  * @param   type [IN] buf type: file or buffer
  * @param   format [IN] cert type
  *
@@ -656,7 +666,9 @@ HITLS_CERT_X509 *HITLS_CFG_ParseCert(HITLS_Config *config, const uint8_t *buf, u
  *
  * @param   config [IN] TLS link configuration
  * @param   buf [IN] Certificate file or buffer
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
  * @param   len [IN] bufLen
+ *        the bufLen should exclude the end '\0'
  * @param   type [IN] buf type: file or buffer
  * @param   format [IN] cert type
  *
@@ -671,7 +683,9 @@ HITLS_CERT_Key *HITLS_CFG_ParseKey(HITLS_Config *config, const uint8_t *buf, uin
  *
  * @param   config [IN] TLS link configuration
  * @param   buf [IN] Certificate file or buffer
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
  * @param   len [IN] bufLen
+ *        the bufLen should exclude the end '\0'
  * @param   type [IN] buf type: file or buffer
  * @param   format [IN] cert type
  * @param   encodeType [IN] cert encode type
@@ -926,7 +940,9 @@ int32_t HITLS_CFG_LoadCrlFile(HITLS_Config *config, const char *file, HITLS_Pars
  *
  * @param   config [OUT] TLS link configuration
  * @param   buf    [IN]  CRL data
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
  * @param   bufLen [IN]  Data length
+ *        the bufLen should exclude the end '\0'
  * @param   format [IN]  Data format, see HITLS_ParseFormat
  * @retval  HITLS_SUCCESS if successful
  * @retval  For other error codes, see hitls_error.h
@@ -954,7 +970,6 @@ int32_t HITLS_CFG_ClearVerifyCrls(HITLS_Config *config);
  */
 #define HITLS_CFG_SetVerifyFlags(config, verifyFlags) \
     HITLS_CFG_CtrlSetVerifyParams(config, NULL, CERT_STORE_CTRL_SET_VERIFY_FLAGS, verifyFlags, NULL)
-
 /**
  * @ingroup hitls_cert
  * @brief   Load CRL from file and add it into the verify store of the TLS context.
@@ -964,6 +979,13 @@ int32_t HITLS_LoadCrlFile(HITLS_Ctx *ctx, const char *file, HITLS_ParseFormat fo
 /**
  * @ingroup hitls_cert
  * @brief   Load CRL from buffer and add it into the verify store of the TLS context.
+ *
+ * @param   ctx [OUT] TLS link configuration
+ * @param   buf    [IN]  CRL data
+ *          BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buf needs to end with '\0'
+ * @param   bufLen [IN]  Data length
+ *        the bufLen should exclude the end '\0'
+ * @param   format [IN]  Data format, see HITLS_ParseFormat
  */
 int32_t HITLS_LoadCrlBuffer(HITLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, HITLS_ParseFormat format);
 
@@ -996,6 +1018,17 @@ int32_t HITLS_CFG_FreeCert(HITLS_Config *config, HITLS_CERT_X509 *cert);
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_FreeKey(HITLS_Config *config, HITLS_CERT_Key *key);
+
+/**
+ * @ingroup hitls_cert
+ * @brief   Load the verification file from the directory.
+ *
+ * @param   config  [OUT] TLS link configuration
+ * @param   path  [IN] Directory path
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_LoadVerifyDir(HITLS_Config *config, const char *path);
 #ifdef __cplusplus
 }
 #endif

@@ -348,23 +348,45 @@ static int32_t PackClientSupportedGroups(const TLS_Ctx *ctx, uint8_t *buf, uint3
         return HITLS_INTERNAL_EXCEPTION;
     }
 
-    /* Calculate the extension length */
-    exMsgHeaderLen = sizeof(uint16_t);
-    exMsgDataLen = sizeof(uint16_t) * (uint16_t)config->groupsSize;
+    uint32_t groupLenOffset = HS_EX_HEADER_LEN + sizeof(uint16_t);
+    if (bufLen < groupLenOffset) {
+        BSL_ERR_PUSH_ERROR(HITLS_INTERNAL_EXCEPTION);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15733, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "pack cipher suite error, the buffer length is not enough.", 0, 0, 0, 0);
+        return HITLS_INTERNAL_EXCEPTION;
+    }
 
-    ret = PackExtensionHeader(HS_EX_TYPE_SUPPORTED_GROUPS, exMsgHeaderLen + exMsgDataLen, buf, bufLen);
+    offset += groupLenOffset;
+    bool haveGroup = false;
+    for (uint32_t i = 0; i < config->groupsSize; ++i) {
+        const TLS_GroupInfo *groupInfo = ConfigGetGroupInfo(&ctx->config.tlsConfig, config->groups[i]);
+        if (groupInfo == NULL || ((groupInfo->versionBits & config->version) == 0)) {
+            continue;
+        }
+        haveGroup = true;
+        if (offset + sizeof(uint16_t) > bufLen) {
+            BSL_ERR_PUSH_ERROR(HITLS_INTERNAL_EXCEPTION);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15733, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "pack cipher suite error, the buffer length is not enough.", 0, 0, 0, 0);
+            return HITLS_INTERNAL_EXCEPTION;
+        }
+        BSL_Uint16ToByte(config->groups[i], &buf[offset]);
+        offset += sizeof(uint16_t);
+    }
+    if (!haveGroup) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15076, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "pack supported groups extension error, no available group.", 0, 0, 0, 0);
+        return HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP;
+    }
+
+    exMsgHeaderLen = sizeof(uint16_t);
+    exMsgDataLen = (uint16_t)(offset - groupLenOffset);
+    ret = PackExtensionHeader(HS_EX_TYPE_SUPPORTED_GROUPS, exMsgHeaderLen + exMsgDataLen, &buf[0], bufLen);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-    offset += HS_EX_HEADER_LEN;
-
     /* Pack extended supported groups */
-    BSL_Uint16ToByte(exMsgDataLen, &buf[offset]);
-    offset += sizeof(uint16_t);
-    for (uint32_t index = 0; index < config->groupsSize; index++) {
-        BSL_Uint16ToByte(config->groups[index], &buf[offset]);
-        offset += sizeof(uint16_t);
-    }
+    BSL_Uint16ToByte(exMsgDataLen, &buf[HS_EX_HEADER_LEN]);
 
     /* Set the extension flag */
     ctx->hsCtx->extFlag.haveSupportedGroups = true;
@@ -865,7 +887,7 @@ static int32_t PackClientExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t b
 #endif /* HITLS_TLS_PROTO_TLS13 */
         { EXTENSION_MSG(HS_EX_TYPE_EXTENDED_MASTER_SECRET, IsNeedEms(ctx), NULL) },
 #ifdef HITLS_TLS_FEATURE_ALPN
-        { EXTENSION_MSG(HS_EX_TYPE_APP_LAYER_PROTOCOLS, (tlsConfig->alpnList != NULL && 
+        { EXTENSION_MSG(HS_EX_TYPE_APP_LAYER_PROTOCOLS, (tlsConfig->alpnList != NULL &&
             ctx->state == CM_STATE_HANDSHAKING), PackClientAlpnList) },
 #endif /* HITLS_TLS_FEATURE_ALPN */
 #ifdef HITLS_TLS_PROTO_TLS13

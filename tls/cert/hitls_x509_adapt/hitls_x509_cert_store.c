@@ -15,6 +15,7 @@
 #include "hitls_build.h"
 #if defined(HITLS_TLS_CALLBACK_CERT) || defined(HITLS_TLS_FEATURE_PROVIDER)
 #include <stdint.h>
+#include <string.h>
 #include "bsl_err_internal.h"
 #include "crypt_errno.h"
 #include "hitls_cert_type.h"
@@ -77,6 +78,8 @@ int32_t HITLS_X509_Adapt_StoreCtrl(HITLS_Config *config, HITLS_CERT_Store *store
         }
         case CERT_STORE_CTRL_CLEAR_CRL_LIST:
             return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_CLEAR_CRL, NULL, 0);
+        case CERT_STORE_CTRL_ADD_CA_PATH:
+            return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_ADD_CA_PATH, input, strlen(input));
         case CERT_STORE_CTRL_SET_VERIFY_FLAGS:
             return HITLS_X509_StoreCtxCtrl(store, HITLS_X509_STORECTX_SET_PARAM_FLAGS,
                 (int64_t *)input, sizeof(uint64_t));

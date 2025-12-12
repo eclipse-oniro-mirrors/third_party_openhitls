@@ -65,7 +65,7 @@ int32_t HITLS_CFG_SetSessionTicketSupport(HITLS_Config *config, bool support);
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  HITLS_NULL_INPUT, config is null.
  */
-int32_t HITLS_CFG_GetSessionTicketSupport(const HITLS_Config *config, uint8_t *isSupport);
+int32_t HITLS_CFG_GetSessionTicketSupport(const HITLS_Config *config, bool *isSupport);
 
 /**
  * @ingroup hitls_session
@@ -316,7 +316,7 @@ int32_t HITLS_CFG_GetSessionTimeout(const HITLS_Config *config, uint64_t *timeou
  * @retval  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
-int32_t HITLS_IsSessionReused(HITLS_Ctx *ctx, uint8_t *isReused);
+int32_t HITLS_IsSessionReused(HITLS_Ctx *ctx, bool *isReused);
 
 /**
  * @ingroup hitls_session
@@ -584,7 +584,7 @@ int32_t HITLS_SESS_SetHaveExtMasterSecret(HITLS_Session *sess, uint8_t haveExtMa
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-int32_t HITLS_SESS_GetHaveExtMasterSecret(HITLS_Session *sess, uint8_t *haveExtMasterSecret);
+int32_t HITLS_SESS_GetHaveExtMasterSecret(HITLS_Session *sess, bool *haveExtMasterSecret);
 
 /**
  * @ingroup hitls_session

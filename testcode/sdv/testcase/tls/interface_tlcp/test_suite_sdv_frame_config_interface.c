@@ -244,7 +244,7 @@ void UT_TLS_CFG_SET_GET_NOCLIENTCERTSUPPORT_API_TC001(int tlsVersion)
     FRAME_Init();
     HITLS_Config *config = NULL;
     bool support = -1;
-    uint8_t isSupport = -1;
+    bool isSupport = -1;
     ASSERT_TRUE(HITLS_CFG_SetNoClientCertSupport(config, support) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetNoClientCertSupport(config, &isSupport) == HITLS_NULL_INPUT);
 
@@ -306,7 +306,7 @@ void UT_TLS_CFG_SET_GET_CLIENTVERIFYSUPPORT_API_TC001(int tlsVersion)
     FRAME_Init();
     HITLS_Config *config = NULL;
     bool support = -1;
-    uint8_t isSupport = -1;
+    bool isSupport = false;
     ASSERT_TRUE(HITLS_CFG_SetClientVerifySupport(config, support) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_CFG_GetClientVerifySupport(config, &isSupport) == HITLS_NULL_INPUT);
 
@@ -452,7 +452,7 @@ void UT_TLS_CFG_SET_COOKIEGENERATECB_API_TC001(void)
 
     config = HITLS_CFG_NewDTLS12Config();
 
-    ASSERT_TRUE(HITLS_CFG_SetCookieGenCb(config, NULL) == HITLS_NULL_INPUT);
+    ASSERT_TRUE(HITLS_CFG_SetCookieGenCb(config, NULL) == HITLS_SUCCESS);
 
     ASSERT_TRUE(HITLS_CFG_SetCookieGenCb(config, UT_CookieGenerateCb) == HITLS_SUCCESS);
 
@@ -483,7 +483,7 @@ void UT_TLS_CFG_SET_COOKIEVERIFYCB_API_TC001(void)
 
     config = HITLS_CFG_NewDTLS12Config();
 
-    ASSERT_TRUE(HITLS_CFG_SetCookieVerifyCb(config, NULL) == HITLS_NULL_INPUT);
+    ASSERT_TRUE(HITLS_CFG_SetCookieVerifyCb(config, NULL) == HITLS_SUCCESS);
 
     ASSERT_TRUE(HITLS_CFG_SetCookieVerifyCb(config, UT_CookieVerifyCb) == HITLS_SUCCESS);
 
@@ -766,7 +766,7 @@ EXIT:
 void UT_TLS_CFG_CIPHER_ISAEAD_API_TC001(void)
 {
     const HITLS_Cipher *cipher = NULL;
-    uint8_t isAead = false;
+    bool isAead = false;
     ASSERT_TRUE(HITLS_CIPHER_IsAead(cipher, &isAead) == HITLS_NULL_INPUT);
 
     const uint16_t cipherID = HITLS_RSA_WITH_AES_128_GCM_SHA256;
@@ -1024,7 +1024,7 @@ void UT_TLS_CFG_SET_GET_RENEGOTIATIONSUPPORT_FUNC_TC001()
     FRAME_LinkObj *clientRes;
     FRAME_LinkObj *serverRes;
     HITLS_Config *config = NULL;
-    uint8_t supportrenegotiation;
+    bool supportrenegotiation = false;
     config = HITLS_CFG_NewTLS12Config();
     ASSERT_TRUE(config != NULL);
 
@@ -1169,13 +1169,8 @@ void UT_TLS_CFG_SET_GROUPS_FUNC_TC001(int version)
     ASSERT_TRUE(testInfo.client != NULL);
     testInfo.server = FRAME_CreateLinkWithCert(testInfo.config, BSL_UIO_TCP, &certInfo);
     ASSERT_TRUE(testInfo.server != NULL);
-    if (version == TLS1_2) {
-        ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, testInfo.isClient, HS_STATE_BUTT),
-            HITLS_MSG_HANDLE_CIPHER_SUITE_ERR);
-    } else {
-        ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, testInfo.isClient, HS_STATE_BUTT),
-            HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP);
-    }
+    ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, testInfo.isClient, HS_STATE_BUTT),
+        HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP);
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
     FRAME_FreeLink(testInfo.client);
@@ -1358,14 +1353,14 @@ void UT_TLS_CFG_SETTMPDH_FUNC_TC001(int level)
 
     ASSERT_TRUE(HITLS_CFG_SetCipherSuites(clientConfig, pfsCipherSuites, sizeof(pfsCipherSuites) / sizeof(uint16_t)) == HITLS_SUCCESS);
     ASSERT_TRUE(HITLS_CFG_SetCipherSuites(serverConfig, pfsCipherSuites, sizeof(pfsCipherSuites) / sizeof(uint16_t)) == HITLS_SUCCESS);
-    HITLS_CFG_SetSecurityLevel(serverConfig, level);
-    HITLS_CFG_SetSecurityLevel(clientConfig, level);
 
     HITLS_CFG_SetDhAutoSupport(serverConfig, false);
     key = HITLS_CRYPT_GenerateDhKeyBySecbits(LIBCTX_FROM_CONFIG(serverConfig), ATTRIBUTE_FROM_CONFIG(serverConfig),
         serverConfig, 80);
     HITLS_CFG_SetTmpDh(serverConfig, key);
-
+    key = NULL;
+    HITLS_CFG_SetSecurityLevel(serverConfig, level);
+    HITLS_CFG_SetSecurityLevel(clientConfig, level);
     FRAME_CertInfo certInfo = {0, 0, 0, 0, 0, 0};
     client = FRAME_CreateLinkWithCert(clientConfig, BSL_UIO_TCP, &certInfo);
     server = FRAME_CreateLinkWithCert(serverConfig, BSL_UIO_TCP, &certInfo);
@@ -1381,6 +1376,7 @@ void UT_TLS_CFG_SETTMPDH_FUNC_TC001(int level)
         ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
     }
 EXIT:
+    SAL_CRYPT_FreeDhKey(key);
     HITLS_CFG_FreeConfig(clientConfig);
     HITLS_CFG_FreeConfig(serverConfig);
     FRAME_FreeLink(client);
@@ -1442,7 +1438,7 @@ void UT_TLS_CFG_GET_SECURE_RENEGOTIATIONSUPPORET_API_TC001(void)
     HitlsInit();
     HITLS_Config *config = NULL;
     HITLS_Ctx *ctx = NULL;
-    uint8_t isSecureRenegotiation = 0;
+    bool isSecureRenegotiation = false;
     ASSERT_TRUE(HITLS_GetSecureRenegotiationSupport(NULL, &isSecureRenegotiation) == HITLS_NULL_INPUT);
 
     config = HITLS_CFG_NewTLS12Config();
@@ -1502,11 +1498,11 @@ void UT_TLS_CFG_SET_GET_DHAUTOSUPPORT_FUNC_TC001(void)
     server = FRAME_CreateLinkWithCert(serverConfig, BSL_UIO_TCP, &certInfo);
     ASSERT_TRUE(client != NULL);
     ASSERT_TRUE(server != NULL);
-
-    ASSERT_EQ(FRAME_CreateConnection(client, server, false, TRY_SEND_SERVER_KEY_EXCHANGE), HITLS_SUCCESS);
+    ASSERT_EQ(HITLS_Connect(client->ssl), HITLS_REC_NORMAL_RECV_BUF_EMPTY);
+    FRAME_TrasferMsgBetweenLink(client, server);
+    ASSERT_EQ(HITLS_Accept(server->ssl), HITLS_MSG_HANDLE_CIPHER_SUITE_ERR);
     FRAME_TrasferMsgBetweenLink(server, client);
-    HITLS_Connect(client->ssl);
-    ASSERT_EQ(HITLS_Accept(server->ssl), HITLS_MSG_HANDLE_ERR_GET_DH_KEY);
+    ASSERT_EQ(HITLS_Connect(client->ssl), HITLS_REC_NORMAL_RECV_UNEXPECT_MSG);
 EXIT:
     HITLS_CFG_FreeConfig(clientConfig);
     HITLS_CFG_FreeConfig(serverConfig);

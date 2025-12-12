@@ -1394,9 +1394,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_OBFUSCATED_TICKET_AGE_FUNC_TC002()
 
     // Establish a connection.
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, false, HS_STATE_BUTT), HITLS_SUCCESS);
-    uint8_t isReused = 0;
+    bool isReused = false;
     ASSERT_EQ(HITLS_IsSessionReused(testInfo.client->ssl, &isReused), HITLS_SUCCESS);
-    ASSERT_EQ(isReused, 1);
+    ASSERT_EQ(isReused, true);
 EXIT:
     ClearWrapper();
     STUB_Reset(&stubInfo);
@@ -3151,9 +3151,9 @@ static int32_t SendCcs(HITLS_Ctx *ctx, uint8_t *data, uint8_t len)
         return ret;
     }
     /* If isFlightTransmitEnable is enabled, the stored handshake information needs to be sent. */
-    uint8_t isFlightTransmitEnable;
+    bool isFlightTransmitEnable = false;
     (void)HITLS_GetFlightTransmitSwitch(ctx, &isFlightTransmitEnable);
-    if (isFlightTransmitEnable == 1) {
+    if (isFlightTransmitEnable == true) {
         ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
         if (ret == BSL_UIO_IO_BUSY) {
             return HITLS_REC_NORMAL_IO_BUSY;
@@ -3177,9 +3177,9 @@ static int32_t SendAlert(HITLS_Ctx *ctx, ALERT_Level level, ALERT_Description de
         return ret;
     }
     /* If isFlightTransmitEnable is enabled, the stored handshake information needs to be sent. */
-    uint8_t isFlightTransmitEnable;
+    bool isFlightTransmitEnable = false;
     (void)HITLS_GetFlightTransmitSwitch(ctx, &isFlightTransmitEnable);
-    if (isFlightTransmitEnable == 1) {
+    if (isFlightTransmitEnable == true) {
         ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
         if (ret == BSL_UIO_IO_BUSY) {
             return HITLS_REC_NORMAL_IO_BUSY;

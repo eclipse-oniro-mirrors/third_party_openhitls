@@ -324,6 +324,9 @@
     #ifndef HITLS_TLS_CONFIG_CERT_CALLBACK
         #define HITLS_TLS_CONFIG_CERT_CALLBACK
     #endif
+    #ifndef HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION
+        #define HITLS_TLS_CONFIG_CERT_VERIFY_LOCATION
+    #endif
 #endif
 
 #if defined(HITLS_TLS_PROTO_TLS13)

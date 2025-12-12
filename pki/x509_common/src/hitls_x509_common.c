@@ -107,6 +107,10 @@ static int32_t HITLS_X509_ParseNameNode(BSL_ASN1_Buffer *asn, HITLS_X509_NameNod
 {
     uint8_t *temp = asn->buff;
     uint32_t tempLen = asn->len;
+    if (tempLen == 0) {
+        BSL_ERR_PUSH_ERROR(BSL_ASN1_ERR_DECODE_LEN);
+        return BSL_ASN1_ERR_DECODE_LEN;
+    }
     // parse oid
     if (*temp != BSL_ASN1_TAG_OBJECT_ID) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_NAME_OID);
@@ -118,7 +122,10 @@ static int32_t HITLS_X509_ParseNameNode(BSL_ASN1_Buffer *asn, HITLS_X509_NameNod
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-
+    if (tempLen == 0) {
+        BSL_ERR_PUSH_ERROR(BSL_ASN1_ERR_DECODE_LEN);
+        return BSL_ASN1_ERR_DECODE_LEN;
+    }
     // parse string
     if (*temp != BSL_ASN1_TAG_UTF8STRING && *temp != BSL_ASN1_TAG_PRINTABLESTRING &&
         *temp != BSL_ASN1_TAG_IA5STRING && *temp != BSL_ASN1_TAG_T61STRING) {
@@ -334,6 +341,91 @@ EXIT:
         BSL_SAL_Free(asnBuf[index].buff);
     }
     BSL_SAL_Free(asnBuf);
+    return ret;
+}
+#endif
+
+#if defined(HITLS_PKI_INFO) || defined(HITLS_PKI_X509_VFY_LOCATION)
+static HITLS_X509_NameNode *NameNodeDup(HITLS_X509_NameNode *node)
+{
+    uint32_t size = sizeof(HITLS_X509_NameNode) + node->nameType.len + node->nameValue.len;
+    uint8_t *tmp = BSL_SAL_Calloc(1, size);
+    if (tmp == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
+        return NULL;
+    }
+    HITLS_X509_NameNode *res = (HITLS_X509_NameNode *)tmp;
+    res->layer = node->layer;
+
+    if (node->nameType.len != 0) {
+        res->nameType.tag = node->nameType.tag;
+        res->nameType.len = node->nameType.len;
+        res->nameType.buff = tmp + sizeof(HITLS_X509_NameNode);
+        (void)memcpy_s(res->nameType.buff, res->nameType.len, node->nameType.buff, node->nameType.len);
+    }
+    if (node->nameValue.len != 0) {
+        res->nameValue.tag = node->nameValue.tag;
+        res->nameValue.len = node->nameValue.len;
+        res->nameValue.buff = tmp + sizeof(HITLS_X509_NameNode) + node->nameType.len;
+        (void)memcpy_s(res->nameValue.buff, res->nameValue.len, node->nameValue.buff, node->nameValue.len);
+    }
+    return res;
+}
+
+static char ToLower(char c)
+{
+    if (c >= 'A' && c <= 'Z') {
+        return c + 32;  // 32 is ('a' - 'A')
+    }
+    return c;
+}
+
+static bool IsSpace(char c)
+{
+    return c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r' || c == ' ';
+}
+
+static void StringCanon(BSL_ASN1_Buffer *str)
+{
+    if (str->tag != BSL_ASN1_TAG_UTF8STRING) {
+        str->tag = BSL_ASN1_TAG_UTF8STRING;
+    }
+    bool preSpace = true;
+    uint32_t idx = 0;
+    for (uint32_t i = 0; i < str->len; i++) {
+        if (IsSpace((char)str->buff[i])) {
+            if (!preSpace) {
+                str->buff[idx++] = ' ';
+            }
+            preSpace = true;
+            continue;
+        }
+        str->buff[idx++] = (uint8_t)ToLower((char)str->buff[i]);
+        preSpace = false;
+    }
+    str->len = str->buff[idx - 1] == ' ' ? idx - 1 : idx;
+}
+
+int32_t HITLS_X509_EncodeCanonNameList(BSL_ASN1_List *list, BSL_ASN1_Buffer *name)
+{
+    if (BSL_LIST_COUNT(list) == 0) {
+        return HITLS_PKI_SUCCESS;
+    }
+    BslList *tmpList = BSL_LIST_Copy(list, (BSL_LIST_PFUNC_DUP)NameNodeDup, NULL);
+    if (tmpList == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
+        return BSL_MALLOC_FAIL;
+    }
+    int32_t ret;
+    for (HITLS_X509_NameNode *node = BSL_LIST_GET_FIRST(tmpList); node != NULL; node = BSL_LIST_GET_NEXT(tmpList)) {
+        if (node->nameValue.buff == NULL || node->nameValue.len == 0) {
+            continue;
+        }
+        StringCanon(&node->nameValue);
+    }
+
+    ret = HITLS_X509_EncodeNameList(tmpList, name);
+    BSL_LIST_FREE(tmpList, NULL);
     return ret;
 }
 #endif
@@ -653,6 +745,7 @@ int32_t HITLS_X509_SignAsn1Data(CRYPT_EAL_PkeyCtx *priv, CRYPT_MD_AlgId mdId,
     sign->len = CRYPT_EAL_PkeyGetSignLen(priv);
     sign->buff = (uint8_t *)BSL_SAL_Malloc(sign->len);
     if (sign->buff == NULL) {
+        sign->len = 0;
         BSL_SAL_FREE(rawSignBuff->data);
         rawSignBuff->dataLen = 0;
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
@@ -795,10 +888,12 @@ int32_t HITLS_X509_CheckAki(HITLS_X509_Ext *issueExt, HITLS_X509_Ext *subjectExt
     if (ret == HITLS_X509_ERR_EXT_NOT_FOUND) {
         return HITLS_PKI_SUCCESS;
     }
-    if (ski.kid.dataLen != aki.kid.dataLen || memcmp(ski.kid.data, aki.kid.data, ski.kid.dataLen) != 0) {
-        HITLS_X509_ClearAuthorityKeyId(&aki);
-        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_VFY_AKI_SKI_NOT_MATCH);
-        return HITLS_X509_ERR_VFY_AKI_SKI_NOT_MATCH;
+    if (aki.kid.dataLen != 0 && aki.kid.data != NULL) {
+        if (ski.kid.dataLen != aki.kid.dataLen || memcmp(ski.kid.data, aki.kid.data, ski.kid.dataLen) != 0) {
+            HITLS_X509_ClearAuthorityKeyId(&aki);
+            BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_VFY_AKI_SKI_NOT_MATCH);
+            return HITLS_X509_ERR_VFY_AKI_SKI_NOT_MATCH;
+        }
     }
     if (aki.issuerName != NULL) {
         ret = X509_CheckAuthCertIssuer(aki.issuerName, issueName);

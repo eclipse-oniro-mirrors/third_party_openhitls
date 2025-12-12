@@ -38,6 +38,7 @@
 #include "crypt_eal_rand.h"
 #include "bsl_params.h"
 #include "crypt_params_key.h"
+#include "stub_replace.h"
 /* END_HEADER */
 
 // clang-format off
@@ -450,18 +451,19 @@ EXIT:
 }
 /* END_CASE */
 
-/* BEGIN_CASE */
-void SDV_BSL_ASN1_PARSE_ECCPRIKEY_FILE_TC001(int isProvider, char *path, int fileType, char *fileTypeStr,
-    int mdId, Hex *msg, int alg, Hex *rawKey, int paraId)
+/* ecc: get raw prv, compare, check para, sign (no expected sign) */
+static int32_t EccPrvSign(CRYPT_EAL_PkeyCtx *pkeyCtx, int mdId, int alg, Hex *msg, Hex *rawKey,
+    int paraId)
 {
-    RegisterLogFunc();
-    CRYPT_RandRegist(RandFunc);
-    CRYPT_RandRegistEx(RandFuncEx);
-    uint8_t rawPriKey[100] = {0};
-    uint32_t rawPriKeyLen = 100;
+    int32_t ret = CRYPT_NOT_SUPPORT;
+    uint8_t *rawPriKey = NULL;
+    uint32_t rawPriKeyLen = 100; /* buffer length used by existing tests */
     uint8_t *signdata = NULL;
-    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
-    ASSERT_EQ(DecodeKeyFile(isProvider, path, BSL_FORMAT_ASN1, "ASN1", fileType, fileTypeStr, NULL, 0, &pkeyCtx), 0);
+    uint32_t signLen = 0;
+
+    rawPriKey = (uint8_t *)BSL_SAL_Calloc(rawPriKeyLen, 1);
+    ASSERT_TRUE(rawPriKey != NULL);
+
     CRYPT_EAL_PkeyPrv pkeyPrv = {0};
     pkeyPrv.id = alg;
     pkeyPrv.key.eccPrv.data = rawPriKey;
@@ -469,18 +471,56 @@ void SDV_BSL_ASN1_PARSE_ECCPRIKEY_FILE_TC001(int isProvider, char *path, int fil
     ASSERT_EQ(CRYPT_EAL_PkeyGetPrv(pkeyCtx, &pkeyPrv), CRYPT_SUCCESS);
     ASSERT_COMPARE("key cmp", rawKey->x, rawKey->len, rawPriKey, rawKey->len);
     ASSERT_EQ(CRYPT_EAL_PkeyGetId(pkeyCtx), alg);
-    if (alg != CRYPT_PKEY_SM2) { // sm2 is null
+    if (alg != CRYPT_PKEY_SM2) { /* sm2 is null */
         ASSERT_EQ(CRYPT_EAL_PkeyGetParaId(pkeyCtx), paraId);
     }
-    /* Malloc signature buffer */
-    uint32_t signLen = CRYPT_EAL_PkeyGetSignLen(pkeyCtx);
+    /* sign */
+    signLen = CRYPT_EAL_PkeyGetSignLen(pkeyCtx);
     signdata = (uint8_t *)BSL_SAL_Malloc(signLen);
     ASSERT_TRUE(signdata != NULL);
     ASSERT_EQ(CRYPT_EAL_PkeySign(pkeyCtx, mdId, msg->x, msg->len, signdata, &signLen), CRYPT_SUCCESS);
 
+    ret = CRYPT_SUCCESS;
 EXIT:
     BSL_SAL_Free(signdata);
+    BSL_SAL_Free(rawPriKey);
+    return ret;
+}
+
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_PARSE_ECCPRIKEY_FILE_TC001(int isProvider, int noPubKey, char *path, int fileType, char *fileTypeStr,
+    int mdId, Hex *msg, int alg, Hex *rawKey, int paraId, Hex *expectAsn1)
+{
+    RegisterLogFunc();
+    CRYPT_RandRegist(RandFunc);
+    CRYPT_RandRegistEx(RandFuncEx);
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+    BSL_Buffer reEnc = {0};
+    CRYPT_EAL_PkeyCtx *reDecPkeyCtx = NULL;
+    uint32_t flag = CRYPT_ECC_PRIKEY_NO_PUBKEY;
+
+    ASSERT_EQ(DecodeKeyFile(isProvider, path, BSL_FORMAT_ASN1, "ASN1", fileType, fileTypeStr, NULL, 0, &pkeyCtx), 0);
+    ASSERT_EQ(EccPrvSign(pkeyCtx, mdId, alg, msg, rawKey, paraId), CRYPT_SUCCESS);
+    if (noPubKey) {
+        ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_ECC_FLAG, &flag, sizeof(flag)), CRYPT_SUCCESS);
+    }
+
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkeyCtx, NULL, BSL_FORMAT_ASN1, fileType, &reEnc), CRYPT_SUCCESS);
+    if (expectAsn1->len != 0) {
+        ASSERT_COMPARE("asn1 compare", reEnc.data, reEnc.dataLen, expectAsn1->x, expectAsn1->len);
+    }
+    ASSERT_EQ(DecodeKeyBuff(isProvider, &reEnc, BSL_FORMAT_ASN1, "ASN1", fileType, fileTypeStr,
+        NULL, 0, &reDecPkeyCtx), 0);
+    ASSERT_EQ(EccPrvSign(reDecPkeyCtx, mdId, alg, msg, rawKey, paraId), CRYPT_SUCCESS);
+    if (noPubKey) {
+        ASSERT_EQ(CRYPT_EAL_PkeyCtrl(reDecPkeyCtx, CRYPT_CTRL_GET_ECC_FLAG, &flag, sizeof(flag)), CRYPT_SUCCESS);
+        ASSERT_EQ(flag, CRYPT_ECC_PRIKEY_NO_PUBKEY);
+    }
+
+EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    CRYPT_EAL_PkeyFreeCtx(reDecPkeyCtx);
+    BSL_SAL_FREE(reEnc.data);
     BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
@@ -782,23 +822,6 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
-void SDV_BSL_ASN1_PARSE_ECCPRIKEY_FAIL_TC001(Hex *asn1)
-{
-    RegisterLogFunc();
-    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
-    uint8_t *buff = (uint8_t *)BSL_SAL_Calloc(asn1->len + 1, 1);
-    ASSERT_TRUE(buff != NULL);
-    (void)memcpy_s(buff, asn1->len, asn1->x, asn1->len);
-    BSL_Buffer encode = {buff, asn1->len};
-    ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_UNKNOWN, CRYPT_PRIKEY_ECC, &encode, NULL, 0, &pkeyCtx),
-        CRYPT_DECODE_ASN1_BUFF_FAILED);
-EXIT:
-    BSL_SAL_FREE(buff);
-    BSL_GLOBAL_DeInit();
-}
-/* END_CASE */
-
-/* BEGIN_CASE */
 void SDV_BSL_ASN1_PARSE_BUFF_PROVIDER_TC001(char *formatStr, char *typeStr, char *path, Hex *password)
 {
 #ifndef HITLS_CRYPTO_PROVIDER
@@ -838,7 +861,7 @@ void SDV_BSL_ASN1_PARSE_BUFF_PROVIDER_TC001(char *formatStr, char *typeStr, char
     encode.dataLen = dataLen;
     ASSERT_NE(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, formatStr, typeStr, &encode, &pass,
         &pkeyCtx), 0);
-    CRYPT_EAL_Init(9);  // 9 denotes to deinit CRYPT_EAL_INIT_CPU and CRYPT_EAL_INIT_PROVIDER
+    CRYPT_EAL_Init(CRYPT_EAL_INIT_CPU|CRYPT_EAL_INIT_PROVIDER|CRYPT_EAL_INIT_PROVIDER_RAND);
     encode.data = data;
     encode.dataLen = dataLen;
     ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, formatStr, typeStr, &encode, &pass,
@@ -887,6 +910,65 @@ void SDV_BSL_ASN1_PARSE_BUFF_PROVIDER_TC002(char *providerPath, char *providerNa
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     CRYPT_EAL_LibCtxFree(libCtx);
+    BSL_GLOBAL_DeInit();
+#endif
+}
+/* END_CASE */
+
+#ifdef HITLS_CRYPTO_PROVIDER
+
+static int32_t test = 0;
+static int32_t marked = 0;
+static void *STUB_BSL_SAL_Malloc(uint32_t size)
+{
+    if (marked <= test) {
+        marked++;
+        return malloc(size);
+    }
+    return NULL;
+}
+
+#endif
+
+/**
+ * @test SDV_BSL_ASN1_PARSE_BUFF_STUB_TC001
+ * title 1. Test the decode provider with stub malloc fail
+ * 
+ */
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_PARSE_BUFF_STUB_TC001(char *formatStr, char *typeStr, char *path, Hex *password, int maxTriggers)
+{
+#ifndef HITLS_CRYPTO_PROVIDER
+    (void)formatStr;
+    (void)typeStr;
+    (void)path;
+    (void)password;
+    (void)maxTriggers;
+    SKIP_TEST();
+#else
+    CRYPT_EAL_Init(CRYPT_EAL_INIT_CPU|CRYPT_EAL_INIT_PROVIDER|CRYPT_EAL_INIT_PROVIDER_RAND);
+    CRYPT_RandRegist(RandFunc);
+    CRYPT_RandRegistEx(RandFuncEx);
+    uint8_t *data = NULL;
+    uint32_t dataLen = 0;
+    ASSERT_EQ(BSL_SAL_ReadFile(path, &data, &dataLen), BSL_SUCCESS);
+    BSL_Buffer encode = {data, dataLen};
+    BSL_Buffer pass = {password->x, password->len};
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+    test = maxTriggers;
+    marked = 0;
+    STUB_Init();
+    FuncStubInfo tmpRpInfo;
+    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
+    for (int i = maxTriggers; i > 0; i--) {
+        marked = 0;
+        test--;
+        ASSERT_NE(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, formatStr, typeStr, &encode,
+            &pass, &pkeyCtx), CRYPT_SUCCESS);
+    }
+EXIT:
+    STUB_Reset(&tmpRpInfo);
+    BSL_SAL_FREE(data);
     BSL_GLOBAL_DeInit();
 #endif
 }

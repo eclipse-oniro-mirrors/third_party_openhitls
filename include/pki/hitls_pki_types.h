@@ -284,6 +284,7 @@ typedef enum {
     HITLS_X509_STORECTX_CLEAR_CRL,
     HITLS_X509_STORECTX_REF_UP,
     HITLS_X509_STORECTX_SET_VFY_SM2_USERID,
+    HITLS_X509_STORECTX_ADD_CA_PATH,       /**< Add additional CA path for on-demand loading */
     HITLS_X509_STORECTX_MAX
 } HITLS_X509_StoreCtxCmd;
 

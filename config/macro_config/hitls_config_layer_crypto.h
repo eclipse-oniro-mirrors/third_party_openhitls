@@ -130,6 +130,7 @@
     !defined(HITLS_CRYPTO_ENTROPY_DEVRANDOM) && !defined(HITLS_CRYPTO_ENTROPY_SYS) && \
     !defined(HITLS_CRYPTO_ENTROPY_HARDWARE)
 #define HITLS_CRYPTO_ENTROPY_DEVRANDOM
+#define HITLS_CRYPTO_ENTROPY_GETENTROPY
 #endif
 
 #ifdef HITLS_CRYPTO_DRBG
@@ -154,6 +155,12 @@
     #endif
     #ifndef HITLS_BSL_PARAMS
         #define HITLS_BSL_PARAMS
+    #endif
+#endif
+
+#ifdef HITLS_CRYPTO_DRBG
+    #ifndef HITLS_BSL_SAL_PID
+        #define HITLS_BSL_SAL_PID
     #endif
 #endif
 

@@ -440,6 +440,7 @@ enum CRYPT_ERROR {
     CRYPT_MLKEM_KEY_NOT_EQUAL,                          /**< The MLKEM keys are not equal. */
     CRYPT_MLKEM_CTRL_NOT_SUPPORT,                       /**< The Ctrl type is not supported.*/
     CRYPT_MLKEM_CTRL_INIT_REPEATED,                     /**< The CTX cannot be initialized repeatedly.*/
+    CRYPT_MLKEM_INVALID_PRVKEY,                         /**< Invalid private key. */
 
     CRYPT_HPKE_ERR_GEN_ASYM_KEY = 0x01310001,            /**< HPKE Generate asymmetric key error. */
     CRYPT_HPKE_ERR_AEAD_TAG,                             /**< Failed to verify AEAD tag when decrypt. */

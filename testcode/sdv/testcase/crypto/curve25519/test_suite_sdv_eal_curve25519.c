@@ -542,16 +542,29 @@ EXIT:
  *    4. Call the CRYPT_EAL_PkeyDupCtx method to dup ed25519 context, expected result 2.
  *    5. Call the CRYPT_EAL_PkeyGetPub method to obtain the public key from the contexts, expected result 2.
  *    6. Compare public keys, expected result 3.
+ *    7. Call the CRYPT_EAL_PkeyComputeShareKey method to compute the shared key from the dupCtx and ctx,
+ *      expected result 7.
  * @expect
  *    1. Success, and context is not NULL.
  *    2. CRYPT_SUCCESS
  *    3. The two public keys are the same.
+ *    4. CRYPT_SUCCESS
+ *    5. CRYPT_SUCCESS
+ *    6. The two public keys are the same.
+ *    7. The two shared keys are the same.
  */
 /* BEGIN_CASE */
 void SDV_CRYPTO_CURVE25519_DUP_CTX_API_TC001(int id)
 {
     uint8_t key1[CRYPT_CURVE25519_KEYLEN] = {0};
     uint8_t key2[CRYPT_CURVE25519_KEYLEN] = {0};
+    uint8_t data[CRYPT_CURVE25519_KEYLEN] = {0};
+    uint8_t sign[CRYPT_CURVE25519_SIGNLEN] = {0};
+    uint32_t signLen = sizeof(sign);
+    uint8_t sharedKey1[CRYPT_CURVE25519_KEYLEN] = {0};
+    uint32_t sharedLen1 = sizeof(sharedKey1);
+    uint8_t sharedKey2[CRYPT_CURVE25519_KEYLEN] = {0};
+    uint32_t sharedLen2 = sizeof(sharedKey2);
     CRYPT_EAL_PkeyPub pub = {0};
     Set_Curve25519_Pub(&pub, id, key1, CRYPT_CURVE25519_KEYLEN);
 
@@ -571,6 +584,17 @@ void SDV_CRYPTO_CURVE25519_DUP_CTX_API_TC001(int id)
     ASSERT_EQ(CRYPT_EAL_PkeyGetPub(newPkey, &pub), CRYPT_SUCCESS);
 
     ASSERT_COMPARE("curve25519 copy ctx", key1, CRYPT_CURVE25519_KEYLEN, key2, CRYPT_CURVE25519_KEYLEN);
+
+    if (id == CRYPT_PKEY_ED25519) {
+        ASSERT_EQ(CRYPT_EAL_PkeySign(newPkey, CRYPT_MD_SHA512, data, sizeof(data), sign, &signLen), CRYPT_SUCCESS);
+        ASSERT_EQ(CRYPT_EAL_PkeyVerify(newPkey, CRYPT_MD_SHA512, data, sizeof(data), sign, signLen), CRYPT_SUCCESS);
+    } else if (id == CRYPT_PKEY_X25519) {
+        ASSERT_EQ(CRYPT_EAL_PkeyComputeShareKey(newPkey, pkey, sharedKey1, &sharedLen1),
+            CRYPT_SUCCESS);
+        ASSERT_EQ(CRYPT_EAL_PkeyComputeShareKey(pkey, newPkey, sharedKey2, &sharedLen2),
+            CRYPT_SUCCESS);
+        ASSERT_COMPARE("shared key", sharedKey1, CRYPT_CURVE25519_KEYLEN, sharedKey2, CRYPT_CURVE25519_KEYLEN);
+    }
 
 EXIT:
     TestRandDeInit();
@@ -962,5 +986,60 @@ void SDV_CRYPTO_CURVE25519_GET_SECURITY_BITS_FUNC_TC001(int id, int secBits)
     ASSERT_TRUE(CRYPT_EAL_PkeyGetSecurityBits(pkey) == (uint32_t)secBits);
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
+}
+/* END_CASE */
+
+#ifdef HITLS_CRYPTO_PROVIDER
+static int32_t ImportCurve25519Pkey(const BSL_Param *param, void *args)
+{
+    CRYPT_CURVE25519_Ctx *importEd25519Ctx = CRYPT_ED25519_NewCtx();
+    if (importEd25519Ctx == NULL) {
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    int32_t ret = CRYPT_CURVE25519_Import(importEd25519Ctx, param);
+    if (ret != CRYPT_SUCCESS) {
+        CRYPT_CURVE25519_FreeCtx(importEd25519Ctx);
+        return ret;
+    }
+    *((CRYPT_CURVE25519_Ctx **)args) = importEd25519Ctx;
+    return CRYPT_SUCCESS;
+}
+#endif
+
+/**
+ * @test   SDV_CRYPTO_CURVE25519_Import_Export_FUNC_TC001
+ * @title  CRYPT_CURVE25519_Import and CRYPT_CURVE25519_Export test.
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_CURVE25519_Import_Export_FUNC_TC001(void)
+{
+#ifndef HITLS_CRYPTO_PROVIDER
+    SKIP_TEST();
+#else
+    CRYPT_CURVE25519_Ctx *srcCurve25519Ctx = NULL;
+    CRYPT_CURVE25519_Ctx *dstCurve25519Ctx = NULL;
+    BSL_Param param[3] = {
+        {CRYPT_PARAM_PKEY_PROCESS_FUNC, BSL_PARAM_TYPE_FUNC_PTR, ImportCurve25519Pkey, 0, 0},
+        {CRYPT_PARAM_PKEY_PROCESS_ARGS, BSL_PARAM_TYPE_CTX_PTR, &dstCurve25519Ctx, 0, 0},
+        BSL_PARAM_END
+    };
+    uint8_t data[2] = {1};
+    uint32_t dataLen = sizeof(data);
+    uint8_t signBuf[CRYPT_CURVE25519_SIGNLEN] = {0};
+    uint32_t signBufLen = sizeof(signBuf);
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    srcCurve25519Ctx = CRYPT_ED25519_NewCtx();
+    ASSERT_TRUE(srcCurve25519Ctx != NULL);
+    ASSERT_EQ(CRYPT_ED25519_GenKey(srcCurve25519Ctx), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_CURVE25519_Export(srcCurve25519Ctx, param), CRYPT_SUCCESS);
+
+    ASSERT_EQ(CRYPT_CURVE25519_Sign(srcCurve25519Ctx, CRYPT_MD_SHA512, data, dataLen, signBuf, &signBufLen),
+        CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_CURVE25519_Verify(dstCurve25519Ctx, CRYPT_MD_SHA512, data, dataLen, signBuf, signBufLen),
+        CRYPT_SUCCESS);
+EXIT:
+    CRYPT_CURVE25519_FreeCtx(srcCurve25519Ctx);
+    CRYPT_CURVE25519_FreeCtx(dstCurve25519Ctx);
+#endif
 }
 /* END_CASE */
