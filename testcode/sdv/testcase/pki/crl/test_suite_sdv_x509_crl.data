@@ -347,7 +347,46 @@ SDV_X509_CRL_GENCONSISTANT_FUNC_TC001 rsapss-sha256-ssl with aki
 SDV_X509_CRL_GENCONSISTANT_FUNC_TC001:"../testdata/cert/asn1/rsa_pss_cert/rsa_pss_ssl.crt.der":"../testdata/cert/asn1/rsa_pss_cert/rsa_pss_ssl.key.der":CRYPT_PRIKEY_RSA:CRYPT_EMSA_PSS:CRYPT_MD_SHA256:1:0:0:"gencon-rsapssssl.crl"
 
 SDV_X509_CRL_GENCONSISTANT_FUNC_TC001 rsapss_aki-sha256
-SDV_X509_CRL_GENCONSISTANT_FUNC_TC001:"../testdata/cert/asn1/rsa_cert/inter2.mul.crt":"../testdata/cert/asn1/rsa_cert/inter2.mul.key":CRYPT_PRIKEY_PKCS8_UNENCRYPT:CRYPT_EMSA_PSS:CRYPT_MD_SHA256:1:0:0:"gencon-rsapsswithaki.crl"
+SDV_X509_CRL_GENCONSISTANT_FUNC_TC001:"../testdata/cert/asn1/rsa_cert/inter2.mul.crt":"../testdata/cert/asn1/rsa_cert/inter2.mul.key":CRYPT_PRIKEY_PKCS8_UNENCRYPT:CRYPT_EMSA_PSS:CRYPT_MD_SHA256:1:0:0:"gencon-rsapsswithaki.crl":HITLS_PKI_PRINT_DN_RFC2253:"gencon-rsapsswithaki.txt":"gencon-parsersapsswithaki.txt"
+
+SDV_X509_CRL_PARSE_ERRORPARAM_FUNC_TC001 issuername parse fail
+SDV_X509_CRL_PARSE_ERRORPARAM_FUNC_TC001:"../testdata/cert/asn1/rsa_crl/rsawithparam1.der":BSL_ASN1_ERR_MISMATCH_TAG
+
+SDV_X509_CRL_PARSE_ERRORPARAM_FUNC_TC001 thisupdatetime parse fail
+SDV_X509_CRL_PARSE_ERRORPARAM_FUNC_TC001:"../testdata/cert/asn1/rsa_crl/rsawithparam2.der":BSL_ASN1_ERR_TAG_EXPECTED
+
+SDV_X509_CRL_GEN_SETVER0NOEXT_FUNC_TC001 set version 0 without extensions
+SDV_X509_CRL_GEN_SETVER0NOEXT_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.key.der":"gen-setver0-noext.crl"
+
+SDV_X509_CRL_GEN_SETEXTERRVER_FUNC_TC001 set extension without version or error version
+SDV_X509_CRL_GEN_SETEXTERRVER_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.key.der":1:0
+
+SDV_X509_CRL_GEN_SETEXTERRVER_FUNC_TC001 set crl entry extension with error version
+SDV_X509_CRL_GEN_SETEXTERRVER_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.key.der":0:1
+
+SDV_X509_CRL_GEN_SETEXTERRVER_FUNC_TC001 set extension and crl entry extension with error version
+SDV_X509_CRL_GEN_SETEXTERRVER_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.key.der":1:1
+
+SDV_X509_CRL_GEN_ERRPRVKEY_FUNC_TC001 set error or unsupported prvKey
+SDV_X509_CRL_GEN_ERRPRVKEY_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.key.der"
+
+SDV_X509_CRL_GEN_ERRBSLTIME_FUNC_TC001 set error bsltime
+SDV_X509_CRL_GEN_ERRBSLTIME_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.key.der":"gen-testbsltime.crl"
+
+SDV_X509_CRL_GEN_NULLISSUER_FUNC_TC001 set null issuername
+SDV_X509_CRL_GEN_NULLISSUER_FUNC_TC001:
+
+SDV_X509_CRL_GEN_NULLREVOKED_FUNC_TC001 set null revoked certificate
+SDV_X509_CRL_GEN_NULLREVOKED_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":1
+
+SDV_X509_CRL_GEN_NULLREVOKED_FUNC_TC001 set null revoked certificate
+SDV_X509_CRL_GEN_NULLREVOKED_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":0
+
+SDV_X509_CRL_GEN_NULLAKI_FUNC_TC001 set null aki
+SDV_X509_CRL_GEN_NULLAKI_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der"
+
+SDV_X509_CRL_GEN_ERRCRLNUMBER_FUNC_TC001 set err crl number
+SDV_X509_CRL_GEN_ERRCRLNUMBER_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der"
 
 SDV_X509_CRL_GEN_ERRREASONCODE_FUNC_TC001 set err reason code
 SDV_X509_CRL_GEN_ERRREASONCODE_FUNC_TC001:"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.crt.der":"../testdata/cert/asn1/ecdsa_cert/ecdsa_sha384.key.der":"gen-reasoncode8.crl"
