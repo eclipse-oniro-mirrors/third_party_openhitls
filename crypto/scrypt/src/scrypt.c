@@ -530,17 +530,17 @@ CRYPT_SCRYPT_Ctx *CRYPT_SCRYPT_DupCtx(const CRYPT_SCRYPT_Ctx *ctx)
 
     if (ctx->password != NULL) {
         password = BSL_SAL_Dump(ctx->password, ctx->passLen);
-        GOTO_EXIT_IF((password == NULL), CRYPT_MEM_ALLOC_FAIL);
+        GOTO_ERR_IF_TRUE((password == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
     if (ctx->salt != NULL) {
         salt = BSL_SAL_Dump(ctx->salt, ctx->saltLen);
-        GOTO_EXIT_IF((salt == NULL), CRYPT_MEM_ALLOC_FAIL);
+        GOTO_ERR_IF_TRUE((salt == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
 
     newCtx->password = password;
     newCtx->salt = salt;
     return newCtx;
-EXIT:
+ERR:
     BSL_SAL_ClearFree(password, ctx->passLen);
     BSL_SAL_Free(salt);
     BSL_SAL_Free(newCtx);

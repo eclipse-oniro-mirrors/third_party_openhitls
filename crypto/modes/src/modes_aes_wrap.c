@@ -270,13 +270,12 @@ int32_t MODE_WRAP_Decrypt(MODES_CipherWRAPCtx *ctx, const uint8_t *in, uint8_t *
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
+    if (*outLen < inLen) {
+        return CRYPT_MODE_BUFF_LEN_NOT_ENOUGH;
+    }
     if (inLen < AES_ENCRYPT_BUF_SIZE || inLen > CRYPT_WRAP_MAX_INPUT_LEN || ((inLen & 0x07) != 0)) {
         BSL_ERR_PUSH_ERROR(CRYPT_MODE_ERR_INPUT_LEN);
         return CRYPT_MODE_ERR_INPUT_LEN;
-    }
-    if (*outLen < inLen - CRYPT_WRAP_BLOCKSIZE) {
-        BSL_ERR_PUSH_ERROR(CRYPT_MODE_BUFF_LEN_NOT_ENOUGH);
-        return CRYPT_MODE_BUFF_LEN_NOT_ENOUGH;
     }
     if (ctx->flagPad == false) {    // No padding
         *outLen = inLen - CRYPT_WRAP_BLOCKSIZE;
@@ -355,6 +354,18 @@ MODES_WRAP_Ctx *MODES_WRAP_NoPadNewCtx(int32_t algId)
     return MODES_WRAP_NewCtx(algId, false);
 }
 
+MODES_WRAP_Ctx *MODES_WRAP_PadNewCtxEx(void *libCtx, int32_t algId)
+{
+    (void)libCtx;
+    return MODES_WRAP_NewCtx(algId, true);
+}
+
+MODES_WRAP_Ctx *MODES_WRAP_NoPadNewCtxEx(void *libCtx, int32_t algId)
+{
+    (void)libCtx;
+    return MODES_WRAP_NewCtx(algId, false);
+}
+
 int32_t MODES_WRAP_InitCtx(MODES_WRAP_Ctx *modeCtx, const uint8_t *key, uint32_t keyLen, const uint8_t *iv,
     uint32_t ivLen, void *param, bool enc)
 {
@@ -385,6 +396,10 @@ int32_t MODES_WRAP_InitCtx(MODES_WRAP_Ctx *modeCtx, const uint8_t *key, uint32_t
 
 int32_t MODES_WRAP_Update(MODES_WRAP_Ctx *modeCtx, const uint8_t *in, uint32_t inLen, uint8_t *out, uint32_t *outLen)
 {
+    if ((*outLen) < (inLen / (modeCtx->wrapCtx.blockSize) * (modeCtx->wrapCtx.blockSize))) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MODE_BUFF_LEN_NOT_ENOUGH);
+        return CRYPT_MODE_BUFF_LEN_NOT_ENOUGH;
+    }
     return modeCtx->enc ?
         MODE_WRAP_Encrypt(&modeCtx->wrapCtx, in, out, inLen, outLen) :
         MODE_WRAP_Decrypt(&modeCtx->wrapCtx, in, out, inLen, outLen);
@@ -396,8 +411,8 @@ int32_t MODES_WRAP_Final(MODES_WRAP_Ctx *modeCtx, uint8_t *out, uint32_t *outLen
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    (void) modeCtx;
-    (void) out;
+    (void)modeCtx;
+    (void)out;
     *outLen = 0;
     return CRYPT_SUCCESS;
 }

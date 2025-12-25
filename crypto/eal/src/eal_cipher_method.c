@@ -186,6 +186,30 @@ static const EAL_CipherMethod XTS_METHOD = {
 };
 #endif
 
+#ifdef HITLS_CRYPTO_WRAP
+static const EAL_CipherMethod AES_WRAP_NOPAD_METHOD = {
+    (CipherNewCtx)MODES_WRAP_NoPadNewCtxEx,
+    (CipherInitCtx)MODES_WRAP_InitCtx,
+    (CipherDeInitCtx)MODE_WRAP_DeInitCtx,
+    (CipherUpdate)MODES_WRAP_Update,
+    (CipherFinal)MODES_WRAP_Final,
+    (CipherCtrl)MODE_WRAP_Ctrl,
+    (CipherFreeCtx)MODES_WRAP_FreeCtx,
+    (CipherDupCtx)MODES_WRAP_DupCtx,
+};
+
+static const EAL_CipherMethod AES_WRAP_PAD_METHOD = {
+    (CipherNewCtx)MODES_WRAP_PadNewCtxEx,
+    (CipherInitCtx)MODES_WRAP_InitCtx,
+    (CipherDeInitCtx)MODE_WRAP_DeInitCtx,
+    (CipherUpdate)MODES_WRAP_Update,
+    (CipherFinal)MODES_WRAP_Final,
+    (CipherCtrl)MODE_WRAP_Ctrl,
+    (CipherFreeCtx)MODES_WRAP_FreeCtx,
+    (CipherDupCtx)MODES_WRAP_DupCtx,
+};
+#endif // HITLS_CRYPTO_WRAP
+
 #ifdef HITLS_CRYPTO_HCTR
 static const EAL_CipherMethod HCTR_METHOD = {
     (CipherNewCtx)MODES_HCTR_NewCtx,
@@ -194,7 +218,8 @@ static const EAL_CipherMethod HCTR_METHOD = {
     (CipherUpdate)MODES_HCTR_Update,
     (CipherFinal)MODES_HCTR_Final,
     (CipherCtrl)MODES_HCTR_Ctrl,
-    (CipherFreeCtx)MODES_HCTR_Free
+    (CipherFreeCtx)MODES_HCTR_Free,
+    (CipherDupCtx)MODES_HCTR_DupCtx
 };
 #endif
 
@@ -613,6 +638,9 @@ static int32_t SetCipherMethod(const CRYPT_EAL_Func *funcs, EAL_CipherMethod *me
                 break;
             case CRYPT_EAL_IMPLCIPHER_CTRL:
                 method->ctrl = funcs[index].func;
+                break;
+            case CRYPT_EAL_IMPLCIPHER_DUPCTX:
+                method->dupCtx = funcs[index].func;
                 break;
             default:
                 BSL_ERR_PUSH_ERROR(CRYPT_PROVIDER_ERR_UNEXPECTED_IMPL);

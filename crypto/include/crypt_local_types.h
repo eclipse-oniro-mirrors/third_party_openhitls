@@ -268,6 +268,7 @@ typedef int32_t (*KdfDerive)(void *ctx, uint8_t *key, uint32_t keyLen);
 typedef int32_t (*KdfDeinit)(void *ctx);
 typedef int32_t (*KdfCtrl)(void *data, int32_t cmd, void *val, uint32_t valLen);
 typedef void (*KdfFreeCtx)(void *ctx);
+typedef void *(*KdfDupCtx)(const void *ctx);
 
 typedef struct {
     KdfNewCtx newCtx;
@@ -276,6 +277,7 @@ typedef struct {
     KdfDeinit deinit;
     KdfCtrl ctrl;
     KdfFreeCtx freeCtx;
+    KdfDupCtx dupCtx;
 } EAL_KdfMethod;
 
 typedef struct {
@@ -309,6 +311,7 @@ typedef struct {
     MacCtrl ctrl;
     MacSetParam setParam;
     MacFreeCtx freeCtx;
+    MacDupCtx dupCtx;
 } EAL_MacMethod;
 
 typedef struct {

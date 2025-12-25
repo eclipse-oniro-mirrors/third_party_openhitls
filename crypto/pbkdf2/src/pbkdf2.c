@@ -443,25 +443,25 @@ CRYPT_PBKDF2_Ctx *CRYPT_PBKDF2_DupCtx(const CRYPT_PBKDF2_Ctx *ctx)
 
     void *macCtx = NULL;
     if (ctx->macCtx != NULL) {
-        macCtx = ctx->macMeth->dupCtx(ctx->macCtx);
-        GOTO_EXIT_IF((macCtx == NULL), CRYPT_MEM_ALLOC_FAIL);
+        macCtx = ctx->macMeth.dupCtx(ctx->macCtx);
+        GOTO_ERR_IF_TRUE((macCtx == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
 
     if (ctx->password != NULL) {
         password = BSL_SAL_Dump(ctx->password, ctx->passLen);
-        GOTO_EXIT_IF((password == NULL), CRYPT_MEM_ALLOC_FAIL);
+        GOTO_ERR_IF_TRUE((password == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
     if (ctx->salt != NULL) {
         salt = BSL_SAL_Dump(ctx->salt, ctx->saltLen);
-        GOTO_EXIT_IF((salt == NULL), CRYPT_MEM_ALLOC_FAIL);
+        GOTO_ERR_IF_TRUE((salt == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
     newCtx->macCtx = macCtx;
     newCtx->password = password;
     newCtx->salt = salt;
     return newCtx;
-EXIT:
+ERR:
     if (macCtx != NULL) {
-        ctx->macMeth->freeCtx(macCtx);
+        ctx->macMeth.freeCtx(macCtx);
     }
     BSL_SAL_ClearFree(password, ctx->passLen);
     BSL_SAL_Free(salt);

@@ -262,21 +262,21 @@ CRYPT_KDFTLS12_Ctx *CRYPT_KDFTLS12_DupCtx(const CRYPT_KDFTLS12_Ctx *ctx)
 
     void *macCtx = NULL;
     if (ctx->macCtx != NULL) {
-        macCtx = ctx->macMeth->dupCtx(ctx->macCtx);
-        GOTO_EXIT_IF((macCtx == NULL), CRYPT_MEM_ALLOC_FAIL);
+        macCtx = ctx->macMeth.dupCtx(ctx->macCtx);
+        GOTO_ERR_IF_TRUE((macCtx == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
 
     if (ctx->key != NULL) {
         key = BSL_SAL_Dump(ctx->key, ctx->keyLen);
-        GOTO_EXIT_IF((key == NULL), CRYPT_MEM_ALLOC_FAIL);
+        GOTO_ERR_IF_TRUE((key == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
     if (ctx->seed != NULL) {
         seed = BSL_SAL_Dump(ctx->seed, ctx->seedLen);
-        GOTO_EXIT_IF((seed == NULL), CRYPT_MEM_ALLOC_FAIL);
+        GOTO_ERR_IF_TRUE((seed == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
     if (ctx->label != NULL) {
         label = BSL_SAL_Dump(ctx->label, ctx->labelLen);
-        GOTO_EXIT_IF((label == NULL), CRYPT_MEM_ALLOC_FAIL);
+        GOTO_ERR_IF_TRUE((label == NULL), CRYPT_MEM_ALLOC_FAIL);
     }
 
     newCtx->macCtx = macCtx;
@@ -284,9 +284,9 @@ CRYPT_KDFTLS12_Ctx *CRYPT_KDFTLS12_DupCtx(const CRYPT_KDFTLS12_Ctx *ctx)
     newCtx->seed = seed;
     newCtx->label = label;
     return newCtx;
-EXIT:
+ERR:
     if (macCtx != NULL) {
-        ctx->macMeth->freeCtx(macCtx);
+        ctx->macMeth.freeCtx(macCtx);
     }
     BSL_SAL_ClearFree(key, ctx->keyLen);
     BSL_SAL_ClearFree(label, ctx->labelLen);

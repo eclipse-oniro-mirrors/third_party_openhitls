@@ -54,6 +54,10 @@ MODES_WRAP_Ctx *MODES_WRAP_PadNewCtx(int32_t algId);
 
 MODES_WRAP_Ctx *MODES_WRAP_NoPadNewCtx(int32_t algId);
 
+MODES_WRAP_Ctx *MODES_WRAP_PadNewCtxEx(void *libCtx, int32_t algId);
+
+MODES_WRAP_Ctx *MODES_WRAP_NoPadNewCtxEx(void *libCtx, int32_t algId);
+
 int32_t MODES_WRAP_InitCtx(MODES_WRAP_Ctx *modeCtx, const uint8_t *key, uint32_t keyLen, const uint8_t *iv,
     uint32_t ivLen, void *param, bool enc);
 

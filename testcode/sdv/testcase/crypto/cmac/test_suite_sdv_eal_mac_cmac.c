@@ -21,7 +21,7 @@
 #include "eal_mac_local.h"
 #include "crypt_errno.h"
 #include "bsl_sal.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 /* END_HEADER */
 
 #define AES128_KEY_LEN 16
@@ -46,6 +46,8 @@ uint32_t GetKeyLen(int algId)
             return 0;
     }
 }
+
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 
 /* @
 * @test  SDV_CRYPT_EAL_CMAC_API_TC001
@@ -861,8 +863,7 @@ void SDV_CRYPTO_CMAC_COPY_CTX_API_TC001(int algId, int isProvider)
 
     // A directly created context can also be used as the destination for copying.
     ASSERT_EQ(CRYPT_EAL_MacCopyCtx(&ctxC, ctxA), CRYPT_SUCCESS);
-    ctxC.macMeth->freeCtx(ctxC.ctx);
-    BSL_SAL_Free(ctxC.macMeth);
+    ctxC.macMeth.freeCtx(ctxC.ctx);
 EXIT:
     CRYPT_EAL_MacFreeCtx(ctxA);
     CRYPT_EAL_MacFreeCtx(ctxB);
@@ -997,9 +998,7 @@ void SDV_CRYPTO_CMAC_COPY_CTX_STUB_TC001(int algId, Hex *key, int isProvider)
 {
     TestMemInit();
     uint32_t totalMallocCount = 0;
-    STUB_Init();
-    FuncStubInfo tmpRpInfo = {0};
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
 
     STUB_EnableMallocFail(false);
     STUB_ResetMallocCount();
@@ -1014,6 +1013,6 @@ void SDV_CRYPTO_CMAC_COPY_CTX_STUB_TC001(int algId, Hex *key, int isProvider)
     }
 
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */
