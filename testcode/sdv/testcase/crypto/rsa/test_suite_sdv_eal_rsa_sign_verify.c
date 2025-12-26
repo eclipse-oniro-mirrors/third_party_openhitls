@@ -26,8 +26,11 @@
 #include "crypt_params_key.h"
 #include "crypt_bn.h"
 #include "crypt_rsa.h"
-#include "rsa_local.h"
 
+#ifdef HITLS_CRYPTO_RSA_EMSA_ISO9796_2
+int32_t CRYPT_RSA_VerifyIso9796_2(const uint8_t *mlHash, uint32_t mlHashLen,
+    const uint8_t *pad, uint32_t padLen);
+#endif
 /* END_HEADER */
 
 int MD_Data(CRYPT_MD_AlgId mdId, Hex *msgIn, Hex *mdOut)
@@ -1575,8 +1578,8 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_PASS_TC001(int isProvider, int bits, i
     mLLen = keyBytes - hashLen - 2;
     msgLen = mLLen + 1;
 
-    msg = BSL_SAL_Malloc(msgLen);
-    signBuf = BSL_SAL_Malloc(keyBytes);
+    msg = (uint8_t *)malloc(msgLen);
+    signBuf = (uint8_t *)malloc(keyBytes);
     ASSERT_TRUE(msg != NULL && signBuf != NULL);
     for (uint32_t i = 0; i < msgLen; i++) {
         msg[i] = (uint8_t)i;
@@ -1590,7 +1593,11 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_PASS_TC001(int isProvider, int bits, i
     ASSERT_TRUE(pkey != NULL);
     ASSERT_EQ(CRYPT_EAL_PkeySetPara(pkey, &para), CRYPT_SUCCESS);
 #ifdef HITLS_CRYPTO_DRBG
-    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    if (isProvider) {
+        ASSERT_EQ(TestRandInitSelfCheck(), CRYPT_SUCCESS);
+    } else {
+        ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    }
 #endif
     ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_EMSA_ISO9796_2, isoParam, 0), CRYPT_SUCCESS);
@@ -1603,8 +1610,8 @@ EXIT:
     TestRandDeInit();
 #endif
     CRYPT_EAL_PkeyFreeCtx(pkey);
-    BSL_SAL_Free(msg);
-    BSL_SAL_Free(signBuf);
+    free(msg);
+    free(signBuf);
 }
 /* END_CASE */
 
@@ -1655,9 +1662,9 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_DETER_TC001(int isProvider, int bits, 
     mLLen = keyBytes - hashLen - 2;
     msgLen = mLLen + 1;
 
-    msg = BSL_SAL_Malloc(msgLen);
-    sign1 = BSL_SAL_Malloc(keyBytes);
-    sign2 = BSL_SAL_Malloc(keyBytes);
+    msg = (uint8_t *)malloc(msgLen);
+    sign1 = (uint8_t *)malloc(keyBytes);
+    sign2 = (uint8_t *)malloc(keyBytes);
     ASSERT_TRUE(msg != NULL && sign1 != NULL && sign2 != NULL);
     for (uint32_t i = 0; i < msgLen; i++) {
         msg[i] = (uint8_t)i;
@@ -1672,7 +1679,11 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_DETER_TC001(int isProvider, int bits, 
     ASSERT_TRUE(pkey != NULL);
     ASSERT_EQ(CRYPT_EAL_PkeySetPara(pkey, &para), CRYPT_SUCCESS);
 #ifdef HITLS_CRYPTO_DRBG
-    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    if (isProvider) {
+        ASSERT_EQ(TestRandInitSelfCheck(), CRYPT_SUCCESS);
+    } else {
+        ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    }
 #endif
     ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_EMSA_ISO9796_2, isoParam, 0), CRYPT_SUCCESS);
@@ -1689,9 +1700,9 @@ EXIT:
     TestRandDeInit();
 #endif
     CRYPT_EAL_PkeyFreeCtx(pkey);
-    BSL_SAL_Free(msg);
-    BSL_SAL_Free(sign1);
-    BSL_SAL_Free(sign2);
+    free(msg);
+    free(sign1);
+    free(sign2);
 }
 /* END_CASE */
 /**
@@ -1740,8 +1751,8 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_BOUNDARY_TC001(int isProvider, int bit
     ASSERT_TRUE(mLLen > 0);
     shortLen = mLLen - 1;
 
-    msg = BSL_SAL_Malloc(mLLen);
-    signBuf = BSL_SAL_Malloc(keyBytes);
+    msg = (uint8_t *)malloc(mLLen);
+    signBuf = (uint8_t *)malloc(keyBytes);
     ASSERT_TRUE(msg != NULL && signBuf != NULL);
     for (uint32_t i = 0; i < mLLen; i++) {
         msg[i] = (uint8_t)i;
@@ -1754,7 +1765,11 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_BOUNDARY_TC001(int isProvider, int bit
     ASSERT_TRUE(pkey != NULL);
     ASSERT_EQ(CRYPT_EAL_PkeySetPara(pkey, &para), CRYPT_SUCCESS);
 #ifdef HITLS_CRYPTO_DRBG
-    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    if (isProvider) {
+        ASSERT_EQ(TestRandInitSelfCheck(), CRYPT_SUCCESS);
+    } else {
+        ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    }
 #endif
     ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_EMSA_ISO9796_2, isoParam, 0), CRYPT_SUCCESS);
@@ -1771,8 +1786,8 @@ EXIT:
     TestRandDeInit();
 #endif
     CRYPT_EAL_PkeyFreeCtx(pkey);
-    BSL_SAL_Free(msg);
-    BSL_SAL_Free(signBuf);
+    free(msg);
+    free(signBuf);
 }
 /* END_CASE */
 /**
@@ -1796,15 +1811,10 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_NEGATIVE_TC001(int isProvider, int bit
 {
 #if !defined(HITLS_CRYPTO_RSA_EMSA_ISO9796_2) || !defined(HITLS_CRYPTO_RSA_SIGN) || \
     !defined(HITLS_CRYPTO_RSA_VERIFY)
-    (void)isProvider;
-    (void)bits;
-    (void)mdAlgId;
     SKIP_TEST();
-    return;
-#else
+#endif
     if (IsMdAlgDisabled(mdAlgId)) {
         SKIP_TEST();
-        return;
     }
     TestMemInit();
     CRYPT_EAL_PkeyCtx *pkey = NULL;
@@ -1841,16 +1851,16 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_NEGATIVE_TC001(int isProvider, int bit
     msgLen = mLLen + 1;
     mlHashLen = mLLen + hashLen;
 
-    msg = BSL_SAL_Malloc(msgLen);
-    msgTamper = BSL_SAL_Malloc(msgLen);
-    sign = BSL_SAL_Malloc(keyBytes);
-    signTamper = BSL_SAL_Malloc(keyBytes);
-    em = BSL_SAL_Malloc(keyBytes);
-    emTamper = BSL_SAL_Malloc(keyBytes);
-    hash = BSL_SAL_Malloc(hashLen);
-    mlHash = BSL_SAL_Malloc(mlHashLen);
-    pubN = BSL_SAL_Malloc(keyBytes);
-    pubE = BSL_SAL_Malloc(keyBytes);
+    msg = (uint8_t *)malloc(msgLen);
+    msgTamper = (uint8_t *)malloc(msgLen);
+    sign = (uint8_t *)malloc(keyBytes);
+    signTamper = (uint8_t *)malloc(keyBytes);
+    em = (uint8_t *)malloc(keyBytes);
+    emTamper = (uint8_t *)malloc(keyBytes);
+    hash = (uint8_t *)malloc(hashLen);
+    mlHash = (uint8_t *)malloc(mlHashLen);
+    pubN = (uint8_t *)malloc(keyBytes);
+    pubE = (uint8_t *)malloc(keyBytes);
     ASSERT_TRUE(msg != NULL && msgTamper != NULL && sign != NULL && signTamper != NULL &&
         em != NULL && emTamper != NULL && hash != NULL && mlHash != NULL &&
         pubN != NULL && pubE != NULL);
@@ -1866,7 +1876,11 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_NEGATIVE_TC001(int isProvider, int bit
     ASSERT_TRUE(pkey != NULL);
     ASSERT_EQ(CRYPT_EAL_PkeySetPara(pkey, &para), CRYPT_SUCCESS);
 #ifdef HITLS_CRYPTO_DRBG
-    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    if (isProvider) {
+        ASSERT_EQ(TestRandInitSelfCheck(), CRYPT_SUCCESS);
+    } else {
+        ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    }
 #endif
     ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_EMSA_ISO9796_2, isoParam, 0), CRYPT_SUCCESS);
@@ -1885,12 +1899,7 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_NEGATIVE_TC001(int isProvider, int bit
     ASSERT_EQ(CRYPT_EAL_PkeyGetPub(pkey, &pubKey), CRYPT_SUCCESS);
     rsaCtx = CRYPT_RSA_NewCtx();
     ASSERT_TRUE(rsaCtx != NULL);
-    BSL_Param rsaPubParam[3] = {
-        {CRYPT_PARAM_RSA_N, BSL_PARAM_TYPE_OCTETS, pubKey.key.rsaPub.n, pubKey.key.rsaPub.nLen, 0},
-        {CRYPT_PARAM_RSA_E, BSL_PARAM_TYPE_OCTETS, pubKey.key.rsaPub.e, pubKey.key.rsaPub.eLen, 0},
-        BSL_PARAM_END
-    };
-    ASSERT_EQ(CRYPT_RSA_SetPubKey(rsaCtx, rsaPubParam), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_RSA_SetPubKey(rsaCtx, &pubKey.key.rsaPub), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_RSA_Ctrl(rsaCtx, CRYPT_CTRL_SET_RSA_EMSA_ISO9796_2, isoParam, 0), CRYPT_SUCCESS);
 
     mdCtx = CRYPT_EAL_MdNewCtx(mdId);
@@ -1905,6 +1914,7 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_NEGATIVE_TC001(int isProvider, int bit
         (void)memcpy(mlHash, msg, mLLen);
     }
     (void)memcpy(mlHash + mLLen, hash, hashLen);
+
     emLen = keyBytes;
     ASSERT_EQ(CRYPT_RSA_PubEnc(rsaCtx, sign, signLen, em, &emLen), CRYPT_SUCCESS);
 
@@ -1927,17 +1937,16 @@ EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
     CRYPT_RSA_FreeCtx(rsaCtx);
     CRYPT_EAL_MdFreeCtx(mdCtx);
-    BSL_SAL_Free(msg);
-    BSL_SAL_Free(msgTamper);
-    BSL_SAL_Free(sign);
-    BSL_SAL_Free(signTamper);
-    BSL_SAL_Free(em);
-    BSL_SAL_Free(emTamper);
-    BSL_SAL_Free(hash);
-    BSL_SAL_Free(mlHash);
-    BSL_SAL_Free(pubN);
-    BSL_SAL_Free(pubE);
-#endif
+    free(msg);
+    free(msgTamper);
+    free(sign);
+    free(signTamper);
+    free(em);
+    free(emTamper);
+    free(hash);
+    free(mlHash);
+    free(pubN);
+    free(pubE);
 }
 /* END_CASE */
 
@@ -2001,7 +2010,7 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_VECTOR_TC001(
 
     signLen = CRYPT_EAL_PkeyGetSignLen(pkeySign);
     ASSERT_EQ(signLen, sign->len);
-    signdata = BSL_SAL_Malloc(signLen);
+    signdata = (uint8_t *)malloc(signLen);
     ASSERT_TRUE(signdata != NULL);
 
     ASSERT_EQ(CRYPT_EAL_PkeySign(pkeySign, mdAlgId, msg->x, msg->len, signdata, &signLen), CRYPT_SUCCESS);
@@ -2012,6 +2021,6 @@ void SDV_CRYPTO_RSA_SIGN_VERIFY_ISO9796_2_VECTOR_TC001(
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeySign);
     CRYPT_EAL_PkeyFreeCtx(pkeyVerify);
-    BSL_SAL_Free(signdata);
+    free(signdata);
 }
 /* END_CASE */
