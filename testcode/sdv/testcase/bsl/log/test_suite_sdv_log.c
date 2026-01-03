@@ -181,9 +181,10 @@ void SDV_BSL_LOG_VERSION_API_TC001(void)
     const char *versionStr = "openHiTLS 0.2.1 20 May 2025";
     versionLen = 200;
     ASSERT_TRUE(BSL_LOG_GetVersion((char *)version, &versionLen) == BSL_SUCCESS);
-    ASSERT_COMPARE("version", versionStr, strlen(versionStr), version, versionLen);
+    ASSERT_TRUE(versionLen == strlen("openHiTLS 0.3.0 31 Dec 2025"));
+    ASSERT_TRUE(memcmp(version, "openHiTLS 0.3.0 31 Dec 2025", versionLen) == 0);
     uint64_t versionNum = BSL_LOG_GetVersionNum();
-    ASSERT_EQ(versionNum, 0x0020001fULL);
+    ASSERT_EQ(versionNum, 0x00300000ULL);
 EXIT:
     return;
 }
