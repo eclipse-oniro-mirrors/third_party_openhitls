@@ -439,6 +439,7 @@ void SDV_PKI_GEN_KEY_TC001(int algId, int type, int curveId)
     TestMemInit();
     ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
     ASSERT_EQ(TestEncodeKey(algId, type, curveId, path), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -478,6 +479,7 @@ void SDV_PKI_GEN_ENCKEY_TC001(int algId, int curveId, int symId, Hex *pwd)
     ASSERT_NE(pkey, NULL);
 
     ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkey, &paramEx, BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_ENCRYPT, &encode), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -506,6 +508,7 @@ void SDV_PKI_PARSE_KEY_FILE_TC001(int algId, int format, int type, char *path)
     TestMemInit();
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &pkey), CRYPT_SUCCESS);
     ASSERT_NE(pkey, NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
@@ -532,6 +535,7 @@ void SDV_PKI_PARSE_ENCKEY_FILE_TC001(int algId, int format, int type, char *path
     TestMemInit();
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, pass->x, pass->len, &pkey), CRYPT_SUCCESS);
     ASSERT_NE(pkey, NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
@@ -559,6 +563,7 @@ void SDV_PKI_PARSE_KEY_BUFF_TC001(int algId, int format, int type, Hex *encode)
     TestMemInit();
     ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(format, type, (BSL_Buffer *)encode, NULL, 0, &pkey), CRYPT_SUCCESS);
     ASSERT_NE(pkey, NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
@@ -626,6 +631,7 @@ void SDV_PKI_GEN_CRL_TC001(int algId, int hashId, int curveId)
     ASSERT_EQ(HITLS_X509_CrlGenBuff(BSL_FORMAT_PEM, crl, &encode), 0);
     BSL_SAL_FREE(encode.data);
 #endif
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -652,6 +658,7 @@ void SDV_PKI_PARSE_CRL_FILE_TC001(int algId, int format, char *path)
 
     TestMemInit();
     ASSERT_EQ(HITLS_X509_CrlParseFile(format, path, &crl), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CrlFree(crl);
@@ -674,6 +681,7 @@ void SDV_PKI_PARSE_CRL_BUFF_TC001(int algId, int format, Hex *encode)
 
     TestMemInit();
     ASSERT_EQ(HITLS_X509_CrlParseBuff(format, (BSL_Buffer *)encode, &crl), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CrlFree(crl);
@@ -739,6 +747,7 @@ void SDV_PKI_GEN_CSR_TC001(int algId, int hashId, int curveId)
     ASSERT_EQ(HITLS_X509_CsrGenBuff(BSL_FORMAT_PEM, csr, &encode), 0);
     BSL_SAL_FREE(encode.data);
 #endif
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -764,6 +773,7 @@ void SDV_PKI_PARSE_CSR_FILE_TC001(int algId, int format, char *path)
     HITLS_X509_Csr *csr = NULL;
     TestMemInit();
     ASSERT_EQ(HITLS_X509_CsrParseFile(format, path, &csr), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CsrFree(csr);
@@ -785,6 +795,7 @@ void SDV_PKI_PARSE_CSR_BUFF_TC001(int algId, int format, Hex *encode)
     HITLS_X509_Csr *csr = NULL;
     TestMemInit();
     ASSERT_EQ(HITLS_X509_CsrParseBuff(format, (BSL_Buffer *)encode, &csr), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CsrFree(csr);
@@ -856,6 +867,7 @@ void SDV_PKI_GEN_CERT_TC001(int algId, int hashId, int curveId)
     ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), 0);
     BSL_SAL_FREE(encode.data);
 #endif
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -881,6 +893,7 @@ void SDV_PKI_PARSE_CERT_FILE_TC001(int algId, int format, char *path)
     HITLS_X509_Cert *cert = NULL;
     TestMemInit();
     ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -902,6 +915,7 @@ void SDV_PKI_PARSE_CERT_BUFF_TC001(int algId, int format, Hex *encode)
     HITLS_X509_Cert *cert = NULL;
     TestMemInit();
     ASSERT_EQ(HITLS_X509_CertParseBuff(format, (BSL_Buffer *)encode, &cert), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -928,6 +942,7 @@ void SDV_PKI_PARSE_CERT_FILE_CONTAIN_T61_TC001(int algId, int format, char *path
     ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertGenBuff(format, cert, &buff), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertParseBuff(format, &buff, &certCpy), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(buff.data);
     HITLS_X509_CertFree(cert);
@@ -978,6 +993,7 @@ void SDV_HITLS_MLDSA_PQC_CERT_TC001(char *keypath)
     // generate cert buff
     ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), HITLS_PKI_SUCCESS);
     BSL_SAL_FREE(encode.data);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -1026,6 +1042,7 @@ void SDV_HITLS_MLDSA_PQCCert_TC003(int format, char *path)
     ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertGenBuff(format, cert, &buff), HITLS_PKI_SUCCESS);
     ASSERT_COMPARE("cert", buff.data, buff.dataLen, data, dataLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(buff.data);
     BSL_SAL_Free(data);
@@ -1058,6 +1075,7 @@ void SDV_HITLS_MLDSA_PQCCert_TC004(int format, int type, int key_format, int key
     ASSERT_EQ(keylen, encodeAsn1.dataLen);
     
     ASSERT_EQ(CRYPT_EAL_EncodeFileKey(pkey, NULL, format, type, path), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
       
 EXIT:
     BSL_SAL_FREE(encodeAsn1.data);
@@ -1116,6 +1134,7 @@ void SDV_HITLS_MLDSA_PQCCert_TC006()
     // generate cert buff
     ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), 0);
     BSL_SAL_FREE(encode.data);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -1171,6 +1190,7 @@ void SDV_HITLS_MLDSA_PQCCert_TC007(char *keypath)
     // generate cert buff
     ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), 0);
     BSL_SAL_FREE(encode.data);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -1203,6 +1223,7 @@ static int32_t SetCertExtkid(HITLS_X509_Cert *cert, uint8_t *akid, uint8_t *skid
 
     san.names = GenGeneralNameList();
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_SET_SAN, &san, sizeof(HITLS_X509_ExtSan)), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ret = 0;
 EXIT:
     BSL_LIST_FREE(san.names, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeGeneralName);
@@ -1282,6 +1303,7 @@ void SDV_HITLS_GEN_CSR_CERT_TC001()
     // generate cert buff
     ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), 0);
     BSL_SAL_FREE(encode.data);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -1378,6 +1400,7 @@ void SDV_HITLS_GEN_CSR_MIDCERT_TC001()
     // generate cert buff
     ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), 0);
     BSL_SAL_FREE(encode.data);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -1475,6 +1498,7 @@ void SDV_HITLS_GEN_CSR_EECERT_TC001()
     // generate cert buff
     ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), 0);
     BSL_SAL_FREE(encode.data);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -1530,6 +1554,7 @@ void SDV_HITLS_CERT_CHAIN_FUNC_TC001()
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ret = HITLS_X509_CertVerify(store, chain);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(entity);
@@ -1562,6 +1587,7 @@ void SDV_HITLS_MLDSA_PQCCert_TC009(int key_format)
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_MLDSA_PRVKEY_FORMAT, &key_format, sizeof(uint32_t)), CRYPT_SUCCESS);
 
     ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkey, NULL, BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, &encodeAsn1), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     switch (key_format)
     {
         case CRYPT_ALGO_MLDSA_PRIV_FORMAT_SEED_ONLY:
@@ -1611,6 +1637,7 @@ void SDV_HITLS_MLDSA_PQCCert_TC010()
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_MLDSA_PRVKEY_FORMAT, &key_format, sizeof(uint32_t)), CRYPT_SUCCESS);
 
     ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkey, NULL, BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, &encodeAsn1), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
     encodeAsn1.data[40]++; 
     ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_ASN1, CRYPT_PRIKEY_PKCS8_UNENCRYPT, &encodeAsn1, NULL, 0, &pkeyout), CRYPT_MLDSA_PRVKEY_SEED_INCONSISTENT);
@@ -1643,6 +1670,7 @@ void SDV_HITLS_SLHDSA_PQCCert_TC001(int format, char *path)
     ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CertGenBuff(format, cert, &buff), HITLS_PKI_SUCCESS);
     ASSERT_COMPARE("cert", buff.data, buff.dataLen, data, dataLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(buff.data);
     BSL_SAL_Free(data);
@@ -1686,6 +1714,7 @@ void SDV_PKI_GET_SAN_FROM_CERT_BUFF_TC001(int algId, int format, Hex *encode)
 
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_GET_SUBJECT_CN_STR, &cn, sizeof(BSL_Buffer)), 0);
     ASSERT_NE(cn.data, NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -1887,6 +1916,7 @@ void SDV_PKI_GEN_CERT_STUB_TC001(int algId, int hashId, int curveId)
         ASSERT_EQ(HITLS_X509_CertSign(hashId, key, &algParam, cert), HITLS_PKI_SUCCESS);
         ASSERT_EQ(HITLS_X509_CertSign(hashId, key, &algParam, testCert), HITLS_PKI_SUCCESS);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
     STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
 
@@ -1978,6 +2008,7 @@ void SDV_PKI_GEN_CSR_STUB_TC001(int algId, int hashId, int curveId)
         ASSERT_EQ(HITLS_X509_CsrSign(hashId, key, &algParam, csr), HITLS_PKI_SUCCESS);
         ASSERT_EQ(HITLS_X509_CsrSign(hashId, key, &algParam, testCsr), HITLS_PKI_SUCCESS);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
     STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
 
@@ -2231,6 +2262,7 @@ void SDV_X509_PQ_CERT_GEN_PKI_TC001(int algId, int paraId, char *root, char *crl
     remove(root);
     remove(crl);
     remove(csr);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CertFree(cert);
     CRYPT_EAL_PkeyFreeCtx(privKey);

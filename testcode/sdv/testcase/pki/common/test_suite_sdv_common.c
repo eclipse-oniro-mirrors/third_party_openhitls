@@ -409,6 +409,7 @@ void SDV_CRYPT_EAL_ParseFilePriKeyFormat_TC001(int format, int type, char *path)
     BSL_GLOBAL_Init();
     CRYPT_EAL_PkeyCtx *key = NULL;
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(key);
     BSL_GLOBAL_DeInit();
@@ -422,6 +423,7 @@ void SDV_CRYPT_EAL_ParseFilePubKeyFormat_TC001(int format, int type, char *path)
     BSL_GLOBAL_Init();
     CRYPT_EAL_PkeyCtx *key = NULL;
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(key);
     BSL_GLOBAL_DeInit();
@@ -440,6 +442,7 @@ void SDV_X509_EncodeNameList_TC001(int format, char *certPath, Hex *expect)
     ASSERT_EQ(HITLS_X509_EncodeNameList(cert->tbs.issuerName, &name), 0);
 
     ASSERT_COMPARE("Encode names", name.buff, name.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -732,6 +735,7 @@ void SDV_X509_EXT_EncodeBCons_TC001(int critical, int isCa, int maxPathLen, Hex 
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext: bCons", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CertFree(cert);
     BSL_SAL_Free(encode.buff);
@@ -760,6 +764,7 @@ void SDV_X509_EXT_EncodeExtendKeyUsage_TC001(int critical, Hex *oid1, Hex *oid2,
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext: extendKeyUsage", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -857,6 +862,7 @@ void SDV_X509_EXT_EncodeSan_TC001(int critical, int type1, int type2, int type3,
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext: san", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -883,6 +889,7 @@ void SDV_X509_EXT_EncodeKeyUsage_TC001(int critical, int usage, Hex *expect)
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext: keyUsage", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CertFree(cert);
     BSL_SAL_Free(encode.buff);
@@ -908,6 +915,7 @@ void SDV_X509_EXT_EncodeAKiSki_TC001(int critical1, int critical2, Hex *kid1, He
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext:aki ski", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CertFree(cert);
     BSL_SAL_Free(encode.buff);
@@ -948,6 +956,7 @@ void SDV_X509_EXT_ParseGeneralNames_TC001(Hex *encode, Hex *ip, Hex *uri, Hex *r
             ASSERT_COMPARE("gn", name->value.data, name->value.dataLen, map[idx].value->x, map[idx].value->len);
         }
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ClearGeneralNames(list);
@@ -1009,6 +1018,7 @@ void SDV_X509_EXT_ParseExtendedKu_TC001(Hex *encode, Hex *ku1, Hex *ku2, Hex *ku
         ASSERT_COMPARE("Extended key usage", values[idx]->x, values[idx]->len, data->data, data->dataLen);
         idx++;
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ClearExtendedKeyUsage(&exku);
@@ -1030,6 +1040,7 @@ void SDV_X509_EXT_ParseAki_TC001(Hex *encode, Hex *kid, Hex *serial, int nameCnt
     ASSERT_COMPARE("serial", aki.serialNum.data, aki.serialNum.dataLen, serial->x, serial->len);
 
     ASSERT_EQ(BSL_LIST_COUNT(aki.issuerName), nameCnt);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ClearAuthorityKeyId(&aki);
@@ -1064,6 +1075,7 @@ void SDV_X509_EXT_ParseSan_TC001(Hex *encode, int ret, int gnNameCnt, int gnType
         dirName = BSL_LIST_GET_NEXT(dirNameList);      // layer 2
         ASSERT_COMPARE("dnname type", dirName->nameType.buff, dirName->nameType.len, dnType->x, dnType->len);
         ASSERT_COMPARE("dnname value", dirName->nameValue.buff, dirName->nameValue.len, dnValue->x, dnValue->len);
+        ASSERT_TRUE(TestIsErrStackEmpty());
     }
 
 EXIT:
@@ -1185,7 +1197,9 @@ void SDV_X509_SIGN_Func_TC002(void)
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(prvKey, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(CRYPT_RsaPadType)), 0);
 
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA224, prvKey, NULL, &obj, TestSignCb), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA224, prvKey, &algParam, &obj, TestSignCb), HITLS_X509_ERR_SIGN_PARAM);
+    TestErrClear();
 
     pad = CRYPT_EMSA_PSS;
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(prvKey, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(CRYPT_RsaPadType)), 0);
@@ -1198,6 +1212,7 @@ void SDV_X509_SIGN_Func_TC002(void)
         {CRYPT_PARAM_RSA_SALTLEN, BSL_PARAM_TYPE_INT32, &pssPara.saltLen, sizeof(pssPara.saltLen), 0},
         BSL_PARAM_END};
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(prvKey, CRYPT_CTRL_SET_RSA_EMSA_PSS, pssParam, 0), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA224, prvKey, NULL, &obj, TestSignCb), HITLS_X509_ERR_MD_NOT_MATCH);
 
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA256, prvKey, NULL, &obj, TestSignCb), 0);
@@ -1306,6 +1321,7 @@ void SDV_HITLS_X509_PrintDn_TC002(char *certPath, int format, int printFlag, cha
     BSL_Buffer data = {(uint8_t *)rawIssuer, sizeof(BslList)};
     ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, &printFlag, sizeof(int), NULL), HITLS_PKI_SUCCESS);
     ASSERT_EQ(PrintBuffTest(HITLS_PKI_PRINT_DNNAME, &data, "Print Distinguish name", &expectName, false), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -1435,6 +1451,7 @@ void SDV_HITLS_X509_PrintCrl_TC001(char *certPath, int format, int printFlag, ch
     BSL_Buffer data = {(uint8_t *)crl, sizeof(HITLS_X509_Crl *)};
     ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, &printFlag, sizeof(int), NULL), HITLS_PKI_SUCCESS);
     ASSERT_EQ(PrintBuffTest(HITLS_PKI_PRINT_CRL, &data, "Print crl file", &expect, true), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CrlFree(crl);
@@ -1486,6 +1503,7 @@ void SDV_HITLS_MLKEM_PrivateKey_SeedFormat_TC001(int format, int type, char *pat
     // Compare with original file
     ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
     ASSERT_COMPARE("seed key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_SAL_FREE(encodeAsn1.data);
@@ -1535,6 +1553,7 @@ void SDV_HITLS_MLKEM_PrivateKey_ExpandedFormat_TC001(int format, int type, char 
     // Compare with original file
     ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
     ASSERT_COMPARE("expanded key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_SAL_FREE(encodeAsn1.data);
@@ -1585,6 +1604,7 @@ void SDV_HITLS_MLKEM_PrivateKey_BothFormat_TC001(int format, int type, char *pat
     // Compare with original file
     ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
     ASSERT_COMPARE("both format key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_SAL_FREE(encodeAsn1.data);
@@ -1715,6 +1735,7 @@ void SDV_HITLS_MLKEM_PrivateKey_MutatedS0_TC001(int format, int type, char *path
     ASSERT_EQ(ret, CRYPT_MLKEM_INVALID_PRVKEY);
 #else
     ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 #endif
 
 EXIT:
@@ -1755,6 +1776,7 @@ void SDV_HITLS_MLKEM_PublicKey_TC001(int format, int type, char *path)
     // Read original file and compare
     ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
     ASSERT_COMPARE("public key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_SAL_FREE(encodeAsn1.data);
@@ -1800,6 +1822,7 @@ void SDV_HITLS_MLKEM_PrivateKey_GenerateEncode_TC001(int mlkemType, int format, 
 
     // Encode to file
     ASSERT_EQ(CRYPT_EAL_EncodeFileKey(pkey, NULL, format, type, path), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     TestRandDeInit();
@@ -1822,6 +1845,7 @@ void SDV_HITLS_MLDSA_PQCCert_TC001(int format, int type, char *path)
     
     ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
     ASSERT_COMPARE("key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_SAL_FREE(encodeAsn1.data);
@@ -1840,6 +1864,7 @@ void SDV_HITLS_MLDSA_PQCCert_TC005(int format, int type, char *path, int key_for
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
     
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(key, CRYPT_CTRL_SET_MLDSA_PRVKEY_FORMAT, &key_format, sizeof(uint32_t)), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
     ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(key, NULL, format, type, &encodeAsn1), err);
 EXIT:
@@ -1863,6 +1888,7 @@ void SDV_HITLS_SLHDSA_PQCCert_TC001(int format, int type, char *path)
 
     ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
     ASSERT_COMPARE("key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_SAL_FREE(encodeAsn1.data);
@@ -1935,6 +1961,7 @@ void SDV_PKI_HOSTNAME_EXACT_MATCH_TC001(int flag)
     ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.web-server.openhitls.com", "app1.web-server.openhitls.com"),
         HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "192.168.1.1", "192.168.1.1"), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 #else
@@ -1973,6 +2000,7 @@ void SDV_PKI_HOSTNAME_WILDCARD_MATCH_TC002(int flag)
         "foobaz.example.net"), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "b*z.example.net",
         "buzz.example.net"), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 #else
@@ -2107,6 +2135,7 @@ void SDV_PKI_VERIFY_HOSTNAME_TC001(int algId, int format, Hex *encode, int flag)
     ASSERT_NE(cert, NULL);
     ASSERT_EQ(HITLS_X509_VerifyHostname(cert, -1, "test.hitls.com", strlen("test.hitls.com") - 1),
         HITLS_X509_ERR_INVALID_PARAM);
+    TestErrClear();
     // Normal cases
     ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.hitls.com", strlen("test.hitls.com")), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.hitls.net", strlen("test.hitls.net")), HITLS_PKI_SUCCESS);
@@ -2128,6 +2157,7 @@ void SDV_PKI_VERIFY_HOSTNAME_TC001(int algId, int format, Hex *encode, int flag)
         HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "openhitls.com", strlen("openhitls.com")), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "TEST.HITLS.COM", strlen("TEST.HITLS.COM")), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
     // Abnormal cases
     ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "openhitls.com\0otherinfo", 23),

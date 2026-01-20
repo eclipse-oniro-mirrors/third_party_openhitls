@@ -85,6 +85,7 @@ void SDV_X509_CSR_Free_FUNC_TC001(void)
     HITLS_X509_Csr *csr = HITLS_X509_CsrNew();
     ASSERT_NE(csr, NULL);
     HITLS_X509_CsrFree(csr);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
     HITLS_X509_CsrFree(NULL);
 
@@ -181,6 +182,7 @@ void SDV_X509_CSR_PARSE_FUNC_TC001(int format, char *path, int expRawDataLen, in
     ASSERT_EQ(csr->signature.len, expectedSign->len);
     ASSERT_EQ(memcmp(csr->signature.buff, expectedSign->x, expectedSign->len), 0);
     ASSERT_EQ(csr->signature.unusedBits, expectUnusedbits);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CsrFree(csr);
@@ -222,6 +224,7 @@ void SDV_X509_CSR_PARSE_FUNC_TC002(int format, char *path, int expectedNum, char
         ASSERT_EQ(strcmp(dnTypes[i / 2], oidName), 0);
         ASSERT_EQ(memcmp(dnName[i / 2], nameValue.buff, strlen(dnName[i / 2])), 0);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CsrFree(csr);
@@ -254,6 +257,7 @@ void SDV_X509_CSR_PARSE_FUNC_TC003(int format, char *path, int attrNum, int attr
     ASSERT_NE(oid, NULL);
     ASSERT_COMPARE("csr attr oid", entry->attrId.buff, entry->attrId.len, (uint8_t *)oid->octs, oid->octetLen);
     ASSERT_COMPARE("csr attr value", entry->attrValue.buff, entry->attrValue.len, attrValue->x, attrValue->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CsrFree(csr);
@@ -363,6 +367,7 @@ void SDV_X509_CSR_GEN_FUNC_TC001(int inFormat, char *csrPath, int outFormat)
         ASSERT_EQ(csr->rawDataLen, encode.dataLen);
         ASSERT_EQ(memcmp(encode.data, csr->rawData, encode.dataLen), 0);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_FREE(data);
     BSL_SAL_FREE(encode.data);
@@ -492,6 +497,7 @@ void SDV_X509_CSR_GEN_FUNC_TC002(int csrFormat, char *csrPath, int keyFormat, ch
         ASSERT_EQ(newCsrEncodeLen, rawCsrEncodeLen);
         ASSERT_EQ(memcmp(newCsrEncode, rawCsrEncode, rawCsrEncodeLen), 0);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CsrFree(parsed);
     HITLS_X509_CsrFree(raw);
@@ -680,6 +686,7 @@ void SDV_X509_CSR_CTRL_SET_API_TC002(char *csrPath)
     SetRsaPara(&rsaPara, e, sizeof(e), 2048); // 2048 is rsa key bits
     ASSERT_EQ(CRYPT_EAL_PkeySetPara(rsaPkey, &rsaPara), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyGen(rsaPkey), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ASSERT_NE(HITLS_X509_CsrCtrl(csr, HITLS_X509_SET_PUBKEY, NULL, 0), HITLS_PKI_SUCCESS);
     ASSERT_NE(HITLS_X509_CsrCtrl(NULL, HITLS_X509_SET_PUBKEY, rsaPkey, 0), HITLS_PKI_SUCCESS);
 
@@ -733,6 +740,7 @@ void SDV_X509_CSR_CTRL_FUNC_TC001(char *csrPath)
 
     ASSERT_EQ(HITLS_X509_CsrCtrl(newCsr, HITLS_X509_GET_ENCODELEN, &csrEncodeLen, sizeof(csrEncodeLen)),
         HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_SAL_FREE(encodeRaw.data);
@@ -821,6 +829,7 @@ void SDV_X509_CSR_EncodeAttrList_FUNC_TC001(int critical1, int maxPath, int crit
     // Test: Encode and check
     ASSERT_EQ(HITLS_X509_EncodeAttrList(1, attrs, NULL, &encode), 0);
     ASSERT_COMPARE("Encode attrs", expect->x, expect->len, encode.buff, encode.len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CsrFree(csr);
@@ -939,6 +948,7 @@ void SDV_X509_CSR_AddSubjectName_FUNC_TC001(int keyFormat, int keyType, char *pr
     ASSERT_EQ(SetNewCsrInfo(new, privKey, dnType1, dnName1, dnType2, dnName2, dnType3, dnName3), 0);
     ASSERT_EQ(HITLS_X509_CsrSign(mdId, privKey, NULL, new), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CsrGenBuff(BSL_FORMAT_PEM, new, &encode), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ASSERT_EQ(new->reqInfo.reqInfoRawDataLen, expectedReqInfo->len);
     ASSERT_EQ(memcmp(new->reqInfo.reqInfoRawData, expectedReqInfo->x, expectedReqInfo->len), 0);
 
@@ -1101,6 +1111,7 @@ void SDV_X509_CSR_PARSE_ATTR_EXTS_TC001(int format, char *path, int expectIsCa, 
 
     /* ExtendedKeyUsage */
     ASSERT_EQ(CertAssertEkuFlags(cert, expectEkuServerAuth, expectEkuClientAuth), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ExtFree(csrExt);
@@ -1216,6 +1227,7 @@ void SDV_X509_CSR_EncodeAttrList_SetSAN_FUNC_TC001(char *keyPath, int critical, 
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_CSR_EXT, parsed, 0), HITLS_PKI_SUCCESS);
     ASSERT_EQ(CertAssertSanEquals(cert, dns1, dns2, email1, uri1), HITLS_PKI_SUCCESS);
     HITLS_X509_CertFree(cert);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ExtFree(ext);
@@ -1270,6 +1282,7 @@ void SDV_X509_CSR_EncodeAttrList_SetEKU_FUNC_TC001(char *keyPath, int critical, 
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_CSR_EXT, parsed, 0), HITLS_PKI_SUCCESS);
     ASSERT_EQ(CertAssertEkuFlags(cert, withServerAuth ? 1 : 0, withClientAuth ? 1 : 0), HITLS_PKI_SUCCESS);
     HITLS_X509_CertFree(cert);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ExtFree(ext);
@@ -1306,6 +1319,7 @@ void SDV_X509_CSR_EncodeAttrList_SetSKI_FUNC_TC001(char *keyPath, int critical, 
     ASSERT_EQ(ski2.kid.dataLen, kid->len);
     ASSERT_COMPARE("SKI.csr", ski2.kid.data, ski2.kid.dataLen, kid->x, kid->len);
     HITLS_X509_ExtFree(csrExt2);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ExtFree(ext);
@@ -1343,6 +1357,7 @@ void SDV_X509_CSR_EncodeAttrList_SetAKI_FUNC_TC001(char *keyPath, int critical, 
         ASSERT_COMPARE("AKI.csr.kid", aki2.kid.data, aki2.kid.dataLen, kid->x, kid->len);
     }
     HITLS_X509_ExtFree(csrExt2);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ExtFree(ext);

@@ -241,6 +241,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC001(int id)
     outLen = CRYPT_EAL_MdGetDigestSize(id);
 
    ASSERT_COMPARE("sha2", out1, outLen, out2, outLen);
+   ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx1);
@@ -276,6 +277,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC002(int id, Hex *digest)
     ASSERT_EQ(CRYPT_EAL_MdFinal(ctx, out, &outLen), CRYPT_SUCCESS);
 
     ASSERT_COMPARE("sha2", out, outLen, digest->x, digest->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
 }
@@ -314,6 +316,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC003(int algId, Hex *in, Hex *digest)
   
     ASSERT_EQ(CRYPT_EAL_Md(algId, in->x, in->len, out, &outLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("sha2", out, outLen, digest->x, digest->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
 }
@@ -354,6 +357,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC004(int algId, Hex *plain_text1, Hex *plain_te
     ASSERT_EQ(CRYPT_EAL_MdFinal(ctx, output, &outLen), CRYPT_SUCCESS);
 
     ASSERT_COMPARE("sha2", output, outLen, hash->x, hash->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
 }
@@ -388,6 +392,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC005(int algId, Hex *data, Hex *hash)
     for (uint32_t i = 0; i < threadNum; i++) {
         pthread_join(thrd[i], NULL);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     return;
@@ -485,6 +490,7 @@ void SDV_CRYPTO_SHA2_DEFAULT_PROVIDER_FUNC_TC001(int id, Hex *msg, Hex *hash)
     ASSERT_EQ(CRYPT_EAL_MdUpdate(ctx, msg->x, msg->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_MdFinal(ctx, output, &outLen), CRYPT_SUCCESS);
     ASSERT_EQ(memcmp(output, hash->x, hash->len), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
