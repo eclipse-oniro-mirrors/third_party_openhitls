@@ -58,6 +58,9 @@
 #ifdef HITLS_CRYPTO_OFB
 #include "crypt_modes_ofb.h"
 #endif
+#ifdef HITLS_CRYPTO_WRAP
+#include "crypt_modes_aes_wrap.h"
+#endif
 #include "eal_common.h"
 #include "bsl_sal.h"
 
@@ -69,7 +72,8 @@ static const EAL_CipherMethod CHACHA20_POLY1305_METHOD = {
     (CipherUpdate)MODES_CHACHA20POLY1305_Update,
     (CipherFinal)MODES_CHACHA20POLY1305_Final,
     (CipherCtrl)MODES_CHACHA20POLY1305_Ctrl,
-    (CipherFreeCtx)MODES_CHACHA20POLY1305_FreeCtx
+    (CipherFreeCtx)MODES_CHACHA20POLY1305_FreeCtx,
+    (CipherDupCtx)MODES_CHACHA20POLY1305_DupCtx
 };
 #endif
 
@@ -81,7 +85,8 @@ static const EAL_CipherMethod CTR_METHOD = {
     (CipherUpdate)MODES_CTR_UpdateEx,
     (CipherFinal)MODES_CTR_Final,
     (CipherCtrl)MODES_CTR_Ctrl,
-    (CipherFreeCtx)MODES_CTR_FreeCtx
+    (CipherFreeCtx)MODES_CTR_FreeCtx,
+    (CipherDupCtx)MODES_CipherDupCtx
 };
 #endif
 
@@ -93,7 +98,8 @@ static const EAL_CipherMethod CBC_METHOD = {
     (CipherUpdate)MODES_CBC_UpdateEx,
     (CipherFinal)MODES_CBC_FinalEx,
     (CipherCtrl)MODES_CBC_Ctrl,
-    (CipherFreeCtx)MODES_CBC_FreeCtx
+    (CipherFreeCtx)MODES_CBC_FreeCtx,
+    (CipherDupCtx)MODES_CipherDupCtx
 };
 #endif
 
@@ -105,7 +111,8 @@ static const EAL_CipherMethod ECB_METHOD = {
     (CipherUpdate)MODES_ECB_UpdateEx,
     (CipherFinal)MODES_ECB_FinalEx,
     (CipherCtrl)MODES_ECB_Ctrl,
-    (CipherFreeCtx)MODES_ECB_FreeCtx
+    (CipherFreeCtx)MODES_ECB_FreeCtx,
+    (CipherDupCtx)MODES_CipherDupCtx
 };
 #endif
 
@@ -117,7 +124,8 @@ static const EAL_CipherMethod CCM_METHOD = {
     (CipherUpdate)MODES_CCM_UpdateEx,
     (CipherFinal)MODES_CCM_Final,
     (CipherCtrl)MODES_CCM_Ctrl,
-    (CipherFreeCtx)MODES_CCM_FreeCtx
+    (CipherFreeCtx)MODES_CCM_FreeCtx,
+    (CipherDupCtx)MODES_CCM_DupCtx
 };
 #endif
 
@@ -129,7 +137,8 @@ static const EAL_CipherMethod GCM_METHOD = {
     (CipherUpdate)MODES_GCM_UpdateEx,
     (CipherFinal)MODES_GCM_Final,
     (CipherCtrl)MODES_GCM_Ctrl,
-    (CipherFreeCtx)MODES_GCM_FreeCtx
+    (CipherFreeCtx)MODES_GCM_FreeCtx,
+    (CipherDupCtx)MODES_GCM_DupCtx
 };
 #endif
 
@@ -142,7 +151,8 @@ static const EAL_CipherMethod CFB_METHOD = {
     (CipherUpdate)MODES_CFB_UpdateEx,
     (CipherFinal)MODES_CFB_Final,
     (CipherCtrl)MODES_CFB_Ctrl,
-    (CipherFreeCtx)MODES_CFB_FreeCtx
+    (CipherFreeCtx)MODES_CFB_FreeCtx,
+    (CipherDupCtx)MODES_CFB_DupCtx
 };
 #endif
 
@@ -154,7 +164,8 @@ static const EAL_CipherMethod OFB_METHOD = {
     (CipherUpdate)MODES_OFB_UpdateEx,
     (CipherFinal)MODES_OFB_Final,
     (CipherCtrl)MODES_OFB_Ctrl,
-    (CipherFreeCtx)MODES_OFB_FreeCtx
+    (CipherFreeCtx)MODES_OFB_FreeCtx,
+    (CipherDupCtx)MODES_CipherDupCtx
 };
 #endif
 
@@ -166,9 +177,34 @@ static const EAL_CipherMethod XTS_METHOD = {
     (CipherUpdate)MODES_XTS_UpdateEx,
     (CipherFinal)MODES_XTS_Final,
     (CipherCtrl)MODES_XTS_Ctrl,
-    (CipherFreeCtx)MODES_XTS_FreeCtx
+    (CipherFreeCtx)MODES_XTS_FreeCtx,
+    (CipherDupCtx)MODES_XTS_DupCtx
 };
 #endif
+
+#ifdef HITLS_CRYPTO_WRAP
+static const EAL_CipherMethod AES_WRAP_NOPAD_METHOD = {
+    (CipherNewCtx)MODES_WRAP_NoPadNewCtx,
+    (CipherInitCtx)MODES_WRAP_InitCtx,
+    (CipherDeInitCtx)MODE_WRAP_DeInitCtx,
+    (CipherUpdate)MODES_WRAP_Update,
+    (CipherFinal)MODES_WRAP_Final,
+    (CipherCtrl)MODE_WRAP_Ctrl,
+    (CipherFreeCtx)MODES_WRAP_FreeCtx,
+    (CipherDupCtx)MODES_WRAP_DupCtx,
+};
+
+static const EAL_CipherMethod AES_WRAP_PAD_METHOD = {
+    (CipherNewCtx)MODES_WRAP_PadNewCtx,
+    (CipherInitCtx)MODES_WRAP_InitCtx,
+    (CipherDeInitCtx)MODE_WRAP_DeInitCtx,
+    (CipherUpdate)MODES_WRAP_Update,
+    (CipherFinal)MODES_WRAP_Final,
+    (CipherCtrl)MODE_WRAP_Ctrl,
+    (CipherFreeCtx)MODES_WRAP_FreeCtx,
+    (CipherDupCtx)MODES_WRAP_DupCtx,
+};
+#endif // HITLS_CRYPTO_WRAP
 
 /**
  * g_modeMethod[id]
@@ -216,10 +252,17 @@ static const EAL_CipherMethod *g_modeMethod[CRYPT_MODE_MAX] = {
     NULL,
 #endif // cfb
 #ifdef HITLS_CRYPTO_OFB
-    &OFB_METHOD
+    &OFB_METHOD,
 #else
-    NULL
+    NULL,
 #endif // ofb
+#ifdef HITLS_CRYPTO_WRAP
+    &AES_WRAP_NOPAD_METHOD,
+    &AES_WRAP_PAD_METHOD
+#else
+    NULL,
+    NULL
+#endif // wrap
 };
 
 
@@ -257,6 +300,14 @@ static const EAL_SymAlgMap SYM_ID_MAP[] = {
     {.id = CRYPT_CIPHER_AES256_OFB, .modeId = CRYPT_MODE_OFB },
 	{.id = CRYPT_CIPHER_AES128_XTS, .modeId = CRYPT_MODE_XTS },
     {.id = CRYPT_CIPHER_AES256_XTS, .modeId = CRYPT_MODE_XTS },
+#ifdef HITLS_CRYPTO_WRAP
+    {.id = CRYPT_CIPHER_AES128_WRAP_NOPAD, .modeId = CRYPT_MODE_WRAP_NOPAD},
+    {.id = CRYPT_CIPHER_AES192_WRAP_NOPAD, .modeId = CRYPT_MODE_WRAP_NOPAD},
+    {.id = CRYPT_CIPHER_AES256_WRAP_NOPAD, .modeId = CRYPT_MODE_WRAP_NOPAD},
+    {.id = CRYPT_CIPHER_AES128_WRAP_PAD, .modeId = CRYPT_MODE_WRAP_PAD},
+    {.id = CRYPT_CIPHER_AES192_WRAP_PAD, .modeId = CRYPT_MODE_WRAP_PAD},
+    {.id = CRYPT_CIPHER_AES256_WRAP_PAD, .modeId = CRYPT_MODE_WRAP_PAD},
+#endif
 #endif
 #ifdef HITLS_CRYPTO_CHACHA20
     {.id = CRYPT_CIPHER_CHACHA20_POLY1305, .modeId = CRYPT_MODE_CHACHA20_POLY1305},
@@ -375,6 +426,8 @@ const EAL_SymMethod *EAL_GetSymMethod(int32_t algId)
         case CRYPT_CIPHER_AES128_GCM:
         case CRYPT_CIPHER_AES128_CFB:
         case CRYPT_CIPHER_AES128_OFB:
+        case CRYPT_CIPHER_AES128_WRAP_NOPAD:
+        case CRYPT_CIPHER_AES128_WRAP_PAD:
             return &AES128_METHOD;
         case CRYPT_CIPHER_AES192_CBC:
         case CRYPT_CIPHER_AES192_ECB:
@@ -383,6 +436,8 @@ const EAL_SymMethod *EAL_GetSymMethod(int32_t algId)
         case CRYPT_CIPHER_AES192_GCM:
         case CRYPT_CIPHER_AES192_CFB:
         case CRYPT_CIPHER_AES192_OFB:
+        case CRYPT_CIPHER_AES192_WRAP_NOPAD:
+        case CRYPT_CIPHER_AES192_WRAP_PAD:
             return &AES192_METHOD;
         case CRYPT_CIPHER_AES256_CBC:
         case CRYPT_CIPHER_AES256_ECB:
@@ -392,6 +447,8 @@ const EAL_SymMethod *EAL_GetSymMethod(int32_t algId)
         case CRYPT_CIPHER_AES256_GCM:
         case CRYPT_CIPHER_AES256_CFB:
         case CRYPT_CIPHER_AES256_OFB:
+        case CRYPT_CIPHER_AES256_WRAP_NOPAD:
+        case CRYPT_CIPHER_AES256_WRAP_PAD:
             return &AES256_METHOD;
 #endif
 #ifdef HITLS_CRYPTO_SM4
@@ -438,6 +495,14 @@ static CRYPT_CipherInfo g_cipherInfo[] = {
     {.id = CRYPT_CIPHER_AES256_OFB, .blockSize = 1, .keyLen = 32, .ivLen = 16},
 	{.id = CRYPT_CIPHER_AES128_XTS, .blockSize = 1, .keyLen = 32, .ivLen = 16},
     {.id = CRYPT_CIPHER_AES256_XTS, .blockSize = 1, .keyLen = 64, .ivLen = 16},
+#ifdef HITLS_CRYPTO_WRAP
+    {.id = CRYPT_CIPHER_AES128_WRAP_NOPAD, .blockSize = 8, .keyLen = 16, .ivLen = 8},
+    {.id = CRYPT_CIPHER_AES192_WRAP_NOPAD, .blockSize = 8, .keyLen = 24, .ivLen = 8},
+    {.id = CRYPT_CIPHER_AES256_WRAP_NOPAD, .blockSize = 8, .keyLen = 32, .ivLen = 8},
+    {.id = CRYPT_CIPHER_AES128_WRAP_PAD, .blockSize = 8, .keyLen = 16, .ivLen = 4},
+    {.id = CRYPT_CIPHER_AES192_WRAP_PAD, .blockSize = 8, .keyLen = 24, .ivLen = 4},
+    {.id = CRYPT_CIPHER_AES256_WRAP_PAD, .blockSize = 8, .keyLen = 32, .ivLen = 4},
+#endif
 #endif
 #ifdef HITLS_CRYPTO_CHACHA20
     {.id = CRYPT_CIPHER_CHACHA20_POLY1305, .blockSize = 1, .keyLen = 32, .ivLen = 12},

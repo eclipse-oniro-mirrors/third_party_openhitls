@@ -526,6 +526,7 @@ typedef enum {
 
     BSL_CID_PKCS7_CONTENTINFO = 2095,
     BSL_CID_PKCS12KDF = 2096,
+    BSL_CID_RETAIL_MAC_DES = 2097,
 
     BSL_CID_ML_KEM = 2100,
     BSL_CID_ML_DSA = 2101,
@@ -624,6 +625,16 @@ BslOidString *BSL_OBJ_GetOID(BslCid ulCID);
  * @return The algorithm ID
  */
 BslCid BSL_OBJ_GetCID(const BslOidString *oidStr);
+
+/**
+ * @ingroup bsl_obj
+ * @brief Get oid hex string from the number string
+ * @param[in] oid The number string
+ * @param[in] len The number string length
+ * @param[out] outLen The length of hex string
+ * @return Oid hex number
+ */
+uint8_t *BSL_OBJ_GetOidFromNumericString(const char *oid, uint32_t len, uint32_t *outLen);
 
 #ifdef __cplusplus
 }

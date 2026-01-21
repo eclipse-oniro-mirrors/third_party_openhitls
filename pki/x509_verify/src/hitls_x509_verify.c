@@ -79,7 +79,7 @@ void HITLS_X509_StoreCtxFree(HITLS_X509_StoreCtx *storeCtx)
     if (storeCtx == NULL) {
         return;
     }
-    int ret;
+    int ret = 0;
     (void)BSL_SAL_AtomicDownReferences(&storeCtx->references, &ret);
     if (ret > 0) {
         return;
@@ -782,7 +782,7 @@ static int32_t X509_StoreCheckSignature(const BSL_Buffer *sm2UserId, const CRYPT
 {
 #ifdef HITLS_CRYPTO_SM2
     bool isHasUserId = true;
-    if (alg->sm2UserId.data == NULL) {
+    if (alg->sm2UserId.data == NULL && sm2UserId != NULL) {
         alg->sm2UserId = *sm2UserId;
         isHasUserId = false;
     }

@@ -652,8 +652,9 @@ chacha20poly1305, chacha20, rsa"
 #endif
 
 #if defined(HITLS_CRYPTO_RSA_SIGN) || defined(HITLS_CRYPTO_RSA_VERIFY)
-    #if !defined(HITLS_CRYPTO_RSA_EMSA_PSS) && !defined(HITLS_CRYPTO_RSA_EMSA_PKCSV15)
-    #error "[HiTLS] The rsa_sign/rsa_verify must work with rsa_emsa_pss/rsa_emsa_pkcsv15"
+    #if !defined(HITLS_CRYPTO_RSA_EMSA_PSS) && !defined(HITLS_CRYPTO_RSA_EMSA_PKCSV15) && \
+        !defined(HITLS_CRYPTO_RSA_EMSA_ISO9796_2)
+    #error "[HiTLS] The rsa_sign/rsa_verify must work with rsa_emsa_pss/rsa_emsa_pkcsv15/rsa_emsa_iso9796_2"
     #endif
 #endif
 
@@ -671,9 +672,10 @@ chacha20poly1305, chacha20, rsa"
     #endif
 #endif
 
-#if defined(HITLS_CRYPTO_RSA_EMSA_PSS) || defined(HITLS_CRYPTO_RSA_EMSA_PKCSV15)
+#if defined(HITLS_CRYPTO_RSA_EMSA_PSS) || defined(HITLS_CRYPTO_RSA_EMSA_PKCSV15) || \
+    defined(HITLS_CRYPTO_RSA_EMSA_ISO9796_2)
     #if !defined(HITLS_CRYPTO_RSA_SIGN) && !defined(HITLS_CRYPTO_RSA_VERIFY)
-    #error "[HiTLS] The rsa_emsa_pss/rsa_emsa_pkcsv15 must work with rsa_sign/rsa_verify"
+    #error "[HiTLS] The rsa_emsa_pss/rsa_emsa_pkcsv15/rsa_emsa_iso9796_2 must work with rsa_sign/rsa_verify"
     #endif
 #endif
 
@@ -699,7 +701,8 @@ chacha20poly1305, chacha20, rsa"
     #if !defined(HITLS_CRYPTO_CURVE_NISTP224) && !defined(HITLS_CRYPTO_CURVE_NISTP256) && \
         !defined(HITLS_CRYPTO_CURVE_NISTP384) && !defined(HITLS_CRYPTO_CURVE_NISTP521) && \
         !defined(HITLS_CRYPTO_CURVE_BP256R1) && !defined(HITLS_CRYPTO_CURVE_BP384R1) && \
-        !defined(HITLS_CRYPTO_CURVE_BP512R1) && !defined(HITLS_CRYPTO_CURVE_192WAPI)
+        !defined(HITLS_CRYPTO_CURVE_BP512R1) && !defined(HITLS_CRYPTO_CURVE_192WAPI) && \
+        !defined(HITLS_CRYPTO_CURVE_NISTP192)
     #error "[HiTLS] Nist curves or brainpool curves or 192Wapi curve must be enabled for ECDSA."
     #endif
 #endif
@@ -708,7 +711,8 @@ chacha20poly1305, chacha20, rsa"
     #if !defined(HITLS_CRYPTO_CURVE_NISTP224) && !defined(HITLS_CRYPTO_CURVE_NISTP256) && \
         !defined(HITLS_CRYPTO_CURVE_NISTP384) && !defined(HITLS_CRYPTO_CURVE_NISTP521) && \
         !defined(HITLS_CRYPTO_CURVE_BP256R1) && !defined(HITLS_CRYPTO_CURVE_BP384R1) && \
-        !defined(HITLS_CRYPTO_CURVE_BP512R1) && !defined(HITLS_CRYPTO_CURVE_192WAPI)
+        !defined(HITLS_CRYPTO_CURVE_BP512R1) && !defined(HITLS_CRYPTO_CURVE_192WAPI) && \
+        !defined(HITLS_CRYPTO_CURVE_NISTP192)
     #error "[HiTLS] Nist curves or brainpool curves must be enabled for ECDH."
     #endif
 #endif

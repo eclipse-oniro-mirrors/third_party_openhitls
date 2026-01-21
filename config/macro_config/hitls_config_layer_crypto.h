@@ -280,14 +280,17 @@
     #ifndef HITLS_CRYPTO_OFB
         #define HITLS_CRYPTO_OFB
     #endif
+    #ifndef HITLS_CRYPTO_WRAP
+        #define HITLS_CRYPTO_WRAP
+    #endif
     #ifndef HITLS_CRYPTO_CHACHA20POLY1305
         #define HITLS_CRYPTO_CHACHA20POLY1305
     #endif
 #endif
-
 #if defined(HITLS_CRYPTO_CTR) || defined(HITLS_CRYPTO_CBC) || defined(HITLS_CRYPTO_ECB) || \
     defined(HITLS_CRYPTO_GCM) || defined(HITLS_CRYPTO_CCM) || defined(HITLS_CRYPTO_XTS) || \
-    defined(HITLS_CRYPTO_CFB) || defined(HITLS_CRYPTO_OFB) || defined(HITLS_CRYPTO_CHACHA20POLY1305)
+    defined(HITLS_CRYPTO_CFB) || defined(HITLS_CRYPTO_OFB) || defined(HITLS_CRYPTO_CHACHA20POLY1305) || \
+    defined(HITLS_CRYPTO_WRAP)
     #ifndef HITLS_CRYPTO_MODES
         #define HITLS_CRYPTO_MODES
     #endif
@@ -394,6 +397,9 @@
     #ifndef HITLS_CRYPTO_RSA_EMSA_PSS
         #define HITLS_CRYPTO_RSA_EMSA_PSS
     #endif
+    #ifndef HITLS_CRYPTO_RSA_EMSA_ISO9796_2
+        #define HITLS_CRYPTO_RSA_EMSA_ISO9796_2
+    #endif
     #ifndef HITLS_CRYPTO_RSA_EMSA_PKCSV15
         #define HITLS_CRYPTO_RSA_EMSA_PKCSV15
     #endif
@@ -412,6 +418,7 @@
 #endif
 
 #if defined(HITLS_CRYPTO_RSA_EMSA_PSS) || defined(HITLS_CRYPTO_RSA_EMSA_PKCSV15) || \
+    defined(HITLS_CRYPTO_RSA_EMSA_ISO9796_2) || \
     defined(HITLS_CRYPTO_RSAES_OAEP) || defined(HITLS_CRYPTO_RSAES_PKCSV15) || \
     defined(HITLS_CRYPTO_RSAES_PKCSV15_TLS) || defined(HITLS_CRYPTO_RSA_NO_PAD)
     #ifndef HITLS_CRYPTO_RSA_PAD
@@ -536,6 +543,9 @@
 #endif
 
 #ifdef HITLS_CRYPTO_ECC
+    #ifndef HITLS_CRYPTO_CURVE_NISTP192
+        #define HITLS_CRYPTO_CURVE_NISTP192
+    #endif
     #ifndef HITLS_CRYPTO_CURVE_NISTP224
         #define HITLS_CRYPTO_CURVE_NISTP224
     #endif
@@ -565,7 +575,8 @@
 #if defined(HITLS_CRYPTO_CURVE_NISTP224) || defined(HITLS_CRYPTO_CURVE_NISTP256) || \
     defined(HITLS_CRYPTO_CURVE_NISTP384) || defined(HITLS_CRYPTO_CURVE_NISTP521) || \
     defined(HITLS_CRYPTO_CURVE_BP256R1) || defined(HITLS_CRYPTO_CURVE_BP384R1) || \
-    defined(HITLS_CRYPTO_CURVE_BP512R1) || defined(HITLS_CRYPTO_CURVE_SM2)
+    defined(HITLS_CRYPTO_CURVE_BP512R1) || defined(HITLS_CRYPTO_CURVE_SM2) || \
+    defined(HITLS_CRYPTO_CURVE_NISTP192)
     #ifndef HITLS_CRYPTO_ECC
         #define HITLS_CRYPTO_ECC
     #endif
@@ -772,12 +783,13 @@
 #endif
 
 #if (!defined(HITLS_SIXTY_FOUR_BITS))
-    #if (((defined(HITLS_CRYPTO_CURVE_NISTP224) || defined(HITLS_CRYPTO_CURVE_NISTP521)) && \
+    #if defined(HITLS_CRYPTO_CURVE_NISTP192) || \
+        ((defined(HITLS_CRYPTO_CURVE_NISTP224) || defined(HITLS_CRYPTO_CURVE_NISTP521)) && \
             !defined(HITLS_CRYPTO_NIST_USE_ACCEL)) || \
         defined(HITLS_CRYPTO_CURVE_NISTP384) || \
-        (defined(HITLS_CRYPTO_CURVE_NISTP256) && !defined(HITLS_CRYPTO_CURVE_NISTP256_ASM) &&  \
-            (!defined(HITLS_CRYPTO_NIST_ECC_ACCELERATE)) && (!defined(HITLS_CRYPTO_NIST_USE_ACCEL))) || \
-        (defined(HITLS_CRYPTO_CURVE_SM2) && !defined(HITLS_CRYPTO_CURVE_SM2_ASM)))
+        (defined(HITLS_CRYPTO_CURVE_NISTP256) && (!defined(HITLS_CRYPTO_CURVE_NISTP256_ASM) || \
+            (!defined(HITLS_CRYPTO_NIST_ECC_ACCELERATE))) && (!defined(HITLS_CRYPTO_NIST_USE_ACCEL))) || \
+        (defined(HITLS_CRYPTO_CURVE_SM2) && !defined(HITLS_CRYPTO_CURVE_SM2_ASM))
             #define HITLS_CRYPTO_CURVE_MONT_NIST
     #endif
 #endif

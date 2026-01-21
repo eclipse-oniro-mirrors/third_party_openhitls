@@ -348,6 +348,10 @@ static int32_t SetCertExt(HITLS_X509_Cert *cert)
     HITLS_X509_ExtSan san = {true, NULL};
     BSL_Buffer oidBuff = {0};
     BslOidString *oid = NULL;
+    HITLS_X509_ExtGeneric customExt = {0};
+    char *customOid1 = "1.2.3.4.5.6.7.8.9.1";
+    uint8_t *customOidData = NULL;
+    uint32_t customOidLen = 0;
 
     BslList *oidList = BSL_LIST_New(sizeof(BSL_Buffer));
     ASSERT_TRUE(oidList != NULL);
@@ -368,10 +372,20 @@ static int32_t SetCertExt(HITLS_X509_Cert *cert)
     san.names = GenGeneralNameList();
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_SET_SAN, &san, sizeof(HITLS_X509_ExtSan)), 0);
 
+    customOidData = BSL_OBJ_GetOidFromNumericString(customOid1, strlen(customOid1), &customOidLen);
+    ASSERT_NE(customOidData, NULL);
+    customExt.oid.data = customOidData;
+    customExt.oid.dataLen = customOidLen;
+    customExt.value.data = kid;
+    customExt.value.dataLen = sizeof(kid);
+    customExt.critical = true;
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_SET_GENERIC, &customExt, sizeof(HITLS_X509_ExtGeneric)), 0);
+
     ret = 0;
 EXIT:
     BSL_LIST_FREE(oidList, (BSL_LIST_PFUNC_FREE)FreeListData);
     BSL_LIST_FREE(san.names, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeGeneralName);
+    BSL_SAL_FREE(customOidData);
     return ret;
 }
 #endif // HITLS_PKI_X509_CRT_GEN
@@ -891,7 +905,7 @@ EXIT:
 #if (defined(HITLS_CRYPTO_KEY_ENCODE) && defined(HITLS_CRYPTO_KEY_EPKI)) || defined(HITLS_PKI_X509_CRT_GEN) || defined(HITLS_PKI_X509_CSR_GEN)
 static int32_t test = 0;
 static int32_t marked = 0;
-static void *STUB_BSL_SAL_Malloc(uint32_t size)
+static void *STUB_BSL_SAL_Malloc_x509(uint32_t size)
 {
     if (marked <= test) {
         marked++;
@@ -934,7 +948,7 @@ void SDV_PKI_GEN_ENCKEY_STUB_TC001(int algId, int curveId, int symId, Hex *pwd, 
     marked = 0;
     pkey = GenKey(algId, curveId);
     ASSERT_NE(pkey, NULL);
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
+    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_x509);
     for (int i = maxTriggers; i > 0; i--) {
         marked = 0;
         test--;
@@ -988,7 +1002,7 @@ void SDV_PKI_GEN_ENCKEY_STUB_TC002(int algId, int curveId, int symId, Hex *pwd, 
     marked = 0;
     pkey = GenKey(algId, curveId);
     ASSERT_NE(pkey, NULL);
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
+    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_x509);
     for (int i = maxTriggers; i > 0; i--) {
         marked = 0;
         test--;
@@ -1063,7 +1077,7 @@ void SDV_PKI_GEN_CERT_STUB_TC001(int algId, int hashId, int curveId, int maxTrig
     }
     test = maxTriggers;
     marked = 0;
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
+    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_x509);
     for (int i = maxTriggers; i > 0; i--) {
         marked = 0;
         test--;
@@ -1128,7 +1142,7 @@ void SDV_PKI_GEN_CSR_STUB_TC001(int algId, int hashId, int curveId, int maxTrigg
     }
     test = maxTriggers;
     marked = 0;
-    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
+    STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc_x509);
     for (int i = maxTriggers; i > 0; i--) {
         marked = 0;
         test--;

@@ -33,6 +33,10 @@ static BSL_SAL_ThreadLockHandle g_oidHashRwLock = NULL;
 static uint32_t g_oidHashInitOnce = BSL_SAL_ONCE_INIT;
 #endif // HITLS_BSL_HASH
 
+#define BSL_OBJ_ARCS_X_MAX 2
+#define BSL_OBJ_ARCS_Y_MAX 40
+#define BSL_OBJ_ARCS_MAX (BSL_OBJ_ARCS_X_MAX * BSL_OBJ_ARCS_Y_MAX + BSL_OBJ_ARCS_Y_MAX - 1)
+
 BslOidInfo g_oidTable[] = {
     {{9, "\140\206\110\1\145\3\4\1\2", BSL_OID_GLOBAL}, "AES128-CBC", BSL_CID_AES128_CBC},
     {{9, "\140\206\110\1\145\3\4\1\26", BSL_OID_GLOBAL}, "AES192-CBC", BSL_CID_AES192_CBC},
@@ -62,6 +66,7 @@ BslOidInfo g_oidTable[] = {
     {{9, "\52\206\110\206\367\15\1\1\13", BSL_OID_GLOBAL}, "SHA256WITHRSA", BSL_CID_SHA256WITHRSAENCRYPTION},
     {{9, "\52\206\110\206\367\15\1\1\14", BSL_OID_GLOBAL}, "SHA384WITHRSA", BSL_CID_SHA384WITHRSAENCRYPTION},
     {{9, "\52\206\110\206\367\15\1\1\15", BSL_OID_GLOBAL}, "SHA512WITHRSA", BSL_CID_SHA512WITHRSAENCRYPTION},
+    {{8, "\52\206\110\316\75\3\1\1", BSL_OID_GLOBAL}, "PRIME192V1", BSL_CID_PRIME192V1},
     {{8, "\52\206\110\316\75\3\1\7", BSL_OID_GLOBAL}, "PRIME256V1", BSL_CID_PRIME256V1},
     {{9, "\52\206\110\206\367\15\1\5\14", BSL_OID_GLOBAL}, "PBKDF2", BSL_CID_PBKDF2},
     {{9, "\52\206\110\206\367\15\1\5\15", BSL_OID_GLOBAL}, "PBES2", BSL_CID_PBES2},
@@ -122,6 +127,7 @@ BslOidInfo g_oidTable[] = {
     {{3, "\125\4\11", BSL_OID_GLOBAL}, "STREET", BSL_CID_AT_STREETADDRESS},
     {{5, "\53\201\4\0\41", BSL_OID_GLOBAL}, "PRIME224", BSL_CID_NIST_PRIME224},
     {{3, "\53\145\160", BSL_OID_GLOBAL}, "ED25519", BSL_CID_ED25519},
+    {{3, "\53\145\156", BSL_OID_GLOBAL}, "X25519", BSL_CID_X25519},
     {{9, "\52\206\110\206\367\15\1\1\12", BSL_OID_GLOBAL}, "RSASSAPSS", BSL_CID_RSASSAPSS},
     {{9, "\52\206\110\206\367\15\1\1\10", BSL_OID_GLOBAL}, "MGF1", BSL_CID_MGF1},
     {{8, "\52\201\34\317\125\1\150\2", BSL_OID_GLOBAL}, "SM4-CBC", BSL_CID_SM4_CBC},
@@ -137,6 +143,12 @@ BslOidInfo g_oidTable[] = {
     {{9, "\140\206\110\1\145\3\4\2\12", BSL_OID_GLOBAL}, "SHA3-512", BSL_CID_SHA3_512},
     {{9, "\140\206\110\1\145\3\4\2\13", BSL_OID_GLOBAL}, "SHAKE128", BSL_CID_SHAKE128},
     {{9, "\140\206\110\1\145\3\4\2\14", BSL_OID_GLOBAL}, "SHAKE256", BSL_CID_SHAKE256},
+    {{9, "\140\206\110\1\145\3\4\1\5", BSL_OID_GLOBAL}, "AES-128-WRAP-NOPAD", BSL_CID_AES128_WRAP_NOPAD },
+    {{9, "\140\206\110\1\145\3\4\1\31", BSL_OID_GLOBAL}, "AES-192-WRAP-NOPAD", BSL_CID_AES192_WRAP_NOPAD },
+    {{9, "\140\206\110\1\145\3\4\1\55", BSL_OID_GLOBAL}, "AES256-WRAP-NOPAD", BSL_CID_AES256_WRAP_NOPAD},
+    {{9, "\140\206\110\1\145\3\4\1\10", BSL_OID_GLOBAL}, "AES-128-WRAP-PAD", BSL_CID_AES128_WRAP_PAD },
+    {{9, "\140\206\110\1\145\3\4\1\34", BSL_OID_GLOBAL}, "AES-192-WRAP-PAD", BSL_CID_AES192_WRAP_PAD },
+    {{9, "\140\206\110\1\145\3\4\1\60", BSL_OID_GLOBAL}, "AES-256-WRAP-PAD", BSL_CID_AES256_WRAP_PAD },
     {{9, "\53\44\3\3\2\10\1\1\7", BSL_OID_GLOBAL}, "BRAINPOOLP256R1", BSL_CID_ECC_BRAINPOOLP256R1},
     {{9, "\53\44\3\3\2\10\1\1\13", BSL_OID_GLOBAL}, "BRAINPOOLP384R1", BSL_CID_ECC_BRAINPOOLP384R1},
     {{9, "\53\44\3\3\2\10\1\1\15", BSL_OID_GLOBAL}, "BRAINPOOLP512R1", BSL_CID_ECC_BRAINPOOLP512R1},
@@ -522,5 +534,100 @@ void BSL_OBJ_FreeHashTable(void)
     }
 }
 #endif // HITLS_BSL_HASH
+
+static void BslEncodeOidPart(uint64_t num, uint8_t *output, uint32_t *offset)
+{
+    if (num < 0x80) {
+        output[*offset] = num &0x7F;
+        (*offset)++;
+    } else {
+        uint8_t temp[10]; // The data of uint64_t requires up to 10 bytes when encode in ASN1.
+        int32_t i = 0;
+        uint64_t t = num;
+        while (t > 0) {
+            temp[i] = (t & 0x7F) | 0x80;
+            i++;
+            t >>= 7; // Process 7 bits each time.
+        }
+
+        temp[0] &= 0x7F;
+        for (int32_t j = i - 1; j >= 0; j--) {
+            output[*offset] = temp[j];
+            (*offset)++;
+        }
+    }
+}
+
+static bool BslEncodeOidValueCheck(uint64_t *parts, uint32_t count)
+{
+    // At least 2 pieces of data are required.
+    if (count < 2 || parts[0] > BSL_OBJ_ARCS_X_MAX) {
+        return false;
+    }
+    if (parts[1] >= BSL_OBJ_ARCS_Y_MAX) {
+        return false;
+    }
+    return true;
+}
+
+#define MAX_OID_PARTS_LEN 128
+uint8_t *BSL_OBJ_GetOidFromNumericString(const char *oid, uint32_t len, uint32_t *outLen)
+{
+    if (len == 0 || oid == NULL || oid[0] == '.' || outLen == NULL || oid[len - 1] == '.') {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        return NULL;
+    }
+    uint64_t parts[MAX_OID_PARTS_LEN];
+    uint32_t count = 0;
+    parts[count] = 0;
+
+    for (uint32_t i = 0; i < len; i++) {
+        if (oid[i] > '9' || (oid[i] < '0' && oid[i] != '.')) {
+            BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+            return NULL;
+        }
+        if ((i < len - 1) && oid[i] == '.' && oid[i + 1] == '.') {
+            BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+            return NULL;
+        }
+        if (oid[i] != '.') {
+            // Convert decimal string to number.
+            if (parts[count] > (UINT64_MAX - (oid[i] - '0')) / 10) {
+                BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+                return NULL;
+            }
+            parts[count] = parts[count] * 10 + (oid[i] - '0');
+        } else {
+            count++;
+            if (count >= MAX_OID_PARTS_LEN) {
+                BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+                return NULL;
+            }
+            parts[count] = 0;
+        }
+    }
+    count++;
+
+    if (BslEncodeOidValueCheck(parts, count) != true) {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        return NULL;
+    }
+
+    uint32_t offset = 0;
+    // The data of uint64_t requires up to 10 bytes when encode in ASN1.
+    uint8_t *outBuf = BSL_SAL_Malloc(count * 10);
+    if (outBuf == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
+        return NULL;
+    }
+    outBuf[0] = (uint8_t)(parts[0] * BSL_OBJ_ARCS_Y_MAX + parts[1]);
+    offset++;
+
+    for (uint32_t i = 2; i < count; i++) {
+        BslEncodeOidPart(parts[i], outBuf, &offset);
+    }
+    *outLen = offset;
+    return outBuf;
+}
 
 #endif
