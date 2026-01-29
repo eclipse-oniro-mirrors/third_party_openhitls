@@ -1411,3 +1411,102 @@ EXIT:
 #endif
 }
 /* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_X509_CSR_WITH_CUSTOM_EXT_PARSE_TEST_TC001(char *path, Hex *customExtValue1, Hex *customExtValue2,
+    char *exceptPrintFile)
+{
+    HITLS_X509_Csr *parsedCsr = NULL;
+    HITLS_X509_Attrs *attrs = NULL;
+    HITLS_X509_Ext *ext = NULL;
+    char *customOid = "1.2.3.4.5.6.7.8.9.1";
+    char *customOid2 = "1.2.3.4.5.6.7.8.9.2";
+    uint8_t *customOidData = NULL;
+    uint32_t customOidLen = 0;
+    HITLS_X509_ExtGeneric customExt = {0};
+    BSL_Buffer data = {0};
+    Hex expect = {(uint8_t *)exceptPrintFile, 0};
+
+    TestMemInit();
+
+    // SetUp
+    ASSERT_EQ(HITLS_X509_CsrParseFile(BSL_FORMAT_ASN1, path, &parsedCsr), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CsrCtrl(parsedCsr, HITLS_X509_CSR_GET_ATTRIBUTES, &attrs, sizeof(HITLS_X509_Attrs *)), 0);
+    ASSERT_EQ(HITLS_X509_AttrCtrl(attrs, HITLS_X509_ATTR_GET_REQUESTED_EXTENSIONS, &ext, sizeof(HITLS_X509_Ext *)), 0);
+    ASSERT_NE(ext, NULL);
+
+    // Get and check custom ext1
+    customOidData = BSL_OBJ_GetOidFromNumericString(customOid, strlen(customOid), &customOidLen);
+    ASSERT_NE(customOidData, NULL);
+    customExt.oid.data = customOidData;
+    customExt.oid.dataLen = customOidLen;
+    ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_GET_GENERIC, &customExt, sizeof(HITLS_X509_ExtGeneric)), 0);
+    ASSERT_COMPARE("custom ext1", customExt.value.data, customExt.value.dataLen, customExtValue1->x,
+        customExtValue1->len);
+    ASSERT_EQ(customExt.critical, true);
+    BSL_SAL_FREE(customOidData);
+    BSL_SAL_FREE(customExt.value.data);
+
+    // Get and check custom ext2
+    customOidData = BSL_OBJ_GetOidFromNumericString(customOid2, strlen(customOid2), &customOidLen);
+    ASSERT_NE(customOidData, NULL);
+    customExt.oid.data = customOidData;
+    customExt.oid.dataLen = customOidLen;
+    ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_GET_GENERIC, &customExt, sizeof(HITLS_X509_ExtGeneric)), 0);
+    ASSERT_COMPARE("custom ext2", customExt.value.data, customExt.value.dataLen, customExtValue2->x,
+        customExtValue2->len);
+    ASSERT_EQ(customExt.critical, false);
+    BSL_SAL_FREE(customOidData);
+
+    // Print csr buffer compare
+    data.data = (uint8_t *)parsedCsr;
+    data.dataLen = sizeof(HITLS_X509_Csr *);
+    ASSERT_EQ(PrintBuffTest(HITLS_PKI_PRINT_CSR, &data, "Print csr buffer", &expect, true), 0);
+
+EXIT:
+    HITLS_X509_CsrFree(parsedCsr);
+    HITLS_X509_ExtFree(ext);
+    BSL_SAL_FREE(customOidData);
+    BSL_SAL_FREE(customExt.value.data);
+}
+/* END_CASE */
+
+/**
+ * Test CSR print with unknown attribute OID
+ * The unknown OID should be printed in numeric form
+ */
+/* BEGIN_CASE */
+void SDV_X509_CSR_PRINT_UNKNOWN_ATTR_TC001(char *path, char *expectFile)
+{
+#if defined(HITLS_PKI_INFO_CSR) && defined(HITLS_PKI_X509_CSR)
+    TestMemInit();
+    HITLS_X509_Csr *csr = NULL;
+    BSL_Buffer data = {0};
+    Hex expect = {(uint8_t *)expectFile, 0};
+
+    ASSERT_EQ(HITLS_X509_CsrParseFile(BSL_FORMAT_ASN1, path, &csr), HITLS_PKI_SUCCESS);
+    ASSERT_NE(csr, NULL);
+
+    HITLS_X509_Attrs *attrs = NULL;
+    ASSERT_EQ(HITLS_X509_CsrCtrl(csr, HITLS_X509_CSR_GET_ATTRIBUTES, &attrs, sizeof(HITLS_X509_Attrs *)), 0);
+    ASSERT_NE(attrs, NULL);
+    ASSERT_NE(BSL_LIST_COUNT(attrs->list), 0);
+
+    HITLS_X509_AttrEntry *entry = BSL_LIST_GET_FIRST(attrs->list);
+    ASSERT_NE(entry, NULL);
+    ASSERT_EQ(entry->cid, BSL_CID_UNKNOWN);
+
+    data.data = (uint8_t *)csr;
+    data.dataLen = sizeof(HITLS_X509_Csr *);
+    ASSERT_EQ(PrintBuffTest(HITLS_PKI_PRINT_CSR, &data, "Print csr with unknown attr", &expect, true), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HITLS_X509_CsrFree(csr);
+#else
+    (void)path;
+    (void)expectFile;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
