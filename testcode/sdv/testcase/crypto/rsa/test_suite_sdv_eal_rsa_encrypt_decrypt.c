@@ -89,9 +89,10 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC001(
     CRYPT_EAL_PkeyPrv prvkey = {0};
     CRYPT_EAL_PkeyPub pubkey = {0};
     CRYPT_EAL_PkeyCtx *pkey = NULL;
+    CRYPT_MD_AlgId mdId = hashId;
     BSL_Param oaepParam[3] = {
-        {CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
-        {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
+        {CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
         BSL_PARAM_END};
     int32_t pkcsv15 = hashId;
 #ifdef HITLS_CRYPTO_RSA_DECRYPT
@@ -194,7 +195,7 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC002(Hex *n, Hex *e, Hex *d, Hex *plaintext, int
     CRYPT_EAL_PkeyCtx *pkey = NULL;
     CRYPT_EAL_PkeyPrv prvkey = {0};
     CRYPT_EAL_PkeyPub pubkey = {0};
-    int32_t hashId = CRYPT_MD_SHA1;
+    CRYPT_MD_AlgId hashId = CRYPT_MD_SHA1;
     BSL_Param oaepParam[3] = {
         {CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
         {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
@@ -272,7 +273,7 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC003(Hex *n, Hex *e, Hex *d, Hex *plaintext, Hex
     CRYPT_EAL_PkeyCtx *cpyCtx = NULL;
     CRYPT_EAL_PkeyPrv prvkey = {0};
     CRYPT_EAL_PkeyPub pubkey = {0};
-    int32_t hashId = CRYPT_MD_SHA256;
+    CRYPT_MD_AlgId hashId = CRYPT_MD_SHA256;
     BSL_Param oaepParam[3] = {
         {CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
         {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
@@ -349,7 +350,7 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC004(int bits, Hex *in, int isProvider)
     uint32_t ctLen = MAX_CIPHERTEXT_LEN;
     uint32_t msgLen = MAX_CIPHERTEXT_LEN;
     CRYPT_EAL_PkeyCtx *pkey = NULL;
-    int32_t hashId = CRYPT_MD_SHA1;
+    CRYPT_MD_AlgId hashId = CRYPT_MD_SHA1;
     uint8_t e[] = {1, 0, 1};
     BSL_Param oaepParam[3] = {
         {CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
@@ -591,9 +592,7 @@ void SDV_CRYPTO_RSA_INVLAID_DECRYPT_TEST(Hex *n, Hex *e, Hex *d, Hex *plaintext,
     CRYPT_EAL_PkeyCtx *pkey = NULL;
     CRYPT_EAL_PkeyPrv prvkey = {0};
     CRYPT_EAL_PkeyPub pubkey = {0};
-    int32_t hashId = CRYPT_MD_SHA1;
-    FuncStubInfo g_tmpRpInfo[4] = {0};
-    STUB_Init();
+    CRYPT_MD_AlgId hashId = CRYPT_MD_SHA1;
     BSL_Param oaepParam[3] = {
         {CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
         {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
@@ -616,7 +615,7 @@ void SDV_CRYPTO_RSA_INVLAID_DECRYPT_TEST(Hex *n, Hex *e, Hex *d, Hex *plaintext,
     ASSERT_TRUE(CRYPT_EAL_PkeySetPrv(pkey, &prvkey) == CRYPT_SUCCESS);
     ASSERT_TRUE(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_RSAES_OAEP, oaepParam, 0) == CRYPT_SUCCESS);
     ASSERT_TRUE(TestIsErrStackEmpty());
-    
+
     // test the output buffer is too small
     msgLen = 1;
     ASSERT_TRUE(CRYPT_EAL_PkeyDecrypt(pkey, ct, ctLen, pt, &msgLen) == CRYPT_RSA_NOR_VERIFY_FAIL);

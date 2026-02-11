@@ -417,7 +417,7 @@ void SDV_X509_CRL_CTRL_ParamCheck_TC001(void)
     HITLS_X509_Crl *crl = NULL;
     BSL_TIME time = {0};
     BSL_ASN1_List *issuer = NULL;
-    uint32_t version = 1;
+    int32_t version = 1;
 
     // Test null pointer parameter
     ASSERT_EQ(HITLS_X509_CrlCtrl(NULL, HITLS_X509_SET_VERSION, &version, sizeof(version)),
@@ -459,7 +459,7 @@ void SDV_X509_CRL_CTRL_ParamCheck_TC001(void)
     ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_VERSION, &version, sizeof(version)), HITLS_PKI_SUCCESS);
 
     // Test normal parameters - get version number
-    uint32_t getVersion = 0;
+    int32_t getVersion = 0;
     ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_GET_VERSION, &getVersion, sizeof(getVersion)), HITLS_PKI_SUCCESS);
     ASSERT_EQ(getVersion, version);
 
@@ -586,7 +586,7 @@ EXIT:
 void SDV_X509_CRL_CTRL_GetFunc_TC001(void)
 {
     HITLS_X509_Crl *crl = NULL;
-    uint32_t version = 0;
+    int32_t version = 0;
     BSL_TIME beforeTime = {0};
     BSL_TIME afterTime = {0};
     BslList *issuerDN = NULL;
@@ -598,7 +598,7 @@ void SDV_X509_CRL_CTRL_GetFunc_TC001(void)
     ASSERT_NE(crl, NULL);
 
     // Test getting the version number
-    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_GET_VERSION, &version, sizeof(uint32_t)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_GET_VERSION, &version, sizeof(int32_t)), HITLS_PKI_SUCCESS);
     // The CRL version should be 0 (v1) or 1 (v2)
     ASSERT_TRUE(version == 1);
 
@@ -1200,6 +1200,43 @@ EXIT:
 }
 /* END_CASE */
 
+static int32_t PrintToFile(int cmd, BSL_Buffer *data, char *outputPath)
+{
+    int32_t ret = -1;
+    BSL_UIO *uio = BSL_UIO_New(BSL_UIO_FileMethod());
+    ASSERT_NE(uio, NULL);
+    ASSERT_EQ(BSL_UIO_Ctrl(uio, BSL_UIO_FILE_OPEN, BSL_UIO_FILE_WRITE, outputPath), 0);
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(cmd, data->data, data->dataLen, uio), 0);
+    (void)SAL_Flush(BSL_UIO_GetCtx(uio));
+    ret = 0;
+
+EXIT:
+    BSL_UIO_Free(uio);
+    return ret;
+}
+
+static int32_t PrintTest(int cmd, BSL_Buffer *data, char *log, Hex *expect, char *outputPath)
+{
+    int32_t ret = -1;
+    uint8_t *printBuf = NULL;
+    uint32_t printBufLen = 0;
+    uint8_t *expectBuf = NULL;
+    uint32_t expectBufLen = 0;
+
+    TestMemInit();
+    ASSERT_EQ(PrintToFile(cmd, data, outputPath), 0);
+    ASSERT_EQ(BSL_SAL_ReadFile(outputPath, &printBuf, &printBufLen), 0);
+
+    ASSERT_EQ(BSL_SAL_ReadFile((char *)expect->x, &expectBuf, &expectBufLen), 0);
+    ASSERT_COMPARE(log, expectBuf, expectBufLen, printBuf, printBufLen);
+    ret = 0;
+
+EXIT:
+    BSL_SAL_Free(printBuf);
+    BSL_SAL_FREE(expectBuf);
+    return ret;
+}
+
 static int32_t SetCrlAllRevoked(HITLS_X509_Crl *crl, int8_t reasonCode, bool useGMT)
 {
     // Set serial number
@@ -1304,6 +1341,7 @@ static int32_t SetAllCrl(HITLS_X509_Crl *crl, HITLS_X509_Cert *cert, bool includ
         ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_EXT_SET_CRLNUMBER, &crlNumberExt,
             sizeof(HITLS_X509_ExtCrlNumber)), HITLS_PKI_SUCCESS);
     }
+
     return HITLS_PKI_SUCCESS;
 EXIT:
     return -1;
