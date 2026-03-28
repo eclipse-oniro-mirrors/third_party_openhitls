@@ -281,8 +281,7 @@ ohos_shared_library("openhitls_bsl") {
     sources = []
     deps = [":bsl_source"]
     innerapi_tags = [
-        "llndk",
-        "ndk",
+        "chipsetsdk",
     ]
     public_configs = [ ":bsl_public_config" ]
     
@@ -781,8 +780,7 @@ ohos_shared_library("openhitls_crypto") {
         ":crypto_source"
     ]
     innerapi_tags = [
-        "llndk",
-        "ndk",
+        "chipsetsdk",
     ]
     public_configs = [ ":crypto_public_config" ]
 
@@ -868,8 +866,7 @@ ohos_shared_library("openhitls_pki") {
         ":pki_source"
     ]
     innerapi_tags = [
-        "llndk",
-        "ndk",
+        "chipsetsdk",
     ]
     public_configs = [ ":pki_public_config" ]
 
@@ -1099,8 +1096,7 @@ ohos_shared_library("openhitls_tls") {
         ":tls_source"
     ]
     innerapi_tags = [
-        "llndk",
-        "ndk",
+        "chipsetsdk",
     ]
     public_configs = [ ":tls_public_config" ]
 
@@ -1160,8 +1156,7 @@ ohos_shared_library("openhitls_auth") {
         ":auth_source"
     ]
     innerapi_tags = [
-        "llndk",
-        "ndk",
+        "chipsetsdk",
     ]
     install_images = [
       "system",
