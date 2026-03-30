@@ -121,7 +121,7 @@ static void CleanPeerInfo(PeerInfo *peerInfo)
     BSL_SAL_FREE(peerInfo->signatureAlgorithms);
 }
 
-#if defined(HITLS_TLS_EXTENSION_COOKIE) || defined(HITLS_TLS_FEATURE_ALPN)
+#if defined(HITLS_TLS_EXTENSION_COOKIE) || defined(HITLS_TLS_FEATURE_ALPN) || defined(HITLS_TLS_FEATURE_SNI)
 static void CleanNegotiatedInfo(TLS_NegotiatedInfo *negotiatedInfo)
 {
 #ifdef HITLS_TLS_EXTENSION_COOKIE
@@ -164,7 +164,7 @@ void HITLS_Free(HITLS_Ctx *ctx)
     CFG_CleanConfig(&ctx->config.tlsConfig);
     HITLS_CFG_FreeConfig(ctx->globalConfig);
     CleanPeerInfo(&(ctx->peerInfo));
-#if defined(HITLS_TLS_EXTENSION_COOKIE) || defined(HITLS_TLS_FEATURE_ALPN)
+#if defined(HITLS_TLS_EXTENSION_COOKIE) || defined(HITLS_TLS_FEATURE_ALPN) || defined(HITLS_TLS_FEATURE_SNI)
     CleanNegotiatedInfo(&ctx->negotiatedInfo);
 #endif
 #ifdef HITLS_TLS_FEATURE_PHA

@@ -248,9 +248,6 @@ int32_t ECP_NistPointAdd(const ECC_Para *para, ECC_Point *r, const ECC_Point *a,
         // If point b is an infinity point, r = a
         return ECC_CopyPoint(r, a);
     }
-    if (BN_Cmp(&a->x, &b->x) == 0 && BN_Cmp(&a->y, &b->y) == 0 && BN_Cmp(&a->z, &b->z) == 0) {
-        return para->method->pointDouble(para, r, a);
-    }
     int32_t ret;
     BN_Optimizer *op = BN_OptimizerCreate();
     if (op == NULL) {

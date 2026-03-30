@@ -322,7 +322,7 @@ typedef struct {
 #if (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 #define TIME_OUT_SEC 50
 #else
-#define TIME_OUT_SEC 16
+#define TIME_OUT_SEC 8
 #endif
 
 #ifdef __cplusplus

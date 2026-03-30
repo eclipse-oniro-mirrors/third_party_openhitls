@@ -34,7 +34,7 @@
  * Binary WINDOW 1024, 0.8 Entropy CUT off 664 0.6 Entropy CUT off 748
  * reference to SP800-90B sec 4.4.2
  */
-    #define HITLS_JITTER_APT_CUT_OFF 592
+    #define HITLS_JITTER_APT_CUT_OFF 594
 #endif
 #ifndef HITLS_JITTER_RCT_CUT_OFF
 /**
@@ -77,7 +77,6 @@ typedef struct ES_JitterState {
     uint8_t data[NS_ENTROPY_DATA_SIZE];
     uint64_t lastDelta;
     uint32_t remainCount;
-    uint32_t memLocation;
     uint8_t mem[HITLS_CACHE_ROW_COUNT][HITLS_CACHE_LINE_SIZE];
     volatile uint32_t mID;
     uint64_t lastTime;

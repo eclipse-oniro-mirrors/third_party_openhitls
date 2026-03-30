@@ -712,7 +712,7 @@ static int32_t GenAuxPrime(BN_BigNum *Xp, uint32_t auxBits, BN_Optimizer *opt, b
 {
     int32_t ret = CRYPT_SUCCESS;
     if (!isSeed) {
-        ret = BN_Rand(Xp, auxBits, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_ONEBIT);
+        ret = BN_RandEx(BN_OptimizerGetLibCtx(opt), Xp, auxBits, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_ONEBIT);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
@@ -801,7 +801,7 @@ static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN
     do {
         // Step 3: get x via seed xp/xq or random
         if (Xp0 == NULL) {
-            GOTO_ERR_IF(GetRandomX(Xp, para->bits, isP), ret);
+            GOTO_ERR_IF(GetRandomX(BN_OptimizerGetLibCtx(opt), Xp, para->bits, isP), ret);
         }
 
         // Step 4: Y = X + ((R – X) mod 2r1r2
@@ -1194,7 +1194,7 @@ int32_t CRYPT_RSA_Import(CRYPT_RSA_Ctx *ctx, const BSL_Param *params)
 {
     int32_t ret = CRYPT_SUCCESS;
     if (IsExistRsaParam(params)) {
-        ret = CRYPT_RSA_SetPara(ctx, params);
+        ret = CRYPT_RSA_SetParaEx(ctx, params);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
@@ -1209,13 +1209,6 @@ int32_t CRYPT_RSA_Import(CRYPT_RSA_Ctx *ctx, const BSL_Param *params)
     }
     if (IsExistPubKeyParams(params)) {
         ret = CRYPT_RSA_SetPubKeyEx(ctx, params);
-        if (ret != CRYPT_SUCCESS) {
-            BSL_ERR_PUSH_ERROR(ret);
-            return ret;
-        }
-    }
-    if (IsExistRsaParam(params)) {
-        ret = CRYPT_RSA_SetParaEx(ctx, params);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             return ret;

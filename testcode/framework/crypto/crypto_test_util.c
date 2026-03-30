@@ -28,6 +28,7 @@
 #include "crypt_eal_rand.h"
 #include "crypt_eal_mac.h"
 #include "crypt_eal_init.h"
+#include "crypt_params_key.h"
 
 #include "test.h"
 #include "helper.h"
@@ -198,7 +199,7 @@ int TestRandInitEx(void *libCtx)
         seedMeth.getEntropy, 0);
     (void)BSL_PARAM_InitValue(&param[2], CRYPT_PARAM_RAND_SEED_CLEANENTROPY, BSL_PARAM_TYPE_FUNC_PTR,
         seedMeth.cleanEntropy, 0);
-    ret = CRYPT_EAL_ProviderRandInitCtx(NULL, (CRYPT_RAND_AlgId)drbgAlgId, "provider=default", NULL, 0, param);
+    ret = CRYPT_EAL_ProviderRandInitCtx(libCtx, (CRYPT_RAND_AlgId)drbgAlgId, "provider=default", NULL, 0, param);
 #else
     ret = CRYPT_EAL_ProviderRandInitCtx(libCtx, (CRYPT_RAND_AlgId)drbgAlgId, "provider=default", NULL, 0, NULL);
 #endif

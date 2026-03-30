@@ -21,6 +21,7 @@
 #include "eal_pkey_local.h"
 #include "crypt_eal_md.h"
 #include "crypt_eal_mac.h"
+#include "crypt_dsa.h"
 #include "crypt_eal_cipher.h"
 #include "crypt_eal_pkey.h"
 #include "eal_cipher_local.h"
@@ -739,8 +740,8 @@ void SDV_CRYPTO_EAL_GET_KEY_LEN_TC003_2(int algid, int rsaBits, Hex *p, Hex *q, 
         para.para.dhPara.gLen = g->len;
     }
     ASSERT_EQ(CRYPT_EAL_PkeySetPara(ctx, &para), CRYPT_SUCCESS);
-    int32_t val = 1;
-    ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_FIPS_FLAG, &val, sizeof(val));
+    uint32_t flag = CRYPT_ENABLE_SP800_KEYGEN_FLAG;
+    ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_GEN_FLAG, &flag, sizeof(flag));
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyGen(ctx), CRYPT_SUCCESS);
     flag = CRYPT_DISABLE_SP800_KEYGEN_FLAG;
@@ -780,8 +781,8 @@ void SDV_CRYPTO_EAL_GET_KEY_LEN_TC003_3(int algid, int rsaBits, Hex *p, Hex *q, 
         para.para.dhPara.gLen = g->len;
     }
     ASSERT_EQ(CRYPT_EAL_PkeySetPara(ctx, &para), CRYPT_SUCCESS);
-    int32_t val = 1;
-    ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_FIPS_FLAG, &val, sizeof(val));
+    uint32_t flag = CRYPT_ENABLE_SP800_KEYGEN_FLAG;
+    ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_GEN_FLAG, &flag, sizeof(flag));
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyGen(ctx), CRYPT_SUCCESS);
     ASSERT_TRUE(TestIsErrStackEmpty());

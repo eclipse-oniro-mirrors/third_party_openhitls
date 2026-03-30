@@ -217,9 +217,9 @@ int32_t Tls13PackMsg(TLS_Ctx *ctx, HS_MsgType type)
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16944, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "type err", 0, 0, 0, 0);
         return HITLS_PACK_UNSUPPORT_HANDSHAKE_MSG;
     }
-    
+
     HS_Ctx *hsCtx = ctx->hsCtx;
-    
+
     PackPacket pkt = {.buf = &hsCtx->msgBuf, .bufLen = &hsCtx->bufferLen, .bufOffset = &hsCtx->msgLen};
     ret = PackAppendUint8ToBuf(&pkt, (uint8_t)type & 0xffu);  /* Fill handshake message type */
     if (ret != HITLS_SUCCESS) {
@@ -258,19 +258,23 @@ int32_t HS_PackMsg(TLS_Ctx *ctx, HS_MsgType type)
         case HITLS_VERSION_TLCP_DTLCP11:
 #if defined(HITLS_TLS_PROTO_DTLCP11)
             if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
-                return Dtls12PackMsg(ctx, type);
+                ret = Dtls12PackMsg(ctx, type);
+                break;
             }
 #endif
 #endif
-            return Tls12PackMsg(ctx, type);
+            ret = Tls12PackMsg(ctx, type);
+            break;
 #endif /* HITLS_TLS_PROTO_TLS_BASIC */
 #ifdef HITLS_TLS_PROTO_TLS13
         case HITLS_VERSION_TLS13:
-            return Tls13PackMsg(ctx, type);
+            ret = Tls13PackMsg(ctx, type);
+            break;
 #endif /* HITLS_TLS_PROTO_TLS13 */
 #ifdef HITLS_TLS_PROTO_DTLS12
         case HITLS_VERSION_DTLS12:
-            return Dtls12PackMsg(ctx, type);
+            ret = Dtls12PackMsg(ctx, type);
+            break;
 #endif
         default:
             BSL_ERR_PUSH_ERROR(HITLS_PACK_UNSUPPORT_VERSION);

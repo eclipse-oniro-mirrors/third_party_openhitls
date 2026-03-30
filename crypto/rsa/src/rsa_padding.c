@@ -822,7 +822,7 @@ static int32_t OaepDecodeMaskedDB(void *provCtx, const EAL_MdMethod *mgfMethod, 
 }
 
 static int32_t OaepVerifyHashMaskDB(void *provCtx, const EAL_MdMethod *hashMethod, CRYPT_Data *paramData,
-    CRYPT_Data *dbMaskData, uint32_t hashLen, uint32_t *offset)
+    CRYPT_Data *dbMaskData, uint32_t hashLen, uint32_t *offset, uint32_t *valid)
 {
     int32_t ret;
     uint8_t hashVal[HASH_MAX_MDSIZE];
@@ -893,7 +893,8 @@ int32_t CRYPT_RSA_VerifyPkcs1Oaep(RSA_PadingPara *pad, const uint8_t *in, uint32
 
     GOTO_ERR_IF_EX(OaepDecodeMaskedDB(pad->mgfProvCtx, &pad->mgfMeth, &inData, seedMask, hashLen, &dbMaskData), ret);
 
-    GOTO_ERR_IF_EX(OaepVerifyHashMaskDB(pad->mdProvCtx, &pad->mdMeth, &paramData, &dbMaskData, hashLen, &offset), ret);
+    GOTO_ERR_IF_EX(OaepVerifyHashMaskDB(pad->mdProvCtx, &pad->mdMeth, &paramData, &dbMaskData, hashLen, &offset,
+        &valid), ret);
 
     // find Min(msgLen, maskedDBLen - offset), to do copy of const time.
     copyMask = Uint32ConstTimeGe(*msgLen, maskedDBLen - offset);

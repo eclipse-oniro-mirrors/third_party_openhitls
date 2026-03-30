@@ -61,24 +61,24 @@ static int32_t GetPkey(void *libCtx, const char *attrName, const CMVP_MlkemVecto
     CRYPT_EAL_PkeyPrv prvKey = { 0 };
     CRYPT_EAL_PkeyPub pubKey = { 0 };
     *pkeyPrv = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, vector->algId, 0, attrName);
-    GOTO_EXIT_IF(*pkeyPrv == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(*pkeyPrv == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     *pkeyPub = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, vector->algId, 0, attrName);
-    GOTO_EXIT_IF(*pkeyPub == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(*pkeyPub == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = CRYPT_EAL_PkeySetParaById(*pkeyPrv, vector->type);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
     ret = CRYPT_EAL_PkeySetParaById(*pkeyPub, vector->type);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
 
     prvKey.id = vector->algId;
     prvKey.key.mldsaPrv.data = CMVP_StringsToBins(vector->dk, &(prvKey.key.kemDk.len));
     ret = CRYPT_EAL_PkeySetPrv(*pkeyPrv, &prvKey);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
 
     pubKey.id = vector->algId;
     pubKey.key.mldsaPub.data = CMVP_StringsToBins(vector->ek, &(pubKey.key.kemEk.len));
     ret = CRYPT_EAL_PkeySetPub(*pkeyPub, &pubKey);
-EXIT:
+ERR:
     BSL_SAL_Free(prvKey.key.kemDk.data);
     BSL_SAL_Free(pubKey.key.kemEk.data);
     return ret;
@@ -122,14 +122,15 @@ static bool TestMlkemEncapsDecaps(void *libCtx, const char *attrName, const CMVP
     CRYPT_EAL_RandFuncEx funcEx = CRYPT_RandRegistExGet();
     CRYPT_RandRegistEx(NULL);
 
-    GOTO_EXIT_IF(GetPkey(libCtx, attrName, vector, &pkeyPrv, &pkeyPub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyCtrl(pkeyPrv, CRYPT_CTRL_GET_CIPHERTEXT_LEN, &cipherLen, sizeof(cipherLen)) !=
+    GOTO_ERR_IF_TRUE(
+        GetPkey(libCtx, attrName, vector, &pkeyPrv, &pkeyPub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyCtrl(pkeyPrv, CRYPT_CTRL_GET_CIPHERTEXT_LEN, &cipherLen, sizeof(cipherLen)) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     cipher = BSL_SAL_Malloc(cipherLen);
-    GOTO_EXIT_IF(cipher == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(cipher == NULL, CRYPT_MEM_ALLOC_FAIL);
 
     cipherVec = CMVP_StringsToBins(vector->c, &cipherVecLen);
-    GOTO_EXIT_IF(cipherVec == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(cipherVec == NULL, CRYPT_CMVP_COMMON_ERR);
 
     sharedKeyVec = CMVP_StringsToBins(vector->k, &sharedKeyVecLen);
     GOTO_ERR_IF_TRUE(sharedKeyVec == NULL, CRYPT_CMVP_COMMON_ERR);
@@ -138,19 +139,19 @@ static bool TestMlkemEncapsDecaps(void *libCtx, const char *attrName, const CMVP
     MLKEM_SEED_VECTOR = vector->m;
     CRYPT_RandRegist(TestVectorRandom);
     // encaps
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyEncaps(pkeyPub, cipher, &cipherLen, sharedKey, &sharedLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyEncaps(pkeyPub, cipher, &cipherLen, sharedKey, &sharedLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(cipherLen != cipherVecLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(cipher, cipherVec, cipherLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(sharedLen != sharedKeyVecLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(sharedKey, sharedKeyVec, sharedLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(cipherLen != cipherVecLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(cipher, cipherVec, cipherLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(sharedLen != sharedKeyVecLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(sharedKey, sharedKeyVec, sharedLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     // decaps
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyDecaps(pkeyPrv, cipherVec, cipherVecLen, sharedKey, &sharedLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyDecaps(pkeyPrv, cipherVec, cipherVecLen, sharedKey, &sharedLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(sharedLen != sharedKeyVecLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(sharedKey, sharedKeyVec, sharedLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(sharedLen != sharedKeyVecLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(sharedKey, sharedKeyVec, sharedLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(cipher);
     BSL_SAL_Free(cipherVec);
     BSL_SAL_Free(sharedKeyVec);

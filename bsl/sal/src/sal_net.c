@@ -196,7 +196,7 @@ void SAL_SockAddrCopy(BSL_SAL_SockAddr dst, BSL_SAL_SockAddr src)
         return g_netCallBack.pfSockAddrCopy(dst, src);
     }
 #if defined(HITLS_BSL_SAL_LINUX) || defined(HITLS_BSL_SAL_DARWIN)
-    SAL_NET_SockAddrCopy(src, dst);
+    SAL_NET_SockAddrCopy(dst, src);
     return;
 #endif
 }

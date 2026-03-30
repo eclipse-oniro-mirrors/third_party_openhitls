@@ -50,7 +50,6 @@
 #include "common_func.h"
 #include "crypt_default.h"
 #include "stub_crypt.h"
-#include "hitls_x509_local.h"
 #ifdef HITLS_TLS_FEATURE_PROVIDER
 #include "hitls_crypt.h"
 #endif

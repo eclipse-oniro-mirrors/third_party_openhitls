@@ -44,7 +44,7 @@
 /* END_HEADER */
 
 #ifdef HITLS_CRYPTO_PROVIDER
-STUB_DEFINE_RET2(void *, BSL_SAL_Calloc, uint32_t, uint32_t);
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 STUB_DEFINE_RET1(CRYPT_PKEY_AlgId, CRYPT_EAL_PkeyGetId, const CRYPT_EAL_PkeyCtx *);
 #endif
 
@@ -322,8 +322,10 @@ EXIT:
 void SDV_BSL_ASN1_PARSE_PUBKEY_FILE_TC001(char *path, int fileType, int mdId, Hex *msg, Hex *sign)
 {
     CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+    CRYPT_EAL_PkeyCtx *reDecPkeyCtx = NULL;
+    BSL_Buffer reEnc = {0};
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, fileType, path, NULL, 0, &pkeyCtx), CRYPT_SUCCESS);
-    if (fileType == CRYPT_PUBKEY_RSA) {
+    if (fileType == CRYPT_PUBKEY_RSA || CRYPT_EAL_PkeyGetId(pkeyCtx) == CRYPT_PKEY_RSA) {
         int32_t pkcsv15 = mdId;
         ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_EMSA_PKCSV15, &pkcsv15, sizeof(pkcsv15)),
                   0);
@@ -403,6 +405,33 @@ static int32_t DecodeKeyBuff(int isProvider, BSL_Buffer *encode, int format, con
     }
 }
 
+/* sign and optional compare in a reusable subroutine */
+static int32_t PrikeySign(CRYPT_EAL_PkeyCtx *pkeyCtx, int mdId, int fileType, char *fileTypeStr, Hex *msg, Hex *sign)
+{
+    int32_t ret = CRYPT_INVALID_KEY;
+    uint8_t *signdata = NULL;
+    uint32_t signLen = 0;
+    int32_t id = CRYPT_EAL_PkeyGetId(pkeyCtx);
+    if (fileType == CRYPT_PRIKEY_RSA || strcmp(fileTypeStr, "PRIKEY_RSA") == 0 || id == CRYPT_PKEY_RSA) {
+        int32_t pkcsv15 = mdId;
+        ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_EMSA_PKCSV15, &pkcsv15, sizeof(pkcsv15)), 0);
+    }
+
+    signLen = CRYPT_EAL_PkeyGetSignLen(pkeyCtx);
+    signdata = (uint8_t *)BSL_SAL_Malloc(signLen);
+    ASSERT_TRUE(signdata != NULL);
+    ASSERT_EQ(CRYPT_EAL_PkeySign(pkeyCtx, mdId, msg->x, msg->len, signdata, &signLen), CRYPT_SUCCESS);
+
+    if (sign->len != 0 && id != CRYPT_PKEY_SM2 && id != CRYPT_PKEY_ECDSA) {
+        ASSERT_COMPARE("Signature Compare", sign->x, sign->len, signdata, signLen);
+    }
+
+    ret = CRYPT_SUCCESS;
+EXIT:
+    BSL_SAL_Free(signdata);
+    return ret;
+}
+
 /* BEGIN_CASE */
 void SDV_BSL_ASN1_PARSE_PRIKEY_FILE_TC001(int isProvider, char *path, int fileType, char *fileTypeStr, int mdId,
     Hex *msg, Hex *sign)
@@ -411,18 +440,13 @@ void SDV_BSL_ASN1_PARSE_PRIKEY_FILE_TC001(int isProvider, char *path, int fileTy
     CRYPT_RandRegistEx(RandFuncEx);
     uint8_t *signdata = NULL;
     CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
-    ASSERT_EQ(DecodeKeyFile(isProvider, path, BSL_FORMAT_ASN1, "ASN1", fileType, fileTypeStr, NULL, 0, &pkeyCtx), 0);
-    if (fileType == CRYPT_PRIKEY_RSA || strcmp(fileTypeStr, "PRIKEY_RSA") == 0 ||
-        CRYPT_EAL_PkeyGetId(pkeyCtx) == CRYPT_PKEY_RSA) {
-        int32_t pkcsv15 = mdId;
-        ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkeyCtx, CRYPT_CTRL_SET_RSA_EMSA_PKCSV15, &pkcsv15, sizeof(pkcsv15)), 0);
-    }
+    /* Re-encode current pkey, decode again, then sign again and verify */
+    BSL_Buffer reEnc = {0};
+    CRYPT_EAL_PkeyCtx *reDecPkeyCtx = NULL;
 
-    /* Malloc signature buffer */
-    uint32_t signLen = CRYPT_EAL_PkeyGetSignLen(pkeyCtx);
-    signdata = (uint8_t *)BSL_SAL_Malloc(signLen);
-    ASSERT_TRUE(signdata != NULL);
-    ASSERT_EQ(CRYPT_EAL_PkeySign(pkeyCtx, mdId, msg->x, msg->len, signdata, &signLen), CRYPT_SUCCESS);
+    ASSERT_EQ(DecodeKeyFile(isProvider, path, BSL_FORMAT_ASN1, "ASN1", fileType, fileTypeStr, NULL, 0, &pkeyCtx), 0);
+
+    ASSERT_EQ(PrikeySign(pkeyCtx, mdId, fileType, fileTypeStr, msg, sign), CRYPT_SUCCESS);
 
 
     ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkeyCtx, NULL, BSL_FORMAT_ASN1, fileType, &reEnc), CRYPT_SUCCESS);
@@ -433,6 +457,8 @@ void SDV_BSL_ASN1_PARSE_PRIKEY_FILE_TC001(int isProvider, char *path, int fileTy
 
 EXIT:
     BSL_SAL_Free(signdata);
+    CRYPT_EAL_PkeyFreeCtx(reDecPkeyCtx);
+    BSL_SAL_FREE(reEnc.data);
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
 }
 /* END_CASE */
@@ -441,7 +467,7 @@ EXIT:
 static int32_t EccPrvSign(CRYPT_EAL_PkeyCtx *pkeyCtx, int mdId, int alg, Hex *msg, Hex *rawKey,
     int paraId)
 {
-    int32_t ret = CRYPT_NOT_SUPPORT;
+    int32_t ret = CRYPT_INVALID_KEY;
     uint8_t *rawPriKey = NULL;
     uint32_t rawPriKeyLen = 100; /* buffer length used by existing tests */
     uint8_t *signdata = NULL;

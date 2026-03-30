@@ -46,15 +46,15 @@ static const CMVP_X25519_VECTOR X25519_VECTOR = {
 static bool GetData(CRYPT_Data *expShare, CRYPT_Data *share1, CRYPT_Data *share2)
 {
     expShare->data = CMVP_StringsToBins(X25519_VECTOR.share1, &(expShare->len));
-    GOTO_EXIT_IF(expShare->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(expShare->data == NULL, CRYPT_CMVP_COMMON_ERR);
     share1->len = expShare->len;
     share1->data = BSL_SAL_Malloc(share1->len);
-    GOTO_EXIT_IF(share1->data == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(share1->data == NULL, CRYPT_MEM_ALLOC_FAIL);
     share2->len = expShare->len;
     share2->data = BSL_SAL_Malloc(share2->len);
-    GOTO_EXIT_IF(share2->data == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(share2->data == NULL, CRYPT_MEM_ALLOC_FAIL);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -63,21 +63,21 @@ static bool GetKey(CRYPT_EAL_PkeyPrv *alicePri, CRYPT_EAL_PkeyPub *alicePub, CRY
 {
     alicePri->id = CRYPT_PKEY_X25519;
     alicePri->key.curve25519Prv.data = CMVP_StringsToBins(X25519_VECTOR.alicePri, &(alicePri->key.curve25519Prv.len));
-    GOTO_EXIT_IF(alicePri->key.curve25519Prv.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(alicePri->key.curve25519Prv.data == NULL, CRYPT_CMVP_COMMON_ERR);
 
     alicePub->id = CRYPT_PKEY_X25519;
     alicePub->key.curve25519Pub.data = CMVP_StringsToBins(X25519_VECTOR.alicePub, &(alicePub->key.curve25519Pub.len));
-    GOTO_EXIT_IF(alicePub->key.curve25519Pub.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(alicePub->key.curve25519Pub.data == NULL, CRYPT_CMVP_COMMON_ERR);
 
     bobPri->id = CRYPT_PKEY_X25519;
     bobPri->key.curve25519Prv.data = CMVP_StringsToBins(X25519_VECTOR.bobPri, &(bobPri->key.curve25519Prv.len));
-    GOTO_EXIT_IF(bobPri->key.curve25519Prv.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(bobPri->key.curve25519Prv.data == NULL, CRYPT_CMVP_COMMON_ERR);
 
     bobPub->id = CRYPT_PKEY_X25519;
     bobPub->key.curve25519Pub.data = CMVP_StringsToBins(X25519_VECTOR.bobPub, &(bobPub->key.curve25519Pub.len));
-    GOTO_EXIT_IF(bobPub->key.curve25519Pub.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(bobPub->key.curve25519Pub.data == NULL, CRYPT_CMVP_COMMON_ERR);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -99,28 +99,28 @@ static bool CRYPT_CMVP_SelftestX25519Internal(void *libCtx, const char *attrName
     bobPub.key.curve25519Pub.data = NULL;
 
     alice = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_X25519, 0, attrName);
-    GOTO_EXIT_IF(alice == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(alice == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     bob = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_X25519, 0, attrName);
-    GOTO_EXIT_IF(bob == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(GetKey(&alicePri, &alicePub, &bobPri, &bobPub) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(GetData(&expShare, &share1, &share2) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(bob == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(GetKey(&alicePri, &alicePub, &bobPri, &bobPub) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(GetData(&expShare, &share1, &share2) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetPrv(alice, &alicePri) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetPub(bob, &bobPub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyComputeShareKey(alice, bob, share1.data, &(share1.len)) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPrv(alice, &alicePri) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPub(bob, &bobPub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyComputeShareKey(alice, bob, share1.data, &(share1.len)) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(share1.len != expShare.len, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(share1.data, expShare.data, expShare.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(share1.len != expShare.len, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(share1.data, expShare.data, expShare.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetPrv(bob, &bobPri) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetPub(alice, &alicePub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyComputeShareKey(bob, alice, share2.data, &(share2.len)) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPrv(bob, &bobPri) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPub(alice, &alicePub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyComputeShareKey(bob, alice, share2.data, &(share2.len)) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(share2.len != expShare.len, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(share2.data, expShare.data, expShare.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(share2.len != expShare.len, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(share2.data, expShare.data, expShare.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(alicePri.key.curve25519Prv.data);
     BSL_SAL_Free(alicePub.key.curve25519Pub.data);
     BSL_SAL_Free(bobPri.key.curve25519Prv.data);

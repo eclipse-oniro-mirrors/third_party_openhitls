@@ -301,7 +301,7 @@
 #if defined(HITLS_CRYPTO_CTR) || defined(HITLS_CRYPTO_CBC) || defined(HITLS_CRYPTO_ECB) || \
     defined(HITLS_CRYPTO_GCM) || defined(HITLS_CRYPTO_CCM) || defined(HITLS_CRYPTO_XTS) || \
     defined(HITLS_CRYPTO_CFB) || defined(HITLS_CRYPTO_OFB) || defined(HITLS_CRYPTO_CHACHA20POLY1305) || \
-    defined(HITLS_CRYPTO_HCTR)
+    defined(HITLS_CRYPTO_WRAP) || defined(HITLS_CRYPTO_HCTR)
     #ifndef HITLS_CRYPTO_MODES
         #define HITLS_CRYPTO_MODES
     #endif
@@ -674,11 +674,11 @@
     #endif
 #endif
 
-#if defined(HITLS_CRYPTO_CURVE_NISTP224) || defined(HITLS_CRYPTO_CURVE_NISTP256) || \
-    defined(HITLS_CRYPTO_CURVE_NISTP384) || defined(HITLS_CRYPTO_CURVE_NISTP521) || \
+#if defined(HITLS_CRYPTO_CURVE_NISTP192) || defined(HITLS_CRYPTO_CURVE_NISTP224) || \
+    defined(HITLS_CRYPTO_CURVE_NISTP256) || defined(HITLS_CRYPTO_CURVE_NISTP384) || \
+    defined(HITLS_CRYPTO_CURVE_NISTP521) || \
     defined(HITLS_CRYPTO_CURVE_BP256R1) || defined(HITLS_CRYPTO_CURVE_BP384R1) || \
-    defined(HITLS_CRYPTO_CURVE_BP512R1) || defined(HITLS_CRYPTO_CURVE_SM2) || \
-    defined(HITLS_CRYPTO_CURVE_NISTP192)
+    defined(HITLS_CRYPTO_CURVE_BP512R1) || defined(HITLS_CRYPTO_CURVE_SM2)
     #ifndef HITLS_CRYPTO_ECC
         #define HITLS_CRYPTO_ECC
     #endif
@@ -1005,8 +1005,8 @@
         ((defined(HITLS_CRYPTO_CURVE_NISTP224) || defined(HITLS_CRYPTO_CURVE_NISTP521)) && \
             !defined(HITLS_CRYPTO_NIST_USE_ACCEL)) || \
         defined(HITLS_CRYPTO_CURVE_NISTP384) || \
-        (defined(HITLS_CRYPTO_CURVE_NISTP256) && (!defined(HITLS_CRYPTO_CURVE_NISTP256_ASM) || \
-            (!defined(HITLS_CRYPTO_NIST_ECC_ACCELERATE))) && (!defined(HITLS_CRYPTO_NIST_USE_ACCEL))) || \
+        (defined(HITLS_CRYPTO_CURVE_NISTP256) && !defined(HITLS_CRYPTO_CURVE_NISTP256_ASM) &&  \
+            (!defined(HITLS_CRYPTO_NIST_ECC_ACCELERATE)) && (!defined(HITLS_CRYPTO_NIST_USE_ACCEL))) || \
         (defined(HITLS_CRYPTO_CURVE_SM2) && !defined(HITLS_CRYPTO_CURVE_SM2_ASM))
             #define HITLS_CRYPTO_CURVE_MONT_NIST
     #endif

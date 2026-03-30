@@ -52,17 +52,17 @@ static const CMVP_CHACHA20POLY1305_VECTOR CHACHA20POLY1305_VECTOR = {
 static bool GetData(CRYPT_Data *key, CRYPT_Data *iv, CRYPT_Data *aad, CRYPT_Data *data, CRYPT_Data *cipher)
 {
     key->data = CMVP_StringsToBins(CHACHA20POLY1305_VECTOR.key, &(key->len));
-    GOTO_EXIT_IF(key->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(key->data == NULL, CRYPT_CMVP_COMMON_ERR);
     iv->data = CMVP_StringsToBins(CHACHA20POLY1305_VECTOR.iv, &(iv->len));
-    GOTO_EXIT_IF(iv->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(iv->data == NULL, CRYPT_CMVP_COMMON_ERR);
     aad->data = CMVP_StringsToBins(CHACHA20POLY1305_VECTOR.aad, &(aad->len));
-    GOTO_EXIT_IF(aad->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(aad->data == NULL, CRYPT_CMVP_COMMON_ERR);
     data->data = CMVP_StringsToBins(CHACHA20POLY1305_VECTOR.plaintext, &(data->len));
-    GOTO_EXIT_IF(data->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(data->data == NULL, CRYPT_CMVP_COMMON_ERR);
     cipher->data = CMVP_StringsToBins(CHACHA20POLY1305_VECTOR.ciphertext, &(cipher->len));
-    GOTO_EXIT_IF(cipher->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(cipher->data == NULL, CRYPT_CMVP_COMMON_ERR);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -91,39 +91,39 @@ static bool CRYPT_CMVP_SelftestChacha20poly1305Internal(void *libCtx, const char
     int32_t err = CRYPT_CMVP_ERR_ALGO_SELFTEST;
     CRYPT_EAL_CipherCtx *ctx = NULL;
 
-    GOTO_EXIT_IF(!GetData(&key, &iv, &aad, &data, &cipher), err);
+    GOTO_ERR_IF_TRUE(!GetData(&key, &iv, &aad, &data, &cipher), err);
     tag.data = CMVP_StringsToBins(CHACHA20POLY1305_VECTOR.tag, &(tag.len));
-    GOTO_EXIT_IF(tag.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(tag.data == NULL, CRYPT_CMVP_COMMON_ERR);
     outTag = BSL_SAL_Malloc(tag.len);
     outLen = cipher.len;
     out = BSL_SAL_Malloc(outLen);
-    GOTO_EXIT_IF(outTag == NULL || out == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(outTag == NULL || out == NULL, CRYPT_MEM_ALLOC_FAIL);
     first = data.len / 2;       // The length of the data in the first operation is 1/2 of the data.
 
     ctx = CRYPT_EAL_ProviderCipherNewCtx(libCtx, CRYPT_CIPHER_CHACHA20_POLY1305, attrName);
-    GOTO_EXIT_IF(ctx == NULL, err);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherInit(ctx, key.data, key.len, iv.data, iv.len, true) != CRYPT_SUCCESS, err);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, aad.data, aad.len) != CRYPT_SUCCESS, err);
+    GOTO_ERR_IF_TRUE(ctx == NULL, err);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherInit(ctx, key.data, key.len, iv.data, iv.len, true) != CRYPT_SUCCESS, err);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, aad.data, aad.len) != CRYPT_SUCCESS, err);
     outLen = first;
-    GOTO_EXIT_IF(CRYPT_EAL_CipherUpdate(ctx, data.data, first, out, &outLen) != CRYPT_SUCCESS, err);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherUpdate(ctx, data.data, first, out, &outLen) != CRYPT_SUCCESS, err);
     outLen = data.len - first;
-    GOTO_EXIT_IF(CRYPT_EAL_CipherUpdate(ctx, data.data + first, data.len - first,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherUpdate(ctx, data.data + first, data.len - first,
         out + first, &outLen) != CRYPT_SUCCESS, err);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, outTag, (uint32_t)tag.len) != CRYPT_SUCCESS, err);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, outTag, (uint32_t)tag.len) != CRYPT_SUCCESS, err);
 
-    GOTO_EXIT_IF(memcmp(out, cipher.data, cipher.len) != 0, err);
-    GOTO_EXIT_IF(memcmp(outTag, tag.data, tag.len) != 0, err);
+    GOTO_ERR_IF_TRUE(memcmp(out, cipher.data, cipher.len) != 0, err);
+    GOTO_ERR_IF_TRUE(memcmp(outTag, tag.data, tag.len) != 0, err);
 
-    GOTO_EXIT_IF(CRYPT_EAL_CipherInit(ctx, key.data, key.len, iv.data, iv.len, false) != CRYPT_SUCCESS, err);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, aad.data, aad.len) != CRYPT_SUCCESS, err);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherInit(ctx, key.data, key.len, iv.data, iv.len, false) != CRYPT_SUCCESS, err);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, aad.data, aad.len) != CRYPT_SUCCESS, err);
     outLen = cipher.len;
-    GOTO_EXIT_IF(CRYPT_EAL_CipherUpdate(ctx, cipher.data, cipher.len, out, &outLen) != CRYPT_SUCCESS, err);
-    GOTO_EXIT_IF(memcmp(out, data.data, data.len) != 0, err);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, outTag, (uint32_t)tag.len) != CRYPT_SUCCESS, err);
-    GOTO_EXIT_IF(memcmp(outTag, tag.data, tag.len) != 0, err);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherUpdate(ctx, cipher.data, cipher.len, out, &outLen) != CRYPT_SUCCESS, err);
+    GOTO_ERR_IF_TRUE(memcmp(out, data.data, data.len) != 0, err);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, outTag, (uint32_t)tag.len) != CRYPT_SUCCESS, err);
+    GOTO_ERR_IF_TRUE(memcmp(outTag, tag.data, tag.len) != 0, err);
 
     ret = true;
-EXIT:
+ERR:
     FreeData(key, iv, aad, data, cipher);
     BSL_SAL_Free(tag.data);
     BSL_SAL_Free(outTag);

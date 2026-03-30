@@ -42,7 +42,14 @@
 #include "hitls_pki_utils.h"
 #include "hitls_x509_verify.h"
 #include "hitls_x509_local.h"
+#include "stub_utils.h"
 /* END_HEADER */
+
+#if (defined(HITLS_CRYPTO_KEY_ENCODE) && defined(HITLS_CRYPTO_KEY_EPKI)) || \
+    defined(HITLS_PKI_X509_CSR_GEN) || defined(HITLS_PKI_X509_CRT_GEN)
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
+#endif
+
 
 static inline void UnusedParam1(int param1, int param2, int param3)
 {
@@ -1236,7 +1243,7 @@ void SDV_HITLS_GEN_CSR_CERT_TC001()
     defined(HITLS_PKI_X509_CSR)
     char *path = "tmpca.csr";
     char *pathcakey = "tmpcakey.pem";
-    char *path1 = "tmpca.cert";
+    char *path1 = "tmpca1.cert";
     HITLS_X509_Csr *csr = NULL;
     BSL_Buffer encode = {0};
     HITLS_X509_DN dnName1[1] = {{BSL_CID_AT_COMMONNAME, (uint8_t *)"ROOT", 2}};
@@ -1359,7 +1366,7 @@ void SDV_HITLS_GEN_CSR_MIDCERT_TC001()
     csr = HITLS_X509_CsrNew();
     ASSERT_NE(csr, NULL);
 
-    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_PEM, "tmpca.cert", &cacert), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_PEM, "tmpca1.cert", &cacert), HITLS_PKI_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_PEM, CRYPT_PRIKEY_PKCS8_UNENCRYPT, "tmpcakey.pem", NULL, 0, &capkey), CRYPT_SUCCESS);
 
     // set csr info
@@ -1545,7 +1552,7 @@ void SDV_HITLS_CERT_CHAIN_FUNC_TC001()
     ret = HITLS_AddCertToStoreTest("tmpmid.cert", store, &midcert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     HITLS_X509_Cert *cacert = NULL;
-    ret = HITLS_AddCertToStoreTest("tmpca.cert", store, &cacert);
+    ret = HITLS_AddCertToStoreTest("tmpca1.cert", store, &cacert);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     HITLS_X509_List *chain = NULL;
     ret = HITLS_X509_CertChainBuild(store, true, entity, &chain);
@@ -1561,7 +1568,7 @@ EXIT:
     HITLS_X509_StoreCtxFree(store);
     BSL_LIST_FREE(chain, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
     remove("tmpee.cert");
-    remove("tmpca.cert");
+    remove("tmpca1.cert");
     remove("tmpmid.cert");
 #else
     SKIP_TEST();
@@ -1838,6 +1845,7 @@ EXIT:
     (void)curveId;
     (void)symId;
     (void)pwd;
+    (void)sm2Pub;
     SKIP_TEST();
 #endif
 }
@@ -1917,7 +1925,7 @@ void SDV_PKI_GEN_CERT_STUB_TC001(int algId, int hashId, int curveId)
     /* Phase 1: Probe - count malloc calls during successful execution */
     STUB_EnableMallocFail(false);
     STUB_ResetMallocCount();
-    ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, cert, &encode), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertGenBuff(BSL_FORMAT_ASN1, cert, &encode), HITLS_PKI_SUCCESS);
     totalMallocCount = STUB_GetMallocCallCount();
     BSL_SAL_Free(encode.data);
     encode.data = NULL;
@@ -1928,7 +1936,7 @@ void SDV_PKI_GEN_CERT_STUB_TC001(int algId, int hashId, int curveId)
     for (uint32_t i = 0; i < totalMallocCount - 1; i++) {
         STUB_ResetMallocCount();
         STUB_SetMallocFailIndex(i);
-        ASSERT_NE(HITLS_X509_CertGenBuff(BSL_FORMAT_PEM, testCert, &encode), HITLS_PKI_SUCCESS);
+        ASSERT_NE(HITLS_X509_CertGenBuff(BSL_FORMAT_ASN1, testCert, &encode), HITLS_PKI_SUCCESS);
     }
 EXIT:
     TestRandDeInit();
@@ -2037,7 +2045,8 @@ EXIT:
 }
 /* END_CASE */
 
-#if defined(HITLS_CRYPTO_XMSS) || defined(HITLS_CRYPTO_MLDSA) || defined(HITLS_CRYPTO_SLH_DSA)
+#if (defined(HITLS_CRYPTO_XMSS) || defined(HITLS_CRYPTO_MLDSA) || defined(HITLS_CRYPTO_SLH_DSA)) && \
+    (defined(HITLS_PKI_X509_CSR_GEN) && defined(HITLS_PKI_X509_CRT_GEN) && defined(HITLS_PKI_X509_CRL_GEN))
 static int32_t GenKeyAndSelfCert(int32_t algId, int paraId, CRYPT_EAL_PkeyCtx **key, HITLS_X509_Cert **cert)
 {
     HITLS_X509_Cert *tmpCert = NULL;
@@ -2205,7 +2214,8 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_X509_PQ_CERT_GEN_PKI_TC001(int algId, int paraId, char *root, char *crl, char *csr)
 {
-#if defined(HITLS_CRYPTO_XMSS) || defined(HITLS_CRYPTO_MLDSA) || defined(HITLS_CRYPTO_SLH_DSA)
+#if (defined(HITLS_CRYPTO_XMSS) || defined(HITLS_CRYPTO_MLDSA) || defined(HITLS_CRYPTO_SLH_DSA)) && \
+    (defined(HITLS_PKI_X509_CSR_GEN) && defined(HITLS_PKI_X509_CRT_GEN) && defined(HITLS_PKI_X509_CRL_GEN))
     if (PkiSkipTest(algId, BSL_FORMAT_ASN1)) {
         SKIP_TEST();
     }

@@ -143,49 +143,50 @@ static bool RsaParamCheck(const CRYPT_EAL_PkeyC2Data *data)
     if (data->para != NULL) {
         CRYPT_RsaPara para = data->para->para.rsaPara;
         // The length of the RSA key must be at least 2048 bits.
-        GOTO_EXIT_IF(para.bits < 2048, CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE(para.bits < 2048, CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     if (data->pub != NULL) {
         CRYPT_RsaPub pub = data->pub->key.rsaPub;
         // The length of the RSA key must be at least 2048 bits. 8 bits are 1 byte.
-        GOTO_EXIT_IF(pub.nLen < (2048 / 8), CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE(pub.nLen < (2048 / 8), CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     if (data->prv != NULL) {
         CRYPT_RsaPrv prv = data->prv->key.rsaPrv;
         // The length of the RSA key must be at least 2048 bits. 8 bits are 1 byte.
-        GOTO_EXIT_IF(prv.nLen < (2048 / 8), CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE(prv.nLen < (2048 / 8), CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     if (data->pkcsv15 != NULL) {
-        GOTO_EXIT_IF((GetVaildFlag(CRYPT_PKEY_RSA, data->pkcsv15->mdId, false) == false), CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE(
+            (GetVaildFlag(CRYPT_PKEY_RSA, data->pkcsv15->mdId, false) == false), CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     if (data->pss != NULL) {
         BSL_Param *mdParam = BSL_PARAM_FindParam(data->pss, CRYPT_PARAM_RSA_MD_ID);
-        GOTO_EXIT_IF(mdParam == NULL, CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE(mdParam == NULL, CRYPT_CMVP_ERR_PARAM_CHECK);
         BSL_Param *mgfParam = BSL_PARAM_FindParam(data->pss, CRYPT_PARAM_RSA_MGF1_ID);
-        GOTO_EXIT_IF(mgfParam == NULL, CRYPT_CMVP_ERR_PARAM_CHECK);
-        GOTO_EXIT_IF((GetVaildFlag(CRYPT_PKEY_RSA, *(uint32_t *)(mdParam->value), false) == false),
+        GOTO_ERR_IF_TRUE(mgfParam == NULL, CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE((GetVaildFlag(CRYPT_PKEY_RSA, *(uint32_t *)(mdParam->value), false) == false),
             CRYPT_CMVP_ERR_PARAM_CHECK);
-        GOTO_EXIT_IF((GetVaildFlag(CRYPT_PKEY_RSA, *(uint32_t *)(mgfParam->value), false) == false),
+        GOTO_ERR_IF_TRUE((GetVaildFlag(CRYPT_PKEY_RSA, *(uint32_t *)(mgfParam->value), false) == false),
             CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     if (data->oaep != NULL) {
         BSL_Param *mdParam = BSL_PARAM_FindParam(data->oaep, CRYPT_PARAM_RSA_MD_ID);
-        GOTO_EXIT_IF(mdParam == NULL, CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE(mdParam == NULL, CRYPT_CMVP_ERR_PARAM_CHECK);
         BSL_Param *mgfParam = BSL_PARAM_FindParam(data->oaep, CRYPT_PARAM_RSA_MGF1_ID);
-        GOTO_EXIT_IF(mgfParam == NULL, CRYPT_CMVP_ERR_PARAM_CHECK);
-        GOTO_EXIT_IF((GetVaildFlag(CRYPT_PKEY_RSA, *(uint32_t *)(mdParam->value), false) == false),
+        GOTO_ERR_IF_TRUE(mgfParam == NULL, CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE((GetVaildFlag(CRYPT_PKEY_RSA, *(uint32_t *)(mdParam->value), false) == false),
             CRYPT_CMVP_ERR_PARAM_CHECK);
-        GOTO_EXIT_IF((GetVaildFlag(CRYPT_PKEY_RSA, *(uint32_t *)(mgfParam->value), false) == false),
+        GOTO_ERR_IF_TRUE((GetVaildFlag(CRYPT_PKEY_RSA, *(uint32_t *)(mgfParam->value), false) == false),
             CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -200,7 +201,7 @@ static bool DsaParamCheck(const CRYPT_EAL_PkeyC2Data *data)
     // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar2.pdf Chapter 3
     // (L, N) = (2048, 224)，(2048, 256), 8 bits: 1 byte
     if ((pLen != 2048 / 8 || qLen != 224 / 8) && (pLen != 2048 / 8 || qLen != 256 / 8) &&
-        // (L, N) = (3072, 256)
+        // (L, N) = (3072, 256), 8 bits: 1 byte
         (pLen != 3072 / 8 || qLen != 256 / 8)) {
         return false;
     }
@@ -221,18 +222,18 @@ static bool DhParamCheck(const CRYPT_EAL_PkeyC2Data *data)
         // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar2.pdf Chapter 5
         // (len(p), len(q)) = (2048, 224)
         // The length of p must be at least 2048 bits, and the length of q must be at least 224 bits.
-        GOTO_EXIT_IF(((pLen != 2048 / 8 || qLen != 224 / 8) &&
+        GOTO_ERR_IF_TRUE(((pLen != 2048 / 8 || qLen != 224 / 8) &&
             // (len(p), len(q)) = (2048, 256)
             (pLen != 2048 / 8 || qLen != 256 / 8)), CRYPT_CMVP_ERR_PARAM_CHECK);
     }
     if (data->paraId != CRYPT_PKEY_PARAID_MAX) {
         // The length of p must be at least 2048 bits, and the length of q must be at least 224 bits.
         for (uint32_t i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
-            GOTO_EXIT_IF((data->paraId == list[i]), CRYPT_CMVP_ERR_PARAM_CHECK);
+            GOTO_ERR_IF_TRUE((data->paraId == list[i]), CRYPT_CMVP_ERR_PARAM_CHECK);
         }
     }
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -290,33 +291,33 @@ static bool ISO19790_AsymParamCheck(CRYPT_PKEY_AlgId id, const CRYPT_EAL_PkeyC2D
 
     switch (id) {
         case CRYPT_PKEY_DSA:
-            GOTO_EXIT_IF(DsaParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
+            GOTO_ERR_IF_TRUE(DsaParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
             break;
         case CRYPT_PKEY_RSA:
-            GOTO_EXIT_IF(RsaParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
+            GOTO_ERR_IF_TRUE(RsaParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
             break;
         case CRYPT_PKEY_DH:
-            GOTO_EXIT_IF(DhParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
+            GOTO_ERR_IF_TRUE(DhParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
             break;
         case CRYPT_PKEY_ECDH:
-            GOTO_EXIT_IF(EcdhParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
+            GOTO_ERR_IF_TRUE(EcdhParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
             break;
         case CRYPT_PKEY_ECDSA:
-            GOTO_EXIT_IF(EcdsaParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
+            GOTO_ERR_IF_TRUE(EcdsaParamCheck(data) != true, CRYPT_CMVP_ERR_PARAM_CHECK);
             break;
         default:
             break;
     }
     if (data->oper == CRYPT_EVENT_SIGN) {
-        GOTO_EXIT_IF((GetVaildFlag(id, data->mdId, true) == false), CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE((GetVaildFlag(id, data->mdId, true) == false), CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     if (data->oper == CRYPT_EVENT_VERIFY) {
-        GOTO_EXIT_IF((GetVaildFlag(id, data->mdId, false) == false), CRYPT_CMVP_ERR_PARAM_CHECK);
+        GOTO_ERR_IF_TRUE((GetVaildFlag(id, data->mdId, false) == false), CRYPT_CMVP_ERR_PARAM_CHECK);
         return true;
     }
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -324,7 +325,7 @@ static bool ISO19790_MacParamCheck(CRYPT_MAC_AlgId id, uint32_t keyLen)
 {
     (void)id;
     // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar2.pdf Chapter 10
-    // Key lengths ≥ 112 bits
+    // Key lengths ≥ 112 bits, 8 bits: 1 byte
     if (keyLen >= (112 / 8)) {
         return true;
     }
@@ -341,7 +342,7 @@ static bool ISO19790_KdfTls12ParamCheck(CRYPT_MAC_AlgId id, uint32_t keyLen)
 
     for (uint32_t i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
         // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar2.pdf Chapter 8
-        // Key lengths ≥ 112 bits
+        // Key lengths ≥ 112 bits, 8 bits: 1 byte
         if (id == list[i] && (keyLen >= (112 / 8))) {
             return true;
         }
@@ -361,7 +362,7 @@ static bool ISO19790_HkdfParamCheck(CRYPT_MAC_AlgId id, uint32_t keyLen)
 
     for (uint32_t i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
         // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar2.pdf Chapter 8
-        // Key lengths ≥ 112 bits
+        // Key lengths ≥ 112 bits, 8 bits: 1 byte
         if (id == list[i] && (keyLen >= (112 / 8))) {
             return true;
         }

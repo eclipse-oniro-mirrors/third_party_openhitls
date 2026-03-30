@@ -354,7 +354,6 @@ DRBG_Ctx *DRBG_NewHmacCtx(void *libCtx, const EAL_MacMethod *hmacMeth, CRYPT_MAC
     drbg->ctx = ctx;
     drbg->seedMeth = *seedMeth;
     drbg->seedCtx = seedCtx;
-    drbg->forkId = BSL_SAL_GetPid();
 
     // shift rightwards by 3, converting from bit length to byte length
     drbg->entropyRange.min = drbg->strength >> 3;
@@ -369,6 +368,7 @@ DRBG_Ctx *DRBG_NewHmacCtx(void *libCtx, const EAL_MacMethod *hmacMeth, CRYPT_MAC
     drbg->libCtx = libCtx;
 
     drbg->predictionResistance = false;
+    drbg->forkId = BSL_SAL_GetPid();
 
     return drbg;
 }

@@ -72,27 +72,27 @@ static bool CMVP_SignVerifyPct(void *ctx, int32_t algId)
             break;
         }
     }
-    GOTO_EXIT_IF(map == NULL, CRYPT_EAL_ERR_ALGID);
+    GOTO_ERR_IF_TRUE(map == NULL, CRYPT_EAL_ERR_ALGID);
 
-    GOTO_EXIT_IF(map->ctrl(ctx, CRYPT_CTRL_GET_SIGNLEN, &signLen, sizeof(signLen)) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(map->ctrl(ctx, CRYPT_CTRL_GET_SIGNLEN, &signLen, sizeof(signLen)) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     sign = BSL_SAL_Malloc(signLen);
-    GOTO_EXIT_IF(sign == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(sign == NULL, CRYPT_MEM_ALLOC_FAIL);
 
     if (algId == CRYPT_PKEY_RSA) {
-        GOTO_EXIT_IF(map->ctrl(ctx, CRYPT_CTRL_SET_RSA_EMSA_PKCSV15, &mdId, sizeof(mdId)) != CRYPT_SUCCESS,
+        GOTO_ERR_IF_TRUE(map->ctrl(ctx, CRYPT_CTRL_SET_RSA_EMSA_PKCSV15, &mdId, sizeof(mdId)) != CRYPT_SUCCESS,
             CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
 
-    GOTO_EXIT_IF(map->sign(ctx, algId == CRYPT_PKEY_SM2 ? CRYPT_MD_SM3 : CRYPT_MD_SHA512, msg, sizeof(msg),
+    GOTO_ERR_IF_TRUE(map->sign(ctx, algId == CRYPT_PKEY_SM2 ? CRYPT_MD_SM3 : CRYPT_MD_SHA512, msg, sizeof(msg),
         sign, &signLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
-    GOTO_EXIT_IF(map->verify(ctx, algId == CRYPT_PKEY_SM2 ? CRYPT_MD_SM3 : CRYPT_MD_SHA512, msg, sizeof(msg),
+    GOTO_ERR_IF_TRUE(map->verify(ctx, algId == CRYPT_PKEY_SM2 ? CRYPT_MD_SM3 : CRYPT_MD_SHA512, msg, sizeof(msg),
         sign, signLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(sign);
     return ret;
 }

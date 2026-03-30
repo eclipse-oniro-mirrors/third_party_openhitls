@@ -332,23 +332,23 @@ static int32_t CMVP_DrbgGetEntropy(void *ctx, CRYPT_Data *entropy, uint32_t stre
 {
     CMVP_DRBG_SEEDCTX *seedCtx = (CMVP_DRBG_SEEDCTX *)ctx;
     const CMVP_DRBG_VECTOR *vector = g_currentTestVector;
-    GOTO_EXIT_IF(vector == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(vector->entropy == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(vector == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(vector->entropy == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     if (seedCtx->state == CMVP_DRBG_INSTANTIATE) {
         entropy->data = CMVP_StringsToBins(vector->entropy, &(entropy->len));
-        GOTO_EXIT_IF(entropy->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(entropy->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
         seedCtx->state = CMVP_DRBG_SEED;
     } else if (seedCtx->state == CMVP_DRBG_SEED) {
         entropy->data = CMVP_StringsToBins(vector->entropySeed, &(entropy->len));
-        GOTO_EXIT_IF(entropy->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(entropy->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
         seedCtx->state = CMVP_DRBG_MAX;
     }
 
     (void)strength;
     (void)lenRange;
     return CRYPT_SUCCESS;
-EXIT:
+ERR:
     return CRYPT_CMVP_ERR_ALGO_SELFTEST;
 }
 
@@ -366,18 +366,18 @@ static int32_t CMVP_DrbgGetNonce(void *ctx, CRYPT_Data *nonce, uint32_t strength
     uint8_t *data = NULL;
     uint32_t dataLen;
     const CMVP_DRBG_VECTOR *vector = g_currentTestVector;
-    GOTO_EXIT_IF(vector == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(vector->nonce == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(vector == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(vector->nonce == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     data = CMVP_StringsToBins(vector->nonce, &dataLen);
-    GOTO_EXIT_IF(data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     nonce->data = data;
     nonce->len = dataLen;
     (void)strength;
     (void)lenRange;
     return CRYPT_SUCCESS;
-EXIT:
+ERR:
     BSL_SAL_Free(data);
     return CRYPT_CMVP_ERR_ALGO_SELFTEST;
 }
@@ -390,9 +390,9 @@ static CRYPT_EAL_RndCtx *CMVP_DrbgInit(void *libCtx, const char *attrName, const
     uint32_t persLen;
     CRYPT_RandSeedMethod method;
     const CMVP_DRBG_VECTOR *vector = drbgVec;
-    GOTO_EXIT_IF(vector->pers == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(vector->pers == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     pers = CMVP_StringsToBins(vector->pers, &persLen);
-    GOTO_EXIT_IF(pers == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(pers == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     method.getEntropy = CMVP_DrbgGetEntropy;
     method.cleanEntropy = CMVP_DrbgCleanData;
@@ -423,7 +423,7 @@ static CRYPT_EAL_RndCtx *CMVP_DrbgInit(void *libCtx, const char *attrName, const
 
     BSL_SAL_Free(pers);
     return ctx;
-EXIT:
+ERR:
     CRYPT_EAL_DrbgDeinit(ctx);
     BSL_SAL_Free(pers);
     return NULL;
@@ -443,13 +443,13 @@ static uint8_t *ExecDrbg(CRYPT_EAL_RndCtx *ctx, uint32_t randLen, uint8_t *adin1
 {
     uint8_t *rand = NULL;
     rand = BSL_SAL_Malloc(randLen);
-    GOTO_EXIT_IF(rand == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_DrbgbytesWithAdin(ctx, rand, randLen, adin1, adin1Len) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(rand == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_DrbgbytesWithAdin(ctx, rand, randLen, adin1, adin1Len) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_DrbgbytesWithAdin(ctx, rand, randLen, adin2, adin2Len) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_DrbgbytesWithAdin(ctx, rand, randLen, adin2, adin2Len) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     return rand;
-EXIT:
+ERR:
     BSL_SAL_Free(rand);
     return NULL;
 }
@@ -458,15 +458,15 @@ static bool GetData(const CMVP_DRBG_VECTOR *drbgVec, CRYPT_Data *expectRand, CRY
     CRYPT_Data *adin2)
 {
     expectRand->data = CMVP_StringsToBins(drbgVec->retBits, &(expectRand->len));
-    GOTO_EXIT_IF(expectRand->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(expectRand->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     adin1->data = CMVP_StringsToBins(drbgVec->adin1, &(adin1->len));
-    GOTO_EXIT_IF(adin1->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(adin1->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     adin2->data = CMVP_StringsToBins(drbgVec->adin2, &(adin2->len));
-    GOTO_EXIT_IF(adin2->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(adin2->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     adinSeed->data = CMVP_StringsToBins(drbgVec->adinSeed, &(adinSeed->len));
-    GOTO_EXIT_IF(adinSeed->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(adinSeed->data == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -502,18 +502,18 @@ static bool CRYPT_CMVP_SelftestDrbgInternal(void *libCtx, const char *attrName, 
     }
     g_currentTestVector = drbgVec;
 
-    GOTO_EXIT_IF(!GetData(drbgVec, &expectRand, &adinSeed, &adin1, &adin2), CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(!GetData(drbgVec, &expectRand, &adinSeed, &adin1, &adin2), CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ctx = CMVP_DrbgInit(libCtx, attrName, drbgVec, &seedCtx);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_DrbgSeedWithAdin(ctx, adinSeed.data, adinSeed.len) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_DrbgSeedWithAdin(ctx, adinSeed.data, adinSeed.len) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     // 2: One byte and two characters
     rand = ExecDrbg(ctx, (uint32_t)strlen(drbgVec->retBits) / 2, adin1.data, adin1.len, adin2.data, adin2.len);
-    GOTO_EXIT_IF(rand == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(rand, expectRand.data, expectRand.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(rand == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(rand, expectRand.data, expectRand.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
-EXIT:
+ERR:
     CRYPT_EAL_DrbgDeinit(ctx);
     FreeData(rand, expectRand.data, adinSeed.data, adin1.data, adin2.data);
     return ret;

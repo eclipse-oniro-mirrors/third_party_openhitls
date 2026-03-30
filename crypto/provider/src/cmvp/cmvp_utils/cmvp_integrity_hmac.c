@@ -45,21 +45,21 @@ static uint8_t *GetLibHmac(void *libCtx, const char *attrName, CRYPT_MAC_AlgId i
     CRYPT_EAL_MacCtx *ctx = NULL;
 
     buf = CMVP_ReadFile(libPath, "rb", &bufLen);
-    GOTO_EXIT_IF(buf == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(buf == NULL, CRYPT_CMVP_COMMON_ERR);
     ctx = CRYPT_EAL_ProviderMacNewCtx(libCtx, id, attrName);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     *hmacLen = CRYPT_EAL_GetMacLen(ctx);
     hmac = BSL_SAL_Malloc(*hmacLen);
-    GOTO_EXIT_IF(hmac == NULL, CRYPT_MEM_ALLOC_FAIL);
-    GOTO_EXIT_IF(CRYPT_EAL_MacInit(ctx, (const uint8_t *)GetIntegrityKey(), (uint32_t)strlen(GetIntegrityKey())) !=
+    GOTO_ERR_IF_TRUE(hmac == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MacInit(ctx, (const uint8_t *)GetIntegrityKey(), (uint32_t)strlen(GetIntegrityKey())) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_INTEGRITY);
-    GOTO_EXIT_IF(CRYPT_EAL_MacUpdate(ctx, (uint8_t *)buf, bufLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_INTEGRITY);
-    GOTO_EXIT_IF(CRYPT_EAL_MacFinal(ctx, hmac, hmacLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_INTEGRITY);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MacUpdate(ctx, (uint8_t *)buf, bufLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_INTEGRITY);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MacFinal(ctx, hmac, hmacLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_INTEGRITY);
 
     BSL_SAL_Free(buf);
     CRYPT_EAL_MacFreeCtx(ctx);
     return hmac;
-EXIT:
+ERR:
     BSL_SAL_Free(buf);
     BSL_SAL_Free(hmac);
     CRYPT_EAL_MacFreeCtx(ctx);
@@ -76,20 +76,20 @@ static uint8_t *GetExpectHmac(const char *hmacPath, uint32_t *hmacLen)
     char *nextTmp = NULL;
 
     buf = CMVP_ReadFile(hmacPath, "r", &bufLen);
-    GOTO_EXIT_IF(buf == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(buf == NULL, CRYPT_CMVP_COMMON_ERR);
     // HMAC-SHA256(libhitls_crypto.so)= 76a90d73cb68585837a2ebdf009e9e485acba4fd718bae898bdc354537f8a72a\n
     // The format of the generated .hmac file is as shown in the preceding figure.
     // The content between spaces and newline characters is truncated.
     tmp = strtok_s(buf, seps, &nextTmp);
-    GOTO_EXIT_IF(tmp == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(tmp == NULL, CRYPT_CMVP_COMMON_ERR);
     tmp = strtok_s(NULL, seps, &nextTmp);
-    GOTO_EXIT_IF(tmp == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(tmp == NULL, CRYPT_CMVP_COMMON_ERR);
     hmac = CMVP_StringsToBins(tmp, hmacLen);
-    GOTO_EXIT_IF(hmac == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(hmac == NULL, CRYPT_CMVP_COMMON_ERR);
 
     BSL_SAL_Free(buf);
     return hmac;
-EXIT:
+ERR:
     BSL_SAL_Free(buf);
     BSL_SAL_Free(hmac);
     return NULL;
@@ -104,19 +104,19 @@ bool CMVP_IntegrityHmac(void *libCtx, const char *attrName, const char *libPath,
     uint32_t hmacLen, expectHmacLen;
 
     hmacPath = BSL_SAL_Malloc((uint32_t)strlen(libPath) + (uint32_t)strlen(".hmac") + 1);
-    GOTO_EXIT_IF(hmacPath == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(hmacPath == NULL, CRYPT_MEM_ALLOC_FAIL);
     (void)sprintf_s(hmacPath, strlen(libPath) + strlen(".hmac") + 1, "%s%s", libPath, ".hmac");
     hmacPath[strlen(libPath) + strlen(".hmac")] = '\0';
 
     hmac = GetLibHmac(libCtx, attrName, id, libPath, &hmacLen);
-    GOTO_EXIT_IF(hmac == NULL, CRYPT_CMVP_ERR_INTEGRITY);
+    GOTO_ERR_IF_TRUE(hmac == NULL, CRYPT_CMVP_ERR_INTEGRITY);
     expectHmac = GetExpectHmac(hmacPath, &expectHmacLen);
-    GOTO_EXIT_IF(expectHmac == NULL, CRYPT_CMVP_ERR_INTEGRITY);
-    GOTO_EXIT_IF(hmacLen != expectHmacLen, CRYPT_CMVP_ERR_INTEGRITY);
-    GOTO_EXIT_IF(memcmp(expectHmac, hmac, hmacLen) != 0, CRYPT_CMVP_ERR_INTEGRITY);
+    GOTO_ERR_IF_TRUE(expectHmac == NULL, CRYPT_CMVP_ERR_INTEGRITY);
+    GOTO_ERR_IF_TRUE(hmacLen != expectHmacLen, CRYPT_CMVP_ERR_INTEGRITY);
+    GOTO_ERR_IF_TRUE(memcmp(expectHmac, hmac, hmacLen) != 0, CRYPT_CMVP_ERR_INTEGRITY);
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(hmac);
     BSL_SAL_Free(expectHmac);
     BSL_SAL_Free(hmacPath);

@@ -1236,18 +1236,12 @@ int32_t HITLS_CFG_ClearVerifyCrls(HITLS_Config *config)
 
 static int32_t UseCertificateChainCommon(HITLS_Config *config, HITLS_CERT_Chain *certList)
 {
-    if (config == NULL || certList == NULL) {
-        return HITLS_NULL_INPUT;
-    }
-
-    int32_t ret = HITLS_SUCCESS;
-
     HITLS_CERT_X509 *tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_FIRST(certList);
     if (tempCert == NULL) {
         return HITLS_CFG_ERR_LOAD_CERT_FILE;
     }
 
-    ret = HITLS_CFG_SetCertificate(config, tempCert, true);
+    int32_t ret = HITLS_CFG_SetCertificate(config, tempCert, true);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -1259,20 +1253,20 @@ static int32_t UseCertificateChainCommon(HITLS_Config *config, HITLS_CERT_Chain 
             return ret;
         }
 
-        while (tempCert != NULL) {
+        do {
             ret = HITLS_CFG_AddChainCert(config, tempCert, true);
             if (ret != HITLS_SUCCESS) {
                 return ret;
             }
             tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_NEXT(certList);
-        }
+        } while (tempCert != NULL);
     }
 
     return HITLS_SUCCESS;
 }
 
 int32_t HITLS_CFG_UseCertificateChainBuffer(HITLS_Config *config, const uint8_t *buf,
-                                           uint32_t bufLen, HITLS_ParseFormat format)
+    uint32_t bufLen, HITLS_ParseFormat format)
 {
     if (config == NULL || buf == NULL || bufLen == 0) {
         return HITLS_NULL_INPUT;
@@ -1314,7 +1308,7 @@ static int32_t LoadVerifyCommon(HITLS_Config *config, HITLS_CERT_Chain *certList
         tempCert = (HITLS_CERT_X509 *)BSL_LIST_GET_NEXT(certList);
     }
 
-    return HITLS_SUCCESS;
+    return ret;
 }
 
 int32_t HITLS_CFG_LoadVerifyBuffer(HITLS_Config *config, const uint8_t *buf,
@@ -1324,9 +1318,7 @@ int32_t HITLS_CFG_LoadVerifyBuffer(HITLS_Config *config, const uint8_t *buf,
         return HITLS_NULL_INPUT;
     }
 
-    HITLS_CERT_Chain *certList = SAL_CERT_X509ParseBundleFile(config,
-                                            buf, bufLen,
-                                            TLS_PARSE_TYPE_BUFF, format);
+    HITLS_CERT_Chain *certList = SAL_CERT_X509ParseBundleFile(config, buf, bufLen, TLS_PARSE_TYPE_BUFF, format);
     if (certList == NULL) {
         return HITLS_CFG_ERR_LOAD_CERT_BUFFER;
     }
@@ -1345,12 +1337,8 @@ int32_t HITLS_CFG_UseCertificateChainFile(HITLS_Config *config, const char *file
         return HITLS_NULL_INPUT;
     }
 
-    HITLS_CERT_Chain *certList = SAL_CERT_X509ParseBundleFile(
-        config,
-        (const uint8_t *)file,
-        (uint32_t)strlen(file),
-        TLS_PARSE_TYPE_FILE,
-        TLS_PARSE_FORMAT_PEM);
+    HITLS_CERT_Chain *certList = SAL_CERT_X509ParseBundleFile(config,
+        (const uint8_t *)file, (uint32_t)strlen(file), TLS_PARSE_TYPE_FILE, TLS_PARSE_FORMAT_PEM);
     if (certList == NULL) {
         return HITLS_CFG_ERR_LOAD_CERT_FILE;
     }
@@ -1368,8 +1356,7 @@ int32_t HITLS_CFG_LoadVerifyFile(HITLS_Config *config, const char *file)
     }
 
     HITLS_CERT_Chain *certList = SAL_CERT_X509ParseBundleFile(config,
-                                            (const uint8_t *)file, (uint32_t)strlen(file),
-                                            TLS_PARSE_TYPE_FILE, TLS_PARSE_FORMAT_PEM);
+        (const uint8_t *)file, (uint32_t)strlen(file), TLS_PARSE_TYPE_FILE, TLS_PARSE_FORMAT_PEM);
     if (certList == NULL) {
         return HITLS_CFG_ERR_LOAD_CERT_FILE;
     }

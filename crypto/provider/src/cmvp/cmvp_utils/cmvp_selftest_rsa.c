@@ -178,7 +178,7 @@ static bool GetPrvKey(const char *n, const char *d, CRYPT_EAL_PkeyPrv *prv)
     prv->id = CRYPT_PKEY_RSA;
 
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -190,7 +190,7 @@ static bool GetPubKey(const char *n, const char *e, CRYPT_EAL_PkeyPub *pub)
     GOTO_ERR_IF_TRUE(pub->key.rsaPub.e == NULL, CRYPT_CMVP_COMMON_ERR);
     pub->id = CRYPT_PKEY_RSA;
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -200,7 +200,7 @@ static bool SetPkcsv15Pad(CRYPT_EAL_PkeyCtx *pkey, int32_t *hashId)
     GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_EMSA_PKCSV15, hashId, sizeof(int32_t)) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -214,10 +214,10 @@ static bool SetPssPad(CRYPT_EAL_PkeyCtx *pkey, uint32_t saltLen)
         {CRYPT_PARAM_RSA_SALTLEN, BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&saltLen, sizeof(saltLen), 0},
         BSL_PARAM_END
     };
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_EMSA_PSS, pss, 0) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_EMSA_PSS, pss, 0) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -234,9 +234,9 @@ static bool RsaSelftestSign(void *libCtx, const char *attrName, int32_t id)
     uint32_t msgLen, expectSignLen, signLen, saltLen;
 
     msg = CMVP_StringsToBins(RSA_VECTOR[id].msg, &msgLen);
-    GOTO_EXIT_IF(msg == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(msg == NULL, CRYPT_CMVP_COMMON_ERR);
     expectSign = CMVP_StringsToBins(RSA_VECTOR[id].sign, &expectSignLen);
-    GOTO_EXIT_IF(expectSign == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(expectSign == NULL, CRYPT_CMVP_COMMON_ERR);
 
     pkey = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_RSA, 0, attrName);
     GOTO_ERR_IF_TRUE(pkey == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
@@ -244,23 +244,23 @@ static bool RsaSelftestSign(void *libCtx, const char *attrName, int32_t id)
     GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPrv(pkey, &prv) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     signLen = CRYPT_EAL_PkeyGetSignLen(pkey);
     sign = BSL_SAL_Malloc(sizeof(uint32_t) * signLen);
-    GOTO_EXIT_IF(sign == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(sign == NULL, CRYPT_MEM_ALLOC_FAIL);
     if (id == PKCSV15_PAD) {
-        GOTO_EXIT_IF(!SetPkcsv15Pad(pkey, &pkcsv15), CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(!SetPkcsv15Pad(pkey, &pkcsv15), CRYPT_CMVP_ERR_ALGO_SELFTEST);
     } else {
         salt = CMVP_StringsToBins(RSA_VECTOR[PSS_PAD].salt, &(saltLen));
-        GOTO_EXIT_IF(salt == NULL, CRYPT_CMVP_COMMON_ERR);
-        GOTO_EXIT_IF(!SetPssPad(pkey, saltLen), CRYPT_CMVP_ERR_ALGO_SELFTEST);
-        GOTO_EXIT_IF(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_SALT, salt, saltLen) !=
+        GOTO_ERR_IF_TRUE(salt == NULL, CRYPT_CMVP_COMMON_ERR);
+        GOTO_ERR_IF_TRUE(!SetPssPad(pkey, saltLen), CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_RSA_SALT, salt, saltLen) !=
             CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySign(pkey, RSA_VECTOR[id].mdId, msg, msgLen, sign, &signLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySign(pkey, RSA_VECTOR[id].mdId, msg, msgLen, sign, &signLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(signLen != expectSignLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(expectSign, sign, signLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(signLen != expectSignLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(expectSign, sign, signLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(salt);
     BSL_SAL_Free(msg);
     BSL_SAL_Free(sign);
@@ -283,25 +283,25 @@ static bool RsaSelftestVerify(void *libCtx, const char *attrName, int32_t id)
     CRYPT_EAL_PkeyCtx *pkey = NULL;
 
     msg = CMVP_StringsToBins(RSA_VECTOR[id].msg, &msgLen);
-    GOTO_EXIT_IF(msg == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(msg == NULL, CRYPT_CMVP_COMMON_ERR);
     sign = CMVP_StringsToBins(RSA_VECTOR[id].sign, &signLen);
-    GOTO_EXIT_IF(sign == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(sign == NULL, CRYPT_CMVP_COMMON_ERR);
 
     pkey = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_RSA, 0, attrName);
     GOTO_ERR_IF_TRUE(pkey == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     GOTO_ERR_IF_TRUE(GetPubKey(RSA_VECTOR[id].n, RSA_VECTOR[id].e, &pub) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPub(pkey, &pub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     if (id == PKCSV15_PAD) {
-        GOTO_EXIT_IF(!SetPkcsv15Pad(pkey, &mdId), CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(!SetPkcsv15Pad(pkey, &mdId), CRYPT_CMVP_ERR_ALGO_SELFTEST);
     } else {
         salt = CMVP_StringsToBins(RSA_VECTOR[PSS_PAD].salt, &(saltLen));
-        GOTO_EXIT_IF(salt == NULL, CRYPT_CMVP_COMMON_ERR);
-        GOTO_EXIT_IF(!SetPssPad(pkey, saltLen), CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(salt == NULL, CRYPT_CMVP_COMMON_ERR);
+        GOTO_ERR_IF_TRUE(!SetPssPad(pkey, saltLen), CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyVerify(pkey, RSA_VECTOR[id].mdId, msg, msgLen, sign, signLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyVerify(pkey, RSA_VECTOR[id].mdId, msg, msgLen, sign, signLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(salt);
     BSL_SAL_Free(msg);
     BSL_SAL_Free(sign);
@@ -402,7 +402,7 @@ static bool RsaSelftestDecrypt(void *libCtx, const char *attrName, const uint8_t
     GOTO_ERR_IF_TRUE(plainTextLen != plainLen, err);
     GOTO_ERR_IF_TRUE(memcmp(plain, plainText, plainTextLen) != 0, err);
     ret = true;
-EXIT:
+ERR:
     CRYPT_EAL_PkeyFreeCtx(prvCtx);
     BSL_SAL_Free(prv.key.rsaPrv.n);
     BSL_SAL_Free(prv.key.rsaPrv.d);
@@ -441,7 +441,7 @@ bool CRYPT_CMVP_SelftestProviderRsa(void *libCtx, const char *attrName)
     GOTO_ERR_IF_TRUE(RsaSelftestVerify(libCtx, attrName, PSS_PAD) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     GOTO_ERR_IF_TRUE(RsaSelftestEncryptDecrypt(libCtx, attrName) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -453,7 +453,7 @@ bool CRYPT_CMVP_SelftestRsa(void)
     GOTO_ERR_IF_TRUE(RsaSelftestVerify(NULL, NULL, PSS_PAD) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     GOTO_ERR_IF_TRUE(RsaSelftestEncryptDecrypt(NULL, NULL) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     return true;
-EXIT:
+ERR:
     return false;
 }
 

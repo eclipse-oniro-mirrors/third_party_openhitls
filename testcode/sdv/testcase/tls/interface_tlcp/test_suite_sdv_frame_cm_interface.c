@@ -4660,8 +4660,8 @@ EXIT:
 }
 /* END_CASE */
 
-static void test_msg_callback(int32_t writePoint, int32_t tlsVersion, int32_t contentType, const void *msg,
-    uint32_t msgLen, HITLS_Ctx *ctx, void *arg)
+static void test_msg_callback(int32_t writePoint, int32_t tlsVersion, int32_t contentType,
+                              const void *msg, uint32_t msgLen, HITLS_Ctx *ctx, void *arg)
 {
     (void)writePoint;
     (void)contentType;

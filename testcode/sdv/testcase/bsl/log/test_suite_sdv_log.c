@@ -178,7 +178,7 @@ void SDV_BSL_LOG_VERSION_API_TC001(void)
     uint32_t versionLen = 100;
     ASSERT_TRUE(BSL_LOG_GetVersion(NULL, NULL) == BSL_LOG_ERR_BAD_PARAM);
     ASSERT_TRUE(BSL_LOG_GetVersion((char *)version, &versionLen) == BSL_LOG_ERR_BAD_PARAM);
-    const char *versionStr = "openHiTLS 0.2.1 20 May 2025";
+
     versionLen = 200;
     ASSERT_TRUE(BSL_LOG_GetVersion((char *)version, &versionLen) == BSL_SUCCESS);
     ASSERT_TRUE(versionLen == strlen("openHiTLS 0.3.2 9 Mar 2026"));

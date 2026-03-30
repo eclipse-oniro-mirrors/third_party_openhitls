@@ -42,6 +42,9 @@
 /* ============================================================================
  * Stub Definitions
  * ============================================================================ */
+#if defined(HITLS_PKI_X509_CRT_PARSE) && defined(HITLS_CRYPTO_PROVIDER)
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
+#endif
 STUB_DEFINE_RET2(int32_t, HITLS_X509_ParseCertTbs, BSL_ASN1_Buffer *, HITLS_X509_Cert *);
 
 /* BEGIN_CASE */

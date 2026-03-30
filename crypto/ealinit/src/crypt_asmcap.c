@@ -212,7 +212,6 @@ int32_t CRYPT_EAL_Init(uint64_t opts)
     ret = GlobalLockInit(initOpt);
     if (ret != CRYPT_SUCCESS) {
         BslModuleFree(initOpt);
-        ProviderModuleFree(initOpt);
         return ret;
     }
 

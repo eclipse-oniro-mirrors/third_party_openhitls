@@ -59,16 +59,16 @@ static bool CRYPT_CMVP_SelftestScryptInternal(void *libCtx, const char *attrName
     uint32_t p = SCRYPT_VECTOR.p;
     CRYPT_EAL_KdfCtx *ctx = NULL;
     pw = CMVP_StringsToBins(SCRYPT_VECTOR.pw, &pwLen);
-    GOTO_EXIT_IF(pw == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(pw == NULL, CRYPT_CMVP_COMMON_ERR);
     salt = CMVP_StringsToBins(SCRYPT_VECTOR.salt, &saltLen);
-    GOTO_EXIT_IF(salt == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(salt == NULL, CRYPT_CMVP_COMMON_ERR);
     expkey = CMVP_StringsToBins(SCRYPT_VECTOR.key, &expkeyLen);
-    GOTO_EXIT_IF(expkey == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(expkey == NULL, CRYPT_CMVP_COMMON_ERR);
     key = BSL_SAL_Malloc(expkeyLen);
-    GOTO_EXIT_IF(key == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(key == NULL, CRYPT_MEM_ALLOC_FAIL);
 
     ctx = CRYPT_EAL_ProviderKdfNewCtx(libCtx, CRYPT_KDF_SCRYPT, attrName);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     BSL_Param param[6] = {
         {CRYPT_PARAM_KDF_PASSWORD, BSL_PARAM_TYPE_OCTETS, pw, pwLen, 0},
         {CRYPT_PARAM_KDF_SALT, BSL_PARAM_TYPE_OCTETS, salt, saltLen, 0},
@@ -77,11 +77,11 @@ static bool CRYPT_CMVP_SelftestScryptInternal(void *libCtx, const char *attrName
         {CRYPT_PARAM_KDF_P, BSL_PARAM_TYPE_UINT32, &p, sizeof(uint32_t), 0},
         BSL_PARAM_END
     };
-    GOTO_EXIT_IF(CRYPT_EAL_KdfSetParam(ctx, param) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_KdfDerive(ctx, key, expkeyLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(key, expkey, expkeyLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_KdfSetParam(ctx, param) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_KdfDerive(ctx, key, expkeyLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(key, expkey, expkeyLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(pw);
     BSL_SAL_Free(salt);
     BSL_SAL_Free(expkey);

@@ -95,7 +95,7 @@ void UT_TLS_CM_SSL_MODE_AUTO_RETRY_TC001()
     ASSERT_TRUE(config != NULL);
 
     config->isSupportRenegotiation = true;
-    ASSERT_EQ(HITLS_CFG_SetEncryptThenMac(config, 1), HITLS_SUCCESS);
+    ASSERT_EQ(HITLS_CFG_SetEncryptThenMac(config, true), HITLS_SUCCESS);
 
     uint16_t signAlgs[] = {CERT_SIG_SCHEME_RSA_PKCS1_SHA256, CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256};
     HITLS_CFG_SetSignature(config, signAlgs, sizeof(signAlgs) / sizeof(uint16_t));
@@ -126,7 +126,7 @@ void UT_TLS_CM_SSL_MODE_AUTO_RETRY_TC001()
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_TRUE(HITLS_Connect(client->ssl) == HITLS_SUCCESS);
     ASSERT_EQ(FRAME_TrasferMsgBetweenLink(client, server), HITLS_SUCCESS);
-    
+
     ASSERT_TRUE(HITLS_ClearModeSupport(server->ssl, HITLS_MODE_AUTO_RETRY) == HITLS_SUCCESS);
     g_time = 0;
     STUB_REPLACE(APP_Read, STUB_APP_Read);;
@@ -194,7 +194,7 @@ void UT_TLS_CM_SSL_MODE_AUTO_RETRY_TC002()
     ASSERT_EQ(HITLS_Renegotiate(server->ssl), HITLS_SUCCESS);
     ASSERT_TRUE(HITLS_Accept(server->ssl) == HITLS_SUCCESS);
     ASSERT_EQ(FRAME_TrasferMsgBetweenLink(server, client), HITLS_SUCCESS);
-    
+
     ASSERT_TRUE(HITLS_ClearModeSupport(client->ssl, HITLS_MODE_AUTO_RETRY) == HITLS_SUCCESS);
     g_time = 0;
     STUB_REPLACE(APP_Read, STUB_APP_Read);;
@@ -232,7 +232,7 @@ void UT_TLS_CM_SSL_MODE_MOVE_BUFFER_TC001()
     ASSERT_TRUE(config != NULL);
 
     config->isSupportRenegotiation = true;
-    ASSERT_EQ(HITLS_CFG_SetEncryptThenMac(config, 1), HITLS_SUCCESS);
+    ASSERT_EQ(HITLS_CFG_SetEncryptThenMac(config, true), HITLS_SUCCESS);
 
     uint16_t signAlgs[] = {CERT_SIG_SCHEME_RSA_PKCS1_SHA256, CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256};
     HITLS_CFG_SetSignature(config, signAlgs, sizeof(signAlgs) / sizeof(uint16_t));
@@ -289,7 +289,7 @@ void UT_TLS_CM_SSL_MODE_MOVE_BUFFER_TC002()
     ASSERT_TRUE(config != NULL);
 
     config->isSupportRenegotiation = true;
-    ASSERT_EQ(HITLS_CFG_SetEncryptThenMac(config, 1), HITLS_SUCCESS);
+    ASSERT_EQ(HITLS_CFG_SetEncryptThenMac(config, true), HITLS_SUCCESS);
 
     uint16_t signAlgs[] = {CERT_SIG_SCHEME_RSA_PKCS1_SHA256, CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256};
     HITLS_CFG_SetSignature(config, signAlgs, sizeof(signAlgs) / sizeof(uint16_t));
@@ -355,7 +355,7 @@ void UT_TLS_CM_SSL_MODE_RELEASE_BUFFER_TC001()
     ASSERT_TRUE(config != NULL);
 
     config->isSupportRenegotiation = true;
-    ASSERT_EQ(HITLS_CFG_SetEncryptThenMac(config, 1), HITLS_SUCCESS);
+    ASSERT_EQ(HITLS_CFG_SetEncryptThenMac(config, true), HITLS_SUCCESS);
 
     uint16_t signAlgs[] = {CERT_SIG_SCHEME_RSA_PKCS1_SHA256, CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256};
     HITLS_CFG_SetSignature(config, signAlgs, sizeof(signAlgs) / sizeof(uint16_t));

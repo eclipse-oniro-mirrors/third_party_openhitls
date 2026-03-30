@@ -198,7 +198,7 @@ static int CopyFile(const char *src_path)
 {
     FILE *src_file, *dst_file;
     int ret = 1;
-    char *dst_path="copy";
+    char *dst_path = "copy";
     char buffer[1024];
     size_t bytes_read;
     src_file = fopen(src_path, "rb");
@@ -222,7 +222,6 @@ static int CopyFile(const char *src_path)
 static void ResetStatus(void)
 {
     CreatIntegrityFile(); // Generating an Integrity Verification File
-    CRYPT_EAL_RegPct(NULL);
     CRYPT_EAL_RegEventReport(NULL);
 }
 
@@ -531,7 +530,7 @@ EXIT:
 17.Transfer CRYPT_RAND_SHA512 to perform algorithm self-check. Expected result 17 is obtained.
 18.Transfer CRYPT_RAND_ALGID_MAX to perform algorithm self-check. Expected result 18 is obtained.
 19.Transfer -1 to perform algorithm self-check. Expected result 19 is obtained.
-* @expect  
+* @expect
 1.none
 2.return true 3.return true 4.return true 5.return true
 6.return true 7.return true 8.return true 9.return true

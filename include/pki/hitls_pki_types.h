@@ -102,6 +102,8 @@ typedef enum {
     HITLS_X509_EXT_GET_BCONS,                   /** Get the basic constraints extension. */
     HITLS_X509_EXT_GET_SAN,                     /** Get Subject Alternative Name from extensions.
                                                     Note: Returns a list of HITLS_X509_GeneralName. */
+    HITLS_X509_EXT_GET_GENERIC,                 /** Get a generic extension by OID.
+                                                    Note: Only supported for custom extensions. */
 
     HITLS_X509_EXT_CHECK_SKI = 0x0600,          /** Check if ski is exists. */
 
@@ -456,7 +458,7 @@ typedef enum {
     HITLS_PKCS12_BAG_GET_VALUE,                 /** Get value from safeBag. */
     HITLS_PKCS12_BAG_GET_ID,                    /** Get id from safeBag. */
     HITLS_PKCS12_BAG_GET_TYPE,                  /** Get type from safeBag. */
-} HITLS_PKCS12_Cmd;
+} HITLS_PKCS12_BagCmd;
 
 typedef enum {
     HITLS_CMS_ADD_CERT = 0,                  /** Add certificate to cms struct. */

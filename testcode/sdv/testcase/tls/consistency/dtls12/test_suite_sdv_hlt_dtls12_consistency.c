@@ -195,6 +195,13 @@ EXIT:
     return;
 }
 
+static uint32_t DtlsTimerCallBack(HITLS_Ctx *ctx, uint32_t us)
+{
+    (void)ctx;
+    (void)us;
+    return 1000000; // timeout value is 1 second.
+}
+
 /* @
 * @test  SDV_TLS_DTLS_CONSISTENCY_RFC6347_MTU_TC001
 * @title  Multiple timeout retransmissions result in a decrease in MTU
@@ -228,10 +235,12 @@ void SDV_TLS_DTLS_CONSISTENCY_RFC6347_MTU_TC001()
         Test_CertificateParse001
     };
     RegisterWrapper(wrapper);
+    HLT_Tls_Res *tlsRes = HLT_ProcessTlsInit(localProcess, DTLS1_2, serverCtxConfig, NULL);
+    ASSERT_TRUE(tlsRes != NULL);
+    HITLS_SetDtlsTimerCb(tlsRes->ssl, DtlsTimerCallBack);
+    (void)HLT_TlsAccept(tlsRes->ssl);
 
-    HLT_Tls_Res *serverRes = HLT_ProcessTlsAccept(localProcess, DTLS1_2, serverCtxConfig, NULL);
-    ASSERT_TRUE(serverRes != NULL);
-    HITLS_Ctx *ctx = serverRes->ssl;
+    HITLS_Ctx *ctx = tlsRes->ssl;
     HITLS_SetNoQueryMtu(ctx, false);
     ASSERT_EQ(ctx->config.pmtu, 1472);
 

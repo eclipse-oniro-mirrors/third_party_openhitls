@@ -25,6 +25,8 @@
 #include "bsl_obj.h"
 #include "crypt_codecskey.h"
 #include "crypt_eal_codecs.h"
+#include "crypt_eal_pkey.h"
+#include "eal_pkey_local.h"
 #include "sal_file.h"
 #include "bsl_init.h"
 #include "crypt_errno.h"
@@ -35,6 +37,8 @@
 #ifdef HITLS_BSL_ERR
 #include "bsl_err.h"
 #endif
+
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 
 static char g_sm2DefaultUserid[] = "1234567812345678";
 /* END_HEADER */
@@ -1278,6 +1282,7 @@ static int32_t SetCrlAllRevoked(HITLS_X509_Crl *crl, int8_t reasonCode, bool use
         HITLS_PKI_SUCCESS);
     HITLS_X509_CrlEntryFree(entry);
     BSL_LIST_FREE(certIssuer.issuerName, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeGeneralName);
+
     return HITLS_PKI_SUCCESS;
 EXIT:
     if (entry != NULL) {
@@ -1508,7 +1513,7 @@ EXIT:
 
 /* BEGIN_CASE */
 void SDV_X509_CRL_GENCONSISTANT_FUNC_TC001(char *cert, char *key, int keyType, int pad, int mdId, int includeOptional,
-    int useGMT, int isUseSm2UserId, char *crlFile)
+    int useGMT, int isUseSm2UserId, char *crlFile, int printFlag, char *printCrlFile, char *printParseCrlFile)
 {
     HITLS_X509_Crl *crl = NULL;
     HITLS_X509_Crl *parseCrl = NULL;
@@ -1549,6 +1554,9 @@ void SDV_X509_CRL_GENCONSISTANT_FUNC_TC001(char *cert, char *key, int keyType, i
     ASSERT_NE(crl->signature.len, 0);
     ASSERT_EQ(HITLS_X509_CrlGenFile(BSL_FORMAT_ASN1, crl, crlFile), HITLS_PKI_SUCCESS);
     ASSERT_EQ(HITLS_X509_CrlVerify(issuerCert->tbs.ealPubKey, crl), HITLS_PKI_SUCCESS);
+    BSL_Buffer data = {(uint8_t *)crl, sizeof(HITLS_X509_Crl *)};
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, &printFlag, sizeof(int), NULL), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(PrintToFile(HITLS_PKI_PRINT_CRL, &data, printCrlFile), 0);
 
     ASSERT_EQ(HITLS_X509_CrlParseFile(BSL_FORMAT_UNKNOWN, crlFile, &parseCrl), HITLS_PKI_SUCCESS);
     ASSERT_NE(parseCrl, NULL);
@@ -1908,6 +1916,21 @@ EXIT:
 }
 /* END_CASE */
 
+/* BEGIN_CASE */
+void SDV_X509_CRL_GEN_NULLCERTISSUER_FUNC_TC001(void)
+{
+    HITLS_X509_CrlEntry *entry = HITLS_X509_CrlEntryNew();
+    HITLS_X509_RevokeExtCertIssuer certIssuer = {true, NULL};
+    TestRandInit();
+
+    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_CERTISSUER,
+        &certIssuer, sizeof(HITLS_X509_RevokeExtCertIssuer)), HITLS_X509_ERR_EXT_SAN);
+
+EXIT:
+    HITLS_X509_CrlEntryFree(entry);
+}
+/* END_CASE */
+
 static int32_t STUB_HITLS_X509_ParseNameList(BSL_ASN1_Buffer *name, BSL_ASN1_List *list)
 {
     (void)name;
@@ -1959,7 +1982,7 @@ void SDV_X509_CRL_PARSE_STUB_TC001(int format, char *path, int maxTriggers)
     }
 EXIT:
     HITLS_X509_CrlFree(crl);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
     BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
@@ -2020,6 +2043,6 @@ EXIT:
     HITLS_X509_CrlFree(parseCrl);
     HITLS_X509_CertFree(issuerCert);
     CRYPT_EAL_PkeyFreeCtx(prvKey);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */

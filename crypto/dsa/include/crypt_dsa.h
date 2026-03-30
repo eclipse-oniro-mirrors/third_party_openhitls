@@ -37,6 +37,9 @@ extern "C" {
 #define CRYPT_DSA_FFC_PARAM 1
 #define CRYPT_DH_FFC_PARAM 2
 
+#define CRYPT_DISABLE_SP800_KEYGEN_FLAG 0
+#define CRYPT_ENABLE_SP800_KEYGEN_FLAG 1
+
 /* DSA key parameters */
 typedef struct DSA_Para CRYPT_DSA_Para;
 

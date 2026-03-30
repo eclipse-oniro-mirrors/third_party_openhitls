@@ -41,6 +41,10 @@
 #include "crypt_dsa.h"
 /* END_HEADER */
 
+#if (defined(HITLS_PKI_PKCS12_GEN) || defined(HITLS_PKI_PKCS12_PARSE)) && defined(HITLS_CRYPTO_PROVIDER)
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
+#endif
+
 /* Platform-specific dynamic library extension for testing */
 #ifdef __APPLE__
 #define BSL_SAL_DL_EXT "dylib"

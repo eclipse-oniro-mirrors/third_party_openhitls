@@ -379,8 +379,6 @@ static int32_t PackClientSignatureAlgorithms(const TLS_Ctx *ctx, PackPacket *pkt
 static int32_t PackClientSupportedGroups(const TLS_Ctx *ctx, PackPacket *pkt)
 {
     int32_t ret = HITLS_SUCCESS;
-    uint16_t exMsgHeaderLen = 0u;
-    uint16_t exMsgDataLen = 0u;
     const TLS_Config *config = &(ctx->config.tlsConfig);
 
     if (config->groupsSize == 0) {
@@ -394,26 +392,41 @@ static int32_t PackClientSupportedGroups(const TLS_Ctx *ctx, PackPacket *pkt)
         return HITLS_INTERNAL_EXCEPTION;
     }
 
-    uint32_t groupLenOffset = HS_EX_HEADER_LEN + sizeof(uint16_t);
-    if (bufLen < groupLenOffset) {
-        BSL_ERR_PUSH_ERROR(HITLS_INTERNAL_EXCEPTION);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15733, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "pack cipher suite error, the buffer length is not enough.", 0, 0, 0, 0);
-        return HITLS_INTERNAL_EXCEPTION;
+    ret = PackAppendUint16ToBuf(pkt, HS_EX_TYPE_SUPPORTED_GROUPS);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
-
-    ret = PackExtensionHeader(HS_EX_TYPE_SUPPORTED_GROUPS, exMsgHeaderLen + exMsgDataLen, pkt);
+    uint32_t extensionLenPosition = 0u;
+    ret = PackStartLengthField(pkt, sizeof(uint16_t), &extensionLenPosition);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
 
-    /* Pack extended supported groups */
-    (void)PackAppendUint16ToBuf(pkt, exMsgDataLen);
-
-    for (uint32_t index = 0; index < config->groupsSize; index++) {
-        (void)PackAppendUint16ToBuf(pkt, config->groups[index]);
+    uint32_t groupLenPosition = 0u;
+    ret = PackStartLengthField(pkt, sizeof(uint16_t), &groupLenPosition);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
 
+    bool haveGroup = false;
+    for (uint32_t i = 0; i < config->groupsSize; ++i) {
+        const TLS_GroupInfo *groupInfo = ConfigGetGroupInfo(&ctx->config.tlsConfig, config->groups[i]);
+        if (groupInfo == NULL || ((groupInfo->versionBits & config->version) == 0)) {
+            continue;
+        }
+        haveGroup = true;
+        ret = PackAppendUint16ToBuf(pkt, config->groups[i]);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+    }
+    if (!haveGroup) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15076, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "pack supported groups extension error, no available group.", 0, 0, 0, 0);
+        return HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP;
+    }
+    PackCloseUint16Field(pkt, groupLenPosition);
+    PackCloseUint16Field(pkt, extensionLenPosition);
     /* Set the extension flag */
     ctx->hsCtx->extFlag.haveSupportedGroups = true;
 

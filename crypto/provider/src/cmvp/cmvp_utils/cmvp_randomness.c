@@ -145,7 +145,7 @@ static int32_t PokerTest(const uint8_t *data, uint32_t len, int32_t blocklen)
     }
     double s = 0.0;
     for (uint32_t i = 0; i < maxComb; i++) {
-        s += pow(dict[i], 2);
+        s += pow(dict[i], 2); // 2: square each dict value
     }
     double v = (pow(2.0, (double)blocklen) / (double) N) * s - N;
     double pValue = Igamc(((double)maxComb - 1.0) / 2.0, v / 2.0); // p_value = igamc((2^m - 1) / 2, v / 2)

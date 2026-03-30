@@ -68,7 +68,9 @@ int32_t HITLS_X509_CrlCtrl(HITLS_X509_Crl *crl, int32_t cmd, void *val, uint32_t
  *  If the parsing is successful, the memory for the crl is requested from within the function,
  *  and the user needs to free it after use. When the parameter is BSL_FORMAT_PEM and
  *  BSL_FORMAT_UNKNOWN, the buff of encode needs to end with '\0'
- * @attention None
+ * @attention
+ *  Support character : UTF8String(only English), PrintableString, TeletexString, T61String,
+ *  IA5String.
  * @param format         [IN] Encoding format: BSL_FORMAT_PEM/BSL_FORMAT_ASN1/BSL_FORMAT_UNKNOWN.
  * @param encode         [IN] CRL data.
  *        BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buff of encode needs to end with '\0'
@@ -84,9 +86,13 @@ int32_t HITLS_X509_CrlParseBuff(int32_t format, const BSL_Buffer *encode, HITLS_
  * @par Description: Parse multiple CRLs from a buffer.
  *  If parsing is successful, memory for the CRL list is allocated internally,
  *  and the user needs to free it after use.
- * @attention None
+ * @attention
+ *  Support character : UTF8String(only English), PrintableString, TeletexString, T61String,
+ *  IA5String.
  * @param format [IN] Encoding format: BSL_FORMAT_PEM/BSL_FORMAT_ASN1/BSL_FORMAT_UNKNOWN.
  * @param encode [IN] CRL data buffer.
+ *        BSL_FORMAT_UNKNOWN/BSL_FORMAT_PEM: the buff of encode needs to end with '\0'
+ *        the dataLen should exclude the end '\0'
  * @param crlList [OUT] List of parsed CRL objects.
  * @return #HITLS_PKI_SUCCESS, success.
  *         Error codes can be found in hitls_pki_errno.h
@@ -99,7 +105,9 @@ int32_t HITLS_X509_CrlParseBundleBuff(int32_t format, const BSL_Buffer *encode, 
  * @par Description: Parse the CRL in the file.
  *  If the parsing is successful, the memory for the crl is requested from within the function,
  *  and the user needs to free it after use.
- * @attention None
+ * @attention
+ *  Support character : UTF8String(only English), PrintableString, TeletexString, T61String,
+ *  IA5String.
  * @param format         [IN] Encoding format: BSL_FORMAT_PEM/BSL_FORMAT_ASN1/BSL_FORMAT_UNKNOWN.
  * @param path           [IN] CRL file path.
  * @param crl           [OUT] CRL after parse.
@@ -113,7 +121,9 @@ int32_t HITLS_X509_CrlParseFile(int32_t format, const char *path, HITLS_X509_Crl
  * @par Description: Parse multiple CRLs in the file.
  *  If the parsing is successful, the memory for the crllist is requested from within the function,
  *  and the user needs to free it after use.
- * @attention None
+ * @attention
+ *  Support character : UTF8String(only English), PrintableString, TeletexString, T61String,
+ *  IA5String.
  * @param format         [IN] Encoding format: BSL_FORMAT_PEM/BSL_FORMAT_ASN1/
  *                            BSL_FORMAT_UNKNOWN.
  * @param path           [IN] CRL file path.

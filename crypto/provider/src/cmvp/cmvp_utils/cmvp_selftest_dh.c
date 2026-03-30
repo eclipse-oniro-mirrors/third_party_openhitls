@@ -144,7 +144,7 @@ static bool GetPara(const CMVP_DH_VECTOR *vector, CRYPT_EAL_PkeyPara *para)
     para->para.dhPara.g = CMVP_StringsToBins(vector->g, &(para->para.dhPara.gLen));
     GOTO_ERR_IF_TRUE(para->para.dhPara.g == NULL, CRYPT_CMVP_COMMON_ERR);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -164,7 +164,7 @@ static bool GetKey(const CMVP_DH_VECTOR *vector, CRYPT_EAL_PkeyPrv *prv1, CRYPT_
     pub2->key.dhPub.data = CMVP_StringsToBins(vector->yb, &(pub2->key.dhPub.len));
     GOTO_ERR_IF_TRUE(pub2->key.dhPub.data == NULL, CRYPT_CMVP_COMMON_ERR);
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -180,15 +180,15 @@ static bool ComputeShareKey(const CMVP_DH_VECTOR *vector, CRYPT_EAL_PkeyCtx *prv
     GOTO_ERR_IF_TRUE(expShare == NULL, CRYPT_CMVP_COMMON_ERR);
     shareLen = expShareLen;
     share = BSL_SAL_Malloc(shareLen);
-    GOTO_EXIT_IF(share == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(share == NULL, CRYPT_MEM_ALLOC_FAIL);
 
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyComputeShareKey(prv, pub, share, &shareLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyComputeShareKey(prv, pub, share, &shareLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(shareLen != expShareLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(share, expShare, expShareLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(shareLen != expShareLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(share, expShare, expShareLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(expShare);
     BSL_SAL_Free(share);
     return ret;
@@ -231,8 +231,8 @@ static bool CRYPT_CMVP_SelftestDhInternal(const CMVP_DH_VECTOR *vector, void *li
 
     pkeyPrv = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_DH, 0, attrName);
     pkeyPub = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_DH, 0, attrName);
-    GOTO_EXIT_IF(pkeyPrv == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(pkeyPub == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(pkeyPrv == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(pkeyPub == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     if (vector->paraId == CRYPT_DH_RFC3526_2048) {
         GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPara(pkeyPrv, &para) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
@@ -248,7 +248,7 @@ static bool CRYPT_CMVP_SelftestDhInternal(const CMVP_DH_VECTOR *vector, void *li
     GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPub(pkeyPub, &pub1) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     GOTO_ERR_IF_TRUE(ComputeShareKey(vector, pkeyPrv, pkeyPub) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ret = true;
-EXIT:
+ERR:
     FreeData(para, prv1, pub1, prv2, pub2);
     CRYPT_EAL_PkeyFreeCtx(pkeyPrv);
     CRYPT_EAL_PkeyFreeCtx(pkeyPub);

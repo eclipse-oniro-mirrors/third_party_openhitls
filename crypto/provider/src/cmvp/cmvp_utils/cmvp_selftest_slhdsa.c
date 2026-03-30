@@ -64,14 +64,14 @@ static int32_t GetPkey(void *libCtx, const char *attrName, const CMVP_SlhdsaSign
     uint8_t *vectorKey = NULL;
     uint8_t *context = NULL;
     *pkeyPrv = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, vector->algId, 0, attrName);
-    GOTO_EXIT_IF(*pkeyPrv == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(*pkeyPrv == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     *pkeyPub = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, vector->algId, 0, attrName);
-    GOTO_EXIT_IF(*pkeyPub == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(*pkeyPub == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = CRYPT_EAL_PkeySetParaById(*pkeyPrv, vector->type);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
     ret = CRYPT_EAL_PkeySetParaById(*pkeyPub, vector->type);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
 
     uint32_t keyLen = 0;
     ret = CRYPT_EAL_PkeyCtrl(*pkeyPrv, CRYPT_CTRL_GET_SLH_DSA_KEY_LEN, (void *)&keyLen, sizeof(keyLen));
@@ -79,7 +79,7 @@ static int32_t GetPkey(void *libCtx, const char *attrName, const CMVP_SlhdsaSign
     uint32_t randLen = 0;
     rand = CMVP_StringsToBins(vector->rnd, &randLen);
     ret = CRYPT_EAL_PkeyCtrl(*pkeyPrv, CRYPT_CTRL_SET_SLH_DSA_ADDRAND, (void *)rand, randLen);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
 
     uint32_t vectorKeyLen = 0;
     vectorKey = CMVP_StringsToBins(vector->sk, &vectorKeyLen);
@@ -90,18 +90,18 @@ static int32_t GetPkey(void *libCtx, const char *attrName, const CMVP_SlhdsaSign
     prvKey.key.slhDsaPrv.pub.root = vectorKey + keyLen * 3; // 3: pub.root offset
     prvKey.key.slhDsaPrv.pub.len = keyLen;
     ret = CRYPT_EAL_PkeySetPrv(*pkeyPrv, &prvKey);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
     uint32_t contextLen = 0;
     context = CMVP_StringsToBins(vector->context, &contextLen);
     ret = CRYPT_EAL_PkeyCtrl(*pkeyPrv, CRYPT_CTRL_SET_CTX_INFO, context, contextLen);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
 
     ret = CRYPT_EAL_PkeyCtrl(*pkeyPub, CRYPT_CTRL_SET_SLH_DSA_ADDRAND, (void *)rand, randLen);
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
     ret = CRYPT_EAL_PkeySetPrv(*pkeyPub, &prvKey); // The prvKey contains the public key, public key is used here.
-    GOTO_EXIT_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
     ret = CRYPT_EAL_PkeyCtrl(*pkeyPub, CRYPT_CTRL_SET_CTX_INFO, context, contextLen);
-EXIT:
+ERR:
     BSL_SAL_Free(rand);
     BSL_SAL_Free(vectorKey);
     BSL_SAL_Free(context);
@@ -120,27 +120,28 @@ static bool TestSlhdsaSignVerify(void *libCtx, const char *attrName, const CMVP_
     CRYPT_EAL_PkeyCtx *pkeyPrv = NULL;
     CRYPT_EAL_PkeyCtx *pkeyPub = NULL;
 
-    GOTO_EXIT_IF(GetPkey(libCtx, attrName, vector, &pkeyPrv, &pkeyPub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(
+        GetPkey(libCtx, attrName, vector, &pkeyPrv, &pkeyPub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     msg = CMVP_StringsToBins(vector->msg, &msgLen);
-    GOTO_EXIT_IF(msg == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(msg == NULL, CRYPT_CMVP_COMMON_ERR);
     signVec = CMVP_StringsToBins(vector->sig, &signVecLen);
-    GOTO_EXIT_IF(signVec == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(signVec == NULL, CRYPT_CMVP_COMMON_ERR);
     signLen = signVecLen;
     sign = BSL_SAL_Malloc(signLen);
-    GOTO_EXIT_IF(sign == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(sign == NULL, CRYPT_MEM_ALLOC_FAIL);
     // sign
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySign(pkeyPrv, vector->preHashId, msg, msgLen, sign, &signLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySign(pkeyPrv, vector->preHashId, msg, msgLen, sign, &signLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     // compare the signature
-    GOTO_EXIT_IF(signLen != signVecLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(signVec, sign, signLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(signLen != signVecLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(signVec, sign, signLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     // verify
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyVerify(pkeyPub, vector->preHashId, msg, msgLen, sign, signLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyVerify(pkeyPub, vector->preHashId, msg, msgLen, sign, signLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(sign);
     BSL_SAL_Free(signVec);
     BSL_SAL_Free(msg);

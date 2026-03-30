@@ -88,19 +88,19 @@ char *CMVP_ReadFile(const char *path, const char *mode, uint32_t *bufLen)
     if (fp == NULL) {
         return false;
     }
-    GOTO_EXIT_IF(fseek(fp, 0, SEEK_END) != 0, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(fseek(fp, 0, SEEK_END) != 0, CRYPT_CMVP_COMMON_ERR);
     len = ftell(fp);
-    GOTO_EXIT_IF(len == -1, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(len == -1, CRYPT_CMVP_COMMON_ERR);
     buf = BSL_SAL_Malloc((uint32_t)len + 1);
-    GOTO_EXIT_IF(buf == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(buf == NULL, CRYPT_MEM_ALLOC_FAIL);
     buf[len] = '\0';
-    GOTO_EXIT_IF(fseek(fp, 0, SEEK_SET) != 0, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(fseek(fp, 0, SEEK_SET) != 0, CRYPT_CMVP_COMMON_ERR);
     readLen = (int64_t)fread(buf, sizeof(uint8_t), (uint64_t)len, fp);
-    GOTO_EXIT_IF(readLen != len && feof(fp) == 0, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(readLen != len && feof(fp) == 0, CRYPT_CMVP_COMMON_ERR);
     *bufLen = (uint32_t)readLen;
     (void)fclose(fp);
     return buf;
-EXIT:
+ERR:
     BSL_SAL_Free(buf);
     (void)fclose(fp);
     return NULL;
@@ -111,13 +111,13 @@ static char *CMVP_GetLibPath(void *func)
     Dl_info info;
     char *path = NULL;
 
-    GOTO_EXIT_IF(dladdr(func, &info) == 0, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(dladdr(func, &info) == 0, CRYPT_CMVP_COMMON_ERR);
     path = BSL_SAL_Malloc((uint32_t)strlen(info.dli_fname) + 1);
-    GOTO_EXIT_IF(path == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(path == NULL, CRYPT_MEM_ALLOC_FAIL);
     (void)memcpy_s(path, strlen(info.dli_fname), info.dli_fname, strlen(info.dli_fname));
     path[strlen(info.dli_fname)] = '\0';
     return path;
-EXIT:
+ERR:
     BSL_SAL_Free(path);
     return NULL;
 }
@@ -132,15 +132,15 @@ int32_t CMVP_CheckIntegrity(void *libCtx, const char *attrName, CRYPT_MAC_AlgId 
         return CRYPT_CMVP_ERR_ALGO_SELFTEST;
     }
     libCryptoPath = CMVP_GetLibPath(CMVP_IntegrityHmac);
-    GOTO_EXIT_IF(libCryptoPath == NULL, CRYPT_CMVP_COMMON_ERR);
-    GOTO_EXIT_IF(CMVP_IntegrityHmac(libCtx, attrName, libCryptoPath, macId) == false, CRYPT_CMVP_ERR_INTEGRITY);
+    GOTO_ERR_IF_TRUE(libCryptoPath == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(CMVP_IntegrityHmac(libCtx, attrName, libCryptoPath, macId) == false, CRYPT_CMVP_ERR_INTEGRITY);
 
     libBslPath = CMVP_GetLibPath(BSL_SAL_Malloc);
-    GOTO_EXIT_IF(libBslPath == NULL, CRYPT_CMVP_COMMON_ERR);
-    GOTO_EXIT_IF(CMVP_IntegrityHmac(libCtx, attrName, libBslPath, macId) == false, CRYPT_CMVP_ERR_INTEGRITY);
+    GOTO_ERR_IF_TRUE(libBslPath == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(CMVP_IntegrityHmac(libCtx, attrName, libBslPath, macId) == false, CRYPT_CMVP_ERR_INTEGRITY);
 
     ret = CRYPT_SUCCESS;
-EXIT:
+ERR:
     BSL_SAL_Free(libCryptoPath);
     BSL_SAL_Free(libBslPath);
     return ret;

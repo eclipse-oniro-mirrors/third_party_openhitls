@@ -486,19 +486,19 @@ bool CipherEnc(void *libCtx, const char *attrName, CRYPT_CIPHER_AlgId id, CIPHER
     uint32_t finLen;
     uint32_t len = data.cipherText.len;
     uint8_t *out = BSL_SAL_Malloc(len);
-    GOTO_EXIT_IF(out == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(out == NULL, CRYPT_MEM_ALLOC_FAIL);
     memset_s(out, len, 0, len);
     ctx = CRYPT_EAL_ProviderCipherNewCtx(libCtx, id, attrName);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherInit(ctx, data.key.data, data.key.len, data.iv.data, data.iv.len, true) !=
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherInit(ctx, data.key.data, data.key.len, data.iv.data, data.iv.len, true) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherUpdate(ctx, data.plainText.data, data.plainText.len, out, &len) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherUpdate(ctx, data.plainText.data, data.plainText.len, out, &len) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(data.cipherText.len < len, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(data.cipherText.len < len, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     finLen = data.cipherText.len - len;
     CRYPT_EAL_CipherFinal(ctx, out + len, &finLen);
-    GOTO_EXIT_IF(memcmp(out, data.cipherText.data, data.cipherText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(out, data.cipherText.data, data.cipherText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(out);
     CRYPT_EAL_CipherFreeCtx(ctx);
     return ret;
@@ -511,19 +511,19 @@ bool CipherDec(void *libCtx, const char *attrName, CRYPT_CIPHER_AlgId id, CIPHER
     uint32_t finLen;
     uint32_t len = data.plainText.len;
     uint8_t *out = BSL_SAL_Malloc(len);
-    GOTO_EXIT_IF(out == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(out == NULL, CRYPT_MEM_ALLOC_FAIL);
     ctx = CRYPT_EAL_ProviderCipherNewCtx(libCtx, id, attrName);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherInit(ctx, data.key.data, data.key.len, data.iv.data, data.iv.len, false) !=
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherInit(ctx, data.key.data, data.key.len, data.iv.data, data.iv.len, false) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherUpdate(ctx, data.cipherText.data, data.cipherText.len, out, &len) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherUpdate(ctx, data.cipherText.data, data.cipherText.len, out, &len) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(data.plainText.len < len, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(data.plainText.len < len, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     finLen = data.plainText.len - len;
     CRYPT_EAL_CipherFinal(ctx, out + len, &finLen);
-    GOTO_EXIT_IF(memcmp(out, data.plainText.data, data.plainText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(out, data.plainText.data, data.plainText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(out);
     CRYPT_EAL_CipherFreeCtx(ctx);
     return ret;
@@ -545,27 +545,27 @@ bool AesAeadEnc(void *libCtx, const char *attrName, const CMVP_CIPHER_VECTOR *ci
     if (cipherVec->mode == HCRYPT_MODE_GCM) {
         tagLen = data.tag.len;
         tag = BSL_SAL_Malloc(tagLen);
-        GOTO_EXIT_IF(tag == NULL, CRYPT_ERR_ALGID);
+        GOTO_ERR_IF_TRUE(tag == NULL, CRYPT_ERR_ALGID);
     } else {
         tagLen = data.cipherText.len - data.plainText.len;
     }
 
     ctx = CRYPT_EAL_ProviderCipherNewCtx(libCtx, cipherVec->id, attrName);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherInit(ctx, data.key.data, data.key.len, data.iv.data, data.iv.len, true) !=
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherInit(ctx, data.key.data, data.key.len, data.iv.data, data.iv.len, true) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &tagLen, sizeof(tagLen)) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &tagLen, sizeof(tagLen)) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     if (cipherVec->mode == HCRYPT_MODE_CCM) {
         GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_MSGLEN, &msgLen, sizeof(msgLen)) != CRYPT_SUCCESS,
             CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, data.aad.data, data.aad.len) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, data.aad.data, data.aad.len) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     cipherLen = data.plainText.len;
-    GOTO_EXIT_IF(CRYPT_EAL_CipherUpdate(ctx, data.plainText.data, data.plainText.len, cipher, &cipherLen) !=
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherUpdate(ctx, data.plainText.data, data.plainText.len, cipher, &cipherLen) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(data.cipherText.len < cipherLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(data.cipherText.len < cipherLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     finLen = data.cipherText.len - cipherLen;
     if (cipherVec->mode != HCRYPT_MODE_CCM && cipherVec->mode != HCRYPT_MODE_GCM) {
         GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherFinal(ctx, cipher + cipherLen, &finLen) != CRYPT_SUCCESS,
@@ -574,16 +574,16 @@ bool AesAeadEnc(void *libCtx, const char *attrName, const CMVP_CIPHER_VECTOR *ci
     if (cipherVec->mode == HCRYPT_MODE_CCM) {
         GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, cipher + msgLen, tagLen) != CRYPT_SUCCESS,
             CRYPT_CMVP_ERR_ALGO_SELFTEST);
-        GOTO_EXIT_IF(memcmp(cipher, data.cipherText.data, data.cipherText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(memcmp(cipher, data.cipherText.data, data.cipherText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     } else {
-        GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, tag, tagLen) != CRYPT_SUCCESS,
+        GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, tag, tagLen) != CRYPT_SUCCESS,
             CRYPT_CMVP_ERR_ALGO_SELFTEST);
-        GOTO_EXIT_IF(memcmp(cipher, data.cipherText.data, data.cipherText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-        GOTO_EXIT_IF(memcmp(tag, data.tag.data, data.tag.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(memcmp(cipher, data.cipherText.data, data.cipherText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(memcmp(tag, data.tag.data, data.tag.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(tag);
     BSL_SAL_Free(cipher);
     CRYPT_EAL_CipherFreeCtx(ctx);
@@ -608,33 +608,33 @@ bool AesAeadDec(void *libCtx, const char *attrName, const CMVP_CIPHER_VECTOR *ci
         tagLen = data.tag.len;
     }
     tag = BSL_SAL_Malloc(tagLen);
-    GOTO_EXIT_IF(tag == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(tag == NULL, CRYPT_MEM_ALLOC_FAIL);
 
     ctx = CRYPT_EAL_ProviderCipherNewCtx(libCtx, cipherVec->id, attrName);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherInit(ctx, data.key.data, data.key.len, data.iv.data, data.iv.len, false) !=
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherInit(ctx, data.key.data, data.key.len, data.iv.data, data.iv.len, false) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &tagLen, sizeof(tagLen)) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &tagLen, sizeof(tagLen)) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     if (cipherVec->mode == HCRYPT_MODE_CCM) {
         GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_MSGLEN, &msgLen, sizeof(msgLen)) != CRYPT_SUCCESS,
             CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, data.aad.data, data.aad.len) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, data.aad.data, data.aad.len) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherUpdate(ctx, data.cipherText.data, data.plainText.len, plain, &plainLen) !=
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherUpdate(ctx, data.cipherText.data, data.plainText.len, plain, &plainLen) !=
         CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(data.plainText.len != plainLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(plain, data.plainText.data, data.plainText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, tag, tagLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(data.plainText.len != plainLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(plain, data.plainText.data, data.plainText.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, tag, tagLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     if (cipherVec->mode == HCRYPT_MODE_CCM) {
         GOTO_ERR_IF_TRUE(memcmp(tag, data.cipherText.data + msgLen, tagLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     } else {
-        GOTO_EXIT_IF(memcmp(tag, data.tag.data, tagLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(memcmp(tag, data.tag.data, tagLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(tag);
     BSL_SAL_Free(plain);
     CRYPT_EAL_CipherFreeCtx(ctx);
@@ -667,34 +667,34 @@ static bool CRYPT_CMVP_SelftestCipherInternal(void *libCtx, const char *attrName
         { NULL, 0 }, { NULL, 0 }, { NULL, 0 }, { NULL, 0 }, { NULL, 0 }, { NULL, 0 },
     };
     data.key.data = CMVP_StringsToBins(cipherVec->key, &(data.key.len));
-    GOTO_EXIT_IF(data.key.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(data.key.data == NULL, CRYPT_CMVP_COMMON_ERR);
     if (cipherVec->iv != NULL) {
         data.iv.data = CMVP_StringsToBins(cipherVec->iv, &(data.iv.len));
-        GOTO_EXIT_IF(data.iv.data == NULL, CRYPT_CMVP_COMMON_ERR);
+        GOTO_ERR_IF_TRUE(data.iv.data == NULL, CRYPT_CMVP_COMMON_ERR);
     }
     data.plainText.data = CMVP_StringsToBins(cipherVec->plaintext, &(data.plainText.len));
-    GOTO_EXIT_IF(data.plainText.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(data.plainText.data == NULL, CRYPT_CMVP_COMMON_ERR);
     data.cipherText.data = CMVP_StringsToBins(cipherVec->ciphertext, &(data.cipherText.len));
-    GOTO_EXIT_IF(data.cipherText.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(data.cipherText.data == NULL, CRYPT_CMVP_COMMON_ERR);
     if (cipherVec->aad != NULL) {
         data.aad.data = CMVP_StringsToBins(cipherVec->aad, &(data.aad.len));
-        GOTO_EXIT_IF(data.aad.data == NULL, CRYPT_CMVP_COMMON_ERR);
+        GOTO_ERR_IF_TRUE(data.aad.data == NULL, CRYPT_CMVP_COMMON_ERR);
     }
     if (cipherVec->tag != NULL) {
         data.tag.data = CMVP_StringsToBins(cipherVec->tag, &(data.tag.len));
-        GOTO_EXIT_IF(data.tag.data == NULL, CRYPT_CMVP_COMMON_ERR);
+        GOTO_ERR_IF_TRUE(data.tag.data == NULL, CRYPT_CMVP_COMMON_ERR);
     }
 
     if (cipherVec->mode == HCRYPT_MODE_CCM || cipherVec->mode == HCRYPT_MODE_GCM) {
         GOTO_ERR_IF_TRUE(AesAeadEnc(libCtx, attrName, cipherVec, data) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
         GOTO_ERR_IF_TRUE(AesAeadDec(libCtx, attrName, cipherVec, data) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     } else {
-        GOTO_EXIT_IF(CipherEnc(libCtx, attrName, id, data) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-        GOTO_EXIT_IF(CipherDec(libCtx, attrName, id, data) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(CipherEnc(libCtx, attrName, id, data) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+        GOTO_ERR_IF_TRUE(CipherDec(libCtx, attrName, id, data) != true, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(data.key.data);
     BSL_SAL_Free(data.iv.data);
     BSL_SAL_Free(data.cipherText.data);

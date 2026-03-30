@@ -88,7 +88,6 @@ extern "C" {
 #define CRYPT_PARAM_DSA_QBITS                               (CRYPT_PARAM_DSA_BASE + 8)
 #define CRYPT_PARAM_DSA_SEEDLEN                             (CRYPT_PARAM_DSA_BASE + 9)
 #define CRYPT_PARAM_DSA_GINDEX                              (CRYPT_PARAM_DSA_BASE + 10)
-#define CRYPT_PARAM_DSA_TYPE                                (CRYPT_PARAM_DSA_BASE + 11)
 
 #define CRYPT_PARAM_PAILLIER_BASE                           500
 #define CRYPT_PARAM_PAILLIER_N                              (CRYPT_PARAM_PAILLIER_BASE + 1)

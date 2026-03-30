@@ -169,27 +169,27 @@ static bool CRYPT_CMVP_SelftestMdInternal(void *libCtx, const char *attrName, CR
     }
 
     msg = CMVP_StringsToBins(hashVec->msg, &msgLen);
-    GOTO_EXIT_IF(msg == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(msg == NULL, CRYPT_CMVP_COMMON_ERR);
     expectMd = CMVP_StringsToBins(hashVec->md, &expectMdLen);
-    GOTO_EXIT_IF(expectMd == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(expectMd == NULL, CRYPT_CMVP_COMMON_ERR);
 
     ctx = CRYPT_EAL_ProviderMdNewCtx(libCtx, id, attrName);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     if (id == CRYPT_MD_SHAKE128 || id == CRYPT_MD_SHAKE256) {
         mdLen = expectMdLen;
     } else {
         mdLen = CRYPT_EAL_MdGetDigestSize(id);
     }
     md = BSL_SAL_Malloc(mdLen);
-    GOTO_EXIT_IF(md == NULL, CRYPT_MEM_ALLOC_FAIL);
-    GOTO_EXIT_IF(CRYPT_EAL_MdInit(ctx) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_MdUpdate(ctx, msg, msgLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_MdFinal(ctx, md, &mdLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(mdLen != expectMdLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(expectMd, md, mdLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(md == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MdInit(ctx) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MdUpdate(ctx, msg, msgLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MdFinal(ctx, md, &mdLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(mdLen != expectMdLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(expectMd, md, mdLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret =  true;
-EXIT:
+ERR:
     FreeData(msg, md, expectMd);
     CRYPT_EAL_MdFreeCtx(ctx);
     return ret;

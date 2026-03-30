@@ -838,7 +838,7 @@ int32_t MLKEM_DecapsInternal(CRYPT_ML_KEM_Ctx *ctx, uint8_t *ct, uint32_t ctLen,
     uint8_t kr[CRYPT_SHA3_512_DIGESTSIZE];    // K' and r'
 
     // NIST.FIPS.203: test = H(dk[384k : 768k + 32]) and check test == h
-    int32_t ret = HashFuncH(ek, 384 * ctx->info->k + 32, mh, CRYPT_SHA3_256_DIGESTSIZE);
+    int32_t ret = HashFuncH(ctx->libCtx, ek, 384 * ctx->info->k + 32, mh, CRYPT_SHA3_256_DIGESTSIZE);
     RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
     if (memcmp(h, mh, CRYPT_SHA3_256_DIGESTSIZE) != 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_MLKEM_INVALID_PRVKEY);
@@ -858,13 +858,18 @@ int32_t MLKEM_DecapsInternal(CRYPT_ML_KEM_Ctx *ctx, uint8_t *ct, uint32_t ctLen,
     GOTO_ERR_IF(PkeEncrypt(ctx, newCt, mh, r), ret);
 
     // Step 9: if c != c′
-    if (memcmp(ct, newCt, ctLen) == 0) {
-        (void)memcpy_s(sk, *skLen, kr, MLKEM_SHARED_KEY_LEN);
-    } else {
-        // Step 7: K = J(z || c)
-        (void)memcpy_s(newCt, ctLen + MLKEM_SEED_LEN, z, MLKEM_SEED_LEN);
-        (void)memcpy_s(newCt + MLKEM_SEED_LEN, ctLen, ct, ctLen);
-        GOTO_ERR_IF(HashFuncJ(ctx->libCtx, newCt, ctLen + MLKEM_SEED_LEN, sk, MLKEM_SHARED_KEY_LEN), ret);
+    uint8_t mask = 0;
+    for (uint32_t i = 0; i < ctLen; i++) {
+        mask |= (ct[i] ^ newCt[i]);
+    }
+    mask = (uint8_t)(((uint16_t)mask - 1) >> 8);
+    // Step 7: K = J(z || c)
+    (void)memcpy_s(newCt, ctLen + MLKEM_SEED_LEN, z, MLKEM_SEED_LEN);
+    (void)memcpy_s(newCt + MLKEM_SEED_LEN, ctLen, ct, ctLen);
+    GOTO_ERR_IF(HashFuncJ(ctx->libCtx, newCt, ctLen + MLKEM_SEED_LEN, r, MLKEM_SHARED_KEY_LEN), ret);
+
+    for (uint32_t i = 0; i < MLKEM_SHARED_KEY_LEN; i++) {
+        sk[i] = (kr[i] & mask) | (r[i] & ~mask);
     }
     *skLen = MLKEM_SHARED_KEY_LEN;
 ERR:

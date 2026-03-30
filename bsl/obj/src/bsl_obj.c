@@ -460,6 +460,10 @@ const BslAsn1DnInfo *BSL_OBJ_GetDnInfoFromCid(BslCid cid)
     return NULL;
 }
 
+#endif // HITLS_PKI_X509 || HITLS_PKI_INFO
+
+#if defined(HITLS_PKI_X509) || defined(HITLS_PKI_INFO) || defined(HITLS_CRYPTO_KEY_INFO)
+
 const char *BSL_OBJ_GetOidNameFromCID(BslCid ulCID)
 {
     if (ulCID >= BSL_CID_MAX) { /* check if ulCID is within range */
@@ -472,7 +476,7 @@ const char *BSL_OBJ_GetOidNameFromCID(BslCid ulCID)
     return g_oidTable[index].oidName;
 }
 
-#endif // HITLS_PKI_X509 || HITLS_PKI_INFO
+#endif // HITLS_PKI_X509 || HITLS_PKI_INFO || HITLS_CRYPTO_KEY_INFO
 
 
 #ifdef HITLS_BSL_OBJ_CUSTOM
@@ -734,7 +738,7 @@ static bool BslEncodeOidValueCheck(uint64_t *parts, uint32_t count)
 #define MAX_OID_PARTS_LEN 128
 uint8_t *BSL_OBJ_GetOidFromNumericString(const char *oid, uint32_t len, uint32_t *outLen)
 {
-    if (len == 0 || oid == NULL || oid[0] == '.' || outLen == NULL) {
+    if (len == 0 || oid == NULL || oid[0] == '.' || outLen == NULL || oid[len - 1] == '.') {
         BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
         return NULL;
     }

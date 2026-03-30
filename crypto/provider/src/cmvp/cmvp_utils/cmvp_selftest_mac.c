@@ -214,17 +214,17 @@ static bool GetData(const CMVP_MAC_VECTOR *macVec, CRYPT_Data *key, CRYPT_Data *
     CRYPT_Data *expectMac, CRYPT_Data *iv)
 {
     key->data = CMVP_StringsToBins(macVec->key, &(key->len));
-    GOTO_EXIT_IF(key->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(key->data == NULL, CRYPT_CMVP_COMMON_ERR);
     msg->data = CMVP_StringsToBins(macVec->msg, &(msg->len));
-    GOTO_EXIT_IF(msg->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(msg->data == NULL, CRYPT_CMVP_COMMON_ERR);
     expectMac->data = CMVP_StringsToBins(macVec->mac, &(expectMac->len));
-    GOTO_EXIT_IF(expectMac->data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(expectMac->data == NULL, CRYPT_CMVP_COMMON_ERR);
     if (macVec->iv != NULL) {
         iv->data = CMVP_StringsToBins(macVec->iv, &(iv->len));
-        GOTO_EXIT_IF(iv->data == NULL, CRYPT_CMVP_COMMON_ERR);
+        GOTO_ERR_IF_TRUE(iv->data == NULL, CRYPT_CMVP_COMMON_ERR);
     }
     return true;
-EXIT:
+ERR:
     return false;
 }
 
@@ -260,21 +260,21 @@ static bool CRYPT_CMVP_SelftestMacInternal(void *libCtx, const char *attrName, C
         return false;
     }
 
-    GOTO_EXIT_IF(!GetData(macVec, &key, &msg, &expectMac, &iv), CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(!GetData(macVec, &key, &msg, &expectMac, &iv), CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ctx = CRYPT_EAL_ProviderMacNewCtx(libCtx, id, attrName);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     if (macVec->type == MAC_TYPE_GMAC) {
         macLen = expectMac.len;
     } else {
         macLen = CRYPT_EAL_GetMacLen(ctx);
     }
     mac = BSL_SAL_Malloc(macLen);
-    GOTO_EXIT_IF(mac == NULL, CRYPT_MEM_ALLOC_FAIL);
-    GOTO_EXIT_IF(CRYPT_EAL_MacInit(ctx, key.data, key.len) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(mac == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_MacInit(ctx, key.data, key.len) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     if (macVec->type == MAC_TYPE_GMAC) {
-        GOTO_EXIT_IF(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_IV, iv.data, iv.len) != CRYPT_SUCCESS,
+        GOTO_ERR_IF_TRUE(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_IV, iv.data, iv.len) != CRYPT_SUCCESS,
             CRYPT_CMVP_ERR_ALGO_SELFTEST);
-        GOTO_EXIT_IF(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &macLen, sizeof(uint32_t)) != CRYPT_SUCCESS,
+        GOTO_ERR_IF_TRUE(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &macLen, sizeof(uint32_t)) != CRYPT_SUCCESS,
             CRYPT_CMVP_ERR_ALGO_SELFTEST);
     }
     if (macVec->type == MAC_TYPE_CBC_MAC) {
@@ -287,7 +287,7 @@ static bool CRYPT_CMVP_SelftestMacInternal(void *libCtx, const char *attrName, C
     GOTO_ERR_IF_TRUE(memcmp(mac, expectMac.data, expectMac.len) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
-EXIT:
+ERR:
     FreeData(key.data, msg.data, mac, expectMac.data, iv.data);
     CRYPT_EAL_MacDeinit(ctx);
     CRYPT_EAL_MacFreeCtx(ctx);

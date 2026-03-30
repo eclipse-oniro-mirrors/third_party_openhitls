@@ -232,7 +232,6 @@ static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, PackPacket *pkt)
          .packFunc = NULL},
 #ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
         {.exMsgType = HS_EX_TYPE_CERTIFICATE_AUTHORITIES,
-            /* We do not generate signature_algorithms_cert at present. */
          .needPack = ctx->config.tlsConfig.caList != NULL,
          .packFunc = PackClientCAList},
 #endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */

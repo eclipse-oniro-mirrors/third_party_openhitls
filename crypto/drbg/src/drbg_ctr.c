@@ -656,6 +656,7 @@ DRBG_Ctx *DRBG_NewCtrCtx(const EAL_SymMethod *ciphMeth, uint32_t keyLen, bool is
     DRBG_InitializeRanges(drbg, ctx, isUsedDf, keyLen);
 
     drbg->predictionResistance = false;
+    drbg->forkId = BSL_SAL_GetPid();
 
     return drbg;
 }

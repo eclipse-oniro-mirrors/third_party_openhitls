@@ -576,9 +576,10 @@ EXIT:
  * @brief
  *    1. Create two contexts(ecdhPkey, peerEcdhPubPkey) of the ECDH algorithm, expected result 1
  *    2. Init the drbg, expected result 2
- *    3. ecdhPkey: Set elliptic curve type(p-192/224/256/384/512, bp256r1/384r1/512/r1) and private key, expected result 3
- *    4. peerEcdhPubPkey: Set elliptic curve type(p-192/224/256/384/512, bp256r1/384r1/512/r1) and public key(compressed/
- *       uncompressed/hybrid), expected result 4
+ *    3. ecdhPkey: Set elliptic curve type(p-192/224/256/384/512, bp256r1/384r1/512/r1) and private key,
+ *       expected result 3
+ *    4. peerEcdhPubPkey: Set elliptic curve type(p-192/224/256/384/512, bp256r1/384r1/512/r1)
+ *       and public key(compressed/uncompressed/hybrid), expected result 4
  *    5. Compute the shared key, expected result 5
  *    6. Compare the output shared secret and shared secret vector, expected result 6
  * @expect

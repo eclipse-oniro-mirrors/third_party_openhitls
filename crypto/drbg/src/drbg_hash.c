@@ -488,7 +488,6 @@ DRBG_Ctx *DRBG_NewHashCtx(const EAL_MdMethod *md, bool isGm, const CRYPT_RandSee
     drbg->ctx = ctx;
     drbg->seedMeth = *seedMeth;
     drbg->seedCtx = seedCtx;
-    drbg->forkId = BSL_SAL_GetPid();
 
     // Shift right by 3, from bit length to byte length
     drbg->entropyRange.min = drbg->strength >> 3;
@@ -502,6 +501,7 @@ DRBG_Ctx *DRBG_NewHashCtx(const EAL_MdMethod *md, bool isGm, const CRYPT_RandSee
     drbg->maxRequest = (drbg->isGm) ? DRBG_MAX_REQUEST_SM3 : DRBG_MAX_REQUEST;
 
     drbg->predictionResistance = false;
+    drbg->forkId = BSL_SAL_GetPid();
 
     return drbg;
 }

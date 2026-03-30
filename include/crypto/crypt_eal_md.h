@@ -210,8 +210,8 @@ int32_t CRYPT_EAL_Md(CRYPT_MD_AlgId id, const uint8_t *in, uint32_t inLen, uint8
  * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
-int32_t CRYPT_EAL_ProviderMd(CRYPT_EAL_LibCtx *libCtx, CRYPT_MD_AlgId id, const char *attrName,
-    const uint8_t *in, uint32_t inLen, uint8_t *out, uint32_t *outLen);
+int32_t CRYPT_EAL_ProviderMd(CRYPT_EAL_LibCtx *libCtx, CRYPT_MD_AlgId id, const char *attrName, const uint8_t *in,
+                             uint32_t inLen, uint8_t *out, uint32_t *outLen);
 
 /**
  * @ingroup crypt_eal_md

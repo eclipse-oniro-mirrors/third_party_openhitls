@@ -1486,9 +1486,7 @@ void UT_TLS_CFG_SETTMPDH_FUNC_TC001(int level)
         ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
     }
 EXIT:
-    if (SECURITY_GetSecbits(level) > secBits) {
-        SAL_CRYPT_FreeDhKey(key);
-    }
+    SAL_CRYPT_FreeDhKey(key);
     HITLS_CFG_FreeConfig(clientConfig);
     HITLS_CFG_FreeConfig(serverConfig);
     FRAME_FreeLink(client);

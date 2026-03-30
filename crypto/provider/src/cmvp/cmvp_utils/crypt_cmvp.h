@@ -70,10 +70,6 @@ typedef struct {
 } CRYPT_EAL_KdfC2Data;
 
 typedef struct {
-    CRYPT_MD_AlgId mdId;
-} CRYPT_RSA_PkcsV15Para;
-
-typedef struct {
     const CRYPT_EAL_PkeyPara *para;
     const CRYPT_EAL_PkeyPub *pub;
     const CRYPT_EAL_PkeyPrv *prv;

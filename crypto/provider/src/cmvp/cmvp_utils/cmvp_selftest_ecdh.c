@@ -61,9 +61,9 @@ static bool GetPkey(void *libCtx, const char *attrName, bool isBob, CRYPT_EAL_Pk
     uint32_t xLen, yLen;
 
     *pkeyPrv = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_ECDH, 0, attrName);
-    GOTO_EXIT_IF(*pkeyPrv == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(*pkeyPrv == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     *pkeyPub = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_ECDH, 0, attrName);
-    GOTO_EXIT_IF(*pkeyPub == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(*pkeyPub == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     prv->id = CRYPT_PKEY_ECDH;
     if (isBob == true) {
@@ -71,10 +71,10 @@ static bool GetPkey(void *libCtx, const char *attrName, bool isBob, CRYPT_EAL_Pk
     } else {
         prv->key.eccPrv.data = CMVP_StringsToBins(ECDH_VECTOR.aliceD, &(prv->key.eccPrv.len));
     }
-    GOTO_EXIT_IF(prv->key.eccPrv.data == NULL, CRYPT_CMVP_COMMON_ERR);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetParaById(*pkeyPrv, ECDH_VECTOR.curveId) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(prv->key.eccPrv.data == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetParaById(*pkeyPrv, ECDH_VECTOR.curveId) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetPrv(*pkeyPrv, prv) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPrv(*pkeyPrv, prv) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     pub->id = CRYPT_PKEY_ECDH;
@@ -85,20 +85,21 @@ static bool GetPkey(void *libCtx, const char *attrName, bool isBob, CRYPT_EAL_Pk
         x = CMVP_StringsToBins(ECDH_VECTOR.aliceX, &xLen);
         y = CMVP_StringsToBins(ECDH_VECTOR.aliceY, &yLen);
     }
-    GOTO_EXIT_IF(x == NULL, CRYPT_CMVP_COMMON_ERR);
-    GOTO_EXIT_IF(y == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(x == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(y == NULL, CRYPT_CMVP_COMMON_ERR);
     pub->key.eccPub.len = xLen + yLen + 1;
     pub->key.eccPub.data = BSL_SAL_Malloc(pub->key.eccPub.len);
-    GOTO_EXIT_IF(pub->key.eccPub.data == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(pub->key.eccPub.data == NULL, CRYPT_MEM_ALLOC_FAIL);
     pub->key.eccPub.data[0] = 0x04; // CRYPT_POINT_UNCOMPRESSED标记头
-    GOTO_EXIT_IF(memcpy_s(pub->key.eccPub.data + 1, pub->key.eccPub.len, x, xLen) != EOK, CRYPT_SECUREC_FAIL);
-    GOTO_EXIT_IF(memcpy_s(pub->key.eccPub.data + 1 + xLen, pub->key.eccPub.len, y, yLen) != EOK, CRYPT_SECUREC_FAIL);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetParaById(*pkeyPub, ECDH_VECTOR.curveId) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(memcpy_s(pub->key.eccPub.data + 1, pub->key.eccPub.len, x, xLen) != EOK, CRYPT_SECUREC_FAIL);
+    GOTO_ERR_IF_TRUE(
+        memcpy_s(pub->key.eccPub.data + 1 + xLen, pub->key.eccPub.len, y, yLen) != EOK, CRYPT_SECUREC_FAIL);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetParaById(*pkeyPub, ECDH_VECTOR.curveId) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetPub(*pkeyPub, pub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPub(*pkeyPub, pub) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_FREE(x);
     BSL_SAL_FREE(y);
     return ret;
@@ -121,26 +122,26 @@ static bool CRYPT_CMVP_SelftestEcdhInternal(void *libCtx, const char *attrName)
     uint32_t expShareKeyLen;
 
     expShareKey = CMVP_StringsToBins(ECDH_VECTOR.shareKey, &expShareKeyLen);
-    GOTO_EXIT_IF(expShareKey == NULL, CRYPT_CMVP_COMMON_ERR);
-    GOTO_EXIT_IF(GetPkey(libCtx, attrName, true, &bobPrvPkey, &bobPubPkey, &bobPub, &bobPrv) != true,
+    GOTO_ERR_IF_TRUE(expShareKey == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(GetPkey(libCtx, attrName, true, &bobPrvPkey, &bobPubPkey, &bobPub, &bobPrv) != true,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(GetPkey(libCtx, attrName, false, &alicePrvPkey, &alicePubPkey, &alicePub, &alicePrv) != true,
+    GOTO_ERR_IF_TRUE(GetPkey(libCtx, attrName, false, &alicePrvPkey, &alicePubPkey, &alicePub, &alicePrv) != true,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
     shareKeyLen = CRYPT_EAL_PkeyGetKeyLen(bobPrvPkey);
     shareKey = BSL_SAL_Malloc(shareKeyLen);
-    GOTO_EXIT_IF(shareKey == NULL, CRYPT_MEM_ALLOC_FAIL);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyComputeShareKey(bobPrvPkey, alicePubPkey, shareKey, &shareKeyLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(shareKey == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyComputeShareKey(bobPrvPkey, alicePubPkey, shareKey, &shareKeyLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(shareKeyLen != expShareKeyLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(expShareKey, shareKey, shareKeyLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(shareKeyLen != expShareKeyLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(expShareKey, shareKey, shareKeyLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     shareKeyLen = CRYPT_EAL_PkeyGetKeyLen(bobPrvPkey);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyComputeShareKey(alicePrvPkey, bobPubPkey, shareKey, &shareKeyLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyComputeShareKey(alicePrvPkey, bobPubPkey, shareKey, &shareKeyLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(shareKeyLen != expShareKeyLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(expShareKey, shareKey, shareKeyLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(shareKeyLen != expShareKeyLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(expShareKey, shareKey, shareKeyLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(bobPub.key.eccPub.data);
     BSL_SAL_Free(bobPrv.key.eccPrv.data);
     CRYPT_EAL_PkeyFreeCtx(bobPrvPkey);

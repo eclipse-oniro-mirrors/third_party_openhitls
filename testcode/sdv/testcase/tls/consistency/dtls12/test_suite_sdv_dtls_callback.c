@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
- /* BEGIN_HEADER */
+/* BEGIN_HEADER */
 #include <unistd.h>
 #include <semaphore.h>
 #include "alert.h"

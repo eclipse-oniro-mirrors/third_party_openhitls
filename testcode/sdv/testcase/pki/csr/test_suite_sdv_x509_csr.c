@@ -32,10 +32,14 @@
 #include "bsl_list_internal.h"
 #include "bsl_obj.h"
 #include "crypt_eal_pkey.h"
+#include "stub_utils.h"
 
 /* END_HEADER */
 #define MAX_BUFF_SIZE 4096
 #define MAX_DATA_LEN 128
+#ifdef HITLS_CRYPTO_PROVIDER
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
+#endif
 
 static char g_sm2DefaultUserid[] = "1234567812345678";
 
@@ -60,6 +64,58 @@ static void TestMemInitCorrect()
 {
     BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC, TestMalloc);
     BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE, free);
+}
+
+static int32_t ReadFile(const char *filePath, uint8_t *buff, uint32_t buffLen, uint32_t *outLen)
+{
+    FILE *fp = NULL;
+    int32_t ret = -1;
+
+    fp = fopen(filePath, "rb");
+    if (fp == NULL) {
+        return ret;
+    }
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        goto EXIT;
+    }
+    long fileSize = ftell(fp);
+    if (fileSize < 0 || (uint32_t)fileSize > buffLen) {
+        goto EXIT;
+    }
+    rewind(fp);
+    size_t readSize = fread(buff, 1, fileSize, fp);
+    if (readSize != (size_t)fileSize) {
+        goto EXIT;
+    }
+    *outLen = (uint32_t)fileSize;
+    ret = 0;
+
+EXIT:
+    (void)fclose(fp);
+    return ret;
+}
+
+static int32_t PrintBuffTest(int cmd, BSL_Buffer *data, char *log, Hex *expect, bool isExpectFile)
+{
+    int32_t ret = -1;
+    uint8_t printBuf[MAX_BUFF_SIZE] = {};
+    uint32_t printBufLen = sizeof(printBuf);
+    uint8_t expectBuf[MAX_BUFF_SIZE] = {};
+    uint32_t expectBufLen = sizeof(expectBuf);
+    BSL_UIO *uio = BSL_UIO_New(BSL_UIO_MemMethod());
+    ASSERT_NE(uio, NULL);
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(cmd, data->data, data->dataLen, uio), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(BSL_UIO_Read(uio, printBuf, MAX_BUFF_SIZE, &printBufLen), 0);
+    if (isExpectFile) {
+        ASSERT_EQ(ReadFile((char *)expect->x, expectBuf, MAX_BUFF_SIZE, &expectBufLen), 0);
+        ASSERT_COMPARE(log, expectBuf, expectBufLen, printBuf, printBufLen - 1); // Ignore line break differences
+    } else {
+        ASSERT_COMPARE(log, expect->x, expect->len, printBuf, printBufLen - 1); // Ignore line break differences
+    }
+    ret = 0;
+EXIT:
+    BSL_UIO_Free(uio);
+    return ret;
 }
 
 /* BEGIN_CASE */

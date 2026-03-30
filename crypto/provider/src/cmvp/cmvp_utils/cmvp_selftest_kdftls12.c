@@ -59,18 +59,18 @@ static bool CRYPT_CMVP_SelftestKdfTls12Internal(void *libCtx, const char *attrNa
     CRYPT_EAL_KdfCtx *ctx = NULL;
     CRYPT_MAC_AlgId id = CRYPT_MAC_HMAC_SHA256;
     key = CMVP_StringsToBins(KDF_TLS12_VECTOR.key, &keyLen);
-    GOTO_EXIT_IF(key == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(key == NULL, CRYPT_CMVP_COMMON_ERR);
     label = CMVP_StringsToBins(KDF_TLS12_VECTOR.label, &labelLen);
-    GOTO_EXIT_IF(label == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(label == NULL, CRYPT_CMVP_COMMON_ERR);
     seed = CMVP_StringsToBins(KDF_TLS12_VECTOR.seed, &seedLen);
-    GOTO_EXIT_IF(seed == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(seed == NULL, CRYPT_CMVP_COMMON_ERR);
     expDk = CMVP_StringsToBins(KDF_TLS12_VECTOR.dk, &expDkLen);
-    GOTO_EXIT_IF(expDk == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(expDk == NULL, CRYPT_CMVP_COMMON_ERR);
     dk = BSL_SAL_Malloc(expDkLen);
-    GOTO_EXIT_IF(dk == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(dk == NULL, CRYPT_MEM_ALLOC_FAIL);
 
     ctx = CRYPT_EAL_ProviderKdfNewCtx(libCtx, CRYPT_KDF_KDFTLS12, attrName);
-    GOTO_EXIT_IF(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(ctx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     BSL_Param param[5] = {
         {CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32, &id, sizeof(id), 0},
         {CRYPT_PARAM_KDF_KEY, BSL_PARAM_TYPE_OCTETS, key, keyLen, 0},
@@ -78,11 +78,11 @@ static bool CRYPT_CMVP_SelftestKdfTls12Internal(void *libCtx, const char *attrNa
         {CRYPT_PARAM_KDF_SEED, BSL_PARAM_TYPE_OCTETS, seed, seedLen, 0},
         BSL_PARAM_END
     };
-    GOTO_EXIT_IF(CRYPT_EAL_KdfSetParam(ctx, param) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_KdfDerive(ctx, dk, expDkLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(dk, expDk, expDkLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_KdfSetParam(ctx, param) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_KdfDerive(ctx, dk, expDkLen) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(dk, expDk, expDkLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
     ret = true;
-EXIT:
+ERR:
     BSL_SAL_Free(key);
     BSL_SAL_Free(label);
     BSL_SAL_Free(seed);

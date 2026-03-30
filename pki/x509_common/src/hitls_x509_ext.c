@@ -512,8 +512,8 @@ int32_t X509_ParseCrlNumber(HITLS_X509_ExtEntry *extEntry, HITLS_X509_ExtCrlNumb
     return HITLS_PKI_SUCCESS;
 }
 
-#if defined(HITLS_PKI_X509_CRT_PARSE) || defined(HITLS_PKI_X509_CSR) || defined(HITLS_PKI_X509_CRL_PARSE) ||\
-     defined(HITLS_PKI_INFO_CRT) || defined(HITLS_PKI_INFO_CSR)
+#if defined(HITLS_PKI_X509_CRT_PARSE) || defined(HITLS_PKI_X509_CSR) || defined(HITLS_PKI_X509_CRL_PARSE) || \
+    defined(HITLS_PKI_INFO_CRT) || defined(HITLS_PKI_INFO_CSR)
 static int32_t ParseExKeyUsageList(uint32_t layer, BSL_ASN1_Buffer *asn, void *param, BSL_ASN1_List *list)
 {
     (void)param;
@@ -568,8 +568,6 @@ void HITLS_X509_ClearExtendedKeyUsage(HITLS_X509_ExtExKeyUsage *exku)
     BSL_LIST_FREE(exku->oidList, NULL);
 }
 
-#if defined(HITLS_PKI_X509_CRT_PARSE) || defined(HITLS_PKI_X509_CSR_PARSE) || \
-    defined(HITLS_PKI_INFO_CRT) || defined(HITLS_PKI_INFO_CSR) || defined(HITLS_PKI_INFO_CRL)
 void HITLS_X509_ClearSubjectAltName(HITLS_X509_ExtSan *san)
 {
     if (san == NULL) {
@@ -611,7 +609,6 @@ int32_t HITLS_X509_ParseSubjectAltName(HITLS_X509_ExtEntry *extEntry, HITLS_X509
     san->critical = extEntry->critical;
     return ret;
 }
-#endif
 
 #if defined(HITLS_PKI_X509_CRT_PARSE) || defined(HITLS_PKI_X509_CRL_PARSE) || defined(HITLS_PKI_X509_CSR)
 static BSL_ASN1_TemplateItem g_x509ExtTempl[] = {
@@ -652,6 +649,7 @@ int32_t HITLS_X509_ParseExtItem(BSL_ASN1_Buffer *extItem, HITLS_X509_ExtEntry *e
     extEntry->extnValue = asnArr[HITLS_X509_EXT_VALUE_IDX];
     return ret;
 }
+#endif
 
 #if defined(HITLS_PKI_X509_CRT_PARSE) || defined(HITLS_PKI_X509_CRL_PARSE) || defined(HITLS_PKI_X509_CSR)
 static int32_t ParseExtAsnItem(BSL_ASN1_Buffer *asn, void *param, BSL_ASN1_List *list)
@@ -1061,58 +1059,18 @@ static int32_t SetExtCrlNumber(HITLS_X509_Ext *ext, HITLS_X509_ExtEntry *entry, 
 
 static int32_t SetExtGeneric(HITLS_X509_Ext *ext, HITLS_X509_ExtEntry *entry, const void *val)
 {
-    HITLS_X509_ExtEntry *existingEntry = BSL_LIST_Search(extList, &cid, CmpExtByCid, NULL);
-    /* Replace existing extension */
-    if (existingEntry != NULL) {
-        HITLS_X509_ExtEntry tmpEntry = {0, {0}, false, {BSL_ASN1_TAG_OCTETSTRING, 0, NULL}};
-        int32_t ret = encodeExt(param, &tmpEntry, val->data);
-        if (ret != HITLS_PKI_SUCCESS) {
-            BSL_ERR_PUSH_ERROR(ret);
-            return ret;
-        }
-        BSL_SAL_Free(existingEntry->extnValue.buff);
-        existingEntry->extnValue = tmpEntry.extnValue;
-        existingEntry->critical = tmpEntry.critical;
-        return HITLS_PKI_SUCCESS;
-    }
+    (void)ext;
+    const HITLS_X509_ExtGeneric *generic = (const HITLS_X509_ExtGeneric *)val;
 
-    /* Add new extension */
-    BslOidString *oid = BSL_OBJ_GetOID(cid);
-    if (oid == NULL || oid->octetLen == 0 || oid->octs == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_EXT_OID);
-        return HITLS_X509_ERR_EXT_OID;
-    }
+    entry->critical = generic->critical;
 
-    int32_t ret = BSL_MALLOC_FAIL;
-    HITLS_X509_ExtEntry *newEntry = BSL_SAL_Calloc(1, sizeof(HITLS_X509_ExtEntry));
-    if (newEntry == NULL) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
+    entry->extnValue.len = generic->value.dataLen;
+    entry->extnValue.buff = BSL_SAL_Dump(generic->value.data, generic->value.dataLen);
+    if (entry->extnValue.buff == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_DUMP_FAIL);
+        return BSL_DUMP_FAIL;
     }
-    newEntry->cid = cid;
-    newEntry->extnId.tag = BSL_ASN1_TAG_OBJECT_ID;
-    newEntry->extnId.len = oid->octetLen;
-    newEntry->extnValue.tag = BSL_ASN1_TAG_OCTETSTRING;
-    newEntry->extnId.buff = BSL_SAL_Dump(oid->octs, oid->octetLen);
-    if (newEntry->extnId.buff == NULL) {
-        ret = BSL_DUMP_FAIL;
-        BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
-    }
-    if ((ret = encodeExt(param, newEntry, val->data)) != HITLS_PKI_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
-    }
-    if ((ret = BSL_LIST_AddElement(extList, newEntry, BSL_LIST_POS_END)) == BSL_SUCCESS) {
-        return HITLS_PKI_SUCCESS;
-    }
-ERR:
-    if (newEntry != NULL) {
-        BSL_SAL_FREE(newEntry->extnValue.buff);
-        BSL_SAL_FREE(newEntry->extnId.buff);
-        BSL_SAL_Free(newEntry);
-    }
-    return ret;
+    return HITLS_PKI_SUCCESS;
 }
 
 static HITLS_X509_ExtEntry *GetExtEntry(BslList *extList, BslCid cid, void *val)
@@ -1324,6 +1282,31 @@ static int32_t GetExtBCons(HITLS_X509_Ext *ext, uint32_t *val, uint32_t valLen)
     return HITLS_PKI_SUCCESS;
 }
 
+/* Generic extension get: user provides DER-encoded OID buffer and output buffer */
+static int32_t GetGenericExt(HITLS_X509_Ext *ext, HITLS_X509_ExtGeneric *generic, uint32_t valLen)
+{
+    if (valLen != sizeof(HITLS_X509_ExtGeneric) ||
+        generic->oid.data == NULL || generic->oid.dataLen == 0 || generic->value.data != NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
+        return HITLS_X509_ERR_INVALID_PARAM;
+    }
+    BSL_ASN1_Buffer oidBuf = {BSL_ASN1_TAG_OBJECT_ID, generic->oid.dataLen, generic->oid.data};
+    HITLS_X509_ExtEntry *extEntry = BSL_LIST_Search(ext->extList, &oidBuf, CmpExtByOid, NULL);
+    if (extEntry == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_EXT_NOT_FOUND);
+        return HITLS_X509_ERR_EXT_NOT_FOUND;
+    }
+
+    generic->value.data = BSL_SAL_Dump(extEntry->extnValue.buff, extEntry->extnValue.len);
+    if (generic->value.data == NULL) {
+        BSL_ERR_PUSH_ERROR(BSL_DUMP_FAIL);
+        return BSL_DUMP_FAIL;
+    }
+    generic->value.dataLen = extEntry->extnValue.len;
+    generic->critical = extEntry->critical;
+    return HITLS_PKI_SUCCESS;
+}
+
 static int32_t GetExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t valLen)
 {
     BSL_Buffer buff = {val, valLen};
@@ -1344,6 +1327,8 @@ static int32_t GetExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t 
         case HITLS_X509_EXT_GET_SAN:
             return HITLS_X509_GetExt(ext->extList, BSL_CID_CE_SUBJECTALTNAME, &buff, sizeof(HITLS_X509_ExtSan),
                 (DecodeExtCb)HITLS_X509_ParseSubjectAltName);
+        case HITLS_X509_EXT_GET_GENERIC:
+            return GetGenericExt(ext, (HITLS_X509_ExtGeneric *)val, valLen);
         default:
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
             return HITLS_X509_ERR_INVALID_PARAM;
@@ -1400,7 +1385,7 @@ int32_t HITLS_X509_ExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t
     static int32_t cmdSet[] = {HITLS_X509_EXT_SET_SKI, HITLS_X509_EXT_SET_AKI, HITLS_X509_EXT_SET_KUSAGE,
         HITLS_X509_EXT_SET_SAN, HITLS_X509_EXT_SET_BCONS, HITLS_X509_EXT_SET_EXKUSAGE, HITLS_X509_EXT_SET_GENERIC,
         HITLS_X509_EXT_GET_SKI, HITLS_X509_EXT_GET_AKI, HITLS_X509_EXT_CHECK_SKI, HITLS_X509_EXT_GET_KUSAGE,
-        HITLS_X509_EXT_GET_GENERIC};
+        HITLS_X509_EXT_GET_BCONS, HITLS_X509_EXT_GET_SAN, HITLS_X509_EXT_GET_GENERIC};
     if (!X509_CheckCmdValid(cmdSet, sizeof(cmdSet) / sizeof(int32_t), cmd)) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_EXT_UNSUPPORT);
         return HITLS_X509_ERR_EXT_UNSUPPORT;

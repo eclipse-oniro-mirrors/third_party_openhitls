@@ -167,16 +167,7 @@ int32_t CRYPT_ECC_ParsePrikeyAsn1Buff(void *libCtx, uint8_t *buffer, uint32_t bu
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    BSL_Param pubParam[2] = {
-        {CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, (eccPrvInfo.pubkey.buff + 1),
-            eccPrvInfo.pubkey.len - 1, 0},
-        BSL_PARAM_END
-    };
-    ret = ECC_PkeySetPubKeyEx(pctx, pubParam);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
-    }
+    // Set private key first
     BSL_Param prvParam[2] = {
         {CRYPT_PARAM_EC_PRVKEY, BSL_PARAM_TYPE_OCTETS, eccPrvInfo.prikey.buff, eccPrvInfo.prikey.len, 0},
         BSL_PARAM_END
@@ -192,7 +183,7 @@ int32_t CRYPT_ECC_ParsePrikeyAsn1Buff(void *libCtx, uint8_t *buffer, uint32_t bu
             {CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, eccPrvInfo.pubkey.buff + 1, eccPrvInfo.pubkey.len - 1, 0},
             BSL_PARAM_END
         };
-        ret = ECC_PkeySetPubKey(pctx, pubParam);
+        ret = ECC_PkeySetPubKeyEx(pctx, pubParam);
     } else {
         uint32_t flag = CRYPT_ECC_PRIKEY_NO_PUBKEY;
         ret = ECC_PkeyCtrl(pctx, CRYPT_CTRL_SET_FLAG, &flag, sizeof(flag));
@@ -301,16 +292,7 @@ int32_t CRYPT_SM2_ParsePrikeyAsn1Buff(void *libCtx, uint8_t *buffer, uint32_t bu
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    BSL_Param pubParam[2] = {
-        {CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, eccPrvInfo.pubkey.buff + 1,
-            eccPrvInfo.pubkey.len - 1, 0},
-        BSL_PARAM_END
-    };
-    ret = CRYPT_SM2_SetPubKeyEx(pctx, pubParam);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        goto ERR;
-    }
+    // Set private key first
     BSL_Param prvParam[2] = {
         {CRYPT_PARAM_EC_PRVKEY, BSL_PARAM_TYPE_OCTETS, eccPrvInfo.prikey.buff, eccPrvInfo.prikey.len, 0},
         BSL_PARAM_END
@@ -326,7 +308,7 @@ int32_t CRYPT_SM2_ParsePrikeyAsn1Buff(void *libCtx, uint8_t *buffer, uint32_t bu
             {CRYPT_PARAM_EC_PUBKEY, BSL_PARAM_TYPE_OCTETS, eccPrvInfo.pubkey.buff + 1, eccPrvInfo.pubkey.len - 1, 0},
             BSL_PARAM_END
         };
-        ret = CRYPT_SM2_SetPubKey(pctx, pubParam);
+        ret = CRYPT_SM2_SetPubKeyEx(pctx, pubParam);
     } else {
         uint32_t flag = CRYPT_ECC_PRIKEY_NO_PUBKEY;
         ret = CRYPT_SM2_Ctrl(pctx, CRYPT_CTRL_SET_FLAG, &flag, sizeof(flag));

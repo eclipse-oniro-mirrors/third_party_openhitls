@@ -2238,14 +2238,14 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_SELECT_PREFER_CIPHER_SUITE_TC001(void)
     HLT_SetCertPath(serverConfig, "NULL", "NULL", "NULL", "NULL", "NULL", "NULL");
     HLT_SetPsk(serverConfig, "1A1A1A1A1A");
     HLT_SetCipherSuites(serverConfig, "HITLS_AES_256_GCM_SHA384:HITLS_AES_128_GCM_SHA256");
-    
+
     HLT_Ctx_Config *clientConfig = HLT_NewCtxConfig(NULL, "CLIENT");
     ASSERT_TRUE(clientConfig != NULL);
 
     HLT_SetCertPath(clientConfig, "NULL", "NULL", "NULL", "NULL", "NULL", "NULL");
     HLT_SetPsk(clientConfig, "1A1A1A1A1A");
     HLT_SetCipherSuites(clientConfig, "HITLS_AES_256_GCM_SHA384:HITLS_AES_128_GCM_SHA256");
-    
+
     serverRes = HLT_ProcessTlsAccept(remoteProcess, TLS1_3, serverConfig, NULL);
     ASSERT_TRUE(serverRes != NULL);
 
@@ -2285,7 +2285,7 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_SELECT_PREFER_CIPHER_SUITE_TC002(void)
         ECDSA_SHA256_PRIV_PATH, "NULL", "NULL");
     HLT_SetPsk(serverConfig, "123456789");
     HLT_SetCipherSuites(serverConfig, "HITLS_AES_256_GCM_SHA384:HITLS_AES_128_GCM_SHA256");
-    
+
     HLT_Ctx_Config *clientConfig = HLT_NewCtxConfig(NULL, "CLIENT");
     ASSERT_TRUE(clientConfig != NULL);
 
@@ -2293,7 +2293,7 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_SELECT_PREFER_CIPHER_SUITE_TC002(void)
         ECDSA_SHA256_PRIV_PATH, "NULL", "NULL");
     HLT_SetPsk(clientConfig, "123456789");
     HLT_SetCipherSuites(clientConfig, "HITLS_AES_256_GCM_SHA384:HITLS_AES_128_GCM_SHA256");
-    
+
     serverRes = HLT_ProcessTlsAccept(remoteProcess, TLS1_3, serverConfig, NULL);
     ASSERT_TRUE(serverRes != NULL);
 

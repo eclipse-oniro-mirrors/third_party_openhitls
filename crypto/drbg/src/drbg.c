@@ -256,7 +256,6 @@ static inline bool DRBG_IsNeedReseed(DRBG_Ctx *ctx, bool pr)
     if (pr) {
         return true;
     }
-
     if (ctx->reseedCtr > ctx->reseedInterval) {
         return true;
     }

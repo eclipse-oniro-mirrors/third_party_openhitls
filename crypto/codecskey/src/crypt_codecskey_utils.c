@@ -234,7 +234,7 @@ static BSL_ASN1_TemplateItem g_subKeyInfoInnerTempl[] = {
     {BSL_ASN1_TAG_BITSTRING, 0, 0},
 };
 
-#ifdef HITLS_CRYPTO_MLDSA
+#if defined(HITLS_CRYPTO_MLDSA) && defined(HITLS_CRYPTO_KEY_DECODE)
 /**
  * MldsaPrivateKey  :=  CHOICE  {
  *      seed [0]        OCTET STRING (SIZE (32)),
@@ -388,7 +388,7 @@ int32_t CRYPT_DECODE_MldsaPrikeyAsn1Buff(uint8_t* buffer, uint32_t bufferLen, BS
         sizeof(g_mldsaPrikeyInfoTempl) / sizeof(g_mldsaPrikeyInfoTempl[0])};
     int32_t ret = BSL_ASN1_DecodeTemplate(&templ, DecodeMldsaPriKeyChoiceAsn1Buff,
         &tmpBuff, &tmpBuffLen, &asn1Tmp, arrNum);
-    if (ret != CRYPT_SUCCESS) {
+    if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
@@ -1053,7 +1053,7 @@ static int32_t EncodeEncryptedData(CRYPT_EAL_LibCtx *libCtx, const char *attrNam
             break;
         }
 
-        ret = PbkdfDeriveKey(libCtx, attrName, pkcsParam->itCnt, pkcsParam->hmacId, salt,
+        ret = PbkdfDeriveKey(libCtx, attrName, pkcsParam->itCnt, (int32_t)pkcsParam->hmacId, salt,
             pkcsParam->pwd, pkcsParam->pwdLen, &keyBuff);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);

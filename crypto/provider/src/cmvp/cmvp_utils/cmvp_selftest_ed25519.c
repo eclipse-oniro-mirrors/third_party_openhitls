@@ -68,39 +68,39 @@ static bool CRYPT_CMVP_SelftestEd25519Internal(void *libCtx, const char *attrNam
     CRYPT_EAL_PkeyPub pubKey;
 
     prv = CMVP_StringsToBins(ED25519_VECTOR.prv, &prvLen);
-    GOTO_EXIT_IF(prv == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(prv == NULL, CRYPT_CMVP_COMMON_ERR);
     pub = CMVP_StringsToBins(ED25519_VECTOR.pub, &pubLen);
-    GOTO_EXIT_IF(pub == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(pub == NULL, CRYPT_CMVP_COMMON_ERR);
     msg = CMVP_StringsToBins(ED25519_VECTOR.msg, &msgLen);
-    GOTO_EXIT_IF(msg == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(msg == NULL, CRYPT_CMVP_COMMON_ERR);
     expSign = CMVP_StringsToBins(ED25519_VECTOR.sign, &expSignLen);
-    GOTO_EXIT_IF(expSign == NULL, CRYPT_CMVP_COMMON_ERR);
+    GOTO_ERR_IF_TRUE(expSign == NULL, CRYPT_CMVP_COMMON_ERR);
     signLen = expSignLen;
     sign = BSL_SAL_Malloc(signLen);
-    GOTO_EXIT_IF(sign == NULL, CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_TRUE(sign == NULL, CRYPT_MEM_ALLOC_FAIL);
 
     prvKey.id = CRYPT_PKEY_ED25519;
     prvKey.key.curve25519Prv.data = prv;
     prvKey.key.curve25519Prv.len = prvLen;
     prvCtx = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_ED25519, 0, attrName);
-    GOTO_EXIT_IF(prvCtx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetPrv(prvCtx, &prvKey) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySign(prvCtx, ED25519_VECTOR.mdId, msg, msgLen, sign, &signLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(prvCtx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPrv(prvCtx, &prvKey) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySign(prvCtx, ED25519_VECTOR.mdId, msg, msgLen, sign, &signLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(signLen != expSignLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(memcmp(expSign, sign, signLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(signLen != expSignLen, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(memcmp(expSign, sign, signLen) != 0, CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     pubKey.id = CRYPT_PKEY_ED25519;
     pubKey.key.curve25519Pub.data = pub;
     pubKey.key.curve25519Pub.len = pubLen;
     pubCtx = CRYPT_EAL_ProviderPkeyNewCtx(libCtx, CRYPT_PKEY_ED25519, 0, attrName);
-    GOTO_EXIT_IF(pubCtx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeySetPub(pubCtx, &pubKey) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
-    GOTO_EXIT_IF(CRYPT_EAL_PkeyVerify(pubCtx, ED25519_VECTOR.mdId, msg, msgLen, sign, signLen) != CRYPT_SUCCESS,
+    GOTO_ERR_IF_TRUE(pubCtx == NULL, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeySetPub(pubCtx, &pubKey) != CRYPT_SUCCESS, CRYPT_CMVP_ERR_ALGO_SELFTEST);
+    GOTO_ERR_IF_TRUE(CRYPT_EAL_PkeyVerify(pubCtx, ED25519_VECTOR.mdId, msg, msgLen, sign, signLen) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
 
     ret =  true;
-EXIT:
+ERR:
     FreeData(prv, pub, msg, expSign, sign);
     CRYPT_EAL_PkeyFreeCtx(prvCtx);
     CRYPT_EAL_PkeyFreeCtx(pubCtx);

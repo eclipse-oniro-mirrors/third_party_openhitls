@@ -47,7 +47,6 @@
                 "sal_dl",
                 "tlv",
                 "uio",
-                "usrdata",
                 "params",
                 "asn1"
             ]

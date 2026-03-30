@@ -964,8 +964,7 @@ EXIT:
     STUB_RESTORE(CRYPT_EAL_RandbytesEx);
     TestRandDeInit();
     g_dsa_seed = NULL;
-    BN_Destroy(dsaPara.p);
-    BN_Destroy(dsaPara.q);
+    CRYPT_DSA_FreeCtx(ctx);
     BN_Destroy(pReq);
     BN_Destroy(qReq);
 #endif
@@ -1101,14 +1100,12 @@ void SDV_CRYPTO_DSA_KEY_PAIR_GEN_BY_PARAM_FUNC_TC001(int flag, int gIndex, int i
     (void)isProvider;
     SKIP_TEST();
 #else
-    uint32_t type = CRYPT_DSA_FFC_PARAM;
     int32_t algId = CRYPT_MD_SHA256;
     uint32_t L = 2048;
     uint32_t N = 256;
     uint32_t seedLen = 256;
-    int32_t index = 0;
-    BSL_Param params[7] = {
-        {CRYPT_PARAM_DSA_TYPE, BSL_PARAM_TYPE_UINT32, &type, sizeof(uint32_t), 0},
+    int32_t index = gIndex;
+    BSL_Param params[6] = {
         {CRYPT_PARAM_DSA_ALGID, BSL_PARAM_TYPE_INT32, &algId, sizeof(int32_t), 0},
         {CRYPT_PARAM_DSA_PBITS, BSL_PARAM_TYPE_UINT32, &L, sizeof(uint32_t), 0},
         {CRYPT_PARAM_DSA_QBITS, BSL_PARAM_TYPE_UINT32, &N, sizeof(uint32_t), 0},
@@ -1132,6 +1129,8 @@ void SDV_CRYPTO_DSA_KEY_PAIR_GEN_BY_PARAM_FUNC_TC001(int flag, int gIndex, int i
     ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_DSA_ERR_KEY_PARA);
     TestErrClear();
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_GEN_PARA, params, 0), CRYPT_SUCCESS);
+    uint32_t genFlag = (uint8_t)flag;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_GEN_FLAG, &genFlag, sizeof(genFlag)), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
 
     uint32_t signLen = CRYPT_EAL_PkeyGetSignLen(pkey);

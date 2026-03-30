@@ -139,7 +139,7 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
     /* if isFlightTransmitEnable is enabled, the stored handshake information needs to be sent */
     bool isFlightTransmitEnable = false;
     (void)HITLS_GetFlightTransmitSwitch(ctx, &isFlightTransmitEnable);
-    if (isFlightTransmitEnable == 1) {
+    if (isFlightTransmitEnable) {
         ret = REC_FlightTransmit(ctx);
         if (ret != HITLS_SUCCESS) {
             return ret;
