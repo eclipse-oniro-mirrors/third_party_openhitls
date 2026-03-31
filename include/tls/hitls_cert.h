@@ -174,20 +174,18 @@ HITLS_CERT_Store *HITLS_GetCertStore(const HITLS_Ctx *ctx);
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-#define HITLS_CFG_SetVerifyDepth(config, depth) \
-    HITLS_CFG_CtrlSetVerifyParams(config, NULL, CERT_STORE_CTRL_SET_VERIFY_DEPTH, depth, NULL)
+int32_t HITLS_CFG_SetVerifyDepth(HITLS_Config *config, uint32_t depth);
 
 /**
  * @ingroup hitls_cert
  * @brief   Obtain the certificate verification depth.
  *
  * @param   config [IN] TLS link configuration
- * @param   depth  [OUT] Certificate verification depth, type: int32_t *
+ * @param   depth  [OUT] Certificate verification depth, type: uint32_t *
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-#define HITLS_CFG_GetVerifyDepth(config, depth) \
-    HITLS_CFG_CtrlGetVerifyParams((HITLS_Config *)(uintptr_t)(config), NULL, CERT_STORE_CTRL_GET_VERIFY_DEPTH, depth)
+int32_t HITLS_CFG_GetVerifyDepth(const HITLS_Config *config, uint32_t *depth);
 
 /**
  * @ingroup hitls_cert
@@ -198,20 +196,18 @@ HITLS_CERT_Store *HITLS_GetCertStore(const HITLS_Ctx *ctx);
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-#define HITLS_SetVerifyDepth(ctx, depth) \
-    HITLS_CtrlSetVerifyParams(ctx, NULL, CERT_STORE_CTRL_SET_VERIFY_DEPTH, depth, NULL)
+int32_t HITLS_SetVerifyDepth(HITLS_Ctx *ctx, uint32_t depth);
 
 /**
  * @ingroup hitls_cert
  * @brief   Obtain the certificate verification depth.
  *
  * @param   ctx   [IN] TLS link object
- * @param   depth [OUT] Certificate verification depth, type: int32_t *
+ * @param   depth [OUT] Certificate verification depth, type: uint32_t *
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  For other error codes, see hitls_error.h.
  */
-#define HITLS_GetVerifyDepth(ctx, depth) \
-    HITLS_CtrlGetVerifyParams(ctx, NULL, CERT_STORE_CTRL_GET_VERIFY_DEPTH, depth)
+int32_t HITLS_GetVerifyDepth(const HITLS_Ctx *ctx, uint32_t *depth);
 
 /**
  * @ingroup hitls_cert

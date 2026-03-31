@@ -101,12 +101,8 @@ typedef enum {
      * parg is a pointer type BSL_UIO_CtrlGetPeerIpAddrParam
      */
     BSL_UIO_GET_PEER_IP_ADDR,
-    /* larg equals the length of 32-bit integer, parg is a pointer type 32-bit integer */
-    BSL_UIO_SET_FD,
-    /* larg equals the length of 32-bit integer, parg is a pointer type 32-bit integer */
-    BSL_UIO_GET_FD,
     /* larg equals the length of 64-bit integer, parg is a pointer type 64-bit integer */
-    BSL_UIO_PENDING,
+    BSL_UIO_PENDING = 0x004,
     /* not need to set larg and parg. the default values are 0 and null */
     BSL_UIO_FLUSH,
     /* larg equals the length of 64-bit integer, parg is a pointer type 64-bit integer */
@@ -145,6 +141,11 @@ typedef enum {
     BSL_UIO_SET_BIND_MODE,
     BSL_UIO_GET_BIND_MODE,
     BSL_UIO_APPEND,
+
+    /* larg equals the length of 32-bit integer, parg is a pointer type 32-bit integer */
+    BSL_UIO_SET_FD = 0x102,
+    /* larg equals the length of 32-bit integer, parg is a pointer type 32-bit integer */
+    BSL_UIO_GET_FD,
 
     /* SCTP uses 0x3XX */
     BSL_UIO_SCTP_CHECK_PEER_AUTH = 0x300,     /**< SCTP Check whether the peer supports authentication */

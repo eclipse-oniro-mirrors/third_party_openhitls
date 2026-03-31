@@ -938,3 +938,24 @@ int32_t HITLS_CtrlGetVerifyParams(HITLS_Ctx *ctx, HITLS_CERT_Store *store, uint3
 
     return HITLS_CFG_CtrlGetVerifyParams(&(ctx->config.tlsConfig), store, cmd, out);
 }
+
+int32_t HITLS_CFG_SetVerifyDepth(HITLS_Config *config, uint32_t depth)
+{
+    return HITLS_CFG_CtrlSetVerifyParams(config, NULL, CERT_STORE_CTRL_SET_VERIFY_DEPTH, (int64_t)depth, NULL);
+}
+
+int32_t HITLS_CFG_GetVerifyDepth(const HITLS_Config *config, uint32_t *depth)
+{
+    return HITLS_CFG_CtrlGetVerifyParams((HITLS_Config *)(uintptr_t)(config), NULL,
+        CERT_STORE_CTRL_GET_VERIFY_DEPTH, depth);
+}
+
+int32_t HITLS_SetVerifyDepth(HITLS_Ctx *ctx, uint32_t depth)
+{
+    return HITLS_CtrlSetVerifyParams(ctx, NULL, CERT_STORE_CTRL_SET_VERIFY_DEPTH, (int64_t)depth, NULL);
+}
+
+int32_t HITLS_GetVerifyDepth(const HITLS_Ctx *ctx, uint32_t *depth)
+{
+    return HITLS_CtrlGetVerifyParams((HITLS_Ctx *)(uintptr_t)ctx, NULL, CERT_STORE_CTRL_GET_VERIFY_DEPTH, depth);
+}
