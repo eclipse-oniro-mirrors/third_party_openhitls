@@ -20,7 +20,6 @@
 #include "bsl_log.h"
 #include "bsl_sal.h"
 #include "bsl_err_internal.h"
-#include "bsl_bytes.h"
 #include "bsl_list.h"
 #include "hs_ctx.h"
 #include "hitls_error.h"
@@ -144,6 +143,7 @@ static int32_t ParseServerSupportedVersions(ParsePacket *pkt, ServerHelloMsg *ms
 }
 #endif /* HITLS_TLS_PROTO_TLS13 */
 
+#ifdef HITLS_TLS_FEATURE_EXTENDED_MASTER_SECRET
 // Parses the extended master secret sent by the serve
 static int32_t ParseServerExtMasterSecret(ParsePacket *pkt, ServerHelloMsg *msg)
 {
@@ -151,6 +151,7 @@ static int32_t ParseServerExtMasterSecret(ParsePacket *pkt, ServerHelloMsg *msg)
     return ParseEmptyExtension(pkt->ctx, HS_EX_TYPE_EXTENDED_MASTER_SECRET, pkt->bufLen,
         &msg->haveExtendedMasterSecret);
 }
+#endif
 #ifdef HITLS_TLS_FEATURE_ALPN
 int32_t ParseServerSelectedAlpnProtocol(
     ParsePacket *pkt, bool *haveSelectedAlpn, uint8_t **alpnSelected, uint16_t *alpnSelectedSize)
@@ -261,7 +262,16 @@ static int32_t ParseServerTicket(ParsePacket *pkt, ServerHelloMsg *msg)
     if (msg->haveTicket == true) {
         return ParseDupExtProcess(pkt->ctx, BINLOG_ID15964, BINGLOG_STR("ticket"));
     }
-
+#ifdef HITLS_TLS_FEATURE_SESSION_CUSTOM_TICKET
+    if (pkt->ctx->config.tlsConfig.sessionTicketExtCb != NULL) {
+        int32_t ret = pkt->ctx->config.tlsConfig.sessionTicketExtCb(pkt->ctx, pkt->buf, pkt->bufLen,
+                                                                 pkt->ctx->config.tlsConfig.sessionTicketExtCbArg);
+        if (ret == 0) {
+            return ParseErrorProcess(pkt->ctx, HITLS_PARSE_SESSION_TICKET_FAIL, BINLOG_ID17378,
+                BINGLOG_STR("parse ticket extension failed."), ALERT_HANDSHAKE_FAILURE);
+        }
+    }
+#endif /* HITLS_TLS_FEATURE_SESSION_CUSTOM_TICKET */
     /* The ticket extended data length of server hello can only be empty */
     if (pkt->bufLen != 0) {
         return ParseErrorExtLengthProcess(pkt->ctx, BINLOG_ID15965, BINGLOG_STR("tiket"));
@@ -305,8 +315,10 @@ static int32_t ParseServerExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
         case HS_EX_TYPE_SERVER_NAME:
             return ParseServerServerName(&pkt, msg);
 #endif /* HITLS_TLS_FEATURE_SNI */
+#ifdef HITLS_TLS_FEATURE_EXTENDED_MASTER_SECRET
         case HS_EX_TYPE_EXTENDED_MASTER_SECRET:
             return ParseServerExtMasterSecret(&pkt, msg);
+#endif
 #ifdef HITLS_TLS_FEATURE_ALPN
         case HS_EX_TYPE_APP_LAYER_PROTOCOLS:
             return ParseServerSelectedAlpnProtocol(
@@ -340,6 +352,10 @@ static int32_t ParseServerExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
         case HS_EX_TYPE_SUPPORTED_GROUPS:
             return HITLS_SUCCESS;
 #endif /* HITLS_TLS_PROTO_TLS13 */
+#ifdef HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT
+        case HS_EX_TYPE_RECORD_SIZE_LIMIT:
+            return ParseRecordSizeLimit(pkt.ctx, pkt.buf, extMsgLen, &msg->haveRecordSizeLimit, &msg->recordSizeLimit);
+#endif
         default:
             break;
     }
@@ -347,7 +363,8 @@ static int32_t ParseServerExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
     if (IsParseNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), extMsgType,
         HITLS_EX_TYPE_TLS1_2_SERVER_HELLO | HITLS_EX_TYPE_TLS1_3_SERVER_HELLO | HITLS_EX_TYPE_HELLO_RETRY_REQUEST)) {
         return ParseCustomExtensions(pkt.ctx, pkt.buf + *pkt.bufOffset, extMsgType, extMsgLen,
-            HITLS_EX_TYPE_TLS1_2_SERVER_HELLO | HITLS_EX_TYPE_TLS1_3_SERVER_HELLO | HITLS_EX_TYPE_HELLO_RETRY_REQUEST, NULL, 0);
+            HITLS_EX_TYPE_TLS1_2_SERVER_HELLO | HITLS_EX_TYPE_TLS1_3_SERVER_HELLO | HITLS_EX_TYPE_HELLO_RETRY_REQUEST,
+            NULL, 0);
     }
 #endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
     // You need to send an alert when an unknown extended field is encountered
@@ -360,20 +377,14 @@ int32_t ParseServerExtension(TLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, 
 {
     /* Initialize the message parsing length */
     uint32_t bufOffset = 0u;
-    int32_t ret = HITLS_SUCCESS;
+    ParsePacket pkt = {.ctx = ctx, .buf = buf, .bufLen = bufLen, .bufOffset = &bufOffset};
 
     /* Parse the extended message from server */
     while (bufOffset < bufLen) {
         uint32_t extMsgLen = 0u;
         uint16_t extMsgType = HS_EX_TYPE_END;
-        ret = ParseExHeader(ctx, &buf[bufOffset], bufLen - bufOffset, &extMsgType, &extMsgLen);
-        if (ret != HITLS_SUCCESS) {
-            return ret;
-        }
-        bufOffset += HS_EX_HEADER_LEN;
-
-        uint32_t extensionId = HS_GetExtensionTypeId(extMsgType);
-        ret = CheckForDuplicateExtension(msg->extensionTypeMask, extensionId, ctx);
+        uint32_t extensionId = 0;
+        int32_t ret = CheckForDuplicateExtension(&pkt, &extMsgType, &extMsgLen, &extensionId, msg->extensionTypeMask);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
@@ -427,6 +438,5 @@ void CleanServerHelloExtension(ServerHelloMsg *msg)
     BSL_SAL_FREE(msg->cookie);
     BSL_SAL_FREE(msg->keyShare.keyExchange);
 #endif /* HITLS_TLS_PROTO_TLS13 */
-    return;
 }
 #endif /* HITLS_TLS_HOST_CLIENT */

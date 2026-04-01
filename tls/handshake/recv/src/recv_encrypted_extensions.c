@@ -51,12 +51,13 @@ static int32_t Tls13ClientCheckServerName(TLS_Ctx *ctx, const EncryptedExtension
             ctx->config.tlsConfig.serverNameSize > 0) {
             /* Indicates server negotiated the server_name extension in client successfully */
             ctx->negotiatedInfo.isSniStateOK = true;
-            ctx->hsCtx->serverNameSize = ctx->config.tlsConfig.serverNameSize;
+            ctx->negotiatedInfo.serverNameSize = ctx->config.tlsConfig.serverNameSize;
 
-            BSL_SAL_FREE(ctx->hsCtx->serverName);
-            ctx->hsCtx->serverName =
-                (uint8_t *)BSL_SAL_Dump(ctx->config.tlsConfig.serverName, ctx->hsCtx->serverNameSize * sizeof(uint8_t));
-            if (ctx->hsCtx->serverName == NULL) {
+            BSL_SAL_FREE(ctx->negotiatedInfo.serverName);
+            ctx->negotiatedInfo.serverName =
+                (uint8_t *)BSL_SAL_Dump(ctx->config.tlsConfig.serverName,
+                    ctx->negotiatedInfo.serverNameSize * sizeof(uint8_t));
+            if (ctx->negotiatedInfo.serverName == NULL) {
                 BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17075, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                     "Dump fail", 0, 0, 0, 0);
                 return HITLS_MEMCPY_FAIL;
@@ -67,6 +68,39 @@ static int32_t Tls13ClientCheckServerName(TLS_Ctx *ctx, const EncryptedExtension
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_FEATURE_SNI */
+#ifdef HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT
+static int32_t Tls13ClientCheckRecordSizeLimit(TLS_Ctx *ctx, const EncryptedExtensions *eEMsg)
+{
+    if (!ctx->hsCtx->extFlag.haveRecordSizeLimit && eEMsg->haveRecordSizeLimit) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16252, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "client did not send but get record size limit.", 0, 0, 0, 0);
+        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNSUPPORTED_EXTENSION);
+        BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSUPPORT_EXTENSION_TYPE);
+        return HITLS_MSG_HANDLE_UNSUPPORT_EXTENSION_TYPE;
+    }
+
+    if (ctx->hsCtx->extFlag.haveRecordSizeLimit && !eEMsg->haveRecordSizeLimit) {
+        return HITLS_SUCCESS;
+    }
+
+    if (eEMsg->haveRecordSizeLimit) {
+        uint16_t upperBound =
+            (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13 ? REC_MAX_PLAIN_LENGTH + 1 : REC_MAX_PLAIN_LENGTH);
+        if (eEMsg->recordSizeLimit < 64u ||
+            (eEMsg->recordSizeLimit > upperBound)) {
+            BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_INVALID_RECORD_SIZE_LIMIT);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16250, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "The value of record size limit is invalid.", 0, 0, 0, 0);
+            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_ILLEGAL_PARAMETER);
+            return HITLS_MSG_HANDLE_INVALID_RECORD_SIZE_LIMIT;
+        }
+        ctx->negotiatedInfo.recordSizeLimit = (ctx->config.tlsConfig.recordSizeLimit <= upperBound) ?
+            ctx->config.tlsConfig.recordSizeLimit : upperBound;
+        ctx->negotiatedInfo.peerRecordSizeLimit = eEMsg->recordSizeLimit;
+    }
+    return REC_RecOutBufReSet(ctx);
+}
+#endif
 
 #ifdef HITLS_TLS_FEATURE_ALPN
 static int32_t Tls13ClientCheckNegotiatedAlpn(TLS_Ctx *ctx, const EncryptedExtensions *eEMsg)
@@ -82,14 +116,16 @@ static int32_t ClientCheckEncryptedExtensionsFlag(TLS_Ctx *ctx, const EncryptedE
 #ifdef HITLS_TLS_FEATURE_SNI
         Tls13ClientCheckServerName,
 #endif /* HITLS_TLS_FEATURE_SNI */
+#ifdef HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT
+        Tls13ClientCheckRecordSizeLimit,
+#endif
 #ifdef HITLS_TLS_FEATURE_ALPN
         Tls13ClientCheckNegotiatedAlpn,
 #endif
         NULL,
     };
 
-    int32_t ret;
-    ret = HS_CheckReceivedExtension(ctx, ENCRYPTED_EXTENSIONS, eEMsg->extensionTypeMask,
+    int32_t ret = HS_CheckReceivedExtension(ctx, ENCRYPTED_EXTENSIONS, eEMsg->extensionTypeMask,
         HS_EX_TYPE_TLS1_3_ALLOWED_OF_ENCRYPTED_EXTENSIONS);
     if (ret != HITLS_SUCCESS) {
         return ret;

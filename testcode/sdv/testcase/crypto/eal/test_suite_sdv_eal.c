@@ -21,6 +21,7 @@
 #include "eal_pkey_local.h"
 #include "crypt_eal_md.h"
 #include "crypt_eal_mac.h"
+#include "crypt_dsa.h"
 #include "crypt_eal_cipher.h"
 #include "crypt_eal_pkey.h"
 #include "eal_cipher_local.h"
@@ -93,6 +94,7 @@ static bool IsCipherAlgIdValid(int id)
         CRYPT_CIPHER_SM4_GCM,
         CRYPT_CIPHER_SM4_CFB,
         CRYPT_CIPHER_SM4_OFB,
+        CRYPT_CIPHER_SM4_HCTR
     };
     int algIdCnt = sizeof(algList) / sizeof(int);
     for (int i = 0; i < algIdCnt; i++) {
@@ -126,7 +128,7 @@ static bool IsPkeyAlgIdValid(int id)
 
 #define MD_OUTPUT_MAXSIZE 128
 
-static int32_t MdTest(CRYPT_EAL_MdCTX *ctx, Hex *msg, Hex *hash)
+static int32_t MdTest(CRYPT_EAL_MdCtx *ctx, Hex *msg, Hex *hash)
 {
     (void)msg;
     (void)hash;
@@ -203,8 +205,8 @@ EXIT:
 void SDV_CRYPTO_MD_COPY_FUNC_TC001(int id, Hex *msg, Hex *hash)
 {
     TestMemInit();
-    CRYPT_EAL_MdCTX *cpyCtx = NULL;
-    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_MdNewCtx(id);
+    CRYPT_EAL_MdCtx *cpyCtx = NULL;
+    CRYPT_EAL_MdCtx *ctx = CRYPT_EAL_MdNewCtx(id);
     ASSERT_TRUE(ctx != NULL);
     ASSERT_EQ(MdTest(ctx, msg, hash), 0);
 
@@ -212,6 +214,7 @@ void SDV_CRYPTO_MD_COPY_FUNC_TC001(int id, Hex *msg, Hex *hash)
     ASSERT_TRUE(cpyCtx != NULL);
     ASSERT_EQ(CRYPT_EAL_MdCopyCtx(cpyCtx, ctx), CRYPT_SUCCESS);
     ASSERT_EQ(MdTest(cpyCtx, msg, hash), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
@@ -411,7 +414,7 @@ void SDV_CRYPTO_EAL_PKEY_CMP_TC001(void)
     ASSERT_EQ(CRYPT_EAL_PkeyCmp(NULL, NULL), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyCmp(NULL, &ctx2), CRYPT_NULL_INPUT);
     ASSERT_EQ(CRYPT_EAL_PkeyCmp(&ctx1, NULL), CRYPT_NULL_INPUT);
-    ASSERT_EQ(CRYPT_EAL_PkeyCmp(&ctx1, &ctx2), CRYPT_NULL_INPUT);
+    ASSERT_EQ(CRYPT_EAL_PkeyCmp(&ctx1, &ctx2), CRYPT_EAL_ALG_NOT_SUPPORT);
 
     ctx1.id = CRYPT_PKEY_DH;
     ctx2.id = CRYPT_PKEY_DSA;
@@ -420,7 +423,6 @@ void SDV_CRYPTO_EAL_PKEY_CMP_TC001(void)
     ctx2.id = CRYPT_PKEY_DH;
     pkey = CRYPT_EAL_PkeyNewCtx(CRYPT_PKEY_DH);
     ASSERT_TRUE(pkey != NULL);
-    ASSERT_TRUE(pkey->method != NULL);
     ctx1.method = pkey->method;
     ctx2.method = pkey->method;
     ASSERT_EQ(CRYPT_EAL_PkeyCmp(&ctx1, &ctx2), CRYPT_NULL_INPUT);
@@ -515,15 +517,17 @@ void SDV_CRYPTO_EAL_REINIT_TC001(int id)
     ASSERT_TRUE(ctx != NULL);
     ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key, keyLen, iv, ivLen, true), CRYPT_SUCCESS);
     (void)CRYPT_EAL_CipherSetPadding(ctx, CRYPT_PADDING_PKCS7);
+    (void)TestErrClear();
     ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, in, inLen, out, &outLen), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_CipherReinit(ctx, iv, ivLen), CRYPT_SUCCESS);
-    struct ModesCipherCtx *ciphCtx = ((struct CryptEalCipherCtx *)ctx)->ctx;
+    struct ModesCipherCtx *ciphCtx = ((struct CRYPT_EAL_CipherCtxLocal *)ctx)->ctx;
     ASSERT_TRUE(ciphCtx != NULL);
     // Check data dataLen
     ASSERT_EQ(ciphCtx->dataLen, 0);
     for (uint32_t i = 0; i < EAL_MAX_BLOCK_LENGTH; i++) {
         ASSERT_EQ(ciphCtx->data[i], 0);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
     CRYPT_EAL_CipherFreeCtx(ctx);
@@ -550,7 +554,7 @@ void SDV_CRYPTO_EAL_REINIT_TC002(int id)
     ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key, keyLen, iv, ivLen, true), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, in, inLen, out, &outLen), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_CipherReinit(ctx, iv, ivLen), CRYPT_SUCCESS);
-    struct ModesChaChaCtx *ciphCtx = ((struct CryptEalCipherCtx *)ctx)->ctx;
+    struct ModesChaChaCtx *ciphCtx = ((struct CRYPT_EAL_CipherCtxLocal *)ctx)->ctx;
     ASSERT_TRUE(ciphCtx != NULL);
     // Check data dataLen
     ASSERT_EQ(ciphCtx->chachaCtx.polyCtx.lastLen, 0);
@@ -561,6 +565,7 @@ void SDV_CRYPTO_EAL_REINIT_TC002(int id)
     // Check aadLen cipherTextLen
     ASSERT_EQ(ciphCtx->chachaCtx.aadLen, 0);
     ASSERT_EQ(ciphCtx->chachaCtx.cipherTextLen, 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
     CRYPT_EAL_CipherFreeCtx(ctx);
@@ -587,7 +592,7 @@ void SDV_CRYPTO_EAL_REINIT_TC003(int id)
     ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key, keyLen, iv, ivLen, true), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, in, inLen, out, &outLen), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_CipherReinit(ctx, iv, ivLen), CRYPT_SUCCESS);
-    struct ModesGcmCtx *ciphCtx = ((struct CryptEalCipherCtx *)ctx)->ctx;
+    struct ModesGcmCtx *ciphCtx = ((struct CRYPT_EAL_CipherCtxLocal *)ctx)->ctx;
     ASSERT_TRUE(ciphCtx != NULL);
     // Check data dataLen
     ASSERT_EQ(ciphCtx->gcmCtx.aadLen, 0);
@@ -596,6 +601,7 @@ void SDV_CRYPTO_EAL_REINIT_TC003(int id)
     for (uint32_t i = 0; i < GCM_BLOCKSIZE; i++) {
         ASSERT_EQ(ciphCtx->gcmCtx.ghash[i], 0);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
     CRYPT_EAL_CipherFreeCtx(ctx);
@@ -628,6 +634,7 @@ void SDV_CRYPTO_EAL_GET_KEY_LEN_TC001(int algid, int paramId, int pubLen, int pr
     ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_GET_SHARED_KEY_LEN, &val, sizeof(val));
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ASSERT_EQ(val, sharedLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(ctx);
 }
@@ -661,10 +668,10 @@ EXIT:
 /* END_CASE */
 
 /**
- * @test   SDV_CRYPTO_EAL_GET_KEY_LEN_TC003
+ * @test   SDV_CRYPTO_EAL_GET_KEY_LEN_TC003_1
  */
 /* BEGIN_CASE */
-void SDV_CRYPTO_EAL_GET_KEY_LEN_TC003(int algid, int rsaBits, Hex *p, Hex *q, Hex *g)
+void SDV_CRYPTO_EAL_GET_KEY_LEN_TC003_1(int algid, int rsaBits, Hex *p, Hex *q, Hex *g)
 {
     TestRandInit();
     CRYPT_EAL_PkeyCtx *ctx = CRYPT_EAL_PkeyNewCtx(algid);
@@ -700,6 +707,85 @@ void SDV_CRYPTO_EAL_GET_KEY_LEN_TC003(int algid, int rsaBits, Hex *p, Hex *q, He
         ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_GET_SHARED_KEY_LEN, &val, sizeof(val));
         ASSERT_EQ(ret, CRYPT_SUCCESS);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(ctx);
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_CRYPTO_EAL_GET_KEY_LEN_TC003_2
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_EAL_GET_KEY_LEN_TC003_2(int algid, int rsaBits, Hex *p, Hex *q, Hex *g)
+{
+    TestRandInit();
+    CRYPT_EAL_PkeyCtx *ctx = CRYPT_EAL_PkeyNewCtx(algid);
+    ASSERT_TRUE(ctx != NULL);
+    int32_t ret;
+    CRYPT_EAL_PkeyPara para = {0};
+    uint8_t e[3] = {1, 0, 1};
+    if (algid == CRYPT_PKEY_RSA) {
+        para.id = CRYPT_PKEY_RSA;
+        para.para.rsaPara.e = e;
+        para.para.rsaPara.eLen = 3;
+        para.para.rsaPara.bits = rsaBits;
+    } else {
+        para.id = algid;  // DH or DSA
+        para.para.dhPara.p = p->x;
+        para.para.dhPara.q = q->x;
+        para.para.dhPara.g = g->x;
+        para.para.dhPara.pLen = p->len;
+        para.para.dhPara.qLen = q->len;
+        para.para.dhPara.gLen = g->len;
+    }
+    ASSERT_EQ(CRYPT_EAL_PkeySetPara(ctx, &para), CRYPT_SUCCESS);
+    uint32_t flag = CRYPT_ENABLE_SP800_KEYGEN_FLAG;
+    ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_GEN_FLAG, &flag, sizeof(flag));
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(ctx), CRYPT_SUCCESS);
+    flag = CRYPT_DISABLE_SP800_KEYGEN_FLAG;
+    ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_GEN_FLAG, &flag, sizeof(flag));
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(ctx), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(ctx);
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_CRYPTO_EAL_GET_KEY_LEN_TC003_3
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_EAL_GET_KEY_LEN_TC003_3(int algid, int rsaBits, Hex *p, Hex *q, Hex *g)
+{
+    TestRandInit();
+    CRYPT_EAL_PkeyCtx *ctx = CRYPT_EAL_PkeyNewCtx(algid);
+    ASSERT_TRUE(ctx != NULL);
+    int32_t ret;
+    CRYPT_EAL_PkeyPara para = {0};
+    uint8_t e[3] = {1, 0, 1};
+    if (algid == CRYPT_PKEY_RSA) {
+        para.id = CRYPT_PKEY_RSA;
+        para.para.rsaPara.e = e;
+        para.para.rsaPara.eLen = 3;
+        para.para.rsaPara.bits = rsaBits;
+    } else {
+        para.id = algid;  // DH or DSA
+        para.para.dhPara.p = p->x;
+        para.para.dhPara.q = q->x;
+        para.para.dhPara.g = g->x;
+        para.para.dhPara.pLen = p->len;
+        para.para.dhPara.qLen = q->len;
+        para.para.dhPara.gLen = g->len;
+    }
+    ASSERT_EQ(CRYPT_EAL_PkeySetPara(ctx, &para), CRYPT_SUCCESS);
+    uint32_t flag = CRYPT_ENABLE_SP800_KEYGEN_FLAG;
+    ret = CRYPT_EAL_PkeyCtrl(ctx, CRYPT_CTRL_SET_GEN_FLAG, &flag, sizeof(flag));
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(ctx), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(ctx);
 }

@@ -182,7 +182,7 @@ void UT_TLS_CFG_SET_TLS_FALLBACK_SCSV_TC002()
 
     s_config = HITLS_CFG_NewTLSConfig();
     ASSERT_TRUE(s_config != NULL);
-    ASSERT_TRUE(HITLS_CFG_SetVersionForbid(s_config, HITLS_VERSION_TLS13) == HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_SetVersionForbid(s_config, TLS13_VERSION_BIT) == HITLS_SUCCESS);
 
     client = FRAME_CreateLink(c_config, BSL_UIO_TCP);
     ASSERT_TRUE(client != NULL);
@@ -191,6 +191,8 @@ void UT_TLS_CFG_SET_TLS_FALLBACK_SCSV_TC002()
 
     int32_t ret = FRAME_CreateConnection(client, server, true, HS_STATE_BUTT);
     ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(c_config);

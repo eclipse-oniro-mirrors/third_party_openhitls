@@ -43,7 +43,11 @@ CRYPT_RSA_Ctx *CRYPT_RSA_NewCtxEx(void *libCtx)
     if (keyCtx == NULL) {
         return NULL;
     }
+#ifdef HITLS_CRYPTO_PROVIDER
     keyCtx->libCtx = libCtx;
+#else
+    (void)libCtx;
+#endif
     return keyCtx;
 }
 
@@ -177,6 +181,8 @@ CRYPT_RSA_Ctx *CRYPT_RSA_DupCtx(CRYPT_RSA_Ctx *keyCtx)
 
     newKeyCtx->flags = keyCtx->flags;
     (void)memcpy_s(&(newKeyCtx->pad), sizeof(RSAPad), &(keyCtx->pad), sizeof(RSAPad));
+    newKeyCtx->pad.salt.data = NULL;
+    newKeyCtx->pad.salt.len = 0;
 
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->prvKey, keyCtx->prvKey, RSAPriKeyDupCtx(keyCtx->prvKey), CRYPT_MEM_ALLOC_FAIL);
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->pubKey, keyCtx->pubKey, RSAPubKeyDupCtx(keyCtx->pubKey), CRYPT_MEM_ALLOC_FAIL);
@@ -191,6 +197,8 @@ CRYPT_RSA_Ctx *CRYPT_RSA_DupCtx(CRYPT_RSA_Ctx *keyCtx)
     }
 #endif
     GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->para, keyCtx->para, RSAParaDupCtx(keyCtx->para), CRYPT_MEM_ALLOC_FAIL);
+    GOTO_ERR_IF_SRC_NOT_NULL(newKeyCtx->mdAttr, keyCtx->mdAttr, BSL_SAL_Dump(keyCtx->mdAttr,
+        strlen(keyCtx->mdAttr) + 1), CRYPT_MEM_ALLOC_FAIL);
     newKeyCtx->libCtx = keyCtx->libCtx;
     BSL_SAL_ReferencesInit(&(newKeyCtx->references));
     return newKeyCtx;
@@ -200,83 +208,102 @@ ERR:
     return NULL;
 }
 
-static int32_t GetRsaParam(const BSL_Param *params, int32_t type, const uint8_t **value, uint32_t *valueLen)
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+static int32_t ProcessRsaPrimeSeeds(const BSL_Param *para, CRYPT_RSA_Para *retPara, uint32_t bits)
 {
-    const BSL_Param *temp = BSL_PARAM_FindConstParam(params, type);
-    if (temp == NULL || temp->valueLen == 0 || temp->value == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
-        return CRYPT_INVALID_ARG;
+    const BSL_Param *sp = BSL_PARAM_FindConstParam(para, CRYPT_PARAM_RSA_XP);
+    if (sp != NULL && sp->valueLen > 0) {
+        if ((retPara->acvpTests.primeSeed.fipsPrimeSeeds.xp = BN_Create(bits)) == NULL ||
+            (BN_Bin2Bn(retPara->acvpTests.primeSeed.fipsPrimeSeeds.xp, sp->value, sp->valueLen)) != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+            return CRYPT_MEM_ALLOC_FAIL;
+        }
+    }
+    sp = BSL_PARAM_FindConstParam(para, CRYPT_PARAM_RSA_XP1);
+    if (sp != NULL && sp->valueLen > 0) {
+        if ((retPara->acvpTests.primeSeed.fipsPrimeSeeds.xp1 = BN_Create(bits)) == NULL ||
+            (BN_Bin2Bn(retPara->acvpTests.primeSeed.fipsPrimeSeeds.xp1, sp->value, sp->valueLen)) != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+            return CRYPT_MEM_ALLOC_FAIL;
+        }
+    }
+    sp = BSL_PARAM_FindConstParam(para, CRYPT_PARAM_RSA_XP2);
+    if (sp != NULL && sp->valueLen > 0) {
+        if ((retPara->acvpTests.primeSeed.fipsPrimeSeeds.xp2 = BN_Create(bits)) == NULL ||
+            (BN_Bin2Bn(retPara->acvpTests.primeSeed.fipsPrimeSeeds.xp2, sp->value, sp->valueLen)) != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+            return CRYPT_MEM_ALLOC_FAIL;
+        }
+    }
+    sp = BSL_PARAM_FindConstParam(para, CRYPT_PARAM_RSA_XQ);
+    if (sp != NULL && sp->valueLen > 0) {
+        if ((retPara->acvpTests.primeSeed.fipsPrimeSeeds.xq = BN_Create(bits)) == NULL ||
+            (BN_Bin2Bn(retPara->acvpTests.primeSeed.fipsPrimeSeeds.xq, sp->value, sp->valueLen)) != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+            return CRYPT_MEM_ALLOC_FAIL;
+        }
+    }
+    sp = BSL_PARAM_FindConstParam(para, CRYPT_PARAM_RSA_XQ1);
+    if (sp != NULL && sp->valueLen > 0) {
+        if ((retPara->acvpTests.primeSeed.fipsPrimeSeeds.xq1 = BN_Create(bits)) == NULL ||
+            (BN_Bin2Bn(retPara->acvpTests.primeSeed.fipsPrimeSeeds.xq1, sp->value, sp->valueLen)) != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+            return CRYPT_MEM_ALLOC_FAIL;
+        }
+    }
+    sp = BSL_PARAM_FindConstParam(para, CRYPT_PARAM_RSA_XQ2);
+    if (sp != NULL && sp->valueLen > 0) {
+        if ((retPara->acvpTests.primeSeed.fipsPrimeSeeds.xq2 = BN_Create(bits)) == NULL ||
+            (BN_Bin2Bn(retPara->acvpTests.primeSeed.fipsPrimeSeeds.xq2, sp->value, sp->valueLen)) != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+            return CRYPT_MEM_ALLOC_FAIL;
+        }
     }
 
-    *value = temp->value;
-    *valueLen = temp->valueLen;
     return CRYPT_SUCCESS;
 }
+#endif
 
-static int32_t GetRsaBits(const BSL_Param *params, uint32_t *bits)
+static int32_t RsaNewParaBasicCheck(const CRYPT_RsaPara *para)
 {
-    uint32_t bitsLen = sizeof(*bits);
-    const BSL_Param *temp = BSL_PARAM_FindConstParam(params, CRYPT_PARAM_RSA_BITS);
-    if (temp == NULL) {
+    if (para == NULL || para->e == NULL || para->eLen == 0 ||
+        para->bits > RSA_MAX_MODULUS_BITS || para->bits < RSA_MIN_MODULUS_BITS) {
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
     }
-
-    int32_t ret = BSL_PARAM_GetValue(temp, CRYPT_PARAM_RSA_BITS, BSL_PARAM_TYPE_UINT32, bits, &bitsLen);
-    if (ret != BSL_SUCCESS || *bits < RSA_MIN_MODULUS_BITS || *bits > RSA_MAX_MODULUS_BITS) {
-        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
-        return CRYPT_INVALID_ARG;
-    }
-
-    return CRYPT_SUCCESS;
-}
-
-static int32_t ValidateRsaParams(uint32_t eLen, uint32_t bits)
-{
     /* the length of e cannot be greater than bits */
-    if (eLen > BN_BITS_TO_BYTES(bits)) {
+    if (para->eLen > BN_BITS_TO_BYTES(para->bits)) {
         BSL_ERR_PUSH_ERROR(CRYPT_RSA_ERR_KEY_BITS);
         return CRYPT_RSA_ERR_KEY_BITS;
     }
     return CRYPT_SUCCESS;
 }
 
-CRYPT_RSA_Para *CRYPT_RSA_NewPara(const BSL_Param *para)
+CRYPT_RSA_Para *CRYPT_RSA_NewPara(const CRYPT_RsaPara *para)
 {
-    const uint8_t *e = NULL;
-    uint32_t eLen = 0;
-    int32_t ret = GetRsaParam(para, CRYPT_PARAM_RSA_E, &e, &eLen);
-    if (ret != CRYPT_SUCCESS) {
+    if (RsaNewParaBasicCheck(para) != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return NULL;
     }
-    uint32_t bits = 0;
-    ret = GetRsaBits(para, &bits);
-    if (ret != CRYPT_SUCCESS) {
-        return NULL;
-    }
-    ret = ValidateRsaParams(eLen, bits);
-    if (ret != CRYPT_SUCCESS) {
-        return NULL;
-    }
-    CRYPT_RSA_Para *retPara = BSL_SAL_Malloc(sizeof(CRYPT_RSA_Para));
+    CRYPT_RSA_Para *retPara = BSL_SAL_Calloc(1, sizeof(CRYPT_RSA_Para));
     if (retPara == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return NULL;
     }
-    retPara->bits = bits;
-    retPara->e = BN_Create(bits);
-    retPara->p = BN_Create(bits);
-    retPara->q = BN_Create(bits);
+    retPara->bits = para->bits;
+    retPara->e = BN_Create(para->bits);
+    retPara->p = BN_Create(para->bits);
+    retPara->q = BN_Create(para->bits);
     if (retPara->e == NULL || retPara->p == NULL || retPara->q == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         goto ERR;
     }
-    ret = BN_Bin2Bn(retPara->e, e, eLen);
+    int32_t ret = BN_Bin2Bn(retPara->e, para->e, para->eLen);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
     }
-    if (BN_BITS_TO_BYTES(bits) > RSA_SMALL_MODULUS_BYTES && BN_Bytes(retPara->e) > RSA_MAX_PUBEXP_BYTES) {
+    if (BN_BITS_TO_BYTES(para->bits) > RSA_SMALL_MODULUS_BYTES && BN_Bytes(retPara->e) > RSA_MAX_PUBEXP_BYTES) {
         BSL_ERR_PUSH_ERROR(CRYPT_RSA_ERR_KEY_BITS);
         goto ERR;
     }
@@ -291,6 +318,14 @@ void CRYPT_RSA_FreePara(CRYPT_RSA_Para *para)
     if (para == NULL) {
         return;
     }
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+    BN_Destroy(para->acvpTests.primeSeed.fipsPrimeSeeds.xp);
+    BN_Destroy(para->acvpTests.primeSeed.fipsPrimeSeeds.xp1);
+    BN_Destroy(para->acvpTests.primeSeed.fipsPrimeSeeds.xp2);
+    BN_Destroy(para->acvpTests.primeSeed.fipsPrimeSeeds.xq);
+    BN_Destroy(para->acvpTests.primeSeed.fipsPrimeSeeds.xq1);
+    BN_Destroy(para->acvpTests.primeSeed.fipsPrimeSeeds.xq2);
+#endif
     BN_Destroy(para->e);
     BN_Destroy(para->p);
     BN_Destroy(para->q);
@@ -353,12 +388,13 @@ void CRYPT_RSA_FreeCtx(CRYPT_RSA_Ctx *ctx)
 #endif
     BSL_SAL_CleanseData((void *)(&(ctx->pad)), sizeof(RSAPad));
     BSL_SAL_FREE(ctx->label.data);
+    BSL_SAL_FREE(ctx->mdAttr);
     BSL_SAL_FREE(ctx);
 }
 
-static int32_t IsRSASetParamValid(const CRYPT_RSA_Para *para)
+static int32_t IsRSASetParamValid(const CRYPT_RSA_Ctx *ctx, const CRYPT_RSA_Para *para)
 {
-    if (para == NULL || para->e == NULL) {
+    if (ctx == NULL || para == NULL || para->e == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
@@ -374,9 +410,52 @@ static int32_t IsRSASetParamValid(const CRYPT_RSA_Para *para)
     return CRYPT_SUCCESS;
 }
 
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+static int32_t DupRsaPrimeSeeds(const CRYPT_RSA_Para *para, CRYPT_RSA_Para *paraCopy)
+{
+    if (para->acvpTests.primeSeed.fipsPrimeSeeds.xp != NULL &&
+        (paraCopy->acvpTests.primeSeed.fipsPrimeSeeds.xp =
+            BN_Dup(para->acvpTests.primeSeed.fipsPrimeSeeds.xp)) == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    if (para->acvpTests.primeSeed.fipsPrimeSeeds.xp1 != NULL &&
+        (paraCopy->acvpTests.primeSeed.fipsPrimeSeeds.xp1 =
+            BN_Dup(para->acvpTests.primeSeed.fipsPrimeSeeds.xp1)) == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    if (para->acvpTests.primeSeed.fipsPrimeSeeds.xp2 != NULL &&
+        (paraCopy->acvpTests.primeSeed.fipsPrimeSeeds.xp2 =
+            BN_Dup(para->acvpTests.primeSeed.fipsPrimeSeeds.xp2)) == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    if (para->acvpTests.primeSeed.fipsPrimeSeeds.xq != NULL &&
+        (paraCopy->acvpTests.primeSeed.fipsPrimeSeeds.xq =
+            BN_Dup(para->acvpTests.primeSeed.fipsPrimeSeeds.xq)) == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    if (para->acvpTests.primeSeed.fipsPrimeSeeds.xq1 != NULL &&
+        (paraCopy->acvpTests.primeSeed.fipsPrimeSeeds.xq1 =
+            BN_Dup(para->acvpTests.primeSeed.fipsPrimeSeeds.xq1)) == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    if (para->acvpTests.primeSeed.fipsPrimeSeeds.xq2 != NULL &&
+        (paraCopy->acvpTests.primeSeed.fipsPrimeSeeds.xq2 =
+            BN_Dup(para->acvpTests.primeSeed.fipsPrimeSeeds.xq2)) == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    return CRYPT_SUCCESS;
+}
+#endif
+
 CRYPT_RSA_Para *CRYPT_RSA_DupPara(const CRYPT_RSA_Para *para)
 {
-    CRYPT_RSA_Para *paraCopy = BSL_SAL_Malloc(sizeof(CRYPT_RSA_Para));
+    CRYPT_RSA_Para *paraCopy = BSL_SAL_Calloc(1, sizeof(CRYPT_RSA_Para));
     if (paraCopy == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return NULL;
@@ -391,10 +470,17 @@ CRYPT_RSA_Para *CRYPT_RSA_DupPara(const CRYPT_RSA_Para *para)
         return NULL;
     }
 
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+    int32_t ret = DupRsaPrimeSeeds(para, paraCopy);
+    if (ret != CRYPT_SUCCESS) {
+        RSA_FREE_PARA(paraCopy);
+        return NULL;
+    }
+#endif
     return paraCopy;
 }
 
-int32_t CRYPT_RSA_SetPara(CRYPT_RSA_Ctx *ctx, const BSL_Param *para)
+int32_t CRYPT_RSA_SetPara(CRYPT_RSA_Ctx *ctx, const CRYPT_RsaPara *para)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
@@ -405,7 +491,7 @@ int32_t CRYPT_RSA_SetPara(CRYPT_RSA_Ctx *ctx, const BSL_Param *para)
         BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_NEW_PARA_FAIL);
         return CRYPT_EAL_ERR_NEW_PARA_FAIL;
     }
-    int32_t ret = IsRSASetParamValid(rsaPara);
+    int32_t ret = IsRSASetParamValid(ctx, rsaPara);
     if (ret != CRYPT_SUCCESS) {
         RSA_FREE_PARA(rsaPara);
         return ret;
@@ -416,6 +502,48 @@ int32_t CRYPT_RSA_SetPara(CRYPT_RSA_Ctx *ctx, const BSL_Param *para)
     RSA_FREE_PUB_KEY(ctx->pubKey);
     ctx->para = rsaPara;
     return CRYPT_SUCCESS;
+}
+
+static int32_t SetRsaBitsAndE(CRYPT_RSA_Ctx *ctx, const BSL_Param *para)
+{
+    CRYPT_RsaPara rsaPara = {0};
+    const BSL_Param *temp = EAL_FindConstParam(para, CRYPT_PARAM_RSA_BITS);
+    if (temp == NULL) {
+        return CRYPT_SUCCESS;
+    }
+    if (temp->value != NULL && temp->valueLen == sizeof(uint32_t)) {
+        rsaPara.bits = *(uint32_t *)temp->value;
+    }
+    (void)GetConstParamValue(para, CRYPT_PARAM_RSA_E, &rsaPara.e, &rsaPara.eLen);
+    int32_t ret = CRYPT_RSA_SetPara(ctx, &rsaPara);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+    return ProcessRsaPrimeSeeds(para, ctx->para, rsaPara.bits);
+#endif
+    return ret;
+}
+
+int32_t CRYPT_RSA_SetParaEx(CRYPT_RSA_Ctx *ctx, const BSL_Param *para)
+{
+    if (ctx == NULL || para == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+#ifdef HITLS_CRYPTO_PROVIDER
+    int32_t ret;
+    const BSL_Param *temp = NULL;
+    if ((temp = BSL_PARAM_FindConstParam(para, CRYPT_PARAM_MD_ATTR)) != NULL) {
+        ret = CRYPT_PkeySetMdAttr((const char *)(temp->value), temp->valueLen, &(ctx->mdAttr));
+        if (ret != CRYPT_SUCCESS) {
+            return ret;
+        }
+    }
+#endif
+    return SetRsaBitsAndE(ctx, para);
 }
 
 CRYPT_RSA_PrvKey *RSA_NewPrvKey(uint32_t bits)
@@ -580,12 +708,15 @@ static uint32_t GetProbPrimeMillerCheckTimes(uint32_t proBits)
     return 4;
 }
 
-static int32_t GenAuxPrime(BN_BigNum *Xp, uint32_t auxBits, BN_Optimizer *opt)
+static int32_t GenAuxPrime(BN_BigNum *Xp, uint32_t auxBits, BN_Optimizer *opt, bool isSeed)
 {
-    int32_t ret = BN_RandEx(BN_OptimizerGetLibCtx(opt), Xp, auxBits, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_ONEBIT);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
+    int32_t ret = CRYPT_SUCCESS;
+    if (!isSeed) {
+        ret = BN_RandEx(BN_OptimizerGetLibCtx(opt), Xp, auxBits, BN_RAND_TOP_ONEBIT, BN_RAND_BOTTOM_ONEBIT);
+        if (ret != CRYPT_SUCCESS) {
+            BSL_ERR_PUSH_ERROR(ret);
+            return ret;
+        }
     }
     uint32_t auxPrimeCheck = GetAuxPrimeMillerCheckTimes(auxBits);
     do {
@@ -612,9 +743,11 @@ static int32_t GenAuxPrime(BN_BigNum *Xp, uint32_t auxBits, BN_Optimizer *opt)
  * If nlen = 1024, r1, r2 is obtained by search from 141 bits data, the above inequality is still satisfied.
  * Hence, it's a only performance consideration for us to use this standard for 1024-bit rsa key-Gen.
  */
-static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN_BigNum *Xp, BN_BigNum *p,
-    const CRYPT_RSA_Para *para, bool isP, BN_Optimizer *opt)
+static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN_BigNum *Xp, BN_BigNum *Xp0,
+    BN_BigNum *Xp1, BN_BigNum *Xp2, BN_BigNum *p, const CRYPT_RSA_Para *para, bool isP, BN_Optimizer *opt)
 {
+    BN_BigNum *r1;
+    BN_BigNum *r2;
     uint32_t auxRoom = BITS_TO_BN_UNIT(auxBits);
     int32_t ret = OptimizerStart(opt); // use the optimizer
     if (ret != CRYPT_SUCCESS) {
@@ -622,8 +755,10 @@ static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN
         return ret;
     }
     uint32_t probPrimeCheck = GetProbPrimeMillerCheckTimes(proBits);
-    BN_BigNum *r1 = OptimizerGetBn(opt, auxRoom);
-    BN_BigNum *r2 = OptimizerGetBn(opt, auxRoom);
+
+    r1 = (Xp1 != NULL) ? Xp1 : OptimizerGetBn(opt, auxRoom);
+    r2 = (Xp2 != NULL) ? Xp2 : OptimizerGetBn(opt, auxRoom);
+
     BN_BigNum *r1Double = OptimizerGetBn(opt, auxRoom);
     BN_BigNum *primeCheck = OptimizerGetBn(opt, auxRoom);
     BN_BigNum *r2Inv = OptimizerGetBn(opt, auxRoom);
@@ -639,13 +774,14 @@ static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN
         return ret;
     }
 
-    ret = GenAuxPrime(r1, auxBits, opt);
+    // Choose auxiliary prime r1, either from seed or generate randomly
+    ret = GenAuxPrime(r1, auxBits, opt, (Xp1 != NULL));
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         OptimizerEnd(opt);
         return ret;
     }
-    GOTO_ERR_IF(GenAuxPrime(r2, auxBits, opt), ret);
+    GOTO_ERR_IF(GenAuxPrime(r2, auxBits, opt, (Xp2 != NULL)), ret);
     GOTO_ERR_IF(BN_Lshift(r1Double, r1, 1), ret);
     // Step 1: check 2r1, r2 are coprime.
     GOTO_ERR_IF(BN_Gcd(primeCheck, r1Double, r2, opt), ret);
@@ -663,8 +799,11 @@ static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN
     // get R.
     GOTO_ERR_IF(BN_Sub(R, r2Inv, r1DoubleInv), ret);
     do {
-        // Step 3: get x, √2(2 ^(nlen/2 - 1)) <= x <= ((2 ^(nlen/2) - 1))
-        GOTO_ERR_IF(GetRandomX(BN_OptimizerGetLibCtx(opt), Xp, para->bits, isP), ret);
+        // Step 3: get x via seed xp/xq or random
+        if (Xp0 == NULL) {
+            GOTO_ERR_IF(GetRandomX(BN_OptimizerGetLibCtx(opt), Xp, para->bits, isP), ret);
+        }
+
         // Step 4: Y = X + ((R – X) mod 2r1r2
         GOTO_ERR_IF(BN_Mul(r1, r1Double, r2, opt), ret); // 2r1r2
         GOTO_ERR_IF(BN_ModSub(R, R, Xp, r1, opt), ret);
@@ -700,8 +839,12 @@ static int32_t GenPrimeWithAuxiliaryPrime(uint32_t auxBits, uint32_t proBits, BN
         }
     } while (true);
 ERR:
-    BN_Zeroize(r1);
-    BN_Zeroize(r2);
+    if (Xp1 == NULL) {
+        BN_Zeroize(r1);
+    }
+    if (Xp2 == NULL) {
+        BN_Zeroize(r2);
+    }
     OptimizerEnd(opt);
     return ret;
 }
@@ -709,6 +852,7 @@ ERR:
 // ref: FIPS 186-5, A.1.6 & B.9
 static int32_t GenPQBasedOnProbPrimes(const CRYPT_RSA_Para *para, CRYPT_RSA_PrvKey *priKey, BN_Optimizer *opt)
 {
+    BN_BigNum *Xp = NULL, *Xq = NULL, *Xp0 = NULL, *Xp1 = NULL, *Xp2 = NULL, *Xq0 = NULL, *Xq1 = NULL, *Xq2 = NULL;
     uint32_t proBits = GetProbableNoLimitedBitLen(para->bits);
     uint32_t auxBits = GetAuxiliaryPrimeBitLen(para->bits);
     // Used in check |Xp – Xq| ≤ 2^(nlen/2) – 100 or |p – q| ≤ 2^(nlen/2) – 100.
@@ -719,16 +863,26 @@ static int32_t GenPQBasedOnProbPrimes(const CRYPT_RSA_Para *para, CRYPT_RSA_PrvK
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    BN_BigNum *Xp = OptimizerGetBn(opt, proRoom);
-    BN_BigNum *Xq = OptimizerGetBn(opt, proRoom);
+
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+    Xp0 = para->acvpTests.primeSeed.fipsPrimeSeeds.xp;
+    Xp1 = para->acvpTests.primeSeed.fipsPrimeSeeds.xp1;
+    Xp2 = para->acvpTests.primeSeed.fipsPrimeSeeds.xp2;
+    Xq0 = para->acvpTests.primeSeed.fipsPrimeSeeds.xq;
+    Xq1 = para->acvpTests.primeSeed.fipsPrimeSeeds.xq1;
+    Xq2 = para->acvpTests.primeSeed.fipsPrimeSeeds.xq2;
+#endif
+    Xp = (Xp0 != NULL) ? Xp0 : OptimizerGetBn(opt, proRoom);
+    Xq = (Xq0 != NULL) ? Xq0 : OptimizerGetBn(opt, proRoom);
     if (Xp == NULL || Xq == NULL) {
         ret = CRYPT_BN_OPTIMIZER_GET_FAIL;
         BSL_ERR_PUSH_ERROR(ret);
         OptimizerEnd(opt);
         return ret;
     }
+
     // Step 4: get p
-    ret = GenPrimeWithAuxiliaryPrime(auxBits, proBits, Xp, priKey->p, para, true, opt);
+    ret = GenPrimeWithAuxiliaryPrime(auxBits, proBits, Xp, Xp0, Xp1, Xp2, priKey->p, para, true, opt);
     if (ret != CRYPT_SUCCESS) {
         BN_Zeroize(Xp);
         BSL_ERR_PUSH_ERROR(ret);
@@ -743,7 +897,7 @@ static int32_t GenPQBasedOnProbPrimes(const CRYPT_RSA_Para *para, CRYPT_RSA_PrvK
      */
     do {
         // Step 5: get q
-        ret = GenPrimeWithAuxiliaryPrime(auxBits, proBits, Xq, priKey->q, para, false, opt);
+        ret = GenPrimeWithAuxiliaryPrime(auxBits, proBits, Xq, Xq0, Xq1, Xq2, priKey->q, para, false, opt);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             goto ERR;
@@ -756,6 +910,11 @@ static int32_t GenPQBasedOnProbPrimes(const CRYPT_RSA_Para *para, CRYPT_RSA_PrvK
         }
         // |Xp – Xq| ≤ 2 ^ (2nlen/2 – 100) -> BN_Bits(Xp) <= secBits + 1 -> BN_Bits(Xp) < secBits
         if (BN_Bits(Xq) < secBits) {
+            if (Xq0 != NULL && Xq1 != NULL && Xq2 != NULL) {
+                ret = CRYPT_RSA_NOR_KEYGEN_FAIL;
+                BSL_ERR_PUSH_ERROR(ret);
+                goto ERR;
+            }
             continue;
         }
         ret = BN_Sub(Xq, priKey->p, priKey->q);
@@ -765,13 +924,22 @@ static int32_t GenPQBasedOnProbPrimes(const CRYPT_RSA_Para *para, CRYPT_RSA_PrvK
         }
         // |p – q| ≤ 2 ^ (2nlen/2 – 100)
         if (BN_Bits(Xq) < secBits) {
+            if (Xq0 != NULL && Xq1 != NULL && Xq2 != NULL) {
+                ret = CRYPT_RSA_NOR_KEYGEN_FAIL;
+                BSL_ERR_PUSH_ERROR(ret);
+                goto ERR;
+            }
             continue;
         }
         break;
     } while (true);
 ERR:
-    BN_Zeroize(Xp);
-    BN_Zeroize(Xq);
+    if (Xp0 == NULL) {
+        BN_Zeroize(Xp);
+    }
+    if (Xq0 == NULL) {
+        BN_Zeroize(Xq);
+    }
     OptimizerEnd(opt);
     return ret;
 }
@@ -1026,21 +1194,21 @@ int32_t CRYPT_RSA_Import(CRYPT_RSA_Ctx *ctx, const BSL_Param *params)
 {
     int32_t ret = CRYPT_SUCCESS;
     if (IsExistRsaParam(params)) {
-        ret = CRYPT_RSA_SetPara(ctx, params);
+        ret = CRYPT_RSA_SetParaEx(ctx, params);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
         }
     }
     if (IsExistPrvKeyParams(params)) {
-        ret = CRYPT_RSA_SetPrvKey(ctx, params);
+        ret = CRYPT_RSA_SetPrvKeyEx(ctx, params);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
         }
     }
     if (IsExistPubKeyParams(params)) {
-        ret = CRYPT_RSA_SetPubKey(ctx, params);
+        ret = CRYPT_RSA_SetPubKeyEx(ctx, params);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
@@ -1073,7 +1241,7 @@ static void InitRsaPubKeyParams(BSL_Param *params, uint32_t *index, uint8_t *buf
 
 static void InitRsaPrvKeyParams(BSL_Param *params, uint32_t *index, uint8_t *buffer, uint32_t len)
 {
-    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_D, 
+    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_D,
         BSL_PARAM_TYPE_OCTETS, buffer + ((*index - 1) * len), len);
     (*index)++;
     (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_P,
@@ -1095,22 +1263,22 @@ static void InitRsaPrvKeyParams(BSL_Param *params, uint32_t *index, uint8_t *buf
 
 static void ExportRsaPssParams(const CRYPT_RSA_Ctx *ctx, BSL_Param *params, uint32_t *index)
 {
-    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_MD_ID, 
-        BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&ctx->pad.para.pss.mdId, sizeof(int32_t));
-    params[(*index)++].useLen = sizeof(int32_t);
-    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_MGF1_ID, 
-        BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&ctx->pad.para.pss.mgfId, sizeof(int32_t));
-    params[(*index)++].useLen = sizeof(int32_t);
-    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_SALTLEN, 
-        BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&ctx->pad.para.pss.saltLen, sizeof(int32_t));
-    params[(*index)++].useLen = sizeof(int32_t);
+    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_MD_ID,
+        BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&ctx->pad.para.pss.mdId, sizeof(ctx->pad.para.pss.mdId));
+    params[(*index)++].useLen = sizeof(ctx->pad.para.pss.mdId);
+    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_MGF1_ID,
+        BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&ctx->pad.para.pss.mgfId, sizeof(ctx->pad.para.pss.mgfId));
+    params[(*index)++].useLen = sizeof(ctx->pad.para.pss.mgfId);
+    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_SALTLEN,
+        BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&ctx->pad.para.pss.saltLen, sizeof(ctx->pad.para.pss.saltLen));
+    params[(*index)++].useLen = sizeof(ctx->pad.para.pss.saltLen);
 }
 
 static void ExportRsaPkcsParams(const CRYPT_RSA_Ctx *ctx, BSL_Param *params, uint32_t *index)
 {
-    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_MD_ID, 
-        BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&ctx->pad.para.pkcsv15.mdId, sizeof(int32_t));
-    params[(*index)++].useLen = sizeof(int32_t);
+    (void)BSL_PARAM_InitValue(&params[*index], CRYPT_PARAM_RSA_MD_ID,
+        BSL_PARAM_TYPE_INT32, (void *)(uintptr_t)&ctx->pad.para.pkcsv15.mdId, sizeof(ctx->pad.para.pkcsv15.mdId));
+    params[(*index)++].useLen = sizeof(ctx->pad.para.pkcsv15.mdId);
 }
 
 int32_t CRYPT_RSA_Export(const CRYPT_RSA_Ctx *ctx, BSL_Param *params)
@@ -1143,7 +1311,7 @@ int32_t CRYPT_RSA_Export(const CRYPT_RSA_Ctx *ctx, BSL_Param *params)
     }
     if (ctx->pubKey != NULL) {
         InitRsaPubKeyParams(rsaParams, &index, buffer, bytes);
-        ret = CRYPT_RSA_GetPubKey(ctx, rsaParams);
+        ret = CRYPT_RSA_GetPubKeyEx(ctx, rsaParams);
         if (ret != CRYPT_SUCCESS) {
             BSL_SAL_Free(buffer);
             BSL_ERR_PUSH_ERROR(ret);
@@ -1152,7 +1320,7 @@ int32_t CRYPT_RSA_Export(const CRYPT_RSA_Ctx *ctx, BSL_Param *params)
     }
     if (ctx->prvKey != NULL) {
         InitRsaPrvKeyParams(rsaParams, &index, buffer, bytes);
-        ret = CRYPT_RSA_GetPrvKey(ctx, rsaParams);
+        ret = CRYPT_RSA_GetPrvKeyEx(ctx, rsaParams);
         if (ret != CRYPT_SUCCESS) {
             BSL_SAL_Free(buffer);
             BSL_ERR_PUSH_ERROR(ret);

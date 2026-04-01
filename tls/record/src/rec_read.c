@@ -24,15 +24,11 @@
 #include "bsl_errno.h"
 #include "bsl_uio.h"
 #include "rec_alert.h"
-#ifdef HITLS_TLS_PROTO_TLS13
-#include "hs_common.h"
-#endif
 #include "tls_config.h"
 #include "record.h"
 #ifdef HITLS_TLS_FEATURE_INDICATOR
 #include "indicator.h"
 #endif
-#include "hs_ctx.h"
 #include "hs.h"
 #include "rec_crypto.h"
 #include "bsl_list.h"
@@ -99,7 +95,7 @@ static REC_Type RecCastUintToRecType(TLS_Ctx *ctx, uint8_t value)
     }
 #ifdef HITLS_TLS_PROTO_TLS13
     RecConnState *state = GetReadConnState(ctx);
-    if (HS_GetVersion(ctx) == HITLS_VERSION_TLS13 && state->suiteInfo != NULL) {
+    if (GET_VERSION_FROM_CTX(ctx) == HITLS_VERSION_TLS13 && state->suiteInfo != NULL) {
         if (type != REC_TYPE_APP && type != REC_TYPE_ALERT &&
             (type != REC_TYPE_CHANGE_CIPHER_SPEC || ctx->hsCtx == NULL)) {
             type = REC_TYPE_UNKNOWN;
@@ -108,7 +104,21 @@ static REC_Type RecCastUintToRecType(TLS_Ctx *ctx, uint8_t value)
 #endif /* HITLS_TLS_PROTO_TLS13 */
     return type;
 }
+#ifdef HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT
+uint32_t REC_GetMaxReadSize(TLS_Ctx *ctx)
+{
+    uint32_t readSize = REC_MAX_PLAIN_LENGTH;
+    if (ctx != NULL && ctx->negotiatedInfo.recordSizeLimit != 0) {
+        readSize = ctx->negotiatedInfo.recordSizeLimit;
+        if (GET_VERSION_FROM_CTX(ctx) == HITLS_VERSION_TLS13) {
+            readSize--;
+        }
+    }
+    return readSize;
+}
+#else
 #define REC_GetMaxReadSize(ctx) REC_MAX_PLAIN_LENGTH
+#endif
 static int32_t ProcessDecryptedRecord(TLS_Ctx *ctx, uint32_t dataLen,
     const REC_TextInput *encryptedMsg)
 {
@@ -168,9 +178,8 @@ static int32_t RecordDecrypt(TLS_Ctx *ctx, RecBuf *decryptBuf, REC_TextInput *en
     RecConnState *state = GetReadConnState(ctx);
     const RecCryptoFunc *funcs = RecGetCryptoFuncs(state->suiteInfo);
     uint32_t offset = 0;
-    int32_t ret = HITLS_SUCCESS;
     uint32_t minBufLen = 0;
-    ret = funcs->calPlantextBufLen(ctx, state->suiteInfo, encryptedMsg->textLen, &offset, &minBufLen);
+    int32_t ret = funcs->calPlantextBufLen(ctx, state->suiteInfo, encryptedMsg->textLen, &offset, &minBufLen);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16266, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "Invalid record length %u", encryptedMsg->textLen, 0, 0, 0);
@@ -222,8 +231,6 @@ static int32_t RecordUnexpectedMsg(TLS_Ctx *ctx, RecBuf *decryptBuf, REC_Type re
         case REC_TYPE_APP:
             ret = RecBufListAddBuffer(ctx->recCtx->appRecList, decryptBuf);
             break;
-        case REC_TYPE_CHANGE_CIPHER_SPEC:
-        case REC_TYPE_ALERT:
         default:
             ret = ctx->method.unexpectedMsgProcessCb(ctx, recordType,
                 decryptBuf->buf, decryptBuf->end, false);
@@ -299,16 +306,16 @@ int32_t DtlsCheckRecordHeader(TLS_Ctx *ctx, const RecHdr *hdr)
             "get a record with invalid length", 0, 0, 0, 0);
         return RecordSendAlertMsg(ctx, ALERT_LEVEL_FATAL, ALERT_RECORD_OVERFLOW);
     }
-
+#ifdef HITLS_BSL_UIO_SCTP
     uint16_t epoch = REC_EPOCH_GET(hdr->epochSeq);
     if (epoch == 0 && hdr->type == REC_TYPE_APP && BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_SCTP)) {
         BSL_ERR_PUSH_ERROR(HITLS_REC_ERR_RECV_UNEXPECTED_MSG);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15440, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "get a UNEXPECTE record msg: epoch 0's app msg.", 0, 0, 0, 0);
+            "get a UNEXPECTED record msg: epoch 0's app msg.", 0, 0, 0, 0);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
         return HITLS_REC_ERR_RECV_UNEXPECTED_MSG;
     }
-
+#endif /* HITLS_BSL_UIO_SCTP */
     return HITLS_SUCCESS;
 }
 
@@ -537,10 +544,12 @@ static int32_t DtlsRecordHeaderProcess(TLS_Ctx *ctx, uint8_t *recordBody, RecHdr
     }
     uint16_t epoch = REC_EPOCH_GET(hdr->epochSeq);
     if (epoch != recordCtx->readEpoch) {
+#ifdef HITLS_BSL_UIO_SCTP
         /* Discard out-of-order messages in SCTP scenarios */
         if (BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_SCTP)) {
             return RecordSendAlertMsg(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
         }
+#endif /* HITLS_BSL_UIO_SCTP */
 #if defined(HITLS_BSL_UIO_UDP)
         /* Only the messages of the next epoch are cached */
         if ((recordCtx->readEpoch + 1) == epoch) {
@@ -585,7 +594,7 @@ static uint8_t *GetUnprocessedMsg(RecCtx *recordCtx, REC_Type recordType, RecHdr
     return recordBody;
 }
 
-#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP) && defined(HITLS_TLS_FEATURE_ANTI_REPLAY)
 static int32_t AntiReplay(TLS_Ctx *ctx, RecHdr *hdr)
 {
     /* In non-UDP scenarios, anti-replay check is not required */
@@ -609,19 +618,6 @@ static int32_t AntiReplay(TLS_Ctx *ctx, RecHdr *hdr)
 }
 #endif
 
-static int32_t RecInBufInit(RecCtx *recordCtx, uint32_t bufSize)
-{
-    if (recordCtx->inBuf == NULL) {
-        recordCtx->inBuf = RecBufNew(bufSize);
-        if (recordCtx->inBuf == NULL) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17265, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "RecBufNew fail", 0, 0, 0, 0);
-            return HITLS_MEMALLOC_FAIL;
-        }
-    }
-    return HITLS_SUCCESS;
-}
-
 static int32_t DtlsTryReadAndCheckRecordMessage(TLS_Ctx *ctx, uint8_t **recordBody, RecHdr *hdr)
 {
     int32_t ret = HITLS_SUCCESS;
@@ -638,7 +634,7 @@ static int32_t DtlsTryReadAndCheckRecordMessage(TLS_Ctx *ctx, uint8_t **recordBo
 static int32_t DtlsGetRecord(TLS_Ctx *ctx, REC_Type recordType, RecHdr *hdr, uint8_t **recordBody, uint8_t **cachRecord)
 {
     RecCtx *recordCtx = (RecCtx *)ctx->recCtx;
-    int32_t ret = RecInBufInit(recordCtx, RecGetInitBufferSize(ctx, true));
+    int32_t ret = RecIoBufInit(ctx, recordCtx, true);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -652,7 +648,7 @@ static int32_t DtlsGetRecord(TLS_Ctx *ctx, REC_Type recordType, RecHdr *hdr, uin
             return ret;
         }
     }
-#if defined(HITLS_BSL_UIO_UDP)
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP) && defined(HITLS_TLS_FEATURE_ANTI_REPLAY)
     ret = AntiReplay(ctx, hdr);
     if (ret != HITLS_SUCCESS) {
         BSL_SAL_FREE(*cachRecord);
@@ -675,8 +671,7 @@ static int32_t DtlsProcessBufList(TLS_Ctx *ctx, REC_Type recordType, RecBufList 
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-
-return HITLS_SUCCESS;
+    return HITLS_SUCCESS;
 }
 
 /**
@@ -718,13 +713,20 @@ int32_t DtlsRecordRead(TLS_Ctx *ctx, REC_Type recordType, uint8_t *data, uint32_
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-#if defined(HITLS_BSL_UIO_UDP)
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP) && defined(HITLS_TLS_FEATURE_ANTI_REPLAY)
     /* In UDP scenarios, update the sliding window flag */
     if (BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
         RecAntiReplayUpdate(&GetReadConnState(ctx)->window, REC_SEQ_GET(hdr.epochSeq));
     }
 #endif
-    RecClearAlertCount(ctx, cryptMsg.type);
+#ifdef HITLS_TLS_PROTO_DFX_ALERT_NUMBER
+    ctx->method.clearAlert(ctx, cryptMsg.type);
+#endif
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+    if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS) != 0 && (recordType == REC_TYPE_APP)) {
+        RecTryFreeRecBuf(ctx, false);
+    }
+#endif
     /* An unexpected packet is received */
     // decryptBuf.isHoldBuffer == false
     if (recordType != cryptMsg.type) {
@@ -735,7 +737,6 @@ int32_t DtlsRecordRead(TLS_Ctx *ctx, REC_Type recordType, uint8_t *data, uint32_
     if (decryptBuf.buf == data) {
         /* Update the read length */
         *len = decryptBuf.end;
-
         return HITLS_SUCCESS;
     }
     ret = DtlsProcessBufList(ctx, recordType, bufList, &decryptBuf);
@@ -807,6 +808,13 @@ int32_t TlsCheckRecordHeader(TLS_Ctx *ctx, const RecHdr *recordHdr)
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15451, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "get a record with invalid length", 0, 0, 0, 0);
         return RecordSendAlertMsg(ctx, ALERT_LEVEL_FATAL, ALERT_RECORD_OVERFLOW);
+    }
+
+    if (recordHdr->bodyLen + REC_TLS_RECORD_HEADER_LEN > ctx->recCtx->inBuf->bufSize) {
+        ret = RecBufResize(ctx->recCtx->inBuf, recordHdr->bodyLen + REC_TLS_RECORD_HEADER_LEN);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
     }
 #ifdef HITLS_TLS_PROTO_TLS13
     if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13 && recordHdr->bodyLen > REC_MAX_TLS13_ENCRYPTED_LEN) {
@@ -977,7 +985,7 @@ int32_t RecordDecryptPrepare(TLS_Ctx *ctx, uint16_t version, REC_Type recordType
     }
     uint32_t recordBodyLen = (uint32_t)recordHeader.bodyLen;
 #ifdef HITLS_TLS_PROTO_TLS13
-    if (HS_GetVersion(ctx) == HITLS_VERSION_TLS13) {
+    if (GET_VERSION_FROM_CTX(ctx) == HITLS_VERSION_TLS13) {
         if ((recordHeader.type == REC_TYPE_CHANGE_CIPHER_SPEC || recordHeader.type == REC_TYPE_ALERT) &&
             recordBodyLen != 0) {
             ctx->recCtx->unexpectedMsgType = recordHeader.type;
@@ -1021,8 +1029,14 @@ int32_t TlsRecordRead(TLS_Ctx *ctx, REC_Type recordType, uint8_t *data, uint32_t
     if (!RecBufListEmpty(bufList)) {
         return RecBufListGetBuffer(bufList, data, num, readLen, (ctx->peekFlag != 0 && (recordType == REC_TYPE_APP)));
     }
+
+    int32_t ret = RecIoBufInit(ctx, (RecCtx *)ctx->recCtx, true);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+
     REC_TextInput encryptedMsg = { 0 };
-    int32_t ret = RecordDecryptPrepare(ctx, ctx->negotiatedInfo.version, recordType, &encryptedMsg);
+    ret = RecordDecryptPrepare(ctx, ctx->negotiatedInfo.version, recordType, &encryptedMsg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -1033,7 +1047,14 @@ int32_t TlsRecordRead(TLS_Ctx *ctx, REC_Type recordType, uint8_t *data, uint32_t
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-    RecClearAlertCount(ctx, encryptedMsg.type);
+#ifdef HITLS_TLS_PROTO_DFX_ALERT_NUMBER
+    ctx->method.clearAlert(ctx, encryptedMsg.type);
+#endif
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+    if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS) != 0 && (recordType == REC_TYPE_APP)) {
+        RecTryFreeRecBuf(ctx, false);
+    }
+#endif
     /* An unexpected message is received */
     if (recordType != encryptedMsg.type) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17260, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,

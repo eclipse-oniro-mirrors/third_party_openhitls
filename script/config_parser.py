@@ -12,6 +12,7 @@
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
+
 import sys
 sys.dont_write_bytecode = True
 import json
@@ -19,13 +20,15 @@ import os
 import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 from methods import trans2list, save_json_file
+from platform_utils import CompilerDetector, LinkerDetector, PlatformDetector
 
 
 class Feature:
-    def __init__(self, name, target, parent, children, deps, opts, impl, ins_set):
+    def __init__(self, name, target, is_lib, parent, children, deps, opts, impl, ins_set):
         self.name = name
 
         self.target = target
+        self.is_lib = is_lib        # Indicates whether the target file is a lib or exe file.
 
         self.parent = parent
         self.children = children
@@ -38,8 +41,8 @@ class Feature:
 
 
     @classmethod
-    def simple(cls, name, target, parent, impl):
-        return Feature(name, target, parent, [], [], [], impl, [])
+    def simple(cls, name, target, is_lib, parent, impl):
+        return Feature(name, target, is_lib, parent, [], [], [], impl, [])
 
 
 class FeatureParser:
@@ -68,6 +71,10 @@ class FeatureParser:
         return self._cfg['libs']
 
     @property
+    def executes(self):
+        return self._cfg['executes']
+
+    @property
     def modules(self):
         return self._cfg['modules']
 
@@ -91,7 +98,11 @@ class FeatureParser:
     def _add_fea(self, feas_info, feature: Feature):
         fea_name = feature.name
         feas_info.setdefault(fea_name, {})
-        self._add_key_value(feas_info[fea_name], 'lib', feature.target)
+
+        if feature.is_lib:
+            self._add_key_value(feas_info[fea_name], 'lib', feature.target)
+        else:
+            self._add_key_value(feas_info[fea_name], 'execute', feature.target)
         self._add_key_value(feas_info[fea_name], 'parent', feature.parent)
         self._add_key_value(feas_info[fea_name], 'children', feature.children)
         self._add_key_value(feas_info[fea_name], 'opts', feature.opts)
@@ -100,8 +111,9 @@ class FeatureParser:
         feas_info[fea_name].setdefault('impl', {})
         feas_info[fea_name]['impl'][feature.impl] = feature.ins_set if feature.ins_set else []
 
-    def _parse_fea_obj(self, name, target, parent, impl, fea_obj, feas_info):
-        feature = Feature.simple(name, target, parent, impl)
+
+    def _parse_fea_obj(self, name, target, is_lib, parent, impl, fea_obj, feas_info):
+        feature = Feature.simple(name, target, is_lib, parent, impl)
         if not fea_obj:
             self._add_fea(feas_info, feature)
             return
@@ -114,14 +126,15 @@ class FeatureParser:
         for key, obj in fea_obj.items():
             if key not in non_sub_keys:
                 feature.children.append(key)
-                self._parse_fea_obj(key, target, name, impl, obj, feas_info)
+                self._parse_fea_obj(key, target, is_lib, name, impl, obj, feas_info)
 
         self._add_fea(feas_info, feature)
-    def parse_fearuers(self, all_feas, tmp_feas_info, target, target_obj):
+
+    def parse_fearuers(self, all_feas, tmp_feas_info, target, target_obj, is_lib):
         tmp_feas_info[target] = {}
         for impl, impl_obj in target_obj['features'].items():
             for fea, fea_obj in impl_obj.items():
-                self._parse_fea_obj(fea, target, None, impl, fea_obj, tmp_feas_info[target])
+                self._parse_fea_obj(fea, target, is_lib, None, impl, fea_obj, tmp_feas_info[target])
 
         # Check that feature names in different target are unique.
         tgt_feas = set(tmp_feas_info[target].keys())
@@ -137,14 +150,17 @@ class FeatureParser:
         return:
             feas_info: {
                 "children":[],  "parent":[],  "deps":[],
-                "opts":[[],[]],  "lib":"",
+                "opts":[[],[]], "lib":"",     "execute":""
                 "impl":{"c":[], "armv8:[], ...}, # [] lists the instruction sets supported by the feature.
             }
         """
         all_feas = set()
         tmp_feas_info = {}
         for lib, lib_obj in self._cfg['libs'].items():
-            self.parse_fearuers(all_feas, tmp_feas_info, lib, lib_obj)
+            self.parse_fearuers(all_feas, tmp_feas_info, lib, lib_obj, True)
+
+        for exe, exe_obj in self._cfg['executes'].items():
+            self.parse_fearuers(all_feas, tmp_feas_info, exe, exe_obj, False)
 
         feas_info = {}
         for obj in tmp_feas_info.values():
@@ -160,6 +176,7 @@ class FeatureParser:
                 for fea in mod_obj.get('.features', []):
                     if fea not in feas_info:
                         raise ValueError("Unrecognized '%s' in '.features' of '%s::%s'" % (fea, top_mod, mod))
+
                     if 'modules' not in feas_info[fea]:
                         feas_info[fea]['modules'] = [formated_mod]
                     else:
@@ -180,6 +197,7 @@ class FeatureParser:
         [asm_type_set.update(self.libs[lib]['features'].keys()) for lib in self.libs.keys()]
         asm_type_set.discard('c')
         asm_type_set.add('no_asm')
+        asm_type_set.add('riscv64')
         return asm_type_set
 
     def get_module_deps(self, module, dep_list, result):
@@ -235,11 +253,12 @@ class FeatureParser:
             blurred_srcs.extend(trans2list(srcs[asm_type][first_key]))
         return blurred_srcs
 
+
 class FeatureConfigParser:
     """ Parses the user feature configuration file. """
     # Specifications of keys and values in the file.
     key_value = {
-        "system": {"require": False, "type": str, "choices": ["linux", ""], "default": "linux"},
+        "system": {"require": False, "type": str, "choices": ["linux", "darwin", "none", ""], "default": "linux"},
         "bits": {"require": False, "type": int, "choices": [32, 64], "default": 64},
         "endian": {"require": True, "type": str, "choices": ["little", "big"], "default": "little"},
         "libType": {
@@ -251,7 +270,8 @@ class FeatureConfigParser:
         "asmType":{"require": True, "type": str, "choices": [], "default": "no_asm"},
         "libs":{"require": True, "type": dict, "choices": [], "default": {}},
         "bundleLibs":{"require": False, "type": bool, "choices": [True, False], "default": False},
-        "securecLib":{"require": False, "type": str, "choices": ["boundscheck", "securec", "sec_shared.z", ""], "default": "boundscheck"}
+        "securecLib":{"require": False, "type": str, "choices": ["boundscheck", "securec", "sec_shared.z", ""], "default": "boundscheck"},
+        "executes":{"require": False, "type": dict, "default": {}}
     }
 
     def __init__(self, features: FeatureParser, file_path):
@@ -274,6 +294,10 @@ class FeatureConfigParser:
     @property
     def libs(self):
         return self._cfg['libs']
+
+    @property
+    def executes(self):
+        return self._cfg.get('executes', {})
 
     @property
     def lib_type(self):
@@ -301,6 +325,20 @@ class FeatureConfigParser:
             return asm_fea.split('::')
         else:
             return asm_fea, ''
+
+    def enable_executes(self, targets):
+        for target in targets:
+            if 'executes' not in self._cfg:
+                self._cfg['executes'] = {target: {}}
+            else:
+                self._cfg['executes'][target] = {}
+            exe_objs = []
+            for fea, fea_obj in self._features.feas_info.items():
+                if fea_obj.get('execute', '') != target:
+                    continue
+                for i in fea_obj['impl'].keys():
+                    self._cfg['executes'][target].setdefault(i, [])
+                    self._cfg['executes'][target][i].append(fea)
 
     def _asm_fea_check(self, asm_fea, asm_type, info):
         fea, inc = self._get_fea_and_inc(asm_fea)
@@ -481,7 +519,10 @@ class FeatureConfigParser:
                 self._add_feature(fea, 'asm')
 
     def set_c_features(self, enable_feas):
-        for fea in enable_feas:
+        for f in enable_feas:
+            fea, _ = self._get_fea_and_inc(f)
+            if self._features.feas_info[fea].get('execute'):
+                continue
             if 'c' in self._features.feas_info[fea]['impl']:
                 self._add_feature(fea, 'c')
 
@@ -504,10 +545,7 @@ class FeatureConfigParser:
             else:
                 is_fea_contained = False
                 while 'parent' in rel:
-                    if rel['parent'] in disables:
-                        raise Exception("The 'disables' features {} and 'enables' featrues {} conflict".format(fea, disables))
-
-                    if rel['parent'] in features:
+                    if rel['parent'] in disables or rel['parent'] in features:
                         is_fea_contained = True
                         break
                     rel = feas_info[rel['parent']]
@@ -577,8 +615,11 @@ class FeatureConfigParser:
         self._re_sort_lib()
 
         if 'all' in enables:
-            self.set_param('system', None)
-            self.set_param('bits', None)
+            # Only set defaults if not already configured (silently fill in missing values)
+            if 'system' not in self._cfg or not self._cfg['system']:
+                self._cfg['system'] = self.key_value.get('system').get('default')
+            if 'bits' not in self._cfg or not self._cfg['bits']:
+                self._cfg['bits'] = self.key_value.get('bits').get('default')
 
     def save(self, path):
         save_json_file(self._cfg, path)
@@ -587,6 +628,7 @@ class FeatureConfigParser:
         macros = set()
         for lib, lib_value in self.libs.items():
             lib_upper = lib.upper()
+
             for fea in lib_value.get('c', []):
                 macros.add("-D%s_%s" % (lib_upper, fea.upper()))
             for fea in lib_value.get('asm', []):
@@ -601,8 +643,11 @@ class FeatureConfigParser:
 
         if self._cfg['endian'] == 'big':
             macros.add("-DHITLS_BIG_ENDIAN")
-        if self._cfg.get('system', "") == "linux":
+        system = self._cfg.get('system', "")
+        if system == "linux":
             macros.add("-DHITLS_BSL_SAL_LINUX")
+        elif system == "darwin":
+            macros.add("-DHITLS_BSL_SAL_DARWIN")
 
         bits = self._cfg.get('bits', 0)
         if bits == 32:
@@ -623,10 +668,10 @@ class FeatureConfigParser:
         for child in feas_info[fea].get('children', []):
             self._re_get_fea_modules(child, feas_info, asm_type, inc, modules)
 
-    def _get_target_modules(self, target):
+    def _get_target_modules(self, target, is_lib):
         modules = {}
         feas_info = self._features.feas_info
-        obj = self.libs
+        obj = self.libs if is_lib else self.executes
         for fea in obj[target].get('c', []):
             self._re_get_fea_modules(fea, feas_info, 'c', '', modules)
 
@@ -649,14 +694,19 @@ class FeatureConfigParser:
         and the modules on which the lib feature depends (for obtaining the include directory).
             1. Add modules and their dependent modules based on features.
             2. Check whether the dependent modules are enabled.
-        return: {'lib':{"mod1":{"deps":[], "asmType":"", "incSet":""}}}
+        return: {'lib/exe':{"mod1":{"deps":[], "asmType":"", "incSet":""}}}
                 Module format: top_dir::sub_dir
         """
         enable_libs_mods = {}
+        enable_exes_mods = {}
         enable_mods = set()
         for lib in self.libs.keys():
-            enable_libs_mods[lib] = self._get_target_modules(lib)
+            enable_libs_mods[lib] = self._get_target_modules(lib, True)
             enable_mods.update(enable_libs_mods[lib])
+
+        for exe in self.executes.keys():
+            enable_exes_mods[exe] = self._get_target_modules(exe, False)
+            enable_mods.update(enable_exes_mods[exe])
 
         # Check whether the dependent module is enabled.
         for lib in enable_libs_mods.keys():
@@ -666,7 +716,14 @@ class FeatureConfigParser:
                         continue
                     if dep_mod not in enable_mods:
                         raise ValueError("Error: '%s' depends on '%s', but '%s' is disabled." % (mod, dep_mod, dep_mod))
-        return enable_libs_mods
+        for exe in enable_exes_mods.keys():
+            for mod in enable_exes_mods[exe]:
+                for dep_mod in enable_exes_mods[exe][mod].get('deps', []):
+                    if dep_mod == "platform::Secure_C":
+                        continue
+                    if dep_mod not in enable_mods:
+                        raise ValueError("Error: '%s' depends on '%s', but '%s' is disabled." % (mod, dep_mod, dep_mod))
+        return enable_libs_mods, enable_exes_mods
 
     def filter_no_asm_config(self):
         self._cfg['asmType'] = 'no_asm'
@@ -720,6 +777,136 @@ class FeatureConfigParser:
             self._check_family_opts(fea, 'parent', enable_feas)
             self._check_family_opts(fea, 'children', enable_feas)
 
+class ConfigResolver:
+    """
+    Resolves configuration based on dimensions (compiler, linker, OS).
+    Supports _EXTRA, _REMOVE, and _OVERRIDE operations.
+    """
+
+    @staticmethod
+    def resolve_flags(common_flags, dimension_flags, dimension_value):
+        """
+        Resolve flags by merging common with dimension-specific flags.
+
+        Args:
+            common_flags: dict - common flags for all dimensions
+            dimension_flags: dict - dimension-specific flags
+            dimension_value: str - the current dimension value (e.g., 'gcc', 'ld64', 'darwin')
+
+        Returns:
+            dict - resolved flags
+        """
+        if dimension_value not in dimension_flags:
+            # No dimension-specific config, process common flags for _REMOVE/_EXTRA/_OVERRIDE
+            return ConfigResolver._process_common_operations(common_flags or {})
+
+        resolved = {}
+        specific_config = dimension_flags[dimension_value]
+
+        # Handle inheritance
+        if '_inherit' in specific_config:
+            parent = specific_config['_inherit']
+            if parent in dimension_flags:
+                resolved = ConfigResolver.resolve_flags(
+                    common_flags, dimension_flags, parent
+                )
+
+        # Start with common flags
+        if not resolved:
+            for key, value in (common_flags or {}).items():
+                resolved[key] = list(value) if isinstance(value, list) else value
+
+        # Process dimension-specific flags
+        for key, value in specific_config.items():
+            if key.startswith('_'):
+                # Skip metadata keys
+                continue
+
+            # Determine operation type
+            if key.endswith('_OVERRIDE'):
+                # Complete override
+                base_key = key.replace('_OVERRIDE', '')
+                resolved[base_key] = list(value) if isinstance(value, list) else value
+            elif key.endswith('_EXTRA'):
+                # Add to existing
+                base_key = key.replace('_EXTRA', '')
+                if base_key not in resolved:
+                    resolved[base_key] = []
+                if isinstance(value, list):
+                    resolved[base_key].extend(value)
+                else:
+                    resolved[base_key].append(value)
+            elif key.endswith('_REMOVE'):
+                # Remove from existing
+                base_key = key.replace('_REMOVE', '')
+                if base_key in resolved:
+                    remove_items = value if isinstance(value, list) else [value]
+                    resolved[base_key] = [
+                        item for item in resolved[base_key]
+                        if item not in remove_items
+                    ]
+            else:
+                # Direct assignment (default behavior)
+                resolved[key] = list(value) if isinstance(value, list) else value
+
+        return resolved
+
+    @staticmethod
+    def _process_common_operations(common_flags):
+        """
+        Process _EXTRA/_REMOVE/_OVERRIDE operations within common flags.
+
+        This handles cases where common flags contain operations but there's no
+        dimension-specific config to apply them against.
+
+        Args:
+            common_flags: dict - common flags that may contain operation suffixes
+
+        Returns:
+            dict - resolved flags with operations applied
+        """
+        if not common_flags:
+            return {}
+
+        resolved = {}
+
+        # First pass: collect base flags (non-operation keys)
+        for key, value in common_flags.items():
+            if not (key.endswith('_EXTRA') or key.endswith('_REMOVE') or key.endswith('_OVERRIDE')):
+                resolved[key] = list(value) if isinstance(value, list) else value
+
+        # Second pass: apply operations
+        for key, value in common_flags.items():
+            if key.endswith('_OVERRIDE'):
+                # Complete override
+                base_key = key.replace('_OVERRIDE', '')
+                resolved[base_key] = list(value) if isinstance(value, list) else value
+            elif key.endswith('_EXTRA'):
+                # Add to existing
+                base_key = key.replace('_EXTRA', '')
+                if base_key not in resolved:
+                    resolved[base_key] = []
+                if isinstance(value, list):
+                    resolved[base_key].extend(value)
+                else:
+                    resolved[base_key].append(value)
+            elif key.endswith('_REMOVE'):
+                # Remove from existing (or mark for later removal if base_key doesn't exist)
+                base_key = key.replace('_REMOVE', '')
+                if base_key in resolved:
+                    remove_items = value if isinstance(value, list) else [value]
+                    resolved[base_key] = [
+                        item for item in resolved[base_key]
+                        if item not in remove_items
+                    ]
+                else:
+                    # Mark for deletion even if base_key doesn't exist yet
+                    # This allows removal during union_options phase
+                    resolved[key] = value
+
+        return resolved
+
+
 class CompleteOptionParser:
     """ Parses all compilation options. """
     # Sequence in which compilation options are added, including all compilation option types.
@@ -764,20 +951,164 @@ class CompleteOptionParser:
                 raise FileNotFoundError("The format of file %s is incorrect." % self._fp)
 
 class CompileConfigParser:
-    """ Parse the user compilation configuration file. """
+    """ Parse the user compilation configuration file with 'common' nested format support.
 
-    def __init__(self, all_options: CompleteOptionParser, file_path=''):
+    Uses ConfigResolver to handle dimensional configuration (compiler × linker × platform).
+    Supports mixed format (nested 'common' + flat user-added sections) in self._cfg.
+    Keeps original nested format in self._cfg for saving, resolves to flat format for usage.
+    """
+
+    def __init__(self, all_options: CompleteOptionParser, file_path='',
+                 compiler=None, linker=None, platform=None):
         with open(file_path, 'r') as f:
             self._cfg = json.loads(f.read())
         self._all_options = all_options
 
+        # Detect dimensions for resolving nested format
+        self._compiler = compiler or CompilerDetector.detect_compiler_type()
+        self._linker = linker or LinkerDetector.detect_linker_type()
+        self._platform = platform or PlatformDetector.get_current_platform()
+
+        # Resolve nested format to flat format (stored separately)
+        self._resolved_compile_flags = self._resolve_compile_flags()
+        self._resolved_link_flags = self._resolve_link_flags()
+
+    def _resolve_compile_flags(self):
+        """Resolve compileFlag from nested to flat format (without modifying self._cfg)."""
+        if 'compileFlag' not in self._cfg:
+            return {}
+
+        compile_cfg = self._cfg['compileFlag']
+
+        # Check if using nested format
+        if 'common' not in compile_cfg:
+            # Already flat format, return as-is
+            return dict(compile_cfg)
+
+        common_flags = compile_cfg.get('common', {})
+
+        # Extract compiler-specific configs and flat sections
+        compiler_configs = {}
+        flat_sections = {}
+
+        for k, v in compile_cfg.items():
+            if k.startswith('_') or k == 'common':
+                continue
+            # Check if this is a compiler dimension (contains nested _EXTRA/_REMOVE/_OVERRIDE keys)
+            # or a flat section (contains CC_FLAGS_ADD/CC_FLAGS_DEL)
+            if isinstance(v, dict) and any(key in v for key in ['CC_FLAGS_ADD', 'CC_FLAGS_DEL']):
+                # Flat section (user-added flags)
+                flat_sections[k] = v
+            else:
+                # Compiler-specific config
+                compiler_configs[k] = v
+
+        # Resolve nested format using ConfigResolver
+        resolved = ConfigResolver.resolve_flags(
+            common_flags, compiler_configs, self._compiler
+        )
+
+        # Convert resolved nested format to flat format
+        # All entries are converted to {'CC_FLAGS_ADD': [...]} or {'CC_FLAGS_DEL': [...]} format
+        flattened = {}
+        for key, value in resolved.items():
+            if key.endswith('_EXTRA') or key.endswith('_OVERRIDE'):
+                base_key = key.replace('_EXTRA', '').replace('_OVERRIDE', '')
+                if base_key not in flattened:
+                    flattened[base_key] = {'CC_FLAGS_ADD': []}
+                # Extend existing CC_FLAGS_ADD list
+                flags_to_add = value if isinstance(value, list) else [value]
+                flattened[base_key]['CC_FLAGS_ADD'].extend(flags_to_add)
+            elif key.endswith('_REMOVE'):
+                # Handle _REMOVE suffix: convert to CC_FLAGS_DEL
+                base_key = key.replace('_REMOVE', '')
+                if base_key not in flattened:
+                    flattened[base_key] = {}
+                if 'CC_FLAGS_DEL' not in flattened[base_key]:
+                    flattened[base_key]['CC_FLAGS_DEL'] = []
+                flags_to_del = value if isinstance(value, list) else [value]
+                flattened[base_key]['CC_FLAGS_DEL'].extend(flags_to_del)
+            else:
+                # Convert direct assignments to CC_FLAGS_ADD format
+                if key not in flattened:
+                    flattened[key] = {'CC_FLAGS_ADD': []}
+                flags_to_add = value if isinstance(value, list) else [value]
+                flattened[key]['CC_FLAGS_ADD'].extend(flags_to_add)
+
+        # Merge flat sections (user-added flags) into the result
+        for section_name, section_content in flat_sections.items():
+            if section_name not in flattened:
+                flattened[section_name] = {}
+            for op_type, flags in section_content.items():
+                if op_type not in flattened[section_name]:
+                    flattened[section_name][op_type] = []
+                flattened[section_name][op_type].extend(flags)
+
+        return flattened
+
+    def _resolve_link_flags(self):
+        """Resolve linkFlag from nested to flat format (without modifying self._cfg)."""
+        if 'linkFlag' not in self._cfg:
+            return {'PUBLIC': [], 'SHARED': [], 'EXE': []}
+
+        link_cfg = self._cfg['linkFlag']
+
+        # Check if using nested format
+        if 'common' not in link_cfg:
+            # Already flat format, ensure all categories exist
+            result = {'PUBLIC': [], 'SHARED': [], 'EXE': []}
+            for key in ['PUBLIC', 'SHARED', 'EXE']:
+                if key in link_cfg:
+                    result[key] = list(link_cfg[key])
+            return result
+
+        common_flags = link_cfg.get('common', {})
+
+        # Extract linker-specific configs and flat sections
+        linker_configs = {}
+        flat_categories = {}
+
+        for k, v in link_cfg.items():
+            if k.startswith('_') or k == 'common':
+                continue
+            # Check if this is a flat category (PUBLIC, SHARED, EXE)
+            if k in ['PUBLIC', 'SHARED', 'EXE'] and isinstance(v, list):
+                # Flat category (user-added flags)
+                flat_categories[k] = v
+            else:
+                # Linker-specific config
+                linker_configs[k] = v
+
+        # Resolve nested format using ConfigResolver
+        resolved = ConfigResolver.resolve_flags(
+            common_flags, linker_configs, self._linker
+        )
+
+        # Convert to flat format (PUBLIC, SHARED, EXE)
+        result = {'PUBLIC': [], 'SHARED': [], 'EXE': []}
+        for key, value in resolved.items():
+            # Handle _EXTRA suffix: PUBLIC_EXTRA → PUBLIC, etc.
+            if key.endswith('_EXTRA') or key.endswith('_OVERRIDE'):
+                base_key = key.replace('_EXTRA', '').replace('_OVERRIDE', '')
+                result[base_key] = value if isinstance(value, list) else [value]
+            else:
+                # Direct mapping for PUBLIC, SHARED, EXE
+                if key in result:
+                    result[key] = value if isinstance(value, list) else [value]
+
+        # Merge flat categories (user-added flags) into the result
+        for category, flags in flat_categories.items():
+            result[category].extend(flags)
+
+        return result
+
     @property
     def options(self):
-        return self._cfg['compileFlag']
+        return self._resolved_compile_flags
 
     @property
     def link_flags(self):
-        return self._cfg['linkFlag']
+        return self._resolved_link_flags
 
     @classmethod
     def default_cfg(cls):
@@ -791,22 +1122,65 @@ class CompileConfigParser:
         save_json_file(self._cfg, path)
 
     def change_options(self, options, is_add):
+        """Add or remove compilation options.
+
+        Modifies both self._cfg (for saving) and self._resolved_compile_flags (for usage).
+        """
         option_op = 'CC_FLAGS_ADD' if is_add else 'CC_FLAGS_DEL'
         for option in options:
             option_type = 'CC_USER_DEFINE_FLAGS'
             if option in self._all_options.option_type_map:
                 option_type = self._all_options.option_type_map[option]
 
+            # Update original config (flat format alongside nested)
             if option_type not in self._cfg['compileFlag']:
                 self._cfg['compileFlag'][option_type] = {}
 
             flags = self._cfg['compileFlag'][option_type]
-            flags[option_op] = list(set(flags.get(option_op, []) + [option]))
+            flags[option_op] = list(dict.fromkeys(flags.get(option_op, []) + [option]))
+
+            # Update resolved flags (flat format for usage)
+            if option_type not in self._resolved_compile_flags:
+                self._resolved_compile_flags[option_type] = {}
+            if option_op not in self._resolved_compile_flags[option_type]:
+                self._resolved_compile_flags[option_type][option_op] = []
+            self._resolved_compile_flags[option_type][option_op] = flags[option_op].copy()
 
     def change_link_flags(self, flags, is_add):
-        link_op = 'LINK_FLAG_ADD' if is_add else 'LINK_FLAG_DEL'
-        new_flags = self._cfg['linkFlag'].get(link_op, []) + flags
-        self._cfg['linkFlag'][link_op] = list(set(new_flags))
+        """Add or remove link flags from all three categories (PUBLIC, SHARED, EXE).
+
+        Modifies both self._cfg (for saving) and self._resolved_link_flags (for usage).
+        User-added link flags are stored in flat format alongside nested common.
+        """
+        # Ensure linkFlag structure exists in original config
+        if 'linkFlag' not in self._cfg:
+            self._cfg['linkFlag'] = {}
+
+        # Ensure all three categories exist in original config
+        for category in ['PUBLIC', 'SHARED', 'EXE']:
+            if category not in self._cfg['linkFlag']:
+                self._cfg['linkFlag'][category] = []
+
+        # Add or remove flags from all categories in both configs
+        for category in ['PUBLIC', 'SHARED', 'EXE']:
+            if is_add:
+                # Add flags (dedup)
+                for flag in flags:
+                    # Update original config
+                    if flag not in self._cfg['linkFlag'][category]:
+                        self._cfg['linkFlag'][category].append(flag)
+                    # Update resolved flags
+                    if flag not in self._resolved_link_flags[category]:
+                        self._resolved_link_flags[category].append(flag)
+            else:
+                # Remove flags
+                for flag in flags:
+                    # Update original config
+                    if flag in self._cfg['linkFlag'][category]:
+                        self._cfg['linkFlag'][category].remove(flag)
+                    # Update resolved flags
+                    if flag in self._resolved_link_flags[category]:
+                        self._resolved_link_flags[category].remove(flag)
 
     def add_debug_options(self):
         flags_add = {'CC_FLAGS_ADD': ['-g3', '-gdwarf-2']}
@@ -825,42 +1199,129 @@ class CompileConfigParser:
 
 class CompileParser:
     """
-    Parse the compile.json file.
+    Parse the compile.json file with dimensional format.
     json key and value:
-        compileFlag: compilation options
-        linkFlag: link option
+        compileFlag: compilation options (indexed by compiler)
+        linkFlag: link option (indexed by linker)
+        systemDefines: OS-specific defines (indexed by OS)
     """
 
-    def __init__(self, all_options: CompleteOptionParser, file_path):
+    def __init__(self, all_options: CompleteOptionParser, file_path,
+                 compiler=None, linker=None, platform=None):
         self._fp = file_path
         self._all_options = all_options
         with open(file_path, 'r') as f:
             self._cfg = json.loads(f.read())
+
+        # Detect or use provided dimensions
+        self._compiler = compiler or CompilerDetector.detect_compiler_type()
+        self._linker = linker or LinkerDetector.detect_linker_type()
+        self._platform = platform or PlatformDetector.get_current_platform()
+
+        # Resolve dimensional configurations
+        self._resolved_compile_flags = self._resolve_compile_flags()
+        self._resolved_link_flags = self._resolve_link_flags()
+        self._resolved_system_defines = self._resolve_system_defines()
+
         self._file_check()
 
     @property
+    def compiler(self):
+        return self._compiler
+
+    @property
+    def linker(self):
+        return self._linker
+
+    @property
+    def platform(self):
+        return self._platform
+
+    @property
     def options(self):
-        return self._cfg["compileFlag"]
+        """Returns resolved compile flags."""
+        return self._resolved_compile_flags
 
     @property
     def link_flags(self):
-        return self._cfg["linkFlag"]
+        """Returns resolved link flags."""
+        return self._resolved_link_flags
+
+    def _resolve_compile_flags(self):
+        """Resolve compileFlag based on compiler dimension."""
+        if 'compileFlag' not in self._cfg:
+            return {}
+
+        compile_cfg = self._cfg['compileFlag']
+        common_flags = compile_cfg.get('common', {})
+
+        # Extract all compiler-specific configs (exclude metadata and common)
+        compiler_configs = {
+            k: v for k, v in compile_cfg.items()
+            if not k.startswith('_') and k != 'common'
+        }
+
+        resolved = ConfigResolver.resolve_flags(
+            common_flags, compiler_configs, self._compiler
+        )
+
+        # Merge with system defines if present
+        if 'systemDefines' in self._cfg:
+            system_defines = self._resolve_system_defines()
+            for key, value in system_defines.items():
+                if key in resolved:
+                    if isinstance(resolved[key], list) and isinstance(value, list):
+                        resolved[key].extend(value)
+                    else:
+                        resolved[key] = value
+                else:
+                    resolved[key] = value
+
+        return resolved
+
+    def _resolve_link_flags(self):
+        """Resolve linkFlag based on linker dimension."""
+        if 'linkFlag' not in self._cfg:
+            return {}
+
+        link_cfg = self._cfg['linkFlag']
+        common_flags = link_cfg.get('common', {})
+
+        # Extract all linker-specific configs
+        linker_configs = {
+            k: v for k, v in link_cfg.items()
+            if not k.startswith('_') and k != 'common'
+        }
+
+        return ConfigResolver.resolve_flags(
+            common_flags, linker_configs, self._linker
+        )
+
+    def _resolve_system_defines(self):
+        """Resolve systemDefines based on OS dimension."""
+        if 'systemDefines' not in self._cfg:
+            return {}
+
+        system_cfg = self._cfg['systemDefines']
+        common_defines = system_cfg.get('common', {})
+
+        # Extract all OS-specific configs
+        os_configs = {
+            k: v for k, v in system_cfg.items()
+            if not k.startswith('_') and k != 'common'
+        }
+
+        return ConfigResolver.resolve_flags(
+            common_defines, os_configs, self._platform
+        )
 
     def _file_check(self):
-        if 'compileFlag' not in self._cfg or 'linkFlag' not in self._cfg:
-            raise FileNotFoundError("Error compile file: missing 'compileFlag' or 'linkFlag'")
-        for option_type in self.options:
-            if option_type == 'CC_USER_DEFINE_FLAGS':
-                continue
-            if option_type not in self._all_options.type_options_map:
-                raise ValueError("no '{}' option type in complete_options.json".format(option_type))
+        """Validate configuration file format."""
+        if 'compileFlag' not in self._cfg:
+            raise FileNotFoundError("Error compile file: missing 'compileFlag'")
+        if 'linkFlag' not in self._cfg:
+            raise FileNotFoundError("Error compile file: missing 'linkFlag'")
 
-            for option in self.options[option_type]:
-                if option not in self._all_options.type_options_map[option_type]:
-                    raise ValueError("unrecognized option '{}' in type {}.".format(option, option_type))
-        for option_type in self._cfg['linkFlag']:
-            if option_type not in ['PUBLIC', 'SHARED', 'EXE']:
-                raise FileNotFoundError('Incorrect file format: %s' % self._fp)
 
     def union_options(self, custom_cfg: CompileConfigParser):
         options = []
@@ -876,19 +1337,18 @@ class CompileParser:
                     options.remove(option)
 
         flags = self.link_flags
-        for flag in custom_cfg.link_flags.get('LINK_FLAG_ADD', []):
-            if flag not in flags['PUBLIC']:
-                flags['PUBLIC'].append(flag)
-            if flag not in flags['EXE']:
-                flags['EXE'].append(flag)
-            if flag not in flags['SHARED']:
-                flags['SHARED'].append(flag)
-        for flag in custom_cfg.link_flags.get('LINK_FLAG_DEL', []):
-            if flag in flags['PUBLIC']:
-                flags['PUBLIC'].remove(flag)
-            if flag in flags['EXE']:
-                flags['EXE'].remove(flag)
-            if flag in flags['SHARED']:
-                flags['SHARED'].remove(flag)
+        # Merge custom link flags with all three categories
+        for category in ['PUBLIC', 'SHARED', 'EXE']:
+            # Add flags from custom config (if category exists)
+            custom_flags = custom_cfg.link_flags.get(category, [])
+            for flag in custom_flags:
+                if flag not in flags[category]:
+                    flags[category].append(flag)
+
+        # Deduplicate all flag lists to handle duplicates from any source
+        # Preserve order (keep first occurrence)
+        flags['PUBLIC'] = list(dict.fromkeys(flags['PUBLIC']))
+        flags['EXE'] = list(dict.fromkeys(flags['EXE']))
+        flags['SHARED'] = list(dict.fromkeys(flags['SHARED']))
 
         return options, flags

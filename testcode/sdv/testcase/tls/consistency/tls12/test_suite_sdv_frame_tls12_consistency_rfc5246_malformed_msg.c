@@ -63,6 +63,9 @@ void UT_TLS_TLS12_RFC5246_CONSISTENCY_RECV_ZEROLENGTH_MSG_TC009(int messageLen)
     ASSERT_TRUE(clientTlsCtx->state == CM_STATE_TRANSPORTING);
     uint8_t data[REC_MAX_CIPHER_TEXT_LEN];
     ASSERT_EQ(REC_Write(clientTlsCtx, REC_TYPE_APP, data, messageLen), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     TlsCtxFree();
     HITLS_CFG_FreeConfig(config);
@@ -110,6 +113,9 @@ void UT_TLS_TLS12_RFC5246_CONSISTENCY_RECV_ZEROLENGTH_MSG_TC010(int messageLen)
 
     uint8_t data[REC_MAX_CIPHER_TEXT_LEN];
     ASSERT_EQ(REC_Write(serverTlsCtx, REC_TYPE_APP, data, messageLen), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
     TlsCtxFree();
     HITLS_CFG_FreeConfig(config);
@@ -137,7 +143,7 @@ void UT_TLS_TLS12_RFC5246_CONSISTENCY_MISS_CLIENT_KEYEXCHANGE_TC001(void)
     /* 1. Configure the single-end authentication. After the server sends the serverhellodone message, the client
      *     stops in the try send client key exchange state. */
     testInfo.state = TRY_SEND_CLIENT_KEY_EXCHANGE;
-    testInfo.isSupportExtendedMasterSecret = true;
+    testInfo.emsMode = HITLS_EMS_MODE_FORCE;
     testInfo.isClient = true;
 
     testInfo.isSupportClientVerify = false;
@@ -235,65 +241,15 @@ void UT_TLS_TLS12_RFC5246_CONSISTENCY_FRAGMENTED_MSG_TC001(void)
     ret = HITLS_Connect(client->ssl);
     ASSERT_TRUE(FRAME_TrasferMsgBetweenLink(client, server) == HITLS_SUCCESS);
     ret = HITLS_Accept(server->ssl);
-    ASSERT_EQ(ret, HITLS_REC_NORMAL_RECV_BUF_EMPTY);
+    ASSERT_EQ(ret, HITLS_REC_NORMAL_IO_BUSY);
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
     ASSERT_TRUE(client->ssl->state == CM_STATE_TRANSPORTING);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);
-}
-/* END_CASE */
-
-/* @
-* @test UT_TLS_TLS12_CONSISTENCY_WRONG_CLIENT_HELLO_MSG_TC001
-* @title During the handshake, the client receives the CCS when the client is in the TRY_RECV_FINISH state.
-* @precon nan
-* @brief    1. Configure the single-end authentication. After the server sends the serverhellodone message, the client
-            stops in the try send client key exchange state. Expected result 1
-            2. Construct an unexpected CCS message and send it to the server. Expected result 2 is obtained.
-* @expect   1. The initialization is successful.
-            2. The connection fails to be established and the server returns an unexpected message.
-@ */
-/* BEGIN_CASE */
-void UT_TLS_TLS12_CONSISTENCY_WRONG_CLIENT_HELLO_MSG_TC001()
-{
-    FRAME_Init();
-
-    HITLS_Config *tlsConfig = HITLS_CFG_NewTLS12Config();
-    tlsConfig->isSupportClientVerify = false;
-    ASSERT_TRUE(tlsConfig != NULL);
-    FRAME_LinkObj *client = FRAME_CreateLink(tlsConfig, BSL_UIO_TCP);
-    FRAME_LinkObj *server = FRAME_CreateLink(tlsConfig, BSL_UIO_TCP);
-    ASSERT_TRUE(client != NULL);
-    ASSERT_TRUE(server != NULL);
-    HITLS_Ctx *clientTlsCtx = FRAME_GetTlsCtx(client);
-    ASSERT_TRUE(FRAME_CreateConnection(client, server, true, TRY_SEND_CLIENT_HELLO) == HITLS_SUCCESS);
-
-    FRAME_Msg frameMsg = {0};
-    FRAME_Type frameType = {0};
-    frameType.versionType = HITLS_VERSION_TLS12;
-    frameType.recordType = REC_TYPE_HANDSHAKE;
-    frameType.handshakeType = CLIENT_HELLO;
-    frameType.keyExType = HITLS_KEY_EXCH_ECDHE;
-    ASSERT_TRUE(FRAME_GetDefaultMsg(&frameType, &frameMsg) == HITLS_SUCCESS);
-
-    FRAME_ClientHelloMsg *clientHello = &frameMsg.body.hsMsg.body.clientHello;
-    int32_t sum = sizeof(uint16_t) + HS_RANDOM_SIZE + sizeof(uint8_t) + clientHello->sessionIdSize.data + sizeof(uint16_t) + clientHello->cipherSuitesSize.data;
-
-    HS_Ctx *hsCtx = (HS_Ctx *)clientTlsCtx->hsCtx;
-    BSL_SAL_FREE(hsCtx->msgBuf);
-    hsCtx->msgBuf = BSL_SAL_Malloc(sum - sizeof(uint16_t));
-    ASSERT_TRUE(hsCtx->msgBuf != NULL);
-    int32_t ret = PackClientHello(clientTlsCtx, hsCtx->msgBuf, sum - sizeof(uint16_t), &hsCtx->msgLen);
-    ASSERT_EQ(ret, HITLS_PACK_CLIENT_CIPHER_SUITE_ERR);
-
-EXIT:
-    FRAME_CleanMsg(&frameType, &frameMsg);
-    HITLS_CFG_FreeConfig(tlsConfig);
-    FRAME_FreeLink(client);
-    FRAME_FreeLink(server);
-    return;
 }
 /* END_CASE */

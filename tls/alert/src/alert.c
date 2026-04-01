@@ -53,7 +53,6 @@ void ALERT_GetInfo(const TLS_Ctx *ctx, ALERT_Info *info)
     info->flag = alertCtx->flag;
     info->level = alertCtx->level;
     info->description = alertCtx->description;
-    return;
 }
 
 void ALERT_CleanInfo(const TLS_Ctx *ctx)
@@ -61,7 +60,6 @@ void ALERT_CleanInfo(const TLS_Ctx *ctx)
     uint8_t alertCount = ctx->alertCtx->warnCount;
     (void)memset_s(ctx->alertCtx, sizeof(struct AlertCtx), 0, sizeof(struct AlertCtx));
     ctx->alertCtx->warnCount = alertCount;
-    return;
 }
 
 /* check whether the operation is abnormal */
@@ -96,7 +94,6 @@ void ALERT_Send(const TLS_Ctx *ctx, ALERT_Level level, ALERT_Description descrip
     alertCtx->description = (uint8_t)description;
     alertCtx->flag = ALERT_FLAG_SEND;
     alertCtx->isFlush = false;
-    return;
 }
 
 int32_t ALERT_Flush(TLS_Ctx *ctx)
@@ -107,6 +104,14 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
         BSL_ERR_PUSH_ERROR(HITLS_ALERT_NO_WANT_SEND);
         return HITLS_ALERT_NO_WANT_SEND;
     }
+#ifdef HITLS_TLS_PROTO_TLS
+    if (REC_GetOutBufPendingSize(ctx) != 0) {
+        ret = REC_OutBufFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+    }
+#endif
     if (alertCtx->isFlush == false) {
         if (ctx->recCtx != NULL && ctx->recCtx->pendingData != NULL && alertCtx->description == ALERT_CLOSE_NOTIFY) {
             return HITLS_REC_NORMAL_IO_BUSY;
@@ -120,6 +125,9 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
         }
         /** write the record */
         ret = REC_Write(ctx, REC_TYPE_ALERT, data, ALERT_DATA_LEN);
+        if (!IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
+            alertCtx->isFlush = true;
+        }
         if (ret != HITLS_SUCCESS) {
             return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID16267, "Write fail");
         }
@@ -132,16 +140,9 @@ int32_t ALERT_Flush(TLS_Ctx *ctx)
     bool isFlightTransmitEnable = false;
     (void)HITLS_GetFlightTransmitSwitch(ctx, &isFlightTransmitEnable);
     if (isFlightTransmitEnable) {
-        ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
-        if (ret == BSL_UIO_IO_BUSY) {
-            BSL_ERR_PUSH_ERROR(HITLS_REC_NORMAL_IO_BUSY);
-            return HITLS_REC_NORMAL_IO_BUSY;
-        }
-        if (ret != BSL_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16111, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "fail to send alert message in bUio.", 0, 0, 0, 0);
-            BSL_ERR_PUSH_ERROR(HITLS_REC_ERR_IO_EXCEPTION);
-            return HITLS_REC_ERR_IO_EXCEPTION;
+        ret = REC_FlightTransmit(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
         }
     }
 #endif /* HITLS_TLS_FEATURE_FLIGHT */
@@ -189,7 +190,6 @@ void ALERT_Deinit(TLS_Ctx *ctx)
         return;
     }
     BSL_SAL_FREE(ctx->alertCtx);
-    return;
 }
 
 int32_t ProcessDecryptedAlert(TLS_Ctx *ctx, const uint8_t *data, uint32_t dataLen)
@@ -250,10 +250,13 @@ int32_t ProcessPlainAlert(TLS_Ctx *ctx, const uint8_t *data, uint32_t dataLen)
     return ProcessDecryptedAlert(ctx, data, dataLen);
 }
 #endif /* HITLS_TLS_PROTO_TLS13 */
-void ALERT_ClearWarnCount(TLS_Ctx *ctx)
+
+#ifdef HITLS_TLS_PROTO_DFX_ALERT_NUMBER
+void ALERT_ClearWarnCount(TLS_Ctx *ctx, uint32_t recordType)
 {
-    ctx->alertCtx->warnCount = 0;
-    return;
+    if (recordType != REC_TYPE_ALERT) {
+        ctx->alertCtx->warnCount = 0;
+    }
 }
 
 bool ALERT_HaveExceeded(TLS_Ctx *ctx, uint8_t threshold)
@@ -261,6 +264,7 @@ bool ALERT_HaveExceeded(TLS_Ctx *ctx, uint8_t threshold)
     ctx->alertCtx->warnCount += 1;
     return ctx->alertCtx->warnCount >= threshold;
 }
+#endif
 
 #ifdef HITLS_BSL_LOG
 int32_t ReturnAlertProcess(TLS_Ctx *ctx, int32_t err, uint32_t logId, const void *logStr,

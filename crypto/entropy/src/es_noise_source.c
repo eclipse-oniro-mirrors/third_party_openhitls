@@ -87,15 +87,24 @@ BslList *ES_NsListCreat(void)
         BSL_ERR_PUSH_ERROR(BSL_LIST_MALLOC_FAIL);
         return NULL;
     }
+    int32_t ret;
+
+#ifndef HITLS_BSL_SAL_DARWIN
+    /* TODO: Enable CPU Jitter on Darwin after Currently not supported
+     * 1. Disabled on macOS because health test thresholds (RCT/APT) need adjustment
+     * 2. Jitter is platform-independent in theory but requires per-platform validation
+     */
     ES_NoiseSource *jitterCtx = ES_CpuJitterGetCtx();
     if (jitterCtx == NULL) {
         goto ERR;
     }
-    int32_t ret = BSL_LIST_AddElement(ns, jitterCtx, BSL_LIST_POS_AFTER);
+    ret = BSL_LIST_AddElement(ns, jitterCtx, BSL_LIST_POS_AFTER);
     if (ret != CRYPT_SUCCESS) {
         ES_NsFree(jitterCtx);
         goto ERR;
     }
+#endif
+
     ES_NoiseSource *stampCtx = ES_TimeStampGetCtx();
     if (stampCtx == NULL) {
         goto ERR;
@@ -119,6 +128,7 @@ int32_t ES_NsListInit(BslList *nsList, bool enableTest)
     }
     bool nsUsed = false;
     ES_NoiseSource *ns = NULL;
+    BSL_ERR_SET_MARK();
     for (ns = BSL_LIST_GET_FIRST(nsList); ns != NULL; ns = BSL_LIST_GET_NEXT(nsList)) {
         /*
          * If the health check is automatically performed when the noise source is generated, no additional health
@@ -148,6 +158,7 @@ int32_t ES_NsListInit(BslList *nsList, bool enableTest)
         ES_NsListDeinit(nsList);
         return CRYPT_ENTROPY_ES_NO_NS;
     }
+    BSL_ERR_POP_TO_MARK();
     return CRYPT_SUCCESS;
 }
 
@@ -255,7 +266,6 @@ static int32_t NsRead(ES_NoiseSource *ns, uint8_t *buf, uint32_t bufLen)
 int32_t ES_NsRead(ES_NoiseSource *ns, uint8_t *buf, uint32_t bufLen)
 {
     if (ns->isInit != true || ns->isEnable != true) {
-        BSL_ERR_PUSH_ERROR(CRYPT_ENTROPY_ES_NS_NOT_AVA);
         return CRYPT_ENTROPY_ES_NS_NOT_AVA;
     }
 

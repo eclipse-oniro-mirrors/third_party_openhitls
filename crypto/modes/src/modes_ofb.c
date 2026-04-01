@@ -66,11 +66,6 @@ int32_t MODES_OFB_Crypt(MODES_CipherCommonCtx *ctx, const uint8_t *in, uint8_t *
     return CRYPT_SUCCESS;
 }
 
-MODES_CipherCtx *MODES_OFB_NewCtx(int32_t algId)
-{
-    return MODES_CipherNewCtx(algId);
-}
-
 int32_t MODES_OFB_InitCtx(MODES_CipherCtx *modeCtx, const uint8_t *key, uint32_t keyLen, const uint8_t *iv,
     uint32_t ivLen, bool enc)
 {
@@ -86,6 +81,10 @@ int32_t MODES_OFB_Update(MODES_CipherCtx *modeCtx, const uint8_t *in, uint32_t i
 
 int32_t MODES_OFB_Final(MODES_CipherCtx *modeCtx, uint8_t *out, uint32_t *outLen)
 {
+    if (outLen == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
     (void) modeCtx;
     (void) out;
     *outLen = 0;

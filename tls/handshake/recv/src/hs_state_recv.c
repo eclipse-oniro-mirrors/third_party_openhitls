@@ -28,17 +28,38 @@
 #include "hs_ctx.h"
 #include "hs_common.h"
 #include "hs_verify.h"
+#include "hs_dtls_timer.h"
 #include "transcript_hash.h"
 #include "hs_reass.h"
 #include "parse.h"
 #include "recv_process.h"
 #include "bsl_uio.h"
 #include "hs_kx.h"
-#include "hs_dtls_timer.h"
 #ifdef HITLS_TLS_FEATURE_INDICATOR
 #include "indicator.h"
 #endif /* HITLS_TLS_FEATURE_INDICATOR */
 
+static int32_t CheckHsMsg(TLS_Ctx *ctx, HS_Msg *hsMsg, int32_t ret)
+{
+    if (ret == HITLS_SUCCESS) {
+        HS_CleanMsg(ctx->hsCtx->hsMsg);
+        if (ctx->hsCtx->hsMsg != hsMsg) {
+            BSL_SAL_FREE(ctx->hsCtx->hsMsg);
+        }
+        ctx->hsCtx->hsMsg = NULL;
+    }
+    if (ctx->hsCtx->hsMsg == hsMsg) {
+        ctx->hsCtx->hsMsg = BSL_SAL_Dump(hsMsg, sizeof(HS_Msg));
+        if (ctx->hsCtx->hsMsg == NULL) {
+            HS_CleanMsg(hsMsg);
+            BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17357, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "hsMsg dump fail.", 0, 0,
+                                  0, 0);
+            return HITLS_MEMALLOC_FAIL;
+        }
+    }
+    return ret;
+}
 
 #ifdef HITLS_TLS_FEATURE_KEY_UPDATE
 static int32_t Tls13RecvKeyUpdateProcess(TLS_Ctx *ctx, const HS_Msg *hsMsg)
@@ -78,10 +99,9 @@ static bool IsUnexpectedHandshaking(const TLS_Ctx *ctx)
 {
     return (ctx->state == CM_STATE_HANDSHAKING && ctx->preState == CM_STATE_TRANSPORTING);
 }
+
 static int32_t ProcessHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
 {
-    uint32_t version = HS_GetVersion(ctx);
-    (void)version;
     switch (ctx->hsCtx->state) {
 #ifdef HITLS_TLS_HOST_SERVER
         case TRY_RECV_CLIENT_HELLO:
@@ -91,22 +111,24 @@ static int32_t ProcessHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
             }
 #endif /* HITLS_TLS_PROTO_DTLS12 */
 #ifdef HITLS_TLS_PROTO_TLS_BASIC
-            return Tls12ServerRecvClientHelloProcess(ctx, hsMsg);
+            return Tls12ServerRecvClientHelloProcess(ctx, hsMsg, true);
 #else
             break;
 #endif /* HITLS_TLS_PROTO_TLS_BASIC only for tls13 */
-        case TRY_RECV_CERTIFICATE_REQUEST:
-            return ClientRecvCertRequestProcess(ctx, hsMsg);
         case TRY_RECV_CLIENT_KEY_EXCHANGE:
             return ServerRecvClientKxProcess(ctx, hsMsg);
+#ifdef HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY
         case TRY_RECV_CERTIFICATE_VERIFY:
             return ServerRecvClientCertVerifyProcess(ctx);
+#endif
 #endif /* HITLS_TLS_HOST_SERVER */
 #ifdef HITLS_TLS_HOST_CLIENT
+        case TRY_RECV_CERTIFICATE_REQUEST:
+            return ClientRecvCertRequestProcess(ctx);
 #ifdef HITLS_TLS_PROTO_DTLS12
         case TRY_RECV_HELLO_VERIFY_REQUEST:
             return DtlsClientRecvHelloVerifyRequestProcess(ctx, hsMsg);
-#endif
+#endif /* HITLS_TLS_PROTO_DTLS12 */
         case TRY_RECV_SERVER_HELLO:
             return ClientRecvServerHelloProcess(ctx, hsMsg);
         case TRY_RECV_SERVER_KEY_EXCHANGE:
@@ -154,14 +176,17 @@ static int32_t ProcessHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
     ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
     return HITLS_MSG_HANDLE_STATE_ILLEGAL;
 }
+
 static int32_t ProcessReceivedHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
 {
     if (hsMsg->type == HELLO_REQUEST) {
+#ifdef HITLS_TLS_FEATURE_RENEGOTIATION
         if (ctx->hsCtx->state == TRY_RECV_HELLO_REQUEST) {
             ctx->negotiatedInfo.isRenegotiation = true; /* Start renegotiation */
             ctx->negotiatedInfo.renegotiationNum++;
             return HS_ChangeState(ctx, TRY_SEND_CLIENT_HELLO);
         }
+#endif
         /* The HelloRequest message should be ignored during the handshake. */
         return HITLS_SUCCESS;
     }
@@ -241,8 +266,14 @@ int32_t ReadHsMessage(TLS_Ctx *ctx, uint32_t length)
         return ret;
     }
     uint32_t readLen = 0;
-    ret = REC_Read(ctx, REC_TYPE_HANDSHAKE, &hsCtx->msgBuf[hsCtx->msgLen], &readLen, length - hsCtx->msgLen);
-    hsCtx->msgLen += readLen;
+    do {
+        readLen = 0;
+        ret = REC_Read(ctx, REC_TYPE_HANDSHAKE, &hsCtx->msgBuf[hsCtx->msgLen], &readLen, length - hsCtx->msgLen);
+        hsCtx->msgLen += readLen;
+        if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
+            break;
+        }
+    } while (ret == HITLS_SUCCESS && hsCtx->msgLen < length && readLen != 0);
     if (ret == HITLS_SUCCESS && hsCtx->msgLen < length) {
         return HITLS_REC_NORMAL_RECV_BUF_EMPTY;
     }
@@ -274,19 +305,19 @@ static int32_t ReadThenParseTlsHsMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
 
     /* The HelloRequest message is not included. */
     if (hsMsgInfo.type != HELLO_REQUEST && hsMsgInfo.type != KEY_UPDATE &&
-        !(HS_GetVersion(ctx) == HITLS_VERSION_TLS13 && hsMsgInfo.type == NEW_SESSION_TICKET)) {
+        !(GET_VERSION_FROM_CTX(ctx) == HITLS_VERSION_TLS13 && hsMsgInfo.type == NEW_SESSION_TICKET)) {
         /* Session hash is needed to compute ems, the VERIFY_Append must be dealt with beforehand */
         ret = VERIFY_Append(hsCtx->verifyCtx, hsCtx->msgBuf, hsMsgInfo.headerAndBodyLen);
         if (ret != HITLS_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17031, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "VERIFY_Append fail", 0, 0, 0, 0);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17031, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "VERIFY_Append fail", 0,
+                                  0, 0, 0);
             HS_CleanMsg(hsMsg);
             return ret;
         }
     }
 #ifdef HITLS_TLS_FEATURE_INDICATOR
-    INDICATOR_MessageIndicate(0, HS_GetVersion(ctx), REC_TYPE_HANDSHAKE, hsMsgInfo.rawMsg, hsMsgInfo.headerAndBodyLen,
-        ctx, ctx->config.tlsConfig.msgArg);
+    INDICATOR_MessageIndicate(0, GET_VERSION_FROM_CTX(ctx), REC_TYPE_HANDSHAKE, hsMsgInfo.rawMsg,
+        hsMsgInfo.headerAndBodyLen, ctx, ctx->config.tlsConfig.msgArg);
     INDICATOR_StatusIndicate(ctx, ctx->isClient ? INDICATE_EVENT_STATE_CONNECT_LOOP : INDICATE_EVENT_STATE_ACCEPT_LOOP,
         INDICATE_VALUE_SUCCESS);
 #endif /* HITLS_TLS_FEATURE_INDICATOR */
@@ -296,37 +327,39 @@ static int32_t ReadThenParseTlsHsMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
 #ifdef HITLS_TLS_PROTO_TLS_BASIC
 static int32_t Tls12TryRecvHandShakeMsg(TLS_Ctx *ctx)
 {
+    int32_t ret = HITLS_SUCCESS;
     HS_Msg hsMsg = {0};
     (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
-
-    int32_t ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
-    if (ret != HITLS_SUCCESS) {
-        HS_CleanMsg(&hsMsg);
-        return ret;
+    if (ctx->hsCtx->hsMsg == NULL) {
+        ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
+        if (ret != HITLS_SUCCESS) {
+            HS_CleanMsg(&hsMsg);
+            return ret;
+        }
+        ctx->hsCtx->hsMsg = &hsMsg;
+        ctx->hsCtx->readSubState = TLS_PROCESS_STATE_A;
     }
-
-    ret = ProcessReceivedHandshakeMsg(ctx, &hsMsg);
-    HS_CleanMsg(&hsMsg);
-
-    return ret;
+    ret = ProcessReceivedHandshakeMsg(ctx, ctx->hsCtx->hsMsg);
+    return CheckHsMsg(ctx, &hsMsg, ret);
 }
 #endif /* HITLS_TLS_PROTO_TLS_BASIC */
 #ifdef HITLS_TLS_PROTO_TLS13
 static int32_t Tls13TryRecvHandShakeMsg(TLS_Ctx *ctx)
 {
+    int32_t ret = HITLS_SUCCESS;
     HS_Msg hsMsg = {0};
     (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
-
-    int32_t ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
-    if (ret != HITLS_SUCCESS) {
-        HS_CleanMsg(&hsMsg);
-        return ret;
+    if (ctx->hsCtx->hsMsg == NULL) {
+        ret = ReadThenParseTlsHsMsg(ctx, &hsMsg);
+        if (ret != HITLS_SUCCESS) {
+            HS_CleanMsg(&hsMsg);
+            return ret;
+        }
+        ctx->hsCtx->hsMsg = &hsMsg;
+        ctx->hsCtx->readSubState = TLS_PROCESS_STATE_A;
     }
-
-    ret = Tls13ProcessReceivedHandshakeMsg(ctx, &hsMsg);
-    HS_CleanMsg(&hsMsg);
-
-    return ret;
+    ret = Tls13ProcessReceivedHandshakeMsg(ctx, ctx->hsCtx->hsMsg);
+    return CheckHsMsg(ctx, &hsMsg, ret);
 }
 #endif /* HITLS_TLS_PROTO_TLS13 */
 #endif /* HITLS_TLS_PROTO_TLS */
@@ -335,24 +368,11 @@ static int32_t DtlsCheckTimeoutAndProcess(TLS_Ctx *ctx, int32_t retValue)
 {
     (void)ctx;
 #ifdef HITLS_BSL_UIO_UDP
-    bool isTimeout = false;
-    int32_t ret = HS_IsTimeout(ctx, &isTimeout);
-    if (ret != HITLS_SUCCESS) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17032, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "HS_IsTimeout fail", 0, 0, 0, 0);
+    int32_t ret = HITLS_DtlsProcessTimeout(ctx);
+    if (ret != HITLS_SUCCESS && ret != HITLS_MSG_HANDLE_DTLS_RETRANSMIT_NOT_TIMEOUT) {
         return ret;
     }
-
-    if (isTimeout) {
-        /* Receive the message of the last flight when the receiving times out */
-        REC_RetransmitListFlush(ctx);
-
-        ret = HS_TimeoutProcess(ctx);
-        if (ret != HITLS_SUCCESS) {
-            return ret;
-        }
-    }
-#endif /* HITLS_BSL_UIO_UDP */
+#endif
     /* HITLS_REC_NORMAL_RECV_BUF_EMPTY is returned here, and the choice is given to the user instead of the next read,
      * Prevents users from waiting for a long time due to long timeout. */
     return retValue;
@@ -360,24 +380,25 @@ static int32_t DtlsCheckTimeoutAndProcess(TLS_Ctx *ctx, int32_t retValue)
 
 int32_t DtlsDisorderMsgProcess(TLS_Ctx *ctx, HS_MsgInfo *hsMsgInfo)
 {
-    HS_Ctx *hsCtx = ctx->hsCtx;
-
+#ifdef HITLS_BSL_UIO_SCTP
     /* The SCTP scenario must be sequenced. */
     if (BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_SCTP)) {
         BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNMATCHED_SEQUENCE);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15351, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "msg with unmatched sequence, recv %u, expect %u.", hsMsgInfo->sequence, hsCtx->expectRecvSeq, 0, 0);
+            "msg with unmatched sequence, recv %u, expect %u.", hsMsgInfo->sequence, ctx->hsCtx->expectRecvSeq, 0, 0);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
         return HITLS_MSG_HANDLE_UNMATCHED_SEQUENCE;
     }
+#endif /* HITLS_BSL_UIO_SCTP */
 #ifdef HITLS_BSL_UIO_UDP
+    HS_Ctx *hsCtx = ctx->hsCtx;
     /* In the renegotiation state, the FINISHED message of the previous handshake should be discarded. */
-    if (ctx->hsCtx->expectRecvSeq == 0 && hsMsgInfo->type == FINISHED) {
+    if (hsCtx->expectRecvSeq == 0 && hsMsgInfo->type == FINISHED) {
         return HITLS_SUCCESS;
     }
     /* If the sequence number of the received message is greater than expected, the message is cached in the reassembly
      * queue. */
-    if (hsMsgInfo->sequence > ctx->hsCtx->expectRecvSeq) {
+    if (hsMsgInfo->sequence > hsCtx->expectRecvSeq) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17033, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "the message is need to cache in the reassembly queue", 0, 0, 0, 0);
         return HS_ReassAppend(ctx, hsMsgInfo);
@@ -445,15 +466,12 @@ static int32_t ReadDtlsHsMessage(TLS_Ctx *ctx, HS_MsgInfo *hsMsgInfo)
     return ret;
 }
 
-static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
+static int32_t DtlsReadAndParseHandshakeMsg(TLS_Ctx *ctx, HS_Msg *hsMsg)
 {
-    uint32_t dataLen = 0;
-    HS_Msg hsMsg = {0};
-    (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
-    HS_MsgInfo hsMsgInfo = {0};
-
     /* Read the message with the expected sequence number from the reassembly queue. If no message exists, read the
      * message from the record layer */
+    uint32_t dataLen = 0;
+    HS_MsgInfo hsMsgInfo = {0};
     int32_t ret = HS_GetReassMsg(ctx, &hsMsgInfo, &dataLen);
     if (ret != HITLS_SUCCESS) {
         return ret;
@@ -488,7 +506,7 @@ static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
         }
     }
 
-    ret = DtlsCheckAndParseMsg(ctx, &hsMsgInfo, &hsMsg);
+    ret = DtlsCheckAndParseMsg(ctx, &hsMsgInfo, hsMsg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -498,38 +516,38 @@ static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
         /* Session hash is needed to compute ems, the VERIFY_Append must be dealt with beforehand */
         ret = VERIFY_Append(ctx->hsCtx->verifyCtx, buf, dataLen);
         if (ret != HITLS_SUCCESS) {
-            HS_CleanMsg(&hsMsg);
+            HS_CleanMsg(hsMsg);
             return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17036, "VERIFY_Append fail");
         }
     }
+    ctx->hsCtx->hsMsg = hsMsg;
 #ifdef HITLS_TLS_FEATURE_INDICATOR
-    INDICATOR_MessageIndicate(0, HS_GetVersion(ctx), REC_TYPE_HANDSHAKE, hsMsgInfo.rawMsg, hsMsgInfo.headerAndBodyLen,
-        ctx, ctx->config.tlsConfig.msgArg);
+    INDICATOR_MessageIndicate(0, GET_VERSION_FROM_CTX(ctx), REC_TYPE_HANDSHAKE, hsMsgInfo.rawMsg,
+        hsMsgInfo.headerAndBodyLen, ctx, ctx->config.tlsConfig.msgArg);
     INDICATOR_StatusIndicate(ctx, ctx->isClient ? INDICATE_EVENT_STATE_CONNECT_LOOP : INDICATE_EVENT_STATE_ACCEPT_LOOP,
         INDICATE_VALUE_SUCCESS);
 #endif /* HITLS_TLS_FEATURE_INDICATOR */
-    ret = ProcessReceivedHandshakeMsg(ctx, &hsMsg);
-    HS_CleanMsg(&hsMsg);
-    return ret;
-}
-#endif
-#ifdef HITLS_TLS_FEATURE_FLIGHT
-static int32_t FlightTransmit(TLS_Ctx *ctx)
-{
-    int32_t ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
-    if (ret == BSL_UIO_IO_BUSY) {
-        return HITLS_REC_NORMAL_IO_BUSY;
-    }
-    if (ret != BSL_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(HITLS_REC_ERR_IO_EXCEPTION);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16110, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "fail to send handshake message in bUio.", 0, 0, 0, 0);
-        return HITLS_REC_ERR_IO_EXCEPTION;
-    }
-
     return HITLS_SUCCESS;
 }
-#endif /* HITLS_TLS_FEATURE_FLIGHT */
+
+static int32_t DtlsTryRecvHandShakeMsg(TLS_Ctx *ctx)
+{
+    int32_t ret = HITLS_SUCCESS;
+    HS_Msg hsMsg = {0};
+    (void)memset_s(&hsMsg, sizeof(HS_Msg), 0, sizeof(HS_Msg));
+    if (ctx->hsCtx->hsMsg == NULL) {
+        ret = DtlsReadAndParseHandshakeMsg(ctx, &hsMsg);
+        if (ret != HITLS_SUCCESS || ctx->hsCtx->hsMsg == NULL) {
+            return ret;
+        }
+        ctx->hsCtx->readSubState = TLS_PROCESS_STATE_A;
+    }
+
+    ret = ProcessReceivedHandshakeMsg(ctx, ctx->hsCtx->hsMsg);
+    return CheckHsMsg(ctx, &hsMsg, ret);
+}
+#endif
+
 int32_t HandleResult(TLS_Ctx *ctx, int32_t ret)
 {
     if (ret != HITLS_SUCCESS) {
@@ -558,13 +576,13 @@ int32_t HS_RecvMsgProcess(TLS_Ctx *ctx)
     /* If isFlightTransmitEnable is enabled, the handshake information stored in the bUio needs to be sent when the
      * receiving status is changed. */
     if (ctx->config.tlsConfig.isFlightTransmitEnable) {
-        ret = FlightTransmit(ctx);
+        ret = REC_FlightTransmit(ctx);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
     }
 #endif /* HITLS_TLS_FEATURE_FLIGHT */
-    uint32_t version = HS_GetVersion(ctx);
+    uint32_t version = GET_VERSION_FROM_CTX(ctx);
 
     switch (version) {
 #ifdef HITLS_TLS_PROTO_TLS
@@ -601,3 +619,10 @@ int32_t HS_RecvMsgProcess(TLS_Ctx *ctx)
     }
     return HandleResult(ctx, ret);
 }
+
+#ifdef HITLS_TLS_PROTO_DTLS12
+int32_t HS_DtlsRecvClientHello(TLS_Ctx *ctx)
+{
+    return DtlsTryRecvHandShakeMsg(ctx);
+}
+#endif /* HITLS_TLS_PROTO_DTLS12 */

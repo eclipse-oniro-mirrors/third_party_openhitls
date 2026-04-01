@@ -28,6 +28,7 @@
 #include "crypt_eal_rand.h"
 #include "crypt_eal_mac.h"
 #include "crypt_eal_init.h"
+#include "crypt_params_key.h"
 
 #include "test.h"
 #include "helper.h"
@@ -35,6 +36,7 @@
 
 #include "securec.h"
 #include "crypt_util_rand.h"
+#include "bsl_err_internal.h"
 
 #ifndef HITLS_BSL_SAL_MEM
 void *TestMalloc(uint32_t len)
@@ -50,6 +52,47 @@ void TestMemInit(void)
 #else
     BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC, TestMalloc);
     BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE, free);
+#endif
+}
+
+void TestErrClear(void)
+{
+#ifdef HITLS_BSL_ERR
+    BSL_ERR_ClearError();
+#endif
+}
+
+bool TestIsErrStackEmpty(void)
+{
+#ifdef HITLS_BSL_ERR
+    if (BSL_ERR_Init() != BSL_SUCCESS) {
+        return false;
+    }
+    const char *file = NULL;
+    uint32_t line = 0;
+    int32_t err = BSL_ERR_GetErrorFileLine(&file, &line); /* get the earliest error and pop it */
+    if (err == BSL_SUCCESS) {
+        return true;
+    }
+    Print("[BSL_ERR] unexpected error in stack: file=%s, line=%u\n", (file == NULL ? "NA" : file), line);
+    return false;
+#else
+    return true;
+#endif
+}
+
+bool TestIsErrStackNotEmpty(void)
+{
+#ifdef HITLS_BSL_ERR
+    if (BSL_ERR_Init() != BSL_SUCCESS) {
+        return true;
+    }
+    const char *file = NULL;
+    uint32_t line = 0;
+    int32_t err = BSL_ERR_GetErrorFileLine(&file, &line); /* get the earliest error and pop it */
+    return err != BSL_SUCCESS;
+#else
+    return true;
 #endif
 }
 
@@ -120,8 +163,17 @@ int32_t TestSimpleRandEx(void *libCtx, uint8_t *buff, uint32_t len)
     return TestSimpleRand(buff, len);
 }
 
-int TestRandInit(void)
+int32_t TestSimpleRandExSelfCheck(void *libCtx, uint8_t *buff, uint32_t len)
 {
+    if (libCtx == NULL) {
+        return CRYPT_PROVIDER_INVALID_LIB_CTX;
+    }
+    return TestSimpleRand(buff, len);
+}
+
+int TestRandInitEx(void *libCtx)
+{
+    (void)libCtx;
     int drbgAlgId = GetAvailableRandAlgId();
     int32_t ret;
     if (drbgAlgId == -1) {
@@ -137,31 +189,71 @@ int TestRandInit(void)
     seedCtx.entropy = &tempEntropy;
 #endif
 
+    BSL_ERR_SET_MARK();
+
 #ifdef HITLS_CRYPTO_PROVIDER
- #ifndef HITLS_CRYPTO_ENTROPY
+#ifndef HITLS_CRYPTO_ENTROPY
     BSL_Param param[4] = {0};
     (void)BSL_PARAM_InitValue(&param[0], CRYPT_PARAM_RAND_SEEDCTX, BSL_PARAM_TYPE_CTX_PTR, &seedCtx, 0);
-    (void)BSL_PARAM_InitValue(&param[1], CRYPT_PARAM_RAND_SEED_GETENTROPY, BSL_PARAM_TYPE_FUNC_PTR, seedMeth.getEntropy, 0);
-    (void)BSL_PARAM_InitValue(&param[2], CRYPT_PARAM_RAND_SEED_CLEANENTROPY, BSL_PARAM_TYPE_FUNC_PTR, seedMeth.cleanEntropy, 0);
-    ret = CRYPT_EAL_ProviderRandInitCtx(NULL, (CRYPT_RAND_AlgId)drbgAlgId, "provider=default", NULL, 0, param);
- #else
-    ret = CRYPT_EAL_ProviderRandInitCtx(NULL, (CRYPT_RAND_AlgId)drbgAlgId, "provider=default", NULL, 0, NULL);
- #endif
+    (void)BSL_PARAM_InitValue(&param[1], CRYPT_PARAM_RAND_SEED_GETENTROPY, BSL_PARAM_TYPE_FUNC_PTR,
+        seedMeth.getEntropy, 0);
+    (void)BSL_PARAM_InitValue(&param[2], CRYPT_PARAM_RAND_SEED_CLEANENTROPY, BSL_PARAM_TYPE_FUNC_PTR,
+        seedMeth.cleanEntropy, 0);
+    ret = CRYPT_EAL_ProviderRandInitCtx(libCtx, (CRYPT_RAND_AlgId)drbgAlgId, "provider=default", NULL, 0, param);
 #else
- #ifndef HITLS_CRYPTO_ENTROPY
+    ret = CRYPT_EAL_ProviderRandInitCtx(libCtx, (CRYPT_RAND_AlgId)drbgAlgId, "provider=default", NULL, 0, NULL);
+#endif
+#else
+#ifndef HITLS_CRYPTO_ENTROPY
     ret = CRYPT_EAL_RandInit(drbgAlgId, &seedMeth, (void *)&seedCtx, NULL, 0);
- #else
+#else
     ret = CRYPT_EAL_RandInit(drbgAlgId, NULL, NULL, NULL, 0);
- #endif
+#endif
 #endif
     if (ret == CRYPT_EAL_ERR_DRBG_REPEAT_INIT) {
+        BSL_ERR_POP_TO_MARK();
         ret = CRYPT_SUCCESS;
     }
     return ret;
 }
 
+int TestRandInit(void)
+{
+    int32_t ret = TestRandInitEx(NULL);
+    if (ret != CRYPT_SUCCESS) {
+        return ret;
+    }
+#ifdef HITLS_CRYPTO_PROVIDER
+    CRYPT_RandRegistEx(TestSimpleRandEx);
+#else
+    CRYPT_RandRegist(TestSimpleRand);
+#endif
+
+    return CRYPT_SUCCESS;
+}
+
+int TestRandInitSelfCheck(void)
+{
+    int32_t ret = TestRandInitEx(NULL);
+    if (ret != CRYPT_SUCCESS) {
+        return ret;
+    }
+#ifdef HITLS_CRYPTO_PROVIDER
+    CRYPT_RandRegistEx(TestSimpleRandExSelfCheck);
+#else
+    CRYPT_RandRegist(TestSimpleRand);
+#endif
+
+    return CRYPT_SUCCESS;
+}
+
 void TestRandDeInit(void)
 {
+    CRYPT_RandRegist(NULL);
+#ifdef HITLS_CRYPTO_PROVIDER
+    CRYPT_RandRegistEx(NULL);
+#endif
+
 #ifdef HITLS_CRYPTO_PROVIDER
     CRYPT_EAL_RandDeinitEx(NULL);
 #else
@@ -215,7 +307,7 @@ void TestMacSameAddr(int algId, Hex *key, Hex *data, Hex *mac)
     uint32_t outLen = data->len > mac->len ? data->len : mac->len;
     uint8_t out[outLen];
     CRYPT_EAL_MacCtx *ctx = NULL;
-    int padType = CRYPT_PADDING_ZEROS;
+    int32_t padType = CRYPT_PADDING_ZEROS;
 
     ASSERT_EQ(memcpy_s(out, outLen, data->x, data->len), 0);
     TestMemInit();
@@ -223,7 +315,7 @@ void TestMacSameAddr(int algId, Hex *key, Hex *data, Hex *mac)
     ASSERT_TRUE((ctx = CRYPT_EAL_MacNewCtx(algId)) != NULL);
     ASSERT_EQ(CRYPT_EAL_MacInit(ctx, key->x, key->len), CRYPT_SUCCESS);
     if (algId == CRYPT_MAC_CBC_MAC_SM4) {
-        ASSERT_EQ(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_CBC_MAC_PADDING, &padType, sizeof(int)), CRYPT_SUCCESS);
+        ASSERT_EQ(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_CBC_MAC_PADDING, &padType, sizeof(padType)), CRYPT_SUCCESS);
     }
     ASSERT_EQ(CRYPT_EAL_MacUpdate(ctx, out, data->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_MacFinal(ctx, out, &outLen), CRYPT_SUCCESS);
@@ -238,7 +330,7 @@ void TestMacAddrNotAlign(int algId, Hex *key, Hex *data, Hex *mac)
     uint32_t outLen = data->len > mac->len ? data->len : mac->len;
     uint8_t out[outLen];
     CRYPT_EAL_MacCtx *ctx = NULL;
-    int padType = CRYPT_PADDING_ZEROS;
+    int32_t padType = CRYPT_PADDING_ZEROS;
     uint8_t keyTmp[key->len + 1] __attribute__((aligned(8)));
     uint8_t dataTmp[data->len + 1] __attribute__((aligned(8)));
     uint8_t *pKey = keyTmp + 1;
@@ -251,11 +343,12 @@ void TestMacAddrNotAlign(int algId, Hex *key, Hex *data, Hex *mac)
     ASSERT_TRUE((ctx = CRYPT_EAL_MacNewCtx(algId)) != NULL);
     ASSERT_EQ(CRYPT_EAL_MacInit(ctx, pKey, key->len), CRYPT_SUCCESS);
     if (algId == CRYPT_MAC_CBC_MAC_SM4) {
-        ASSERT_EQ(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_CBC_MAC_PADDING, &padType, sizeof(int)), CRYPT_SUCCESS);
+        ASSERT_EQ(CRYPT_EAL_MacCtrl(ctx, CRYPT_CTRL_SET_CBC_MAC_PADDING, &padType, sizeof(padType)), CRYPT_SUCCESS);
     }
     ASSERT_EQ(CRYPT_EAL_MacUpdate(ctx, pData, data->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_MacFinal(ctx, out, &outLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("mac result cmp", out, outLen, mac->x, mac->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_MacFreeCtx(ctx);
@@ -289,9 +382,11 @@ CRYPT_EAL_PkeyCtx *TestPkeyNewCtx(
 {
 #ifdef HITLS_CRYPTO_PROVIDER
     if (isProvider == 1) {
+#ifdef HITLS_CRYPTO_EALINIT
         if (CRYPT_EAL_Init(0) != CRYPT_SUCCESS) {
             return NULL;
         }
+#endif
         return CRYPT_EAL_ProviderPkeyNewCtx(libCtx, id, operType, attrName);
     } else {
         return CRYPT_EAL_PkeyNewCtx(id);
@@ -305,39 +400,3 @@ CRYPT_EAL_PkeyCtx *TestPkeyNewCtx(
 #endif
 }
 #endif
-
-static volatile uint32_t g_malloc_called_idx = 0;
-static volatile uint32_t g_malloc_failed_idx = 0;
-static volatile bool g_malloc_fail_enabled = true;
-
-void *STUB_BSL_SAL_Malloc(uint32_t size)
-{
-    uint32_t current_call_index = g_malloc_called_idx;
-    g_malloc_called_idx = current_call_index + 1;
-
-    if (g_malloc_fail_enabled && current_call_index == g_malloc_failed_idx) {
-        return NULL;
-    }
-
-    return malloc(size);
-}
-
-void STUB_ResetMallocCount(void)
-{
-    g_malloc_called_idx = 0;
-}
-
-void STUB_SetMallocFailIndex(uint32_t failIdx)
-{
-    g_malloc_failed_idx = failIdx;
-}
-
-uint32_t STUB_GetMallocCallCount(void)
-{
-    return g_malloc_called_idx;
-}
-
-void STUB_EnableMallocFail(bool enable)
-{
-    g_malloc_fail_enabled = enable;
-}

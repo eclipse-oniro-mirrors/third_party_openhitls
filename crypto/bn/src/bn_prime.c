@@ -109,7 +109,7 @@ static const uint8_t PRIME_DIFF_TABLE[1024] = {
 static uint32_t DivisorsCnt(uint32_t bits)
 {
     if (bits <= 1024) { /* 1024bit */
-        return 128; /* 128 times check */
+        return 512; /* 512 times check */
     }
     return 1024; /* 1024 times check */
 }
@@ -199,9 +199,8 @@ static int32_t ProbablePrime(BN_BigNum *rnd, BN_BigNum *e, uint32_t bits, bool h
     const int32_t maxCnt = 100; /* try 100 times */
     int32_t tryCnt = 0;
     uint32_t i;
-    int32_t ret;
     uint32_t cnt = DivisorsCnt(bits);
-    ret = OptimizerStart(opt);
+    int32_t ret = OptimizerStart(opt);
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }
@@ -366,7 +365,6 @@ static int32_t PrimeLimbCheck(const BN_BigNum *bn)
     if (BN_IsLimb(bn, 2) || BN_IsLimb(bn, 3)) { /* 2 and 3 directly determine that the number is a prime number. */
         return CRYPT_SUCCESS;
     }
-    BSL_ERR_PUSH_ERROR(CRYPT_BN_NOR_CHECK_PRIME);
     return CRYPT_BN_NOR_CHECK_PRIME;
 }
 static uint32_t GetP(const BN_BigNum *bn)

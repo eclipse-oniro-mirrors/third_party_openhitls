@@ -31,7 +31,7 @@
 #include "hs_state_recv.h"
 #include "conn_init.h"
 #include "recv_process.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "stub_crypt.h"
 #include "frame_tls.h"
 #include "frame_msg.h"
@@ -55,8 +55,16 @@
 #include "cert_callback.h"
 #include "bsl_uio.h"
 #include "uio_abstraction.h"
+#include "record.h"
 /* END_HEADER */
 
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET4(int32_t, REC_Write, TLS_Ctx *, REC_Type, const uint8_t *, uint32_t);
+
+
+#define REC_DTLS_RECORD_HEADER_LEN 13
 #define BUF_SIZE_DTO_TEST 18432
 
 void Hello(void *ssl)
@@ -151,6 +159,8 @@ void SDV_TLS_DTLS_CONSISTENCY_RFC5246_UNEXPETED_REORD_TYPE_TC001()
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
     HLT_CleanFrameHandle();
@@ -158,6 +168,176 @@ EXIT:
     HLT_FreeAllProcess();
 }
 /* END_CASE */
+
+static void Test_CertificateParse001(HITLS_Ctx *ctx, uint8_t *data, uint32_t *len, uint32_t bufSize, void *user)
+{
+    (void)ctx;
+    (void)bufSize;
+    (void)user;
+    FRAME_Type frameType = { 0 };
+    frameType.versionType = HITLS_VERSION_DTLS12;
+    FRAME_Msg frameMsg = { 0 };
+    frameMsg.recType.data = REC_TYPE_HANDSHAKE;
+    frameMsg.length.data = *len;
+    frameMsg.recVersion.data = HITLS_VERSION_DTLS12;
+    uint32_t parseLen = 0;
+    FRAME_ParseMsgBody(&frameType, data, *len, &frameMsg, &parseLen);
+    ASSERT_EQ(frameMsg.body.hsMsg.type.data, SERVER_HELLO_DONE);
+    int *t = (int*)user;
+    if (*t == 0) {
+        // Change the sequence number to 20
+        data[5] = 20;
+    }
+    (*t)++;
+
+EXIT:
+    FRAME_CleanMsg(&frameType, &frameMsg);
+    return;
+}
+
+static uint32_t DtlsTimerCallBack(HITLS_Ctx *ctx, uint32_t us)
+{
+    (void)ctx;
+    (void)us;
+    return 1000000; // timeout value is 1 second.
+}
+
+/* @
+* @test  SDV_TLS_DTLS_CONSISTENCY_RFC6347_MTU_TC001
+* @title  Multiple timeout retransmissions result in a decrease in MTU
+* @precon  nan
+* @brief  1. Establish a link using UDP with dtls12 and construct timeout retransmission three times.
+          Expected result 1 is obtained.
+* @expect 1. MTU reduced from 1472 to 548
+@ */
+/* BEGIN_CASE */
+void SDV_TLS_DTLS_CONSISTENCY_RFC6347_MTU_TC001()
+{
+    int32_t port = 18888;
+    HLT_Process *localProcess = HLT_InitLocalProcess(HITLS);
+    HLT_Process *remoteProcess = HLT_LinkRemoteProcess(HITLS, UDP, port, true);
+    ASSERT_TRUE(localProcess != NULL);
+    ASSERT_TRUE(remoteProcess != NULL);
+
+    HLT_Ctx_Config *serverCtxConfig = NULL;
+    HLT_Ctx_Config *clientCtxConfig = NULL;
+    serverCtxConfig = HLT_NewCtxConfig(NULL, "SERVER");
+    clientCtxConfig = HLT_NewCtxConfig(NULL, "CLIENT");
+    ASSERT_TRUE(serverCtxConfig != NULL);
+    ASSERT_TRUE(clientCtxConfig != NULL);
+
+    int32_t user = 0;
+    RecWrapper wrapper = {
+        TRY_SEND_SERVER_HELLO_DONE,
+        REC_TYPE_HANDSHAKE,
+        false,
+        &user,
+        Test_CertificateParse001
+    };
+    RegisterWrapper(wrapper);
+    HLT_Tls_Res *tlsRes = HLT_ProcessTlsInit(localProcess, DTLS1_2, serverCtxConfig, NULL);
+    ASSERT_TRUE(tlsRes != NULL);
+    HITLS_SetDtlsTimerCb(tlsRes->ssl, DtlsTimerCallBack);
+    (void)HLT_TlsAccept(tlsRes->ssl);
+
+    HITLS_Ctx *ctx = tlsRes->ssl;
+    HITLS_SetNoQueryMtu(ctx, false);
+    ASSERT_EQ(ctx->config.pmtu, 1472);
+
+    HLT_Tls_Res *clientRes = HLT_ProcessTlsConnect(remoteProcess, DTLS1_2, clientCtxConfig, NULL);
+    ASSERT_TRUE(clientRes == NULL);
+    ASSERT_EQ(ctx->config.pmtu, 548);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+EXIT:
+    ClearWrapper();
+    HLT_FreeAllProcess();
+}
+/* END_CASE */
+
+int32_t STUB_REC_Write(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, uint32_t num)
+{
+    static int32_t count = 0;
+    if (data[0] == CERTIFICATE && count == 0) {
+        int32_t hsFragmentLength = BSL_ByteToUint24(&data[DTLS_HS_FRAGMENT_LEN_ADDR]);
+        int32_t fragmentLength = hsFragmentLength + DTLS_HS_MSG_HEADER_SIZE + REC_DTLS_RECORD_HEADER_LEN;
+        // On the third retransmission, the message length became 548
+        ASSERT_EQ(fragmentLength, 548);
+        count++;
+    }
+    return ctx->recCtx->recWrite(ctx, recordType, data, num);
+EXIT:
+    return -1;
+}
+
+static void Test_Timeout001(HITLS_Ctx *ctx, uint8_t *data, uint32_t *len, uint32_t bufSize, void *user)
+{
+    (void)data;
+    (void)len;
+    (void)bufSize;
+    (void)user;
+    sleep(1);
+    ASSERT_EQ(HITLS_DtlsProcessTimeout(ctx), HITLS_SUCCESS);
+    sleep(2);
+    ASSERT_EQ(HITLS_DtlsProcessTimeout(ctx), HITLS_SUCCESS);
+    STUB_REPLACE(REC_Write, STUB_REC_Write);
+    sleep(4);
+    ASSERT_EQ(HITLS_DtlsProcessTimeout(ctx), HITLS_SUCCESS);
+
+EXIT:
+    STUB_RESTORE(REC_Write);
+    return;
+}
+
+/* @
+* @test  SDV_TLS_DTLS_CONSISTENCY_RFC6347_MTU_TC002
+* @title  Multiple timeout retransmissions result in a decrease in MTU
+* @precon  nan
+* @brief  1. Establish a link using UDP with dtls12 and construct timeout retransmission three times.
+          Expected result 1 is obtained.
+* @expect 1. MTU reduced from 1472 to 548. On the third retransmission, the message length became 548
+@ */
+/* BEGIN_CASE */
+void SDV_TLS_DTLS_CONSISTENCY_RFC6347_MTU_TC002()
+{
+    HLT_ConfigTimeOut("10");
+    int32_t port = 18888;
+    HLT_Process *localProcess = HLT_InitLocalProcess(HITLS);
+    HLT_Process *remoteProcess = HLT_LinkRemoteProcess(HITLS, UDP, port, true);
+    ASSERT_TRUE(localProcess != NULL);
+    ASSERT_TRUE(remoteProcess != NULL);
+
+    HLT_Ctx_Config *serverCtxConfig = NULL;
+    HLT_Ctx_Config *clientCtxConfig = NULL;
+    serverCtxConfig = HLT_NewCtxConfig(NULL, "SERVER");
+    clientCtxConfig = HLT_NewCtxConfig(NULL, "CLIENT");
+    ASSERT_TRUE(serverCtxConfig != NULL);
+    ASSERT_TRUE(clientCtxConfig != NULL);
+
+    RecWrapper wrapper = {TRY_RECV_CLIENT_KEY_EXCHANGE, REC_TYPE_HANDSHAKE, true, NULL, Test_Timeout001};
+    RegisterWrapper(wrapper);
+    HLT_Tls_Res *serverRes = HLT_ProcessTlsAccept(localProcess, DTLS1_2, serverCtxConfig, NULL);
+    ASSERT_TRUE(serverRes != NULL);
+
+    HLT_Tls_Res *clientRes = HLT_ProcessTlsConnect(remoteProcess, DTLS1_2, clientCtxConfig, NULL);
+    ASSERT_TRUE(clientRes != NULL);
+    ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) == 0);
+    uint8_t readData[REC_MAX_PLAIN_LENGTH] = {0};
+    uint32_t readLen = REC_MAX_PLAIN_LENGTH;
+
+    ASSERT_EQ(HLT_ProcessTlsWrite(localProcess, serverRes, (uint8_t *)"Hello World", strlen("Hello World")), 0);
+    ASSERT_EQ(HLT_ProcessTlsRead(remoteProcess, clientRes, readData, readLen, &readLen), 0);
+    ASSERT_EQ(readLen, strlen("Hello World"));
+    ASSERT_EQ(memcmp("Hello World", readData, readLen), 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    ClearWrapper();
+    HLT_FreeAllProcess();
+}
+/* END_CASE */
+
 /* @
 * @test SDV_TLS_DTLS_BASIC_HANDSHAKE_TC001
 * @spec -
@@ -212,6 +392,8 @@ void SDV_TLS_DTLS_BASIC_HANDSHAKE_TC001(void)
     ASSERT_TRUE(HLT_ProcessTlsRead(localProcess, serverRes, readBuf, sizeof(readBuf), &readLen) == 0);
     ASSERT_TRUE(readLen == sizeof(writeData));
     ASSERT_TRUE(memcmp(writeData, readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HLT_FreeAllProcess();

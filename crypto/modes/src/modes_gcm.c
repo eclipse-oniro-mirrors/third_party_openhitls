@@ -341,7 +341,7 @@ static void GcmPad(MODES_CipherGCMCtx *ctx)
     GcmHashMultiBlock(ctx->ghash, ctx->hTable, padBuf, GCM_BLOCKSIZE);
 }
 
-static int32_t SetTagLen(MODES_CipherGCMCtx *ctx, const uint8_t *val, uint32_t len)
+static int32_t SetTagLen(MODES_CipherGCMCtx *ctx, const uint32_t *val, uint32_t len)
 {
     if (val == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
@@ -359,7 +359,7 @@ static int32_t SetTagLen(MODES_CipherGCMCtx *ctx, const uint8_t *val, uint32_t l
      * requirements on the length of the input data and the lifetime of the ciphCtx in these cases,
      * is given in Appendix C
      */
-    uint32_t tagLen = *((const uint32_t *)val);
+    uint32_t tagLen = *val;
     // 32bit is 4 bytes, 64bit is 8 bytes, 128, 120, 112, 104, or 96 is 12byte - 16byte
     if (tagLen == 4 || tagLen == 8 || (tagLen >= 12 && tagLen <= 16)) {
         ctx->tagLen = (uint8_t)tagLen;
@@ -398,12 +398,12 @@ int32_t MODES_GCM_Decrypt(MODES_CipherGCMCtx *ctx, const uint8_t *in, uint8_t *o
     return MODES_GCM_Crypt(ctx, in, out, len, false);
 }
 
-int32_t MODES_GCM_Ctrl(MODES_GCM_Ctx *modeCtx, int32_t opt, void *val, uint32_t len)
+int32_t MODES_GCM_Ctrl(MODES_GCM_Ctx *modeCtx, int32_t cmd, void *val, uint32_t len)
 {
     if (modeCtx == NULL) {
         return CRYPT_NULL_INPUT;
     }
-    switch (opt) {
+    switch (cmd) {
         case CRYPT_CTRL_SET_IV:
         case CRYPT_CTRL_REINIT_STATUS:
             return MODES_GCM_SetIv(&modeCtx->gcmCtx, val, len);
@@ -450,6 +450,12 @@ MODES_GCM_Ctx *MODES_GCM_NewCtx(int32_t algId)
     return ctx;
 }
 
+MODES_GCM_Ctx *MODES_GCM_NewCtxEx(void *libCtx, int32_t algId)
+{
+    (void)libCtx;
+    return MODES_GCM_NewCtx(algId);
+}
+
 int32_t MODES_GCM_InitCtx(MODES_GCM_Ctx *modeCtx, const uint8_t *key, uint32_t keyLen, const uint8_t *iv,
     uint32_t ivLen, bool enc)
 {
@@ -488,7 +494,6 @@ int32_t MODES_GCM_Final(MODES_GCM_Ctx *modeCtx, uint8_t *out, uint32_t *outLen)
 int32_t MODES_GCM_DeInitCtx(MODES_GCM_Ctx *modeCtx)
 {
     if (modeCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
     int32_t algId = modeCtx->algId;

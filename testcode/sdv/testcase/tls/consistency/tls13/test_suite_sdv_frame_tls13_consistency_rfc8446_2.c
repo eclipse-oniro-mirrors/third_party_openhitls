@@ -16,7 +16,7 @@
 /* BEGIN_HEADER */
 
 #include <stdio.h>
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -48,6 +48,12 @@
 #include "bsl_log.h"
 #include "cert_callback.h"
 /* END_HEADER */
+
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET5(int32_t, CompareBinder, TLS_Ctx *, const PreSharedKey *, uint8_t *, uint32_t, uint32_t);
+
 
 #define PORT 23456
 #define READ_BUF_SIZE (18 * 1024)
@@ -625,6 +631,9 @@ void UT_TLS_TLS13_CONSISTENCY_RFC8446_REQUEST_CLIENT_HELLO_FUNC_TC001()
 
     // Continue to establish the connection.
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_CFG_FreeConfig(clientconfig);
@@ -970,6 +979,9 @@ void UT_TLS_TLS13_CONSISTENCY_RFC8446_REQUEST_CLIENT_HELLO_FUNC_TC005()
 
     // Continue to establish the link.
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_CFG_FreeConfig(clientconfig);
@@ -1311,6 +1323,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_OBFUSCATED_TICKET_AGE_FUNC_TC001()
     ASSERT_TRUE(FRAME_CreateConnection(testInfo.client, testInfo.server, false, TRY_SEND_CERTIFICATE) == HITLS_SUCCESS);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT), HITLS_SUCCESS);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
     FRAME_CleanMsg(&frameType, &frameMsg);
@@ -1387,19 +1401,19 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_OBFUSCATED_TICKET_AGE_FUNC_TC002()
     testInfo.server = FRAME_CreateLink(testInfo.s_config, testInfo.uioType);
     ASSERT_TRUE(testInfo.server != NULL);
     ASSERT_EQ(HITLS_SetSession(testInfo.client->ssl, testInfo.clientSession), HITLS_SUCCESS);
-
-    STUB_Init();
-    FuncStubInfo stubInfo = {0};
-    STUB_Replace(&stubInfo, CompareBinder, CompareBinder_Success);
+    STUB_REPLACE(CompareBinder, CompareBinder_Success);;
 
     // Establish a connection.
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, false, HS_STATE_BUTT), HITLS_SUCCESS);
     bool isReused = false;
     ASSERT_EQ(HITLS_IsSessionReused(testInfo.client->ssl, &isReused), HITLS_SUCCESS);
     ASSERT_EQ(isReused, true);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
-    STUB_Reset(&stubInfo);
+    STUB_RESTORE(CompareBinder);
     HITLS_CFG_FreeConfig(testInfo.c_config);
     HITLS_CFG_FreeConfig(testInfo.s_config);
     FRAME_FreeLink(testInfo.client);
@@ -1461,16 +1475,16 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_OBFUSCATED_TICKET_AGE_FUNC_TC003()
     testInfo.server = FRAME_CreateLink(testInfo.s_config, testInfo.uioType);
     ASSERT_TRUE(testInfo.server != NULL);
     ASSERT_EQ(HITLS_SetSession(testInfo.client->ssl, testInfo.clientSession), HITLS_SUCCESS);
-
-    STUB_Init();
-    FuncStubInfo stubInfo = {0};
-    STUB_Replace(&stubInfo, CompareBinder, CompareBinder_Success);
+    STUB_REPLACE(CompareBinder, CompareBinder_Success);;
 
     // Establish a connection.
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
-    STUB_Reset(&stubInfo);
+    STUB_RESTORE(CompareBinder);
     HITLS_CFG_FreeConfig(testInfo.c_config);
     HITLS_CFG_FreeConfig(testInfo.s_config);
     FRAME_FreeLink(testInfo.client);
@@ -1733,6 +1747,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSKHASH_FUNC_TC007()
     // Connect establishment
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, false, TRY_SEND_CERTIFICATE) , HITLS_SUCCESS);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, false, HS_STATE_BUTT) , HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearSessoins();
     HITLS_CFG_FreeConfig(testInfo.c_config);
@@ -1795,6 +1812,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSKHASH_FUNC_TC002()
     // Connect establishment
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, false, TRY_SEND_CERTIFICATE), HITLS_SUCCESS);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     ClearSessoins();
@@ -1876,6 +1895,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSKHASH_FUNC_TC003()
 
     ASSERT_TRUE(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearSessoins();
     FRAME_CleanMsg(&frameType, &frameMsg);
@@ -1940,6 +1961,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSKHASH_FUNC_TC004()
     // Establish a connection and check the hash algorithm on the client.
     ASSERT_TRUE(FRAME_CreateConnection(testInfo.client, testInfo.server, false, TRY_SEND_CERTIFICATE) != HITLS_SUCCESS);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) , HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.c_config);
     HITLS_CFG_FreeConfig(testInfo.s_config);
@@ -2002,6 +2026,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSKHASH_FUNC_TC005()
     // Establish a connection and check the hash algorithm on the server.
     ASSERT_TRUE(FRAME_CreateConnection(testInfo.client, testInfo.server, false, TRY_SEND_CERTIFICATE) != HITLS_SUCCESS);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) , HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.c_config);
     HITLS_CFG_FreeConfig(testInfo.s_config);
@@ -2059,6 +2086,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSKHASH_FUNC_TC006()
     // Establish a connection.
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, false, TRY_SEND_CERTIFICATE) , HITLS_SUCCESS);
     ASSERT_TRUE(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.c_config);
@@ -2408,6 +2437,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RESUMEPSK_AND_SETPSK_FUNC_TC001()
 
     ASSERT_TRUE(testInfo.client->ssl != NULL);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) , HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_SESS_Free(testInfo.clientSession);
@@ -2488,6 +2520,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RESUMEPSK_AND_SETPSK_FUNC_TC002()
 
     ASSERT_TRUE(testInfo.client->ssl != NULL);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) , HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_SESS_Free(testInfo.clientSession);
@@ -2574,6 +2609,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RESUMEPSK_AND_SETPSK_FUNC_TC003()
     ASSERT_TRUE(testInfo.client->ssl != NULL);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, false, TRY_SEND_CERTIFICATE) , HITLS_SUCCESS);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) , HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_SESS_Free(testInfo.clientSession);
@@ -2661,6 +2699,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RESUMEPSK_AND_SETPSK_FUNC_TC004()
     ASSERT_TRUE(sendLen != 0);
 
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) , HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_SESS_Free(testInfo.clientSession);
@@ -2748,6 +2789,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RESUMEPSK_AND_SETPSK_FUNC_TC005()
 
     ASSERT_TRUE(testInfo.client->ssl != NULL);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT) , HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_SESS_Free(testInfo.clientSession);
@@ -2835,7 +2879,7 @@ void UT_TLS1_3_RFC8446_Legacy_Version_TC001(int statehs)
     HITLS_Config *tlsConfig = HITLS_CFG_NewTLS13Config();
     ASSERT_TRUE(tlsConfig != NULL);
 
-    tlsConfig->isSupportExtendedMasterSecret = true;
+    tlsConfig->emsMode = HITLS_EMS_MODE_FORCE;
     tlsConfig->isSupportClientVerify = true;
     tlsConfig->isSupportNoClientCert = true;
 
@@ -2893,7 +2937,7 @@ void UT_TLS1_3_RFC8446_Legacy_Version_TC002(int statehs)
     HITLS_Config *tlsConfig = HITLS_CFG_NewTLS13Config();
     ASSERT_TRUE(tlsConfig != NULL);
 
-    tlsConfig->isSupportExtendedMasterSecret = true;
+    tlsConfig->emsMode = HITLS_EMS_MODE_FORCE;
     tlsConfig->isSupportClientVerify = true;
     tlsConfig->isSupportNoClientCert = true;
 
@@ -2952,7 +2996,7 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_ALERT_PROCESS_TC001()
     FRAME_Init();
     HITLS_Config *tlsConfig = HITLS_CFG_NewTLS13Config();
 
-    tlsConfig->isSupportExtendedMasterSecret = true;
+    tlsConfig->emsMode = HITLS_EMS_MODE_FORCE;
     tlsConfig->isSupportClientVerify = true;
     tlsConfig->isSupportNoClientCert = false;
 
@@ -3024,6 +3068,9 @@ void UT_TLS_TLS13_RFC8446_HELLO_REQUEST_TC001(void)
     ASSERT_TRUE(client->ssl != NULL);
     ASSERT_EQ(HITLS_Connect(client->ssl), HITLS_REC_NORMAL_RECV_BUF_EMPTY);
     ASSERT_TRUE(client->ssl->hsCtx->state == TRY_RECV_SERVER_HELLO);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
     FRAME_FreeLink(client);
@@ -3136,6 +3183,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RECV_MUTI_CCS_TC001()
         ASSERT_EQ(HITLS_Connect(clientTlsCtx), HITLS_REC_NORMAL_RECV_BUF_EMPTY);
     }
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
     FRAME_FreeLink(client);
@@ -3211,7 +3261,7 @@ void UT_TLS_SDV_TLS1_3_RFC8446_CONSISTENCY_RECEIVES_ENCRYPTED_CCS_TC001(void)
     HITLS_Config *tlsConfig = HITLS_CFG_NewTLS13Config();
     ASSERT_TRUE(tlsConfig != NULL);
 
-    tlsConfig->isSupportExtendedMasterSecret = true;
+    tlsConfig->emsMode = HITLS_EMS_MODE_FORCE;
     tlsConfig->isSupportClientVerify = true;
     tlsConfig->isSupportNoClientCert = true;
     FRAME_LinkObj *client = NULL;
@@ -3367,6 +3417,9 @@ void UT_TLS_SDV_TLS1_3_RFC8446_CONSISTENCY_REQUEST_CLIENT_HELLO_TC001()
 
     // Continue to establish the link.
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_CFG_FreeConfig(clientconfig);
@@ -3395,7 +3448,7 @@ void UT_TLS_SDV_TLS1_3_RFC8446_CONSISTENCY_Legacy_Version_TC001(int statehs)
     HITLS_Config *tlsConfig = HITLS_CFG_NewTLS13Config();
     ASSERT_TRUE(tlsConfig != NULL);
 
-    tlsConfig->isSupportExtendedMasterSecret = true;
+    tlsConfig->emsMode = HITLS_EMS_MODE_FORCE;
     tlsConfig->isSupportClientVerify = true;
     tlsConfig->isSupportNoClientCert = true;
 
@@ -3429,6 +3482,149 @@ void UT_TLS_SDV_TLS1_3_RFC8446_CONSISTENCY_Legacy_Version_TC001(int statehs)
         ASSERT_EQ(info.description, ALERT_DECODE_ERROR);
     }
 EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test UT_TLS_SDV_TLS1_3_RFC8446_CONSISTENCY_MIDDLE_BOX_COMPAT_TC001
+* @spec -
+* @title Test TLS 1.3 connection and data transfer when middlebox compatibility mode is enabled or disabled
+* @precon nan
+* @brief 1. Initialize the client and server using the default configuration. Expected result 1.
+* 2. Set the middlebox compatibility mode for both the client and server based on the isMiddleBoxCompat parameter.
+    Expected result 2.
+* 3. Stop the server state at TRY_RECV_CLIENT_HELLO and determine the length of the session ID at this time.
+    Expected result 3.
+* 4. The server calls the HITLS_Accept function and then determines the next state of the server. Expected result 4.
+* 5. Continue to establish a connection. Expected result 5.
+* @expect 1 Initialization succeeded.
+* 2. Successful setup.
+* 3. If isMiddleBoxCompat is true, then the session ID length is 32, otherwise it is 0
+* 4. If isMiddleBoxCompat is true, the next state of the server is TRY_SEND_CHANGE_CIPHER_SPEC,
+    otherwise it is TRY_SEND_ENCRYPTED_EXTENSIONS.
+* 5. The connection between the client and server is successfully established.
+* @prior Level 1
+* @auto TRUE
+@ */
+/* BEGIN_CASE */
+void UT_TLS_SDV_TLS1_3_RFC8446_CONSISTENCY_MIDDLE_BOX_COMPAT_TC001(int isMiddleBoxCompat)
+{
+    FRAME_Init();
+    HITLS_Config *tlsConfig = HITLS_CFG_NewTLS13Config();
+    ASSERT_TRUE(tlsConfig != NULL);
+    HITLS_CFG_SetMiddleBoxCompat(tlsConfig, isMiddleBoxCompat);
+
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    client = FRAME_CreateLink(tlsConfig, BSL_UIO_TCP);
+    server = FRAME_CreateLink(tlsConfig, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_TRUE(FRAME_CreateConnection(client, server, false, TRY_RECV_CLIENT_HELLO) == HITLS_SUCCESS);
+    FRAME_Msg frameMsg = {0};
+    FRAME_Type frameType = {0};
+    FrameUioUserData *ioUserData = BSL_UIO_GetUserData(server->io);
+    uint8_t *recvBuf = ioUserData->recMsg.msg;
+    uint32_t recvLen = ioUserData->recMsg.len;
+    ASSERT_TRUE(recvLen != 0);
+
+    uint32_t parseLen = 0;
+    frameType.versionType = HITLS_VERSION_TLS13;
+    frameType.recordType = REC_TYPE_HANDSHAKE;
+
+    frameType.handshakeType = CLIENT_HELLO;
+    frameType.keyExType = HITLS_KEY_EXCH_ECDHE;
+    ASSERT_TRUE(FRAME_ParseMsg(&frameType, recvBuf, recvLen, &frameMsg, &parseLen) == HITLS_SUCCESS);
+
+    FRAME_ClientHelloMsg *clientMsg = &frameMsg.body.hsMsg.body.clientHello;
+    if (isMiddleBoxCompat) {
+        ASSERT_TRUE(clientMsg->sessionIdSize.data == TLS_HS_MAX_SESSION_ID_SIZE);
+        ASSERT_TRUE(clientMsg->sessionId.data != NULL);
+        (void)HITLS_Accept(server->ssl);
+        ASSERT_EQ(server->ssl->hsCtx->state, TRY_SEND_CHANGE_CIPHER_SPEC);
+    } else {
+        ASSERT_TRUE(clientMsg->sessionIdSize.data == 0);
+        ASSERT_TRUE(clientMsg->sessionId.data == NULL);
+        (void)HITLS_Accept(server->ssl);
+        ASSERT_EQ(server->ssl->hsCtx->state, TRY_SEND_ENCRYPTED_EXTENSIONS);
+    }
+    ASSERT_TRUE(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
+EXIT:
+    FRAME_CleanMsg(&frameType, &frameMsg);
+    HITLS_CFG_FreeConfig(tlsConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test UT_TLS_SDV_TLS1_3_RFC8446_CONSISTENCY_UNSUPPORT_VERSION_TC001
+* @spec -
+* @title Test when server receive a unsupported legacy version in client hello, the server will response with alert and close the connection.
+* @precon nan
+* @brief 1. Initialize a tls11 client and a tls13 server configuration. Expected result 1.
+* 2. Server process the client hello. Expected result 2.
+* @expect 1 Initialization succeeded.
+* 2. The server sends a protocol version alert and closes the connection.
+* @prior Level 1
+* @auto TRUE
+@ */
+/* BEGIN_CASE */
+void UT_TLS_SDV_TLS1_3_RFC8446_CONSISTENCY_UNSUPPORT_VERSION_TC001()
+{
+    FRAME_Init();
+    HITLS_Config *tlsConfig = HITLS_CFG_NewTLSConfig();
+    ASSERT_TRUE(tlsConfig != NULL);
+    ASSERT_TRUE(HITLS_CFG_SetVersion(tlsConfig, HITLS_VERSION_TLS12, HITLS_VERSION_TLS13) == HITLS_SUCCESS);
+
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    client = FRAME_CreateLink(tlsConfig, BSL_UIO_TCP);
+    server = FRAME_CreateLink(tlsConfig, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_TRUE(FRAME_CreateConnection(client, server, false, TRY_RECV_CLIENT_HELLO) == HITLS_SUCCESS);
+    FRAME_Msg frameMsg = {0};
+    FRAME_Type frameType = {0};
+    FrameUioUserData *ioUserData = BSL_UIO_GetUserData(server->io);
+    uint8_t *recvBuf = ioUserData->recMsg.msg;
+    uint32_t recvLen = ioUserData->recMsg.len;
+    ASSERT_TRUE(recvLen != 0);
+
+    uint32_t parseLen = 0;
+    frameType.versionType = HITLS_VERSION_TLS13;
+    frameType.recordType = REC_TYPE_HANDSHAKE;
+
+    frameType.handshakeType = CLIENT_HELLO;
+    frameType.keyExType = HITLS_KEY_EXCH_ECDHE;
+    ASSERT_TRUE(FRAME_ParseMsg(&frameType, recvBuf, recvLen, &frameMsg, &parseLen) == HITLS_SUCCESS);
+
+    FRAME_ClientHelloMsg *clientMsg = &frameMsg.body.hsMsg.body.clientHello;
+    clientMsg->version.data = HITLS_VERSION_TLS11;
+    clientMsg->version.state = ASSIGNED_FIELD;
+    clientMsg->supportedVersion.exState = MISSING_FIELD;
+    uint32_t sendLen = MAX_RECORD_LENTH;
+    uint8_t sendBuf[MAX_RECORD_LENTH] = {0};
+    ASSERT_TRUE(FRAME_PackMsg(&frameType, &frameMsg, sendBuf, sendLen, &sendLen) == HITLS_SUCCESS);
+    ioUserData->recMsg.len = 0;
+    ASSERT_TRUE(FRAME_TransportRecMsg(server->io, sendBuf, sendLen) == HITLS_SUCCESS);
+    FRAME_CleanMsg(&frameType, &frameMsg);
+    memset_s(&frameMsg, sizeof(frameMsg), 0, sizeof(frameMsg));
+    ASSERT_EQ(HITLS_Accept(server->ssl), HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
+    ALERT_Info alertInfo = { 0 };
+    ALERT_GetInfo(server->ssl, &alertInfo);
+    ASSERT_EQ(alertInfo.level, ALERT_LEVEL_FATAL);
+    ASSERT_EQ(alertInfo.description, ALERT_PROTOCOL_VERSION);
+EXIT:
+    FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_CFG_FreeConfig(tlsConfig);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);

@@ -26,20 +26,19 @@
 extern "C" {
 #endif
 
+#define DTLS_MIN_MTU 256    /* Minimum MTU setting size */
 #define REC_MAX_PLAIN_LENGTH 16384          /* Maximum plain length */
 /* TLS13 Maximum MAC address padding */
 #define REC_MAX_TLS13_ENCRYPTED_OVERHEAD  256u
 /* TLS13 Maximum ciphertext length */
 #define REC_MAX_TLS13_ENCRYPTED_LEN (REC_MAX_PLAIN_LENGTH + REC_MAX_TLS13_ENCRYPTED_OVERHEAD)
-/* The length (in bytes) of the following TLSCiphertext.fragment. The length MUST NOT exceed 2^14 + 2048. */
-#define REC_MAX_PLAIN_DECRYPTO_MAX_LENGTH (16384 + 2048)
 
 #define REC_MASTER_SECRET_LEN 48
 #define REC_RANDOM_LEN  32
 
 #define RECORD_HEADER 0x100
 #define RECORD_INNER_CONTENT_TYPE 0x101
-/**
+/*
  * record type
  */
 typedef enum {
@@ -50,7 +49,7 @@ typedef enum {
     REC_TYPE_UNKNOWN = 255
 } REC_Type;
 
-/**
+/*
  * SecurityParameters, used to generate keys and initialize the connect state
  */
 typedef struct {
@@ -173,7 +172,6 @@ void REC_ActiveOutdatedWriteState(TLS_Ctx *ctx);
  */
 void REC_DeActiveOutdatedWriteState(TLS_Ctx *ctx);
 
-
 /**
  * @ingroup record
  * @brief   Initialize the pending state
@@ -203,6 +201,16 @@ int32_t REC_InitPendingState(const TLS_Ctx *ctx, const REC_SecParameters *param)
 int32_t REC_ActivePendingState(TLS_Ctx *ctx, bool isOut);
 
 /**
+ * @brief   Calculate the mtu
+ *
+ * @param   ctx [IN] TLS_Ctx context
+ *
+ * @retval  HITLS_SUCCESS
+ * @retval  ITLS_UIO_FAIL The uio ctrl failed
+ */
+int32_t REC_QueryMtu(TLS_Ctx *ctx);
+
+/**
  * @brief   Obtain the maximum writable plaintext length of a single record
  *
  * @param   ctx [IN] TLS_Ctx context
@@ -213,6 +221,18 @@ int32_t REC_ActivePendingState(TLS_Ctx *ctx, bool isOut);
  * @retval  HITLS_REC_PMTU_TOO_SMALL The PMTU is too small
  */
 int32_t REC_GetMaxWriteSize(const TLS_Ctx *ctx, uint32_t *len);
+
+/**
+ * @brief   Obtain the maximum writable plaintext according to mtu
+ *
+ * @param   ctx [IN] TLS_Ctx context
+ * @param   len [OUT] Maximum length of the plaintext
+ *
+ * @retval  HITLS_SUCCESS
+ * @retval  HITLS_UIO_IO_TYPE_ERROR Not UDP uio
+ * @retval  HITLS_REC_PMTU_TOO_SMALL The PMTU is too small
+ */
+int32_t REC_GetMaxDataMtu(const TLS_Ctx *ctx, uint32_t *len);
 
 /**
  * @ingroup record
@@ -230,32 +250,34 @@ int32_t REC_GetMaxWriteSize(const TLS_Ctx *ctx, uint32_t *len);
 int32_t REC_TLS13InitPendingState(const TLS_Ctx *ctx, const REC_SecParameters *param, bool isOut);
 
 /**
- * @ingroup record
- * @brief   Retransmit a record
+ * @brief   Add the message to the retransmission queue
  *
- * @param   recCtx [IN] Record context
- * @param   recordType [IN] record type
- * @param   data [IN] data
- * @param   dataLen [IN] data length
+ * @param   recCtx [OUT] RecCtx Structure
+ * @param   type [IN] Message type
+ * @param   msg [IN] Message content
+ * @param   len [IN] Message length
+ *
+ * @retval  HITLS_SUCCESS
+ * @retval  HITLS_MEMALLOC_FAIL Memory allocation failed
  */
-int32_t REC_RetransmitListAppend(REC_Ctx *recCtx, REC_Type recordType, const uint8_t *data, uint32_t dataLen);
+int32_t REC_RetransmitListAppend(REC_Ctx *recCtx, REC_Type type, const uint8_t *msg, uint32_t len);
 
 /**
- * @ingroup record
- * @brief   Clean the retransmit list
+ * @brief   Clear the retransmission queue
  *
- * @param   recCtx [IN] Record context
+ * @param   recCtx [OUT] RecCtx Structure
  */
 void REC_RetransmitListClean(REC_Ctx *recCtx);
 
-
 /**
- * @ingroup record
- * @brief   Flush the retransmit list
+ * @brief   Send a message in the retransmission queue
+ *          UDP sending will not fail. Therefore, the sending failure scenario does not need to be considered
  *
- * @param   ctx [IN] TLS object
+ * @param   ctx [OUT] tls Context
+ * @retval  HITLS_SUCCESS
+ * @retval  For other error codes, see hitls_error.h
  */
-void REC_RetransmitListFlush(TLS_Ctx *ctx);
+int32_t REC_RetransmitListFlush(TLS_Ctx *ctx);
 
 REC_Type REC_GetUnexpectedMsgType(TLS_Ctx *ctx);
 
@@ -270,7 +292,38 @@ bool REC_HaveReadSuiteInfo(const TLS_Ctx *ctx);
  */
 uint32_t APP_GetReadPendingBytes(const TLS_Ctx *ctx);
 
-int32_t REC_RecBufReSet(TLS_Ctx *ctx);
+int32_t REC_RecOutBufReSet(TLS_Ctx *ctx);
+
+/**
+ * @brief   Flush the buffer uio
+ *
+ * @param   ctx [IN] ssl context
+ *
+ * @retval  HITLS_SUCCESS
+ * @retval  HITLS_REC_NORMAL_IO_BUSY uio busy
+ * @retval  HITLS_REC_ERR_IO_EXCEPTION uio error
+ */
+int32_t REC_FlightTransmit(TLS_Ctx *ctx);
+
+/**
+ * @brief   Obtain the out buffer remaining size
+ *
+ * @param   ctx [IN] TLS_Ctx context
+ *
+ * @retval  the out buffer remaining size
+ */
+uint32_t REC_GetOutBufPendingSize(const TLS_Ctx *ctx);
+
+/**
+ * @brief   Flush the record out buffer
+ *
+ * @param   ctx [IN] TLS_Ctx context
+ *
+ * @retval  HITLS_SUCCESS Out buffer is empty or flush success
+ * @retval  HITLS_REC_NORMAL_IO_BUSY Out buffer is not empty, but the IO operation is busy
+ */
+int32_t REC_OutBufFlush(TLS_Ctx *ctx);
+
 #ifdef __cplusplus
 }
 #endif

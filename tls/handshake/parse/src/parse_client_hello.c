@@ -176,22 +176,14 @@ static int32_t ParseClientHelloCompressionMethods(ParsePacket *pkt, ClientHelloM
 static int32_t ParseClientHelloExtensions(ParsePacket *pkt, ClientHelloMsg *msg)
 {
     uint16_t exMsgLen = 0;
-    const char *logStr = BINGLOG_STR("parse extension length failed.");
-    int32_t ret = ParseBytesToUint16(pkt, &exMsgLen);
+    int32_t ret = ParseExtensionCommon(pkt, &exMsgLen);
     if (ret != HITLS_SUCCESS) {
-        return ParseErrorProcess(pkt->ctx, HITLS_PARSE_INVALID_MSG_LEN, BINLOG_ID15707,
-            logStr, ALERT_DECODE_ERROR);
-    }
-
-    if (exMsgLen != (pkt->bufLen - *pkt->bufOffset)) {
-        return ParseErrorProcess(pkt->ctx, HITLS_PARSE_INVALID_MSG_LEN, BINLOG_ID15708,
-            logStr, ALERT_DECODE_ERROR);
+        return ret;
     }
 
     if (exMsgLen == 0u) {
         return HITLS_SUCCESS;
     }
-
     return ParseClientExtension(pkt->ctx, &pkt->buf[*pkt->bufOffset], exMsgLen, msg);
 }
 
@@ -255,9 +247,7 @@ void CleanClientHello(ClientHelloMsg *msg)
     BSL_SAL_FREE(msg->cookie);
     BSL_SAL_FREE(msg->cipherSuites);
     BSL_SAL_FREE(msg->compressionMethods);
-
+    BSL_SAL_FREE(msg->extensionBuff);
     CleanClientHelloExtension(msg);
-
-    return;
 }
 #endif /* HITLS_TLS_HOST_SERVER */

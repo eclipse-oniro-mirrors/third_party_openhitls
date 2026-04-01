@@ -14,10 +14,11 @@
  */
 
 /* BEGIN_HEADER */
+#include <stdio.h>
 #include "bsl_sal.h"
 #include "securec.h"
+#include "stub_utils.h"
 #include "hitls_error.h"
-#include "stub_replace.h"
 #include "hitls_pki_cert.h"
 #include "hitls_pki_utils.h"
 #include "hitls_pki_errno.h"
@@ -36,11 +37,20 @@
 #include "hitls_print_local.h"
 #include "bsl_params.h"
 #include "crypt_params_key.h"
+#include "crypt_algid.h"
+#include "crypt_eal_pkey.h"
 #define MAX_BUFF_SIZE 4096
 #define PATH_MAX_LEN 4096
 #define PWD_MAX_LEN 4096
 
 /* END_HEADER */
+
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
+STUB_DEFINE_RET3(int32_t, BSL_LIST_AddElement, BslList *, void *, BslListPosition);
+STUB_DEFINE_RET5(int32_t, BSL_ASN1_EncodeTemplate, BSL_ASN1_Template *, BSL_ASN1_Buffer *, uint32_t, uint8_t **, uint32_t *);
 
 static void FreeListData(void *data)
 {
@@ -208,8 +218,8 @@ void SDV_HITLS_X509_CtrlCert_TC001(void)
     ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_GET_SIGNALG, &cert, 0), HITLS_X509_ERR_INVALID_PARAM);
     ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_GET_SIGN_MDALG, NULL, 0), HITLS_X509_ERR_INVALID_PARAM);
     ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_GET_SIGN_MDALG, &cert, 0), HITLS_X509_ERR_INVALID_PARAM);
-    ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_REF_UP, NULL, 0), HITLS_X509_ERR_INVALID_PARAM);
-    ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_REF_UP, &cert, 0), HITLS_X509_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_REF_UP, NULL, 0), BSL_INVALID_ARG);
+    ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_REF_UP, &cert, 0), BSL_INVALID_ARG);
 
     ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_GET_SUBJECT_DN_STR, NULL, 0), HITLS_X509_ERR_INVALID_PARAM);
     ASSERT_EQ(HITLS_X509_CertCtrl(&cert, HITLS_X509_GET_ISSUER_DN_STR, NULL, 0), HITLS_X509_ERR_INVALID_PARAM);
@@ -253,8 +263,8 @@ void SDV_HITLS_X509_CtrlCrl_TC001(void)
     ASSERT_EQ(HITLS_X509_CrlCtrl(NULL, 0xff, NULL, 0), HITLS_X509_ERR_INVALID_PARAM);
     HITLS_X509_Crl crl = {0};
     ASSERT_EQ(HITLS_X509_CrlCtrl(&crl, 0xff, NULL, 0), HITLS_X509_ERR_INVALID_PARAM);
-    ASSERT_EQ(HITLS_X509_CrlCtrl(&crl, HITLS_X509_REF_UP, NULL, 0), HITLS_X509_ERR_INVALID_PARAM);
-    ASSERT_EQ(HITLS_X509_CrlCtrl(&crl, HITLS_X509_REF_UP, &crl, 0), HITLS_X509_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_X509_CrlCtrl(&crl, HITLS_X509_REF_UP, NULL, 0), BSL_INVALID_ARG);
+    ASSERT_EQ(HITLS_X509_CrlCtrl(&crl, HITLS_X509_REF_UP, &crl, 0), BSL_INVALID_ARG);
 EXIT:
     BSL_GLOBAL_DeInit();
 }
@@ -320,7 +330,7 @@ void SDV_CRYPT_EAL_ParseFilePubKey_TC001(void)
 {
     TestMemInit();
     BSL_GLOBAL_Init();
-
+    CRYPT_EAL_PkeyCtx *key = NULL;
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(0xff, 0, NULL, NULL, 0, NULL), CRYPT_INVALID_ARG);
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PUBKEY_SUBKEY, NULL, NULL, 0, NULL), CRYPT_INVALID_ARG);
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PUBKEY_SUBKEY,
@@ -329,6 +339,7 @@ void SDV_CRYPT_EAL_ParseFilePubKey_TC001(void)
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_ASN1, CRYPT_PUBKEY_RSA,
         "../testdata/cert/asn1/rsa2048pub_pkcs1.der", NULL, 0, NULL), CRYPT_INVALID_ARG);
 EXIT:
+    CRYPT_EAL_PkeyFreeCtx(key);
     BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
@@ -397,6 +408,7 @@ void SDV_CRYPT_EAL_ParseFilePriKeyFormat_TC001(int format, int type, char *path)
     BSL_GLOBAL_Init();
     CRYPT_EAL_PkeyCtx *key = NULL;
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(key);
     BSL_GLOBAL_DeInit();
@@ -410,6 +422,7 @@ void SDV_CRYPT_EAL_ParseFilePubKeyFormat_TC001(int format, int type, char *path)
     BSL_GLOBAL_Init();
     CRYPT_EAL_PkeyCtx *key = NULL;
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(key);
     BSL_GLOBAL_DeInit();
@@ -428,6 +441,7 @@ void SDV_X509_EncodeNameList_TC001(int format, char *certPath, Hex *expect)
     ASSERT_EQ(HITLS_X509_EncodeNameList(cert->tbs.issuerName, &name), 0);
 
     ASSERT_COMPARE("Encode names", name.buff, name.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -441,7 +455,6 @@ void SDV_X509_EXT_Set_Api_TC001(void)
 {
     HITLS_X509_Ext *ext = NULL;
     HITLS_X509_ExtBCons bCons = {true, true, 1};
-    FuncStubInfo tmpRpInfo = {0};
 
     TestMemInit();
 
@@ -449,38 +462,37 @@ void SDV_X509_EXT_Set_Api_TC001(void)
     /* 1.1 Test calloc failure in HITLS_X509_SetExtList */
     ext = HITLS_X509_ExtNew(HITLS_X509_EXT_TYPE_CSR);
     ASSERT_TRUE_AND_LOG("ext != NULL 1", ext != NULL);
-    STUB_Init();
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
     STUB_ResetMallocCount();
     STUB_SetMallocFailIndex(0);
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
     ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_BCONS, &bCons, sizeof(HITLS_X509_ExtBCons)), BSL_MALLOC_FAIL);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
     HITLS_X509_ExtFree(ext);
 
     /* 1.2 Test dump failure in HITLS_X509_SetExtList */
     ext = HITLS_X509_ExtNew(HITLS_X509_EXT_TYPE_CSR);
     ASSERT_TRUE_AND_LOG("ext != NULL 2", ext != NULL);
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
     STUB_ResetMallocCount();
     STUB_SetMallocFailIndex(1);
     ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_BCONS, &bCons, sizeof(HITLS_X509_ExtBCons)), BSL_DUMP_FAIL);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
     HITLS_X509_ExtFree(ext);
 
     /* 1.3 Test encodeExt failure in HITLS_X509_SetExtList when adding new extension */
     ext = HITLS_X509_ExtNew(HITLS_X509_EXT_TYPE_CSR);
     ASSERT_TRUE_AND_LOG("ext != NULL 3", ext != NULL);
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_ASN1_EncodeTemplate, STUB_BSL_ASN1_EncodeTemplate) == 0);
+    STUB_REPLACE(BSL_ASN1_EncodeTemplate, STUB_BSL_ASN1_EncodeTemplate);
     ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_BCONS, &bCons, sizeof(HITLS_X509_ExtBCons)), BSL_ASN1_FAIL);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_ASN1_EncodeTemplate);
     HITLS_X509_ExtFree(ext);
 
     /* 1.4 Test BSL_LIST_AddElement failure in HITLS_X509_SetExtList */
     ext = HITLS_X509_ExtNew(HITLS_X509_EXT_TYPE_CSR);
     ASSERT_TRUE_AND_LOG("ext != NULL 4", ext != NULL);
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_LIST_AddElement, STUB_BSL_LIST_AddElement) == 0);
+    STUB_REPLACE(BSL_LIST_AddElement, STUB_BSL_LIST_AddElement);
     ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_BCONS, &bCons, sizeof(HITLS_X509_ExtBCons)), BSL_LIST_FULL);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_LIST_AddElement);
     HITLS_X509_ExtFree(ext);
 
     /* 2 Test set the bcons twice (replace existing extension) */
@@ -488,9 +500,9 @@ void SDV_X509_EXT_Set_Api_TC001(void)
     ext = HITLS_X509_ExtNew(HITLS_X509_EXT_TYPE_CSR);
     ASSERT_TRUE_AND_LOG("ext != NULL 5", ext != NULL);
     ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_BCONS, &bCons, sizeof(HITLS_X509_ExtBCons)), 0);
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_ASN1_EncodeTemplate, STUB_BSL_ASN1_EncodeTemplate) == 0);
+    STUB_REPLACE(BSL_ASN1_EncodeTemplate, STUB_BSL_ASN1_EncodeTemplate);
     ASSERT_EQ(HITLS_X509_ExtCtrl(ext, HITLS_X509_EXT_SET_BCONS, &bCons, sizeof(HITLS_X509_ExtBCons)), BSL_ASN1_FAIL);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_ASN1_EncodeTemplate);
     HITLS_X509_ExtFree(ext);
 
     /* 2.2 Test set the bcons twice successfully */
@@ -503,8 +515,8 @@ void SDV_X509_EXT_Set_Api_TC001(void)
     ext = NULL;
 
 EXIT:
+    STUB_RESTORE(BSL_SAL_Malloc);
     HITLS_X509_ExtFree(ext);
-    STUB_Reset(&tmpRpInfo);
 }
 /* END_CASE */
 
@@ -518,7 +530,6 @@ void SDV_X509_EXT_SetGeneric_Api_TC001(void)
     HITLS_X509_Ext *ext = NULL;
     HITLS_X509_Ext *extForMalloc = NULL;
     uint32_t totalMallocCount = 0;
-    FuncStubInfo tmpRpInfo = {0};
 
     TestMemInit();
     ext = X509_ExtNew(NULL, HITLS_X509_EXT_TYPE_CERT);
@@ -549,8 +560,7 @@ void SDV_X509_EXT_SetGeneric_Api_TC001(void)
     generic.value.dataLen = sizeof(value);
 
     /* Mock malloc fail in X509_ExtCtrl */
-    STUB_Init();
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
     // success: first set generic extension
     STUB_EnableMallocFail(false);
     STUB_ResetMallocCount();
@@ -586,7 +596,7 @@ void SDV_X509_EXT_SetGeneric_Api_TC001(void)
 EXIT:
     HITLS_X509_ExtFree(ext);
     HITLS_X509_ExtFree(extForMalloc);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */
 
@@ -599,7 +609,6 @@ void SDV_X509_EXT_GetGeneric_Api_TC001(void)
     uint8_t value[] = {0x01};
     HITLS_X509_ExtGeneric generic = {true, {oid, sizeof(oid)}, {value, sizeof(value)}};
     HITLS_X509_Ext *ext = NULL;
-    FuncStubInfo tmpRpInfo = {0};
 
     TestMemInit();
     ext = X509_ExtNew(NULL, HITLS_X509_EXT_TYPE_CERT);
@@ -628,7 +637,7 @@ void SDV_X509_EXT_GetGeneric_Api_TC001(void)
     ASSERT_EQ(X509_ExtCtrl(ext, HITLS_X509_EXT_SET_GENERIC, &generic, sizeof(HITLS_X509_ExtGeneric)), 0);
 
     // error: get generic extension with malloc fail
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
     STUB_EnableMallocFail(true);
     STUB_ResetMallocCount();
     STUB_SetMallocFailIndex(0); // mock malloc fail in BSL_SAL_Dump
@@ -644,7 +653,7 @@ void SDV_X509_EXT_GetGeneric_Api_TC001(void)
 EXIT:
     HITLS_X509_ExtFree(ext);
     BSL_SAL_Free(generic.value.data);
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */
 
@@ -863,6 +872,7 @@ void SDV_X509_EXT_EncodeBCons_TC001(int critical, int isCa, int maxPathLen, Hex 
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext: bCons", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CertFree(cert);
     BSL_SAL_Free(encode.buff);
@@ -891,6 +901,7 @@ void SDV_X509_EXT_EncodeExtendKeyUsage_TC001(int critical, Hex *oid1, Hex *oid2,
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext: extendKeyUsage", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -988,6 +999,7 @@ void SDV_X509_EXT_EncodeSan_TC001(int critical, int type1, int type2, int type3,
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext: san", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -1014,6 +1026,7 @@ void SDV_X509_EXT_EncodeKeyUsage_TC001(int critical, int usage, Hex *expect)
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext: keyUsage", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CertFree(cert);
     BSL_SAL_Free(encode.buff);
@@ -1039,6 +1052,7 @@ void SDV_X509_EXT_EncodeAKiSki_TC001(int critical1, int critical2, Hex *kid1, He
     ASSERT_EQ(HITLS_X509_EncodeExt(tag, cert->tbs.ext.extList, &encode), HITLS_PKI_SUCCESS);
     ASSERT_EQ(encode.len, expect->len);
     ASSERT_COMPARE("Ext:aki ski", encode.buff, encode.len, expect->x, expect->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CertFree(cert);
     BSL_SAL_Free(encode.buff);
@@ -1079,6 +1093,7 @@ void SDV_X509_EXT_ParseGeneralNames_TC001(Hex *encode, Hex *ip, Hex *uri, Hex *r
             ASSERT_COMPARE("gn", name->value.data, name->value.dataLen, map[idx].value->x, map[idx].value->len);
         }
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ClearGeneralNames(list);
@@ -1140,6 +1155,7 @@ void SDV_X509_EXT_ParseExtendedKu_TC001(Hex *encode, Hex *ku1, Hex *ku2, Hex *ku
         ASSERT_COMPARE("Extended key usage", values[idx]->x, values[idx]->len, data->data, data->dataLen);
         idx++;
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ClearExtendedKeyUsage(&exku);
@@ -1161,6 +1177,7 @@ void SDV_X509_EXT_ParseAki_TC001(Hex *encode, Hex *kid, Hex *serial, int nameCnt
     ASSERT_COMPARE("serial", aki.serialNum.data, aki.serialNum.dataLen, serial->x, serial->len);
 
     ASSERT_EQ(BSL_LIST_COUNT(aki.issuerName), nameCnt);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_ClearAuthorityKeyId(&aki);
@@ -1195,6 +1212,7 @@ void SDV_X509_EXT_ParseSan_TC001(Hex *encode, int ret, int gnNameCnt, int gnType
         dirName = BSL_LIST_GET_NEXT(dirNameList);      // layer 2
         ASSERT_COMPARE("dnname type", dirName->nameType.buff, dirName->nameType.len, dnType->x, dnType->len);
         ASSERT_COMPARE("dnname value", dirName->nameValue.buff, dirName->nameValue.len, dnValue->x, dnValue->len);
+        ASSERT_TRUE(TestIsErrStackEmpty());
     }
 
 EXIT:
@@ -1298,7 +1316,7 @@ void SDV_X509_SIGN_Func_TC002(void)
     CRYPT_EAL_PkeyCtx *prvKey = NULL;
     HITLS_X509_SignAlgParam algParam = {0};
     uint8_t obj = 1;
-    CRYPT_RsaPadType pad = CRYPT_EMSA_PKCSV15;
+    int32_t pad = CRYPT_EMSA_PKCSV15;
     CRYPT_EAL_PkeyPara para = {0};
     uint8_t e[] = {1, 0, 1};
     para.id = CRYPT_PKEY_RSA;
@@ -1313,13 +1331,15 @@ void SDV_X509_SIGN_Func_TC002(void)
 
     ASSERT_EQ(CRYPT_EAL_PkeySetPara(prvKey, &para), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyGen(prvKey), 0);
-    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(prvKey, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(CRYPT_RsaPadType)), 0);
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(prvKey, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(pad)), 0);
 
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA224, prvKey, NULL, &obj, TestSignCb), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA224, prvKey, &algParam, &obj, TestSignCb), HITLS_X509_ERR_SIGN_PARAM);
+    TestErrClear();
 
     pad = CRYPT_EMSA_PSS;
-    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(prvKey, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(CRYPT_RsaPadType)), 0);
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(prvKey, CRYPT_CTRL_SET_RSA_PADDING, &pad, sizeof(pad)), 0);
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA224, prvKey, NULL, &obj, TestSignCb), 0);
 
     CRYPT_RSA_PssPara pssPara = {1, CRYPT_MD_SHA256, CRYPT_MD_SHA256};
@@ -1329,6 +1349,7 @@ void SDV_X509_SIGN_Func_TC002(void)
         {CRYPT_PARAM_RSA_SALTLEN, BSL_PARAM_TYPE_INT32, &pssPara.saltLen, sizeof(pssPara.saltLen), 0},
         BSL_PARAM_END};
     ASSERT_EQ(CRYPT_EAL_PkeyCtrl(prvKey, CRYPT_CTRL_SET_RSA_EMSA_PSS, pssParam, 0), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA224, prvKey, NULL, &obj, TestSignCb), HITLS_X509_ERR_MD_NOT_MATCH);
 
     ASSERT_EQ(HITLS_X509_Sign(CRYPT_MD_SHA256, prvKey, NULL, &obj, TestSignCb), 0);
@@ -1353,10 +1374,10 @@ void SDV_HITLS_X509_PrintCtrl_TC001(void)
 
     ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, NULL, 0, NULL), HITLS_X509_ERR_INVALID_PARAM);
     ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, &flag, 0, NULL), HITLS_X509_ERR_INVALID_PARAM);
-    
-    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_PRINT_DN, NULL, sizeof(BslList), uio), HITLS_X509_ERR_INVALID_PARAM);
-    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_PRINT_DN, &list, sizeof(BslList), NULL), HITLS_X509_ERR_INVALID_PARAM);
-    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_PRINT_DN, &list, 0, uio), HITLS_X509_ERR_INVALID_PARAM);
+
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_PRINT_DNNAME, NULL, sizeof(BslList), uio), HITLS_X509_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_PRINT_DNNAME, &list, sizeof(BslList), NULL), HITLS_X509_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_PRINT_DNNAME, &list, 0, uio), HITLS_X509_ERR_INVALID_PARAM);
 
 EXIT:
     BSL_UIO_Free(uio);
@@ -1407,9 +1428,9 @@ static int32_t PrintBuffTest(int cmd, BSL_Buffer *data, char *log, Hex *expect, 
     ASSERT_EQ(BSL_UIO_Read(uio, dnBuf, MAX_BUFF_SIZE, &dnBufLen), 0);
     if (isExpectFile) {
         ASSERT_EQ(ReadFile((char *)expect->x, expectBuf, MAX_BUFF_SIZE, &expectBufLen), 0);
-        ASSERT_COMPARE(log, expectBuf, expectBufLen, dnBuf, dnBufLen);
+        ASSERT_COMPARE(log, expectBuf, expectBufLen, dnBuf, dnBufLen - 1); // Ignore line break differences
     } else {
-        ASSERT_COMPARE(log, expect->x, expect->len, dnBuf, dnBufLen);
+        ASSERT_COMPARE(log, expect->x, expect->len, dnBuf, dnBufLen - 1);  // Ignore line break differences
     }
     ret = 0;
 EXIT:
@@ -1436,7 +1457,8 @@ void SDV_HITLS_X509_PrintDn_TC002(char *certPath, int format, int printFlag, cha
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_GET_ISSUER_DN, &rawIssuer, sizeof(BslList *)), HITLS_PKI_SUCCESS);
     BSL_Buffer data = {(uint8_t *)rawIssuer, sizeof(BslList)};
     ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, &printFlag, sizeof(int), NULL), HITLS_PKI_SUCCESS);
-    ASSERT_EQ(PrintBuffTest(HITLS_PKI_PRINT_DN, &data, "Print Distinguish name", &expectName, false), 0);
+    ASSERT_EQ(PrintBuffTest(HITLS_PKI_PRINT_DNNAME, &data, "Print Distinguish name", &expectName, false), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_X509_CertFree(cert);
@@ -1451,7 +1473,7 @@ void SDV_CRYPT_EAL_DecodeBuffKey_Ex_TC001(void)
 #else
     TestMemInit();
     BSL_GLOBAL_Init();
-    
+
     CRYPT_EAL_PkeyCtx *key = NULL;
     BSL_Buffer encode = {0};
     BSL_Buffer pwd = {0};
@@ -1463,14 +1485,14 @@ void SDV_CRYPT_EAL_DecodeBuffKey_Ex_TC001(void)
         CRYPT_INVALID_ARG);
     ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, "ASN1", "PUBKEY_RSA", &encode, NULL, NULL),
         CRYPT_INVALID_ARG);
-    
+
     // Test invalid encode buffer
     ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, "ASN1", "PUBKEY_RSA", &encode, &pwd, &key),
         CRYPT_INVALID_ARG);
     encode.data = data;
     ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, "ASN1", "PUBKEY_RSA", &encode, &pwd, &key),
         CRYPT_INVALID_ARG);
-    
+
     // Test invalid format
     encode.dataLen = sizeof(data);
     ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, "UNKNOWN_FORMAT", "PUBKEY_RSA", &encode, &pwd, &key),
@@ -1506,7 +1528,7 @@ void SDV_CRYPT_EAL_DecodeFileKey_Ex_TC001(void)
 #else
     TestMemInit();
     BSL_GLOBAL_Init();
-    
+
     CRYPT_EAL_PkeyCtx *key = NULL;
     BSL_Buffer pwd = {0};
     uint8_t pwdData[10] = {0};
@@ -1541,8 +1563,827 @@ void SDV_CRYPT_EAL_DecodeFileKey_Ex_TC001(void)
     ASSERT_EQ(CRYPT_EAL_ProviderDecodeFileKey(NULL, NULL, CRYPT_PKEY_ECDSA, "ASN1", "PRIKEY_PKCS8_ENCRYPT",
         "../testdata/cert/asn1/prime256v1_pkcs8_enc.der", &pwd, &key), CRYPT_INVALID_ARG);
 
+    // Test inconsistent seed and private key
+    ASSERT_EQ(CRYPT_EAL_ProviderDecodeFileKey(NULL, NULL, CRYPT_PKEY_ML_DSA, "PEM", "PRIKEY_PKCS8_UNENCRYPT",
+        "../testdata/cert/asn1/mldsa-44-pri-key-both-inconsistent.key", &pwd, &key),
+        CRYPT_MLDSA_PRVKEY_SEED_INCONSISTENT);
 EXIT:
     BSL_GLOBAL_DeInit();
+#endif
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_HITLS_X509_PrintCert_TC001(char *certPath, int format, int printFlag, int brief, char *expectFile)
+{
+#if defined(HITLS_PKI_INFO_CRT) && defined(HITLS_PKI_X509_CRT)
+    TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    Hex expect = { (uint8_t *)expectFile, 0 };
+    int32_t cmd = brief == 1 ? HITLS_PKI_PRINT_CERT_BRIEF : HITLS_PKI_PRINT_CERT;
+    BSL_Buffer data;
+
+    ASSERT_EQ(HITLS_X509_CertParseFile(format, certPath, &cert), HITLS_PKI_SUCCESS);
+    ASSERT_NE(cert, NULL);
+
+    data.data = (uint8_t *)cert;
+    data.dataLen = sizeof(HITLS_X509_Cert *);
+
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, &printFlag, sizeof(int), NULL), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(PrintBuffTest(cmd, &data, "Print cert", &expect, true), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HITLS_X509_CertFree(cert);
+#else
+    (void)certPath;
+    (void)format;
+    (void)brief;
+    (void)expectFile;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_HITLS_X509_PrintCrl_TC001(char *certPath, int format, int printFlag, char *expectFile)
+{
+#if defined(HITLS_PKI_INFO_CRL) && defined(HITLS_PKI_X509_CRL)
+    TestMemInit();
+    HITLS_X509_Crl *crl = NULL;
+    int32_t *version = NULL;
+    Hex expect = { (uint8_t *)expectFile, 0};
+
+    ASSERT_EQ(HITLS_X509_CrlParseFile(format, certPath, &crl), HITLS_PKI_SUCCESS);
+    ASSERT_NE(crl, NULL);
+    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_GET_VERSION, &version, sizeof(int32_t)), HITLS_PKI_SUCCESS);
+    BSL_Buffer data = {(uint8_t *)crl, sizeof(HITLS_X509_Crl *)};
+    ASSERT_EQ(HITLS_PKI_PrintCtrl(HITLS_PKI_SET_PRINT_FLAG, &printFlag, sizeof(int), NULL), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(PrintBuffTest(HITLS_PKI_PRINT_CRL, &data, "Print crl file", &expect, true), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HITLS_X509_CrlFree(crl);
+#else
+    (void)certPath;
+    (void)format;
+    (void)printFlag;
+    (void)expectFile;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PrivateKey_SeedFormat_TC001
+ * @title Test ML-KEM private key decode/encode with seed-only format
+ * @precon Prepare ML-KEM-512/768/1024 private keys in seed-only format
+ *         (Appendix C.1.1.1, C.1.2.1, C.1.3.1 from draft-ietf-lamps-kyber-certificates-11)
+ * @brief
+ *   1. Decode the private key from file (seed-only format)
+ *   2. Encode the key back to buffer
+ *   3. Compare encoded buffer with original file
+ * @expect
+ *   1. Decode should succeed
+ *   2. Encode should succeed
+ *   3. Encoded data should match original file exactly
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PrivateKey_SeedFormat_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    TestRandInit();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+    BSL_Buffer encodeAsn1 = {0};
+    uint8_t expectBuf[MAX_BUFF_SIZE * 2] = {};
+    uint32_t expectBufLen = sizeof(expectBuf);
+
+    // Decode seed-only private key (CRYPT_PRIKEY_MLKEM_SEED format)
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+
+    // Set the private key format to seed-only before encoding
+    uint32_t dkFormat = CRYPT_ALGO_MLKEM_DK_FORMAT_SEED_ONLY;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(key, CRYPT_CTRL_SET_MLKEM_DK_FORMAT, &dkFormat, sizeof(uint32_t)), CRYPT_SUCCESS);
+
+    // Encode back to buffer
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(key, NULL, format, type, &encodeAsn1), CRYPT_SUCCESS);
+
+    // Compare with original file
+    ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
+    ASSERT_COMPARE("seed key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    BSL_SAL_FREE(encodeAsn1.data);
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+    TestRandDeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PrivateKey_ExpandedFormat_TC001
+ * @title Test ML-KEM private key decode/encode with expanded-only format
+ * @precon Prepare ML-KEM-512/768/1024 private keys in expanded-only format
+ *         (Appendix C.1.1.2, C.1.2.2, C.1.3.2 from draft-ietf-lamps-kyber-certificates-11)
+ * @brief
+ *   1. Decode the private key from file (expanded-only format)
+ *   2. Verify H(ek) check is performed (FIPS 203 Section 7.3)
+ *   3. Encode the key back to buffer
+ *   4. Compare encoded buffer with original file
+ * @expect
+ *   1. Decode should succeed with H(ek) validation
+ *   2. Encode should succeed
+ *   3. Encoded data should match original file exactly
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PrivateKey_ExpandedFormat_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    TestRandInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+    BSL_Buffer encodeAsn1 = {0};
+    uint8_t expectBuf[MAX_BUFF_SIZE * 2] = {};
+    uint32_t expectBufLen = sizeof(expectBuf);
+
+    // Decode expanded-only private key (CRYPT_PRIKEY_MLKEM_EXPANDED format)
+    // This should trigger H(ek) validation per FIPS 203 Section 7.3
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+
+    // Set the private key format to expanded-only before encoding
+    uint32_t dkFormat = CRYPT_ALGO_MLKEM_DK_FORMAT_DK_ONLY;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(key, CRYPT_CTRL_SET_MLKEM_DK_FORMAT, &dkFormat, sizeof(uint32_t)), CRYPT_SUCCESS);
+
+    // Encode back to buffer
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(key, NULL, format, type, &encodeAsn1), CRYPT_SUCCESS);
+
+    // Compare with original file
+    ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
+    ASSERT_COMPARE("expanded key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    BSL_SAL_FREE(encodeAsn1.data);
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+    TestRandDeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PrivateKey_BothFormat_TC001
+ * @title Test ML-KEM private key decode/encode with both seed and expanded key
+ * @precon Prepare ML-KEM-512/768/1024 private keys with both seed and expandedKey
+ *         (Appendix C.1.1.3, C.1.2.3, C.1.3.3 from draft-ietf-lamps-kyber-certificates-11)
+ * @brief
+ *   1. Decode the private key from file (both format)
+ *   2. Verify seed consistency check is performed (Draft Section 8 SHOULD)
+ *   3. Verify H(ek) check is performed (FIPS 203 Section 7.3)
+ *   4. Encode the key back to buffer
+ *   5. Compare encoded buffer with original file
+ * @expect
+ *   1. Decode should succeed with both seed and H(ek) validation
+ *   2. Encode should succeed
+ *   3. Encoded data should match original file exactly
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PrivateKey_BothFormat_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    TestRandInit();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+    BSL_Buffer encodeAsn1 = {0};
+    uint8_t expectBuf[MAX_BUFF_SIZE * 2] = {};
+    uint32_t expectBufLen = sizeof(expectBuf);
+
+    // Decode both format private key (CRYPT_PRIKEY_MLKEM_BOTH format)
+    // This should trigger seed consistency check (memcmp validation)
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+
+    // Set the private key format to both before encoding
+    uint32_t dkFormat = CRYPT_ALGO_MLKEM_DK_FORMAT_BOTH;
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(key, CRYPT_CTRL_SET_MLKEM_DK_FORMAT, &dkFormat, sizeof(uint32_t)), CRYPT_SUCCESS);
+
+    // Encode back to buffer
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(key, NULL, format, type, &encodeAsn1), CRYPT_SUCCESS);
+
+    // Compare with original file
+    ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
+    ASSERT_COMPARE("both format key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    BSL_SAL_FREE(encodeAsn1.data);
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+    TestRandDeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PrivateKey_InconsistentBoth_TC001
+ * @title Test ML-KEM private key decode with inconsistent seed and expandedKey (NEGATIVE)
+ * @precon Prepare bad private key with both seed and expandedKey where they don't match
+ *         (Appendix C.4.1 Example 1 from draft-ietf-lamps-kyber-certificates-11)
+ * @brief
+ *   1. Attempt to decode private key with mismatched seed and expandedKey
+ *   2. Verify seed consistency check detects the mismatch
+ * @expect
+ *   1. Decode should fail with CRYPT_MLKEM_SEED_EXPANDED_KEY_INCONSISTENT error
+ *   2. Error indicates that seed-generated key doesn't match provided expandedKey
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PrivateKey_InconsistentBoth_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+
+    // Attempt to decode inconsistent private key (seed != expandedKey)
+    // Expected error: CRYPT_MLKEM_SEED_EXPANDED_KEY_INCONSISTENT
+    int32_t ret = CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key);
+    ASSERT_EQ(ret, CRYPT_MLKEM_SEED_EXPANDED_KEY_INCONSISTENT);
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PrivateKey_MutatedHek_TC001
+ * @title Test ML-KEM private key decode with mutated H(ek) (NEGATIVE)
+ * @precon Prepare bad private key with corrupted H(ek) in expandedKey
+ *         (Appendix C.4.1 Example 3 from draft-ietf-lamps-kyber-certificates-11)
+ * @brief
+ *   1. Attempt to decode private key with mutated H(ek)
+ *   2. Verify H(ek) validation detects the corruption
+ * @expect
+ *   1. Decode should fail with CRYPT_MLKEM_INVALID_PRVKEY error
+ *   2. Error indicates that computed H(ek) doesn't match stored H(ek)
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PrivateKey_MutatedHek_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    TestRandInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+
+    // Attempt to decode private key with mutated H(ek)
+    // Expected error: CRYPT_MLKEM_INVALID_PRVKEY
+    int32_t ret = CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key);
+    ASSERT_EQ(ret, CRYPT_MLKEM_INVALID_PRVKEY);
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+    TestRandDeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PrivateKey_InconsistentZ_TC001
+ * @title Test ML-KEM private key decode with mismatched z value (NEGATIVE)
+ * @precon Prepare bad private key where z in seed differs from z in expandedKey
+ *         (Appendix C.4.1 Example 4 from draft-ietf-lamps-kyber-certificates-11)
+ * @brief
+ *   1. Attempt to decode private key with mismatched z (implicit rejection secret)
+ *   2. Verify seed consistency check detects z mismatch
+ * @expect
+ *   1. Decode should fail with CRYPT_MLKEM_SEED_EXPANDED_KEY_INCONSISTENT error
+ *   2. Even though public/private vectors match, z difference should be detected
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PrivateKey_InconsistentZ_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+
+    // Attempt to decode private key with mismatched z value
+    // Expected error: CRYPT_MLKEM_SEED_EXPANDED_KEY_INCONSISTENT
+    int32_t ret = CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key);
+    ASSERT_EQ(ret, CRYPT_MLKEM_SEED_EXPANDED_KEY_INCONSISTENT);
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PrivateKey_MutatedS0_TC001
+ * @title Test ML-KEM private key decode with mutated s_0 (NEGATIVE - pairwise check only)
+ * @precon Prepare bad private key with corrupted s_0 but valid H(ek)
+ *         (Appendix C.4.1 Example 2 from draft-ietf-lamps-kyber-certificates-11)
+ * @brief
+ *   1. Attempt to decode expanded-only private key with mutated s_0
+ *   2. Verify H(ek) check passes (H(ek) is valid)
+ *   3. Verify pairwise consistency check detects s_0 corruption
+ * @expect
+ *   1. If HITLS_CRYPTO_MLKEM_CHECK enabled: decode fails with CRYPT_MLKEM_INVALID_PRVKEY
+ *   2. If HITLS_CRYPTO_MLKEM_CHECK disabled: decode succeeds (H(ek) check passes)
+ *   3. This demonstrates that H(ek) check alone cannot detect secret key corruption
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PrivateKey_MutatedS0_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+
+    // Attempt to decode private key with mutated s_0
+    int32_t ret = CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key);
+    ASSERT_EQ(ret, CRYPT_MLKEM_INVALID_PRVKEY);
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PublicKey_TC001
+ * @title ML-KEM public key encoding and decoding test
+ * @precon Prepare valid ML-KEM public key file
+ * @brief
+ *    1. Decode ML-KEM public key from file (PEM or DER format)
+ *    2. Encode the public key back to buffer
+ *    3. Compare encoded buffer with original file content
+ * @expect
+ *    1. Decoding should succeed
+ *    2. Encoding should succeed
+ *    3. Encoded content should exactly match the original file
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PublicKey_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+    BSL_Buffer encodeAsn1 = {0};
+    uint8_t expectBuf[MAX_BUFF_SIZE * 2] = {};
+    uint32_t expectBufLen = sizeof(expectBuf);
+
+    // Decode public key from file
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+
+    // Encode public key to buffer
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(key, NULL, format, type, &encodeAsn1), CRYPT_SUCCESS);
+
+    // Read original file and compare
+    ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
+    ASSERT_COMPARE("public key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    BSL_SAL_FREE(encodeAsn1.data);
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_HITLS_MLKEM_PrivateKey_GenerateEncode_TC001
+ * @title ML-KEM private key generation and encoding test
+ * @precon None
+ * @brief
+ *    1. Create ML-KEM key context and set parameters
+ *    2. Generate new key pair
+ *    3. Set private key output format (seed-only/expanded-only/both)
+ *    4. Encode private key to buffer and file
+ * @expect
+ *    1. Key generation should succeed
+ *    2. Format setting should succeed
+ *    3. Encoding should succeed
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PrivateKey_GenerateEncode_TC001(int mlkemType, int format, int type, int dkFormat, char* path)
+{
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+    BSL_Buffer encodeAsn1 = {0};
+    CRYPT_EAL_PkeyCtx *pkey = CRYPT_EAL_PkeyNewCtx(CRYPT_PKEY_ML_KEM);
+    ASSERT_NE(pkey, NULL);
+
+    // Set ML-KEM parameter (512/768/1024)
+    ASSERT_EQ(CRYPT_EAL_PkeySetParaById(pkey, mlkemType), CRYPT_SUCCESS);
+
+    // Generate key pair
+    ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
+
+    // Set private key output format
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_MLKEM_DK_FORMAT, &dkFormat, sizeof(uint32_t)), CRYPT_SUCCESS);
+
+    // Encode to buffer
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkey, NULL, format, type, &encodeAsn1), CRYPT_SUCCESS);
+
+    // Encode to file
+    ASSERT_EQ(CRYPT_EAL_EncodeFileKey(pkey, NULL, format, type, path), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    TestRandDeInit();
+    BSL_SAL_FREE(encodeAsn1.data);
+    CRYPT_EAL_PkeyFreeCtx(pkey);
+    remove(path);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_HITLS_MLDSA_PQCCert_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+    BSL_Buffer encodeAsn1 = {0};
+    uint8_t expectBuf[MAX_BUFF_SIZE * 2] = {};
+    uint32_t expectBufLen = sizeof(expectBuf);
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(key, NULL, format, type, &encodeAsn1), CRYPT_SUCCESS);
+
+    ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
+    ASSERT_COMPARE("key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    BSL_SAL_FREE(encodeAsn1.data);
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_HITLS_MLDSA_PQCCert_TC005(int format, int type, char *path, int key_format, int err)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+    BSL_Buffer encodeAsn1 = {0};
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(key, CRYPT_CTRL_SET_MLDSA_PRVKEY_FORMAT, &key_format, sizeof(uint32_t)), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(key, NULL, format, type, &encodeAsn1), err);
+EXIT:
+    BSL_SAL_FREE(encodeAsn1.data);
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_HITLS_SLHDSA_PQCCert_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+    BSL_Buffer encodeAsn1 = {0};
+    uint8_t expectBuf[MAX_BUFF_SIZE * 2] = {};
+    uint32_t expectBufLen = sizeof(expectBuf);
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(key, NULL, format, type, &encodeAsn1), CRYPT_SUCCESS);
+
+    ASSERT_EQ(ReadFile(path, expectBuf, encodeAsn1.dataLen, &expectBufLen), 0);
+    ASSERT_COMPARE("key ", encodeAsn1.data, encodeAsn1.dataLen, expectBuf, expectBufLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    BSL_SAL_FREE(encodeAsn1.data);
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+#if defined(HITLS_PKI_X509_VFY_HOSTNAME)
+
+static bool PkiSkipTest(int32_t algId, int32_t format)
+{
+#ifndef HITLS_BSL_PEM
+    if (format == BSL_FORMAT_PEM) {
+        return true;
+    }
+#else
+    (void)format;
+#endif
+    switch (algId) {
+#ifdef HITLS_CRYPTO_RSA
+        case CRYPT_PKEY_RSA:
+        case BSL_CID_RSASSAPSS:
+            return false;
+#endif
+#ifdef HITLS_CRYPTO_ECDSA
+        case CRYPT_PKEY_ECDSA:
+            return false;
+#endif
+#ifdef HITLS_CRYPTO_SM2
+        case CRYPT_PKEY_SM2:
+            return false;
+#endif
+#ifdef HITLS_CRYPTO_ED25519
+        case CRYPT_PKEY_ED25519:
+            return false;
+#endif
+        default:
+            return true;
+    }
+}
+#endif // HITLS_PKI_X509_VFY_HOSTNAME
+/*
+ * Test for exact hostname match, including case-insensitivity.
+ */
+/* BEGIN_CASE */
+void SDV_PKI_HOSTNAME_EXACT_MATCH_TC001(int flag)
+{
+#if defined(HITLS_PKI_X509_VFY) && defined(HITLS_PKI_X509_VFY_HOSTNAME)
+    uint32_t testFlag = flag == 0 ? 0 : HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD;
+    TestMemInit();
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "", ""), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, " ", " "), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "www.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "WWW.OPENHITLS.COM", "www.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "WWW.OPENHITLS.COM"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "a.b.c.openhitls.com", "a.b.c.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.oPenHiTls.com", "www.oPenHiTls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.\nopenhitls.com", "www.\nopenhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "...", "..."), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "12...", "12..."), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, ".&..", ".&.."), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "12...@", "12...@"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "web-server-1.openhitls.com", "web-server-1.openhitls.com"),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "1.2.3.4.openhitls.com", "1.2.3.4.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.COM", "www.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "www-*.openhitls.com",
+        "www-1.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.web-server.openhitls.com", "app1.web-server.openhitls.com"),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "192.168.1.1", "192.168.1.1"), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+EXIT:
+    return;
+#else
+    (void)flag;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/*
+ * Test for wildcard hostname match.
+ */
+/* BEGIN_CASE */
+void SDV_PKI_HOSTNAME_WILDCARD_MATCH_TC002(int flag)
+{
+#if defined(HITLS_PKI_X509_VFY) && defined(HITLS_PKI_X509_VFY_HOSTNAME)
+    uint32_t testFlag = flag == 0 ? 0 : HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD;
+    TestMemInit();
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.openhitls.com", ".openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.openhitls.com", "www.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.openhitls.com", "api.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "f*.openhitls.com",
+        "foo.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "*o.openhitls.com",
+        "foo.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "f*o.openhitls.com",
+        "foo.openhitls.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "f*o.openhitls.com",
+        "foo.openHITLS.com"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "f*o.openhitls.com",
+        "fToo.openHITLS.com"), HITLS_PKI_SUCCESS);
+    // RFC 6125
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "baz*.example.net",
+        "baz1.example.net"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "*baz.example.net",
+        "foobaz.example.net"), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_MatchPattern(HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD, "b*z.example.net",
+        "buzz.example.net"), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+EXIT:
+    return;
+#else
+    (void)flag;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/*
+ * Test for hostname mismatch.
+*/
+/* BEGIN_CASE */
+void SDV_PKI_HOSTNAME_MISMATCH_TC001(int flag)
+{
+#if defined(HITLS_PKI_X509_VFY) && defined(HITLS_PKI_X509_VFY_HOSTNAME)
+    uint32_t testFlag = flag == 0 ? 0 : HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD;
+    TestMemInit();
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.openhitls.com", ".openhitls.com."),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "www.google.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "mail.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "www.openhitls.org"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "a.b.openhitls.com", "x.y.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "openhitls.com", "www.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+EXIT:
+    return;
+#else
+    (void)flag;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/*
+ * Test cases for invalid wildcard usage (e.g., multi-label, not leftmost).
+ */
+/* BEGIN_CASE */
+void SDV_PKI_HOSTNAME_MISMATCH_TC002(int flag)
+{
+#if defined(HITLS_PKI_X509_VFY) && defined(HITLS_PKI_X509_VFY_HOSTNAME)
+    uint32_t testFlag = flag == 0 ? 0 : HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD;
+    TestMemInit();
+    // Wildcard should not match multiple labels
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.com", "www.openhitls.com"), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.openhitls.com", "openhitls.com"), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.openhitls.com", "api.v1.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.*.com", "www.openhitls.com"), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    // Mismatch with wildcard
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "*.openhitls.com", "www.google.com"), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "f**o.openhitls.com", "fToo.openHITLS.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+EXIT:
+    return;
+#else
+    (void)flag;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/*
+ * Test handling of invalid inputs like NULL, empty strings, and single dots.
+ */
+/* BEGIN_CASE */
+void SDV_PKI_HOSTNAME_INVALID_INPUTS_TC001(int flag)
+{
+#if defined(HITLS_PKI_X509) && defined(HITLS_PKI_X509_CRT) && defined(HITLS_PKI_X509_VFY_HOSTNAME)
+    uint32_t testFlag = flag == 0 ? 0 : HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD;
+    TestMemInit();
+    // More invalid inputs
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, NULL, "www.openhitls.com"), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", NULL), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, NULL, NULL), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "a", ""), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "", "a"), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, ".", "a"), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, ".", "."), HITLS_PKI_SUCCESS);
+    // additional charactors
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.open\0hitls.com", "www.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "www.open\0hitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.open\\hitls.com", "www.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "www.open\\hitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.open\nhitls.com", "www.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "www.open\nhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "openhitls.com", "sub.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "192.168.1.1", "192.168.1.2"), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "**..openhitls.com", "www.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.openhitls.com", "www.openhhtls.com."),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_MatchPattern(testFlag, "www.op\xE9nhitls.com", "www.openhitls.com"),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+EXIT:
+    return;
+#else
+    (void)flag;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/*
+ * Test for HITLS_X509_VerifyHostname with various SANs.
+ */
+/* BEGIN_CASE */
+void SDV_PKI_VERIFY_HOSTNAME_TC001(int algId, int format, Hex *encode, int flag)
+{
+#if defined(HITLS_PKI_X509_CRT_PARSE) && defined(HITLS_PKI_X509_VFY_HOSTNAME)
+    if (PkiSkipTest(algId, format)) {
+        SKIP_TEST();
+    }
+    uint32_t testFlag = flag == 0 ? 0 : HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD;
+    TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    ASSERT_EQ(HITLS_X509_CertParseBuff(format, (BSL_Buffer *)encode, &cert), HITLS_PKI_SUCCESS);
+    ASSERT_NE(cert, NULL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, -1, "test.hitls.com", strlen("test.hitls.com") - 1),
+        HITLS_X509_ERR_INVALID_PARAM);
+    TestErrClear();
+    // Normal cases
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.hitls.com", strlen("test.hitls.com")), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.hitls.net", strlen("test.hitls.net")), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.openhitls.net", strlen("test.openhitls.net")),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.hello.com", strlen("test.hello.com")), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.m.open.hitls.com", strlen("test.m.open.hitls.com")),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.hitls.com", strlen("test.hitls.com")), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.xx.hitls.net", strlen("test.xx.hitls.net")),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.xy.hitls.net", strlen("test.xy.hitls.net")),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.xz.hitls.net", strlen("test.xz.hitls.net")),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "www.openhitls.com", strlen("www.openhitls.com")),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "www.openhitls.net", strlen("www.openhitls.net")),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "openhitls.com", strlen("openhitls.com")), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "TEST.HITLS.COM", strlen("TEST.HITLS.COM")), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+    // Abnormal cases
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "openhitls.com\0otherinfo", 23),
+        HITLS_X509_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, " ", strlen(" ")), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "hitls.com", strlen("hitls.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "a.b.hitls.com", strlen("a.b.hitls.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "www.hitls.org", strlen("www.hitls.org")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.open.hitls.com", strlen("test.open.hitls.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "m.open.hitls.com", strlen("m.open.hitls.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "hitls.com", strlen("hitls.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "a.b.hitls.com", strlen("a.b.hitls.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "www.hitls.org", strlen("www.hitls.org")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.open.hitls.com", strlen("test.open.hitls.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "..", strlen("..")), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+EXIT:
+    HITLS_X509_CertFree(cert);
+#else
+    UnusedParam2(algId, format, encode);
+    (void)flag;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/*
+ * Test for HITLS_X509_VerifyHostname with CN, this cert has no Subject Alternative Name.
+ */
+/* BEGIN_CASE */
+void SDV_PKI_VERIFY_HOSTNAME_WITH_CN_TC001(int algId, int format, Hex *encode, int flag)
+{
+#if defined(HITLS_PKI_X509_CRT_PARSE) && defined(HITLS_PKI_X509_VFY_HOSTNAME)
+    if (PkiSkipTest(algId, format)) {
+        SKIP_TEST();
+    }
+    uint32_t testFlag = flag == 0 ? 0 : HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD;
+    TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    ASSERT_EQ(HITLS_X509_CertParseBuff(format, (BSL_Buffer *)encode, &cert), HITLS_PKI_SUCCESS);
+    ASSERT_NE(cert, NULL);
+
+    ASSERT_EQ(HITLS_X509_VerifyHostname(NULL, testFlag, NULL, strlen("")), HITLS_X509_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(NULL, testFlag, "", strlen("")), HITLS_X509_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(NULL, testFlag, "\0", strlen("\0")), HITLS_X509_ERR_INVALID_PARAM);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.hitls.com", strlen("test.hitls.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, testFlag, "test.openhitls.com", strlen("test.openhitls.com")),
+        HITLS_PKI_SUCCESS);
+
+EXIT:
+    HITLS_X509_CertFree(cert);
+#else
+    UnusedParam2(algId, format, encode);
+    (void)flag;
+    SKIP_TEST();
 #endif
 }
 /* END_CASE */
@@ -1559,65 +2400,5 @@ void SDV_X509_CRL_PARSE_NAME_LIST_TC001(Hex *buff)
     ASSERT_EQ(HITLS_X509_ParseNameList(&name, list), BSL_ASN1_ERR_DECODE_LEN);
 EXIT:
     BSL_LIST_FreeWithoutData(list);
-}
-/* END_CASE */
-
-/* BEGIN_CASE */
-void SDV_X509_CERT_WITH_CUSTOM_EXT_PARSE_TEST_TC001(char *path, Hex *customExtValue1, Hex *customExtValue2,
-    Hex *expectKeyUsage)
-{
-    HITLS_X509_Cert *parsedCert = NULL;
-    BslCid keyUsageCid = BSL_CID_CE_KEYUSAGE;
-    char *customOid1 = "1.2.3.4.5.6.7.8.9.1";
-    char *customOid2 = "1.2.3.4.5.6.7.8.9.2";
-    uint8_t *customOidData = NULL;
-    uint32_t customOidLen = 0;
-    BslOidString *keyUsageOid = NULL;
-    HITLS_X509_ExtGeneric customExt = {0};
-    HITLS_X509_ExtGeneric keyUsageExt = {0};
-
-    TestMemInit();
-
-    // SetUp
-    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, path, &parsedCert), HITLS_PKI_SUCCESS);
-
-    // Get and check custom ext 1
-    customOidData = BSL_OBJ_GetOidFromNumericString(customOid1, strlen(customOid1), &customOidLen);
-    ASSERT_NE(customOidData, NULL);
-    customExt.oid.data = customOidData;
-    customExt.oid.dataLen = customOidLen;
-    ASSERT_EQ(HITLS_X509_CertCtrl(parsedCert, HITLS_X509_EXT_GET_GENERIC, &customExt, sizeof(HITLS_X509_ExtGeneric)),
-        HITLS_PKI_SUCCESS);
-    ASSERT_COMPARE("custom ext1", customExt.value.data, customExt.value.dataLen, customExtValue1->x,
-        customExtValue1->len);
-    ASSERT_EQ(customExt.critical, true);
-    BSL_SAL_FREE(customOidData);
-    BSL_SAL_FREE(customExt.value.data);
-
-    // Get and check custom ext 2
-    customOidData = BSL_OBJ_GetOidFromNumericString(customOid2, strlen(customOid2), &customOidLen);
-    ASSERT_NE(customOidData, NULL);
-    customExt.oid.data = customOidData;
-    customExt.oid.dataLen = customOidLen;
-    ASSERT_EQ(HITLS_X509_CertCtrl(parsedCert, HITLS_X509_EXT_GET_GENERIC, &customExt, sizeof(HITLS_X509_ExtGeneric)),
-        HITLS_PKI_SUCCESS);
-    ASSERT_COMPARE("custom ext2", customExt.value.data, customExt.value.dataLen, customExtValue2->x,
-        customExtValue2->len);
-    ASSERT_EQ(customExt.critical, false);
-
-    // Get keyusage byt HITLS_X509_EXT_GET_GENERIC
-    keyUsageOid = BSL_OBJ_GetOID(keyUsageCid);
-    keyUsageExt.oid.data = (uint8_t *)keyUsageOid->octs;
-    keyUsageExt.oid.dataLen = keyUsageOid->octetLen;
-    ASSERT_EQ(HITLS_X509_CertCtrl(parsedCert, HITLS_X509_EXT_GET_GENERIC, &keyUsageExt, sizeof(HITLS_X509_ExtGeneric)),
-        HITLS_PKI_SUCCESS);
-    ASSERT_COMPARE("key usage", keyUsageExt.value.data, keyUsageExt.value.dataLen, expectKeyUsage->x,
-        expectKeyUsage->len);
-
-EXIT:
-    HITLS_X509_CertFree(parsedCert);
-    BSL_SAL_FREE(customOidData);
-    BSL_SAL_FREE(customExt.value.data);
-    BSL_SAL_FREE(keyUsageExt.value.data);
 }
 /* END_CASE */

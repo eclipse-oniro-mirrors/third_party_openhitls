@@ -20,12 +20,14 @@
 #include "eal_kdf_local.h"
 #include "crypt_errno.h"
 #include "bsl_sal.h"
+#include "bsl_errno.h"
 #include "bsl_params.h"
 #include "crypt_params_key.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 /* END_HEADER */
 
 #define DATA_LEN (64)
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 
 static uint32_t GetMaxKeyLen(int algId)
 {
@@ -62,7 +64,7 @@ void SDV_CRYPT_EAL_KDF_HKDF_API_TC001(int algId)
     uint32_t outLen = DATA_LEN;
     uint8_t out[DATA_LEN];
 
-    CRYPT_EAL_KdfCTX *ctx = CRYPT_EAL_KdfNewCtx(CRYPT_KDF_HKDF);
+    CRYPT_EAL_KdfCtx *ctx = CRYPT_EAL_KdfNewCtx(CRYPT_KDF_HKDF);
     ASSERT_TRUE(ctx != NULL);
     CRYPT_HKDF_MODE mode = CRYPT_KDF_HKDF_MODE_FULL;
     BSL_Param params[7] = {{0}, {0}, {0}, {0}, {0}, {0}, BSL_PARAM_END};
@@ -115,6 +117,7 @@ void SDV_CRYPT_EAL_KDF_HKDF_API_TC001(int algId)
     ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), CRYPT_HKDF_PARAM_ERROR);
 
     ASSERT_EQ(CRYPT_EAL_KdfDeInitCtx(ctx), CRYPT_SUCCESS);
+
 EXIT:
     CRYPT_EAL_KdfFreeCtx(ctx);
 }
@@ -125,7 +128,7 @@ EXIT:
  * @title  Perform the vector test to check whether the calculation result is consistent with the standard output.
  * @precon nan
  * @brief
- *    1.Call CRYPT_EAL_KdfCTX functions get output, expected result 1.
+ *    1.Call CRYPT_EAL_KdfCtx functions get output, expected result 1.
 *     2.Compare the result to the expected value, expected result 2.
  * @expect
  *    1.Successful.
@@ -142,7 +145,7 @@ void SDV_CRYPT_EAL_KDF_HKDF_FUN_TC001(int algId, Hex *key, Hex *salt, Hex *info,
     uint8_t *out = malloc(outLen * sizeof(uint8_t));
     ASSERT_TRUE(out != NULL);
 
-    CRYPT_EAL_KdfCTX *ctx = CRYPT_EAL_KdfNewCtx(CRYPT_KDF_HKDF);
+    CRYPT_EAL_KdfCtx *ctx = CRYPT_EAL_KdfNewCtx(CRYPT_KDF_HKDF);
     ASSERT_TRUE(ctx != NULL);
     CRYPT_HKDF_MODE mode = CRYPT_KDF_HKDF_MODE_FULL;
     BSL_Param params[6] = {{0}, {0}, {0}, {0}, {0}, BSL_PARAM_END};
@@ -159,6 +162,7 @@ void SDV_CRYPT_EAL_KDF_HKDF_FUN_TC001(int algId, Hex *key, Hex *salt, Hex *info,
     ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_KdfDerive(ctx, out, outLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("result cmp", out, outLen, result->x, result->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     if (out != NULL) {
         free(out);
@@ -184,7 +188,7 @@ void SDV_CRYPTO_HKDF_DEFAULT_PROVIDER_FUNC_TC001(int algId, Hex *key, Hex *salt,
     uint32_t outLen = result->len;
     uint8_t *out = malloc(outLen * sizeof(uint8_t));
     ASSERT_TRUE(out != NULL);
-    CRYPT_EAL_KdfCTX *ctx = NULL;
+    CRYPT_EAL_KdfCtx *ctx = NULL;
 #ifdef HITLS_CRYPTO_PROVIDER
     ctx = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
 #else
@@ -207,6 +211,7 @@ void SDV_CRYPTO_HKDF_DEFAULT_PROVIDER_FUNC_TC001(int algId, Hex *key, Hex *salt,
     ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_KdfDerive(ctx, out, outLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("result cmp", out, outLen, result->x, result->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     if (out != NULL) {
         free(out);
@@ -216,12 +221,88 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void SDV_CRYPTO_HKDF_BSL_PARAM_MAKER_TC001(int algId, Hex *key, Hex *salt, Hex *info, Hex *result)
+{
+    TestMemInit();
+    uint32_t outLen = result->len;
+    uint8_t *out = malloc(outLen * sizeof(uint8_t));
+    ASSERT_TRUE(out != NULL);
+    CRYPT_EAL_KdfCtx *ctx = CRYPT_EAL_KdfNewCtx(CRYPT_KDF_HKDF);
+    ASSERT_TRUE(ctx != NULL);
+    uint32_t mode = CRYPT_KDF_HKDF_MODE_FULL;
+
+    BSL_ParamMaker *maker = BSL_PARAM_MAKER_New();
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32,
+        &algId, sizeof(algId)), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_MODE, BSL_PARAM_TYPE_UINT32,
+        &mode, sizeof(mode)), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_KEY, BSL_PARAM_TYPE_OCTETS,
+        key->x, key->len), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_SALT, BSL_PARAM_TYPE_OCTETS,
+        salt->x, salt->len), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_INFO, BSL_PARAM_TYPE_OCTETS,
+        info->x, info->len), BSL_SUCCESS);
+    BSL_Param *params = BSL_PARAM_MAKER_ToParam(maker);
+
+    ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), BSL_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_KdfDerive(ctx, out, outLen), BSL_SUCCESS);
+    ASSERT_COMPARE("result cmp", out, outLen, result->x, result->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+EXIT:
+    if (out != NULL) {
+        free(out);
+    }
+    CRYPT_EAL_KdfFreeCtx(ctx);
+    BSL_PARAM_MAKER_Free(maker);
+    BSL_PARAM_Free(params);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_HKDF_BSL_PARAM_MAKER_TC002(int algId, Hex *key, Hex *salt, Hex *info, Hex *result)
+{
+    TestMemInit();
+    uint32_t outLen = result->len;
+    uint8_t *out = malloc(outLen * sizeof(uint8_t));
+    ASSERT_TRUE(out != NULL);
+    CRYPT_EAL_KdfCtx *ctx = CRYPT_EAL_KdfNewCtx(CRYPT_KDF_HKDF);
+    ASSERT_TRUE(ctx != NULL);
+    uint32_t mode = CRYPT_KDF_HKDF_MODE_FULL;
+
+    BSL_ParamMaker *maker = BSL_PARAM_MAKER_New();
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_MAC_ID, BSL_PARAM_TYPE_UINT32,
+        &algId, sizeof(algId)), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, CRYPT_PARAM_KDF_MODE, BSL_PARAM_TYPE_UINT32,
+        &mode, sizeof(mode)), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_DeepPushValue(maker, CRYPT_PARAM_KDF_KEY, BSL_PARAM_TYPE_OCTETS,
+        key->x, key->len), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_DeepPushValue(maker, CRYPT_PARAM_KDF_SALT, BSL_PARAM_TYPE_OCTETS,
+        salt->x, salt->len), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_DeepPushValue(maker, CRYPT_PARAM_KDF_INFO, BSL_PARAM_TYPE_OCTETS,
+        info->x, info->len), BSL_SUCCESS);
+    BSL_Param *params = BSL_PARAM_MAKER_ToParam(maker);
+
+    ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), BSL_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_KdfDerive(ctx, out, outLen), BSL_SUCCESS);
+    ASSERT_COMPARE("result cmp", out, outLen, result->x, result->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+EXIT:
+    if (out != NULL) {
+        free(out);
+    }
+    CRYPT_EAL_KdfFreeCtx(ctx);
+    BSL_PARAM_MAKER_Free(maker);
+    BSL_PARAM_Free(params);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void SDV_CRYPTO_HKDF_COPY_CTX_API_TC001(int isProvider)
 {
     TestMemInit();
-    CRYPT_EAL_KdfCTX *ctxA = NULL;
-    CRYPT_EAL_KdfCTX *ctxB = NULL;
-    CRYPT_EAL_KdfCTX ctxC = { 0 };
+    CRYPT_EAL_KdfCtx *ctxA = NULL;
+    CRYPT_EAL_KdfCtx *ctxB = NULL;
+    CRYPT_EAL_KdfCtx ctxC = { 0 };
     if (isProvider != 0) {
         ctxA = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
         ctxB = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
@@ -239,8 +320,7 @@ void SDV_CRYPTO_HKDF_COPY_CTX_API_TC001(int isProvider)
 
     // A directly created context can also be used as the destination for copying.
     ASSERT_EQ(CRYPT_EAL_KdfCopyCtx(&ctxC, ctxA), CRYPT_SUCCESS);
-    ctxC.method->freeCtx(ctxC.data);
-    BSL_SAL_Free(ctxC.method);
+    ctxC.method.freeCtx(ctxC.data);
 EXIT:
     CRYPT_EAL_KdfFreeCtx(ctxA);
     CRYPT_EAL_KdfFreeCtx(ctxB);
@@ -251,9 +331,9 @@ EXIT:
 void SDV_CRYPTO_HKDF_DUP_CTX_API_TC001(int isProvider)
 {
     TestMemInit();
-    CRYPT_EAL_KdfCTX *ctxA = NULL;
-    CRYPT_EAL_KdfCTX *ctxB = NULL;
-    CRYPT_EAL_KdfCTX ctxC = { 0 };
+    CRYPT_EAL_KdfCtx *ctxA = NULL;
+    CRYPT_EAL_KdfCtx *ctxB = NULL;
+    CRYPT_EAL_KdfCtx ctxC = { 0 };
     if (isProvider != 0) {
         ctxA = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
     } else {
@@ -285,9 +365,9 @@ void SDV_CRYPTO_HKDF_COPY_CTX_API_TC002(int algId, Hex *key, Hex *salt, Hex *inf
     uint32_t tmpLenC = DATA_LEN;
     uint8_t tmpBufC[DATA_LEN] = {0};
 
-    CRYPT_EAL_KdfCTX *ctxA = NULL;
-    CRYPT_EAL_KdfCTX *ctxB = NULL;
-    CRYPT_EAL_KdfCTX *ctxC = NULL;
+    CRYPT_EAL_KdfCtx *ctxA = NULL;
+    CRYPT_EAL_KdfCtx *ctxB = NULL;
+    CRYPT_EAL_KdfCtx *ctxC = NULL;
     if (isProvider != 0) {
         ctxA = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
         ctxB = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
@@ -357,11 +437,11 @@ void SDV_CRYPT_EAL_HKDF_COPY_CTX_FUNC_TC001(int algId, Hex *key, Hex *salt, Hex 
     uint8_t *out = BSL_SAL_Malloc(outLen * sizeof(uint8_t));
     ASSERT_TRUE(out != NULL);
 
-    CRYPT_EAL_KdfCTX *ctx = NULL;
-    CRYPT_EAL_KdfCTX *copyCtx = NULL;
-    CRYPT_EAL_KdfCTX *copyCtx1 = NULL;
-    CRYPT_EAL_KdfCTX *copyCtx2 = NULL;
-    CRYPT_EAL_KdfCTX *copyCtx3 = NULL;
+    CRYPT_EAL_KdfCtx *ctx = NULL;
+    CRYPT_EAL_KdfCtx *copyCtx = NULL;
+    CRYPT_EAL_KdfCtx *copyCtx1 = NULL;
+    CRYPT_EAL_KdfCtx *copyCtx2 = NULL;
+    CRYPT_EAL_KdfCtx *copyCtx3 = NULL;
     if (isProvider != 0) {
         ctx = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
         copyCtx = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
@@ -437,9 +517,9 @@ EXIT:
 
 static int32_t TestKdfCopyCtxMemCheck(int32_t algId, Hex *key, Hex *salt, Hex *info, int isProvider)
 {
-    CRYPT_EAL_KdfCTX *ctxA = NULL;
-    CRYPT_EAL_KdfCTX *ctxB = NULL;
-    CRYPT_EAL_KdfCTX *srcCtx = NULL;
+    CRYPT_EAL_KdfCtx *ctxA = NULL;
+    CRYPT_EAL_KdfCtx *ctxB = NULL;
+    CRYPT_EAL_KdfCtx *srcCtx = NULL;
     if (isProvider != 0) {
         srcCtx = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
         ctxA = CRYPT_EAL_ProviderKdfNewCtx(NULL, CRYPT_KDF_HKDF, "provider=default");
@@ -490,9 +570,7 @@ void SDV_CRYPTO_HKDF_COPY_CTX_STUB_TC001(int algId, Hex *key, Hex *salt, Hex *in
 {
     TestMemInit();
     uint32_t totalMallocCount = 0;
-    STUB_Init();
-    FuncStubInfo tmpRpInfo = {0};
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
 
     STUB_EnableMallocFail(false);
     STUB_ResetMallocCount();
@@ -508,6 +586,6 @@ void SDV_CRYPTO_HKDF_COPY_CTX_STUB_TC001(int algId, Hex *key, Hex *salt, Hex *in
     }
 
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */

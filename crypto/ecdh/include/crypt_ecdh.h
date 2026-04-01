@@ -24,6 +24,7 @@
 #include "crypt_algid.h"
 #include "crypt_ecc_pkey.h"
 #include "bsl_params.h"
+#include "crypt_params_key.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,7 +65,7 @@ CRYPT_ECDH_Ctx *CRYPT_ECDH_NewCtxEx(void *libCtx);
  * @return CRYPT_ECDH_Ctx ECDH context pointer
  * If the operation fails, null is returned.
  */
-CRYPT_ECDH_Ctx *CRYPT_ECDH_DupCtx(CRYPT_ECDH_Ctx *ctx);
+#define CRYPT_ECDH_DupCtx ECC_DupCtx
 
 /**
  * @ingroup ecdh
@@ -72,7 +73,7 @@ CRYPT_ECDH_Ctx *CRYPT_ECDH_DupCtx(CRYPT_ECDH_Ctx *ctx);
  *
  * @param ctx [IN] Indicate the pointer of the context structure to be released. The ctx is set NULL by the invoker.
  */
-void CRYPT_ECDH_FreeCtx(CRYPT_ECDH_Ctx *ctx);
+#define CRYPT_ECDH_FreeCtx ECC_FreeCtx
 
 /**
  * @ingroup ecdh
@@ -84,7 +85,7 @@ void CRYPT_ECDH_FreeCtx(CRYPT_ECDH_Ctx *ctx);
  * @retval (CRYPT_EcdhPara *) Pointer to the memory space of the allocated context
  * @retval NULL               Invalid null pointer
  */
-CRYPT_EcdhPara *CRYPT_ECDH_NewParaById(CRYPT_PKEY_ParaId id);
+#define CRYPT_ECDH_NewParaById ECC_NewPara
 
 /**
  * @ingroup ecdh
@@ -96,7 +97,7 @@ CRYPT_EcdhPara *CRYPT_ECDH_NewParaById(CRYPT_PKEY_ParaId id);
  * @retval (CRYPT_EcdhPara *) Pointer to the memory space of the allocated context
  * @retval NULL               Invalid null pointer
  */
-CRYPT_EcdhPara *CRYPT_ECDH_NewPara(const BSL_Param *eccPara);
+CRYPT_EcdhPara *CRYPT_ECDH_NewPara(const CRYPT_EccPara *eccPara);
 
 /**
  * @ingroup ecdh
@@ -114,7 +115,7 @@ CRYPT_PKEY_ParaId CRYPT_ECDH_GetParaId(const CRYPT_ECDH_Ctx *ctx);
  *
  * @param para [IN] Pointer to the key parameter structure to be released. The parameter is set NULL by the invoker.
  */
-void CRYPT_ECDH_FreePara(CRYPT_EcdhPara *para);
+#define CRYPT_ECDH_FreePara ECC_FreePara
 
 /**
  * @ingroup ecdh
@@ -127,20 +128,20 @@ void CRYPT_ECDH_FreePara(CRYPT_EcdhPara *para);
  * @retval CRYPT_MEM_ALLOC_FAIL internal memory allocation error
  * @retval CRYPT_SUCCESS        Set successfully.
  */
-int32_t CRYPT_ECDH_SetPara(CRYPT_ECDH_Ctx *ctx, const BSL_Param *param);
+int32_t CRYPT_ECDH_SetPara(CRYPT_ECDH_Ctx *ctx, const CRYPT_EccPara *para);
 
 /**
  * @ingroup ecdh
  * @brief Get the data of the key structure to the key parameter structure.
  *
  * @param ctx [IN] Key structure for setting related parameters
- * @param param [OUT] Key parameters
+ * @param para [OUT] Key parameters
  *
  * @retval CRYPT_NULL_INPUT     Invalid null pointer input.
  * @retval CRYPT_MEM_ALLOC_FAIL Internal memory allocation error
  * @retval CRYPT_SUCCESS        Get successfully.
  */
-int32_t CRYPT_ECDH_GetPara(const CRYPT_ECDH_Ctx *ctx, BSL_Param *param);
+#define CRYPT_ECDH_GetPara ECC_GetPara
 
 /**
  * @ingroup ecdh
@@ -151,7 +152,7 @@ int32_t CRYPT_ECDH_GetPara(const CRYPT_ECDH_Ctx *ctx, BSL_Param *param);
  * @retval 0        The input is incorrect or the corresponding key structure does not have a valid key length.
  * @retval uint32_t Valid key length
  */
-uint32_t CRYPT_ECDH_GetBits(const CRYPT_ECDH_Ctx *ctx);
+#define CRYPT_ECDH_GetBits ECC_PkeyGetBits
 
 /**
  * @ingroup ecdh
@@ -164,7 +165,7 @@ uint32_t CRYPT_ECDH_GetBits(const CRYPT_ECDH_Ctx *ctx);
  * @retval ECC error code.      Internal ECC calculation error
  * @retval CRYPT_SUCCESS        The key pair is successfully generated.
  */
-int32_t CRYPT_ECDH_Gen(CRYPT_ECDH_Ctx *ctx);
+#define CRYPT_ECDH_Gen ECC_PkeyGen
 
 /**
  * @ingroup ecdh
@@ -199,7 +200,7 @@ int32_t CRYPT_ECDH_ComputeShareKey(const CRYPT_ECDH_Ctx *ctx, const CRYPT_ECDH_C
  * @retval ECC error.           An error occurred in the internal ECC calculation.
  * @retval CRYPT_SUCCESS        Set successfully.
  */
-int32_t CRYPT_ECDH_SetPrvKey(CRYPT_ECDH_Ctx *ctx, const BSL_Param *para);
+#define CRYPT_ECDH_SetPrvKey ECC_PkeySetPrvKey
 
 /**
  * @ingroup ecdh
@@ -213,7 +214,7 @@ int32_t CRYPT_ECDH_SetPrvKey(CRYPT_ECDH_Ctx *ctx, const BSL_Param *para);
  * @retval ECC error.           An error occurred in the internal ECC calculation.
  * @retval CRYPT_SUCCESS        Set successfully.
  */
-int32_t CRYPT_ECDH_SetPubKey(CRYPT_ECDH_Ctx *ctx, const BSL_Param *para);
+#define CRYPT_ECDH_SetPubKey ECC_PkeySetPubKey
 
 /**
  * @ingroup ecdh
@@ -227,7 +228,7 @@ int32_t CRYPT_ECDH_SetPubKey(CRYPT_ECDH_Ctx *ctx, const BSL_Param *para);
  * @retval ECC error.                   An error occurred in the internal ECC calculation.
  * @retval CRYPT_SUCCESS                Obtained successfully.
  */
-int32_t CRYPT_ECDH_GetPrvKey(const CRYPT_ECDH_Ctx *ctx, BSL_Param *para);
+#define CRYPT_ECDH_GetPrvKey ECC_PkeyGetPrvKey
 
 /**
  * @ingroup ecdh
@@ -241,7 +242,91 @@ int32_t CRYPT_ECDH_GetPrvKey(const CRYPT_ECDH_Ctx *ctx, BSL_Param *para);
  * @retval ECC error.                   An error occurred in the internal ECC calculation.
  * @retval CRYPT_SUCCESS                Obtained successfully.
  */
-int32_t CRYPT_ECDH_GetPubKey(const CRYPT_ECDH_Ctx *ctx, BSL_Param *para);
+#define CRYPT_ECDH_GetPubKey ECC_PkeyGetPubKey
+
+#ifdef HITLS_BSL_PARAMS
+/**
+ * @ingroup ecdh
+ * @brief ECDH Set the private key data.
+ *
+ * @param ctx [OUT] ecdh context structure
+ * @param para [IN] Private key data
+ *
+ * @retval CRYPT_NULL_INPUT     Invalid null pointer input
+ * @retval CRYPT_MEM_ALLOC_FAIL Memory allocation failure
+ * @retval ECC error.           An error occurred in the internal ECC calculation.
+ * @retval CRYPT_SUCCESS        Set successfully.
+ */
+#define CRYPT_ECDH_SetPrvKeyEx ECC_PkeySetPrvKeyEx
+
+/**
+ * @ingroup ecdh
+ * @brief ECDH Set the public key data.
+ *
+ * @param ctx [OUT] ecdh context structure
+ * @param para [IN] Public key data
+ *
+ * @retval CRYPT_NULL_INPUT     Invalid null pointer input
+ * @retval CRYPT_MEM_ALLOC_FAIL Memory allocation failure
+ * @retval ECC error.           An error occurred in the internal ECC calculation.
+ * @retval CRYPT_SUCCESS        Set successfully.
+ */
+#define CRYPT_ECDH_SetPubKeyEx ECC_PkeySetPubKeyEx
+
+/**
+ * @ingroup ecdh
+ * @brief ECDH Obtain the private key data.
+ *
+ * @param ctx [IN] ecdh context structure
+ * @param para [OUT] Private key data
+ *
+ * @retval CRYPT_NULL_INPUT             Invalid null pointer input
+ * @retval CRYPT_ECC_PKEY_ERR_EMPTY_KEY The key is empty.
+ * @retval ECC error.                   An error occurred in the internal ECC calculation.
+ * @retval CRYPT_SUCCESS                Obtained successfully.
+ */
+#define CRYPT_ECDH_GetPrvKeyEx ECC_PkeyGetPrvKeyEx
+
+/**
+ * @ingroup ecdh
+ * @brief ECDH Obtain the public key data.
+ *
+ * @param ctx [IN] ecdh context structure
+ * @param para [OUT] Public key data
+ *
+ * @retval CRYPT_NULL_INPUT             Invalid null pointer input
+ * @retval CRYPT_ECC_PKEY_ERR_EMPTY_KEY The key is empty.
+ * @retval ECC error.                   An error occurred in the internal ECC calculation.
+ * @retval CRYPT_SUCCESS                Obtained successfully.
+ */
+#define CRYPT_ECDH_GetPubKeyEx ECC_PkeyGetPubKeyEx
+
+/**
+ * @ingroup ecdh
+ * @brief Get the data of the key structure to the key parameter structure.
+ *
+ * @param ctx [IN] Key structure for setting related parameters
+ * @param para [OUT] Key parameters
+ *
+ * @retval CRYPT_NULL_INPUT     Invalid null pointer input.
+ * @retval CRYPT_MEM_ALLOC_FAIL Internal memory allocation error
+ * @retval CRYPT_SUCCESS        Get successfully.
+ */
+#define CRYPT_ECDH_GetParaEx ECC_GetParaEx
+
+/**
+ * @ingroup ecdh
+ * @brief Set the data of the key parameter structure to the key structure.
+ *
+ * @param ctx [OUT] Key structure for setting related parameters
+ * @param para [IN] Key parameters
+ *
+ * @retval CRYPT_NULL_INPUT     Invalid null pointer input.
+ * @retval CRYPT_MEM_ALLOC_FAIL internal memory allocation error
+ * @retval CRYPT_SUCCESS        Set successfully.
+ */
+int32_t CRYPT_ECDH_SetParaEx(CRYPT_ECDH_Ctx *ctx, const BSL_Param *para);
+#endif
 
 /**
  * @ingroup ecdh
@@ -270,7 +355,7 @@ int32_t CRYPT_ECDH_Ctrl(CRYPT_ECDH_Ctx *ctx, int32_t opt, void *val, uint32_t le
  * @retval CRYPT_SUCCESS    is the same
  *         Others.          For details, see errno.
  */
-int32_t CRYPT_ECDH_Cmp(const CRYPT_ECDH_Ctx *a, const CRYPT_ECDH_Ctx *b);
+#define CRYPT_ECDH_Cmp ECC_PkeyCmp
 
 /**
  * @ingroup ecdh
@@ -281,6 +366,23 @@ int32_t CRYPT_ECDH_Cmp(const CRYPT_ECDH_Ctx *a, const CRYPT_ECDH_Ctx *b);
  * @retval security bits
  */
 int32_t CRYPT_ECDH_GetSecBits(const CRYPT_ECDH_Ctx *ctx);
+
+#ifdef HITLS_CRYPTO_ECDH_CHECK
+
+/**
+ * @ingroup ecdh
+ * @brief ecdh check public key
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] ecdh context structure
+ * @param pkey2 [IN] ecdh context structure
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_ECDH_Check(uint32_t checkType, const CRYPT_ECDH_Ctx *pkey1, const CRYPT_ECDH_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_ECDH_CHECK
 
 #ifdef __cplusplus
 }

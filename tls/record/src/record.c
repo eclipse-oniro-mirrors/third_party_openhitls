@@ -18,7 +18,6 @@
 #include "bsl_log_internal.h"
 #include "bsl_log.h"
 #include "bsl_err_internal.h"
-#include "bsl_bytes.h"
 #include "hitls_error.h"
 #include "hitls_config.h"
 #include "rec.h"
@@ -27,7 +26,6 @@
 #include "rec_read.h"
 #include "rec_crypto.h"
 #include "hs.h"
-#include "alert.h"
 #include "record.h"
 
 // Release RecStatesSuite
@@ -35,7 +33,6 @@ static void RecConnStatesDeinit(RecCtx *recordCtx)
 {
     RecConnStateFree(recordCtx->readStates.currentState);
     RecConnStateFree(recordCtx->writeStates.currentState);
-    return;
 }
 
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
@@ -43,12 +40,58 @@ static void RecCmpPmtu(const TLS_Ctx *ctx, uint32_t *recSize)
 {
     if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask) &&
         BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
-        uint32_t pmtuLimit = ctx->config.pmtu - REC_IP_UDP_HEAD_SIZE;
+        uint32_t pmtuLimit = ctx->config.pmtu;
         /* If miniaturization is enabled in the dtls over udp scenario, the mtu size is used */
         *recSize = (*recSize > pmtuLimit) ? pmtuLimit : *recSize;
     }
 }
 #endif
+
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+void RecTryFreeRecBuf(TLS_Ctx *ctx, bool isOut)
+{
+    RecCtx *recordCtx = (RecCtx *)ctx->recCtx;
+    if (isOut) {
+        if (recordCtx->outBuf != NULL && recordCtx->outBuf->start == recordCtx->outBuf->end) {
+            RecBufFree(recordCtx->outBuf);
+            recordCtx->outBuf = NULL;
+        }
+    } else {
+        if (recordCtx->inBuf != NULL && recordCtx->inBuf->start == recordCtx->inBuf->end) {
+            RecBufFree(recordCtx->inBuf);
+            recordCtx->inBuf = NULL;
+        }
+    }
+}
+#endif
+
+uint32_t REC_GetOutBufPendingSize(const TLS_Ctx *ctx)
+{
+    RecBuf *writeBuf = ctx->recCtx->outBuf;
+    if (writeBuf == NULL) {
+        return 0;
+    }
+    return writeBuf->start > writeBuf->end ? 0 : writeBuf->end - writeBuf->start;
+}
+
+int32_t RecIoBufInit(TLS_Ctx *ctx, RecCtx *recordCtx, bool isRead)
+{
+    RecBuf **ioBuf = isRead ? &recordCtx->inBuf : &recordCtx->outBuf;
+    if (*ioBuf == NULL) {
+        uint32_t initSize = RecGetInitBufferSize(ctx, isRead);
+        if (isRead && ctx->config.tlsConfig.recInbufferSize != 0) {
+            initSize = ctx->config.tlsConfig.recInbufferSize;
+        }
+        *ioBuf = RecBufNew(initSize);
+        if (*ioBuf == NULL) {
+            BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15532, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "Record: malloc fail.", 0, 0, 0, 0);
+            return HITLS_MEMALLOC_FAIL;
+        }
+    }
+    return HITLS_SUCCESS;
+}
 
 static uint32_t RecGetDefaultBufferSize(bool isDtls, bool isRead)
 {
@@ -71,9 +114,11 @@ static uint32_t RecGetReadBufferSize(const TLS_Ctx *ctx)
     if (ctx->negotiatedInfo.recordSizeLimit != 0 &&
         ctx->negotiatedInfo.recordSizeLimit <= REC_MAX_PLAIN_TEXT_LENGTH) {
         recSize -= REC_MAX_PLAIN_TEXT_LENGTH - ctx->negotiatedInfo.recordSizeLimit;
-        if (HS_GetVersion(ctx) == HITLS_VERSION_TLS13) {
+#ifdef HITLS_TLS_PROTO_TLS13
+        if (GET_VERSION_FROM_CTX(ctx) == HITLS_VERSION_TLS13) {
             recSize--;
         }
+#endif
     }
     return recSize;
 }
@@ -81,13 +126,23 @@ static uint32_t RecGetReadBufferSize(const TLS_Ctx *ctx)
 static uint32_t RecGetWriteBufferSize(const TLS_Ctx *ctx)
 {
     uint32_t recSize = RecGetDefaultBufferSize(IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask), false);
-    if (ctx->negotiatedInfo.peerRecordSizeLimit != 0) {
-        recSize -= REC_MAX_PLAIN_TEXT_LENGTH - ctx->negotiatedInfo.peerRecordSizeLimit;
+    uint32_t maxSendFragment =
+#ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+    (uint32_t)ctx->config.tlsConfig.maxSendFragment == 0 ?
+        REC_MAX_PLAIN_TEXT_LENGTH : (uint32_t)ctx->config.tlsConfig.maxSendFragment;
+#else
+    REC_MAX_PLAIN_TEXT_LENGTH;
+#endif
+    recSize -= REC_MAX_PLAIN_TEXT_LENGTH - maxSendFragment;
+    if (ctx->negotiatedInfo.peerRecordSizeLimit != 0 && ctx->negotiatedInfo.peerRecordSizeLimit <= maxSendFragment) {
+        recSize -= maxSendFragment - ctx->negotiatedInfo.peerRecordSizeLimit;
+#ifdef HITLS_TLS_PROTO_TLS13
         if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
             recSize--;
         }
+#endif
     }
-#if defined(HITLS_BSL_UIO_UDP)
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
     RecCmpPmtu(ctx, &recSize);
 #endif
     return recSize;
@@ -189,23 +244,22 @@ static int32_t RecConnStatesInit(RecCtx *recordCtx)
     return HITLS_SUCCESS;
 }
 
-static int RecBufInit(TLS_Ctx *ctx, RecCtx *newRecCtx)
+static int32_t RecBufInit(TLS_Ctx *ctx, RecCtx *newRecCtx)
 {
-    newRecCtx->inBuf = RecBufNew(RecGetInitBufferSize(ctx, true));
-    if (newRecCtx->inBuf == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15532, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "Record: malloc fail.", 0, 0, 0, 0);
-        return HITLS_MEMALLOC_FAIL;
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+    if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS) == 0) {
+#endif
+        int32_t ret = RecIoBufInit(ctx, newRecCtx, true);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+        ret = RecIoBufInit(ctx, newRecCtx, false);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
     }
-
-    newRecCtx->outBuf = RecBufNew(RecGetInitBufferSize(ctx, false));
-    if (newRecCtx->outBuf == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15533, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "Record: malloc fail.", 0, 0, 0, 0);
-        return HITLS_MEMALLOC_FAIL;
-    }
+#endif
     newRecCtx->hsRecList = RecBufListNew();
     newRecCtx->appRecList = RecBufListNew();
     if (newRecCtx->hsRecList == NULL || newRecCtx->appRecList == NULL) {
@@ -238,6 +292,12 @@ static void RecDeInit(RecCtx *recordCtx)
 #endif /* HITLS_TLS_PROTO_DTLS12 */
 }
 
+int32_t REC_RecOutBufReSet(TLS_Ctx *ctx)
+{
+    RecCtx *recCtx = ctx->recCtx;
+    return RecBufResize(recCtx->outBuf, RecGetWriteBufferSize(ctx));
+}
+
 int32_t REC_Init(TLS_Ctx *ctx)
 {
     if (ctx == NULL) {
@@ -265,19 +325,19 @@ int32_t REC_Init(TLS_Ctx *ctx)
 #endif
     int32_t ret = RecBufInit(ctx, newRecCtx);
     if (ret != HITLS_SUCCESS) {
-        goto ERR;
+        goto err;
     }
 
     ret = RecConnStatesInit(newRecCtx);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15534, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "Record: init connect state fail.", 0, 0, 0, 0);
-        goto ERR;
+        goto err;
     }
 
     ctx->recCtx = newRecCtx;
     return HITLS_SUCCESS;
-ERR:
+err:
     RecDeInit(newRecCtx);
     BSL_SAL_FREE(newRecCtx);
     return ret;
@@ -290,7 +350,6 @@ void REC_DeInit(TLS_Ctx *ctx)
         RecDeInit(recordCtx);
         BSL_SAL_FREE(ctx->recCtx);
     }
-    return;
 }
 
 bool REC_ReadHasPending(const TLS_Ctx *ctx)
@@ -334,10 +393,25 @@ int32_t REC_Write(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, uint32
         BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
         return HITLS_NULL_INPUT;
     }
-    return ctx->recCtx->recWrite(ctx, recordType, data, num);
+    int32_t ret = ctx->recCtx->recWrite(ctx, recordType, data, num);
+#ifdef HITLS_TLS_FEATURE_MTU_QUERY
+    if (ret != HITLS_SUCCESS) {
+        if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
+            return ret;
+        }
+        bool exceeded = false;
+        (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_MTU_EXCEEDED, sizeof(bool), &exceeded);
+        if (exceeded) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17362, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "Record write: get EMSGSIZE error.", 0, 0, 0, 0);
+            ctx->needQueryMtu = true;
+        }
+    }
+#endif /* HITLS_TLS_FEATURE_MTU_QUERY */
+    return ret;
 }
 
-#if defined(HITLS_BSL_UIO_UDP)
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
 void REC_ActiveOutdatedWriteState(TLS_Ctx *ctx)
 {
     RecCtx *recCtx = (RecCtx *)ctx->recCtx;
@@ -345,7 +419,6 @@ void REC_ActiveOutdatedWriteState(TLS_Ctx *ctx)
     writeStates->pendingState = writeStates->currentState;
     writeStates->currentState = writeStates->outdatedState;
     writeStates->outdatedState = NULL;
-    return;
 }
 
 void REC_DeActiveOutdatedWriteState(TLS_Ctx *ctx)
@@ -355,7 +428,6 @@ void REC_DeActiveOutdatedWriteState(TLS_Ctx *ctx)
     writeStates->outdatedState = writeStates->currentState;
     writeStates->currentState = writeStates->pendingState;
     writeStates->pendingState = NULL;
-    return;
 }
 #endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
 
@@ -386,7 +458,7 @@ int32_t REC_InitPendingState(const TLS_Ctx *ctx, const REC_SecParameters *param)
     RecConnState *writeState = RecConnStateNew();
     if (readState == NULL || writeState == NULL) {
         (void)RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17301, "StateNew fail");
-        goto ERR;
+        goto err;
     }
 
     /* 1.Generate a secret */
@@ -394,7 +466,7 @@ int32_t REC_InitPendingState(const TLS_Ctx *ctx, const REC_SecParameters *param)
         param, &clientSuitInfo, &serverSuitInfo);
     if (ret != HITLS_SUCCESS) {
         (void)RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17302, "KeyBlockGen fail");
-        goto ERR;
+        goto err;
     }
 
     /* 2.Set the corresponding read/write pending state */
@@ -403,12 +475,12 @@ int32_t REC_InitPendingState(const TLS_Ctx *ctx, const REC_SecParameters *param)
     ret = RecConnStateSetCipherInfo(writeState, out);
     if (ret != HITLS_SUCCESS) {
         (void)RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17303, "SetCipherInfo fail");
-        goto ERR;
+        goto err;
     }
     ret = RecConnStateSetCipherInfo(readState, in);
     if (ret != HITLS_SUCCESS) {
         (void)RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID17304, "SetCipherInfo fail");
-        goto ERR;
+        goto err;
     }
 
     /* Clear sensitive information */
@@ -417,7 +489,7 @@ int32_t REC_InitPendingState(const TLS_Ctx *ctx, const REC_SecParameters *param)
     recordCtx->readStates.pendingState = readState;
     recordCtx->writeStates.pendingState = writeState;
     return HITLS_SUCCESS;
-ERR:
+err:
     /* Clear sensitive information */
     FreeDataAndState(&clientSuitInfo, &serverSuitInfo, readState, writeState);
     BSL_ERR_PUSH_ERROR(ret);
@@ -474,6 +546,17 @@ int32_t REC_TLS13InitPendingState(const TLS_Ctx *ctx, const REC_SecParameters *p
 int32_t REC_ActivePendingState(TLS_Ctx *ctx, bool isOut)
 {
     RecCtx *recordCtx = (RecCtx *)ctx->recCtx;
+
+    if (!isOut) {
+        if ((recordCtx->hsRecList != NULL && !RecBufListEmpty(recordCtx->hsRecList))) {
+            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17383, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "Record: read key change not on record boundary.", 0, 0, 0, 0);
+            BSL_ERR_PUSH_ERROR(HITLS_REC_ERR_NOT_ON_RECORD_BOUNDARY);
+            return HITLS_REC_ERR_NOT_ON_RECORD_BOUNDARY;
+        }
+    }
+
     RecConnStates *states = (isOut == true) ? &recordCtx->writeStates : &recordCtx->readStates;
 
     if (states->pendingState == NULL) {
@@ -497,7 +580,7 @@ int32_t REC_ActivePendingState(TLS_Ctx *ctx, bool isOut)
         } else {
             ++recordCtx->readEpoch;
             RecConnSetEpoch(states->currentState, recordCtx->readEpoch);
-#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP) && defined(HITLS_TLS_FEATURE_ANTI_REPLAY)
             RecAntiReplayReset(&states->currentState->window);
 #endif
         }
@@ -511,15 +594,88 @@ int32_t REC_ActivePendingState(TLS_Ctx *ctx, bool isOut)
 
 static uint32_t REC_GetRecordSizeLimitWriteLen(const TLS_Ctx *ctx)
 {
-    uint32_t defaultLen = REC_MAX_PLAIN_TEXT_LENGTH;
-    if (ctx->negotiatedInfo.recordSizeLimit != 0) {
+    uint32_t defaultLen =
+#ifdef HITLS_TLS_FEATURE_MAX_SEND_FRAGMENT
+    (uint32_t)ctx->config.tlsConfig.maxSendFragment == 0 ?
+        REC_MAX_PLAIN_TEXT_LENGTH : (uint32_t)ctx->config.tlsConfig.maxSendFragment;
+#else
+    REC_MAX_PLAIN_TEXT_LENGTH;
+#endif
+    if (ctx->negotiatedInfo.recordSizeLimit != 0 && ctx->negotiatedInfo.peerRecordSizeLimit <= defaultLen) {
         defaultLen = ctx->negotiatedInfo.peerRecordSizeLimit;
+#ifdef HITLS_TLS_PROTO_TLS13
         if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
             defaultLen--;
         }
+#endif
     }
     return defaultLen;
 }
+
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+static int32_t ChangeBufferSize(TLS_Ctx *ctx)
+{
+    int32_t ret = HITLS_SUCCESS;
+
+    if (ctx->bUio == NULL) {
+        ctx->mtuModified = false;
+        return HITLS_SUCCESS;
+    }
+
+    uint32_t bufferLen = (uint32_t)ctx->config.pmtu;
+    if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask) &&
+        BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
+        ret = BSL_UIO_Ctrl(ctx->bUio, BSL_UIO_SET_BUFFER_SIZE, sizeof(uint32_t), &bufferLen);
+        if (ret != BSL_SUCCESS) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17363, BSL_LOG_LEVEL_FATAL, BSL_LOG_BINLOG_TYPE_RUN,
+                "SET_BUFFER_SIZE fail, ret %d", ret, 0, 0, 0);
+            BSL_ERR_PUSH_ERROR(HITLS_UIO_FAIL);
+            return HITLS_UIO_FAIL;
+        }
+    }
+    ctx->mtuModified = false;
+    return HITLS_SUCCESS;
+}
+
+int32_t REC_QueryMtu(TLS_Ctx *ctx)
+{
+    if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
+        return HITLS_SUCCESS;
+    }
+
+    uint16_t originMtu = ctx->config.pmtu;
+    if (ctx->config.linkMtu > 0) {
+        uint8_t overhead = 0;
+        (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_GET_MTU_OVERHEAD, sizeof(uint8_t), &overhead);
+        ctx->config.pmtu = ctx->config.linkMtu - (uint16_t)overhead;
+        ctx->config.linkMtu = 0;
+    }
+#ifdef HITLS_TLS_FEATURE_MTU_QUERY
+    if (ctx->needQueryMtu && !ctx->noQueryMtu) {
+        uint32_t mtu = 0;
+        int32_t ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_QUERY_MTU, sizeof(uint32_t), &mtu);
+        if (ret != BSL_SUCCESS) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17364, BSL_LOG_LEVEL_FATAL, BSL_LOG_BINLOG_TYPE_RUN,
+                "UIO_Ctrl fail, ret %d", ret, 0, 0, 0);
+            BSL_ERR_PUSH_ERROR(HITLS_UIO_FAIL);
+            return HITLS_UIO_FAIL;
+        }
+
+        uint8_t overhead = 0;
+        (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_GET_MTU_OVERHEAD, sizeof(uint8_t), &overhead);
+        uint16_t minMtu = DTLS_MIN_MTU - (uint16_t)overhead;
+        mtu = mtu > UINT16_MAX ? UINT16_MAX : mtu;
+        ctx->config.pmtu = ((uint16_t)mtu < minMtu) ? minMtu : (uint16_t)mtu;
+    }
+    ctx->needQueryMtu = false;
+#endif /* HITLS_TLS_FEATURE_MTU_QUERY */
+    if (ctx->config.pmtu != originMtu || ctx->mtuModified) {
+        return ChangeBufferSize(ctx);
+    }
+
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
 
 int32_t REC_GetMaxWriteSize(const TLS_Ctx *ctx, uint32_t *len)
 {
@@ -532,6 +688,21 @@ int32_t REC_GetMaxWriteSize(const TLS_Ctx *ctx, uint32_t *len)
 
     *len = REC_GetRecordSizeLimitWriteLen(ctx);
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+    uint32_t mtuLen = 0;
+    int32_t ret = REC_GetMaxDataMtu(ctx, &mtuLen);
+    if (ret == HITLS_SUCCESS) {
+        *len = (*len > mtuLen) ? mtuLen : *len;
+    }
+    if (ret != HITLS_UIO_IO_TYPE_ERROR) {
+        return ret;
+    }
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
+    return HITLS_SUCCESS;
+}
+
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+int32_t REC_GetMaxDataMtu(const TLS_Ctx *ctx, uint32_t *len)
+{
     bool isUdp = false;
     RecCtx *recordCtx = (RecCtx *)ctx->recCtx;
     RecConnState *currentState = recordCtx->writeStates.currentState;
@@ -545,35 +716,27 @@ int32_t REC_GetMaxWriteSize(const TLS_Ctx *ctx, uint32_t *len)
         uio = BSL_UIO_Next(uio);
     }
     if (!isUdp) {
-        /* In non-UDP scenarios, there is no PMTU limit and the maximum plaintext length is returned */
-        return HITLS_SUCCESS;
+        /* In non-UDP scenarios, there is no PMTU limit */
+        return HITLS_UIO_IO_TYPE_ERROR;
     }
 
     /* In UDP scenarios, handshake packets and application data packets with miniaturization enabled have the MTU limit
      */
     uint32_t encryptLen =
         RecGetCryptoFuncs(currentState->suiteInfo)->calCiphertextLen(ctx, currentState->suiteInfo, 0, false);
-    overHead = REC_IP_UDP_HEAD_SIZE + REC_DTLS_RECORD_HEADER_LEN + encryptLen;
+    overHead = REC_DTLS_RECORD_HEADER_LEN + encryptLen;
     if (ctx->config.pmtu <= overHead) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17306, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "pmtu too small", 0, 0, 0, 0);
         BSL_ERR_PUSH_ERROR(HITLS_REC_PMTU_TOO_SMALL);
         return HITLS_REC_PMTU_TOO_SMALL;
     }
 
-    *len = (*len > ctx->config.pmtu - overHead) ? (ctx->config.pmtu - overHead) : *len;
-#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
+    *len = ctx->config.pmtu - overHead;
     return HITLS_SUCCESS;
 }
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
 
 REC_Type REC_GetUnexpectedMsgType(TLS_Ctx *ctx)
 {
     return ctx->recCtx->unexpectedMsgType;
-}
-
-void RecClearAlertCount(TLS_Ctx *ctx, REC_Type recordType)
-{
-    if (recordType != REC_TYPE_ALERT) {
-        ALERT_ClearWarnCount(ctx);
-    }
-    return;
 }

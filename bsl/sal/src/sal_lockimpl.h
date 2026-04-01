@@ -99,7 +99,17 @@ typedef struct ThreadCallback {
     uint64_t (*pfThreadGetId)(void);
 } BSL_SAL_ThreadCallback;
 
-int32_t SAL_ThreadCallback_Ctrl(BSL_SAL_CB_FUNC_TYPE type, void *funcCb);
+int32_t SAL_ThreadCallBack_Ctrl(BSL_SAL_CB_FUNC_TYPE type, void *funcCb);
+
+typedef struct {
+    BslThreadRunOnce pfThreadRunOnce;
+    BslThreadCreate pfThreadCreate;
+    BslThreadClose pfThreadClose;
+    BslCreateCondVar pfCreateCondVar;
+    BslCondSignal pfCondSignal;
+    BslCondTimedwaitMs pfCondTimedwaitMs;
+    BslDeleteCondVar pfDeleteCondVar;
+} BSL_SAL_ThreadCondCallback;
 
 typedef struct PidCallback {
     /**
@@ -114,10 +124,10 @@ typedef struct PidCallback {
 } BSL_SAL_PidCallback;
 
 #ifdef HITLS_BSL_SAL_PID
-int32_t SAL_PidCallback_Ctrl(BSL_SAL_CB_FUNC_TYPE type, void *funcCb);
+int32_t SAL_PidCallBack_Ctrl(BSL_SAL_CB_FUNC_TYPE type, void *funcCb);
 #endif
 
-#ifdef HITLS_BSL_SAL_LINUX
+#if defined(HITLS_BSL_SAL_LINUX) || defined(HITLS_BSL_SAL_DARWIN)
 #ifdef HITLS_BSL_SAL_LOCK
 int32_t SAL_RwLockNew(BSL_SAL_ThreadLockHandle *lock);
 
@@ -130,15 +140,27 @@ int32_t SAL_RwUnlock(BSL_SAL_ThreadLockHandle rwLock);
 void SAL_RwLockFree(BSL_SAL_ThreadLockHandle rwLock);
 #endif
 
-#ifdef HITLS_BSL_SAL_THREAD
-int32_t SAL_PthreadRunOnce(uint32_t *onceControl, BSL_SAL_ThreadInitRoutine initFunc);
-
-uint64_t SAL_GetThreadId(void);
-#endif
-
 #ifdef HITLS_BSL_SAL_PID
 int32_t SAL_GetPid(void);
 #endif
+
+#ifdef HITLS_BSL_SAL_THREAD
+uint64_t SAL_GetThreadId(void);
+
+int32_t SAL_ThreadCreate(BSL_SAL_ThreadId *thread, void *(*startFunc)(void *), void *arg);
+
+void SAL_ThreadClose(BSL_SAL_ThreadId thread);
+
+int32_t SAL_CreateCondVar(BSL_SAL_CondVar *condVar);
+
+int32_t SAL_CondSignal(BSL_SAL_CondVar condVar);
+
+int32_t SAL_CondTimedwaitMs(BSL_SAL_Mutex condMutex, BSL_SAL_CondVar condVar, int32_t timeout);
+
+int32_t SAL_DeleteCondVar(BSL_SAL_CondVar condVar);
+#endif
+
+int32_t SAL_PthreadRunOnce(BSL_SAL_OnceControl *onceControl, BSL_SAL_ThreadInitRoutine initFunc);
 #endif
 
 #ifdef __cplusplus

@@ -43,6 +43,16 @@ extern "C" {
  */
 #define BSL_ERR_NEW_MODULE 0x80
 
+typedef enum {
+    BSL_ERR_LIB_CRYPTO = 1,
+    BSL_ERR_LIB_TLS = 2,
+    BSL_ERR_LIB_BSL = 3,
+    BSL_ERR_LIB_PKI = 4,
+    BSL_ERR_LIB_AUTH = 5,
+} BSL_ERR_LIB;
+
+#define BSL_ERR_GET_LIB(err) ((err) >> 24)
+
 /**
  * @ingroup bsl_err
  * @brief Initialize Error code module.
@@ -91,6 +101,36 @@ void BSL_ERR_RemoveErrorStack(bool isRemoveAll);
  *                     and the least significant 16 bits indicate the cause number.
  */
 int32_t BSL_ERR_GetLastError(void);
+
+/**
+ * @ingroup bsl_err
+ * @brief Obtains the error code of the last push in the error stack.
+ *
+ * This API is called when an error occurs on a HiTLS interface to obtain the error code.
+ * The interface can be called continuously. The error code returned each time forms
+ * the error stack of the interface until BSL_SUCCESS is returned.
+ *
+ * @attention
+ * Thread safe     : Thread-safe function.
+ * @retval Error code. The most significant 16 bits indicate the ID of the module where the error occurs,
+ *                     and the least significant 16 bits indicate the cause number.
+ */
+int32_t BSL_ERR_PeekLastError(void);
+
+/**
+ * @ingroup bsl_err
+ * @brief Obtain the earliest push error code in the error stack.
+ *
+ * This API is called when an error occurs on a HiTLS API to obtain the error code.
+ * The API can be called all the time.
+ * The error code returned each time forms the error stack of the interface until BSL_SUCCESS is returned.
+ *
+ * @attention
+ * Thread safe     : Thread-safe function.
+ * @retval Error code. The most significant 16 bits indicate the ID of the module where the error occurs,
+ *                     and the least significant 16 bits indicate the cause number.
+ */
+int32_t BSL_ERR_PeekError(void);
 
 /**
  * @ingroup bsl_err
@@ -232,6 +272,19 @@ const char *BSL_ERR_GetString(int32_t error);
 
 /**
  * @ingroup bsl_err
+ * @brief Obtain the error description string based on the error code.
+ *
+ * Obtain the corresponding error description string based on the error code.
+ *
+ * @attention
+ * Thread safe     : Thread-safe function.
+ * @param error [IN] Error code
+ * @retval Error description
+ */
+int32_t BSL_ERR_GetErrAll(const char **file, uint32_t *lineNo, const char **desc);
+
+/**
+ * @ingroup bsl_err
  * @brief Set the pop-up flag at the level of the current error stack.
  *
  * Set the pop-up flag.
@@ -271,6 +324,38 @@ int32_t BSL_ERR_PopToMark(void);
  * @retval #BSL_SUCCESS, cleared successfully.
  */
 int32_t BSL_ERR_ClearLastMark(void);
+
+/**
+ * @ingroup bsl_err
+ * @brief Err output callback function type.
+ *
+ * Callback function type for error output.
+ *
+ * @param threadId [IN] Thread ID.
+ * @param file [IN] File name.
+ * @param lineNo [IN] Line number.
+ * @param errCode [IN] Error code.
+ * @param mark [IN] Mark flag.
+ */
+typedef void (*BSL_ERR_OutputFunc)(uint64_t threadId, const char *file, uint32_t lineNo, int32_t errCode, bool mark);
+
+/**
+ * @ingroup bsl_err
+ * @brief Register a err output callback function with dual protection
+ *
+ * @param func Callback function to register
+ */
+void BSL_ERR_RegErrStackLog(const BSL_ERR_OutputFunc func);
+
+/**
+ * @ingroup bsl_err
+ * @brief Print all error information in the current error stack.
+ *
+ * Print all error information in the current error stack.
+ *
+ * @attention none
+ */
+void BSL_ERR_OutputErrorStack(void);
 
 #ifdef __cplusplus
 }

@@ -27,6 +27,8 @@
 #include "crypt_eal_pkey.h"
 #include "crypt_eal_codecs.h"
 #include "bsl_types.h"
+#include "bsl_params.h"
+#include "crypt_params_key.h"
 #include "crypt_types.h"
 #include "crypt_utils.h"
 #include "decode_local.h"
@@ -157,12 +159,12 @@ ERR:
     return NULL;
 }
 
-CRYPT_DECODER_Ctx *CRYPT_DECODE_ProviderNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t keyType, const char *attrName)
+CRYPT_DECODER_Ctx *CRYPT_DECODE_ProviderNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t pkeyAlgId, const char *attrName)
 {
     const CRYPT_EAL_Func *funcsDecoder = NULL;
     CRYPT_EAL_ProvMgrCtx *mgrCtx = NULL;
-    int32_t ret = CRYPT_EAL_ProviderGetFuncsAndMgrCtx(libCtx, CRYPT_EAL_OPERAID_DECODER, keyType, attrName,
-        &funcsDecoder, &mgrCtx);
+    int32_t ret = CRYPT_EAL_ProviderGetFuncsAndMgrCtx(libCtx, CRYPT_EAL_OPERAID_DECODER, pkeyAlgId, attrName,
+        &funcsDecoder, &mgrCtx, false);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return NULL;
@@ -244,15 +246,9 @@ int32_t CRYPT_DECODE_Decode(CRYPT_DECODER_Ctx *ctx, const BSL_Param *inParam, BS
 
 void CRYPT_DECODE_FreeOutData(CRYPT_DECODER_Ctx *ctx, BSL_Param *outData)
 {
-    if (ctx == NULL || outData == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+    if (ctx == NULL || outData == NULL || ctx->method == NULL || ctx->method->freeOutData == NULL) {
         return;
     }
-    if (ctx->method == NULL || ctx->method->freeOutData == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NOT_SUPPORT);
-        return;
-    }
-
     ctx->method->freeOutData(ctx->decoderCtx, outData);
 }
 

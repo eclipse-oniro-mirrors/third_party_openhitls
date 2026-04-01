@@ -25,13 +25,11 @@
 #include "bsl_errno.h"
 #include "bsl_uio.h"
 #include "tls.h"
-#include "uio_base.h"
 #include "record.h"
 #include "hs_ctx.h"
 #ifdef HITLS_TLS_FEATURE_INDICATOR
 #include "indicator.h"
 #endif
-#include "hs.h"
 #include "rec_crypto.h"
 
 
@@ -47,7 +45,6 @@ static void OutbufUpdate(uint32_t *start, uint32_t startvalue, uint32_t *end, ui
     /** Commit the record to be written */
     *start = startvalue;
     *end = endvalue;
-    return;
 }
 
 static int32_t CheckEncryptionLimits(TLS_Ctx *ctx, RecConnState *state)
@@ -137,26 +134,17 @@ static inline void DtlsRecordHeaderPack(uint8_t *outBuf, REC_Type recordType, ui
     BSL_Uint16ToByte((uint16_t)cipherTextLen, &outBuf[REC_DTLS_RECORD_LENGTH_OFFSET]);
 }
 
-static int32_t DtlsRecOutBufInit(RecCtx *recordCtx, uint32_t bufSize)
-{
-    if (recordCtx->outBuf == NULL) {
-        recordCtx->outBuf = RecBufNew(bufSize);
-        if (recordCtx->outBuf == NULL) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17279, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "RecBufNew fail", 0, 0, 0, 0);
-            return HITLS_MEMALLOC_FAIL;
-        }
-    }
-    return HITLS_SUCCESS;
-}
-
 static int32_t DtlsTrySendMessage(TLS_Ctx *ctx, RecCtx *recordCtx, REC_Type recordType, RecConnState *state)
 {
+    (void)recordType;
+#ifdef HITLS_BSL_UIO_SCTP
     /* Notify the uio whether the service message is being sent. rfc6083 4.4. Stream Usage: For non-app messages, the
      * sctp stream id number must be 0 */
-    bool isAppMsg = (recordType == REC_TYPE_APP);
-    (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_SCTP_MASK_APP_MESSAGE, sizeof(isAppMsg), &isAppMsg);
-
+    if (BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_SCTP)) {
+        bool isAppMsg = (recordType == REC_TYPE_APP);
+        (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_SCTP_MASK_APP_MESSAGE, sizeof(isAppMsg), &isAppMsg);
+    }
+#endif /* HITLS_BSL_UIO_SCTP */
     int32_t ret = DatagramWrite(ctx, recordCtx->outBuf);
     if (ret != HITLS_SUCCESS) {
         /* Does not cache messages in the DTLS */
@@ -169,6 +157,11 @@ static int32_t DtlsTrySendMessage(TLS_Ctx *ctx, RecCtx *recordCtx, REC_Type reco
     ret = RecDerefBufList(ctx);
     if (ret != HITLS_SUCCESS) {
         return ret;
+    }
+#endif
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+    if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS) != 0 && (recordType == REC_TYPE_APP)) {
+        RecTryFreeRecBuf(ctx, true);
     }
 #endif
     /** Add the record sequence */
@@ -198,7 +191,7 @@ int32_t DtlsRecordWrite(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, 
             "Record write: cipherTextLen(0) error.", 0, 0, 0, 0);
         return HITLS_INTERNAL_EXCEPTION;
     }
-    int32_t ret = DtlsRecOutBufInit(recordCtx, RecGetInitBufferSize(ctx, false));
+    int32_t ret = RecIoBufInit(ctx, recordCtx, false);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -305,11 +298,7 @@ static void TlsPlainMsgGenerate(REC_TextInput *plainMsg, const TLS_Ctx *ctx,
             ctx->config.tlsConfig.maxVersion;
     }
 
-    if (ctx->hsCtx != NULL && ctx->hsCtx->state == TRY_SEND_CLIENT_HELLO &&
-        ctx->state != CM_STATE_RENEGOTIATION &&
-#ifdef HITLS_TLS_PROTO_TLS13
-        ctx->hsCtx->haveHrr == false &&
-#endif
+    if (ctx->isClient && ctx->negotiatedInfo.version == 0 && ctx->state != CM_STATE_RENEGOTIATION &&
 #ifdef HITLS_TLS_PROTO_TLCP11
         ctx->config.tlsConfig.maxVersion != HITLS_VERSION_TLCP_DTLCP11 &&
 #endif
@@ -327,17 +316,45 @@ static inline void TlsRecordHeaderPack(uint8_t *outBuf, REC_Type recordType, uin
     BSL_Uint16ToByte((uint16_t)cipherTextLen, &outBuf[REC_TLS_RECORD_LENGTH_OFFSET]);
 }
 
-static int32_t SendRecord(TLS_Ctx *ctx, RecCtx *recordCtx, RecConnState *state, uint64_t seq)
+static int32_t SendRecord(TLS_Ctx *ctx, RecCtx *recordCtx, RecConnState *state, uint64_t seq, REC_Type recordType)
 {
+    (void)recordType;
     int32_t ret = StreamWrite(ctx, recordCtx->outBuf);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
 
+#ifdef HITLS_TLS_FEATURE_MODE_RELEASE_BUFFERS
+    if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_RELEASE_BUFFERS) != 0 && (recordType == REC_TYPE_APP)) {
+        RecTryFreeRecBuf(ctx, true);
+    }
+#endif
+
     /** Add the record sequence */
     RecConnSetSeqNum(state, seq + 1);
     return HITLS_SUCCESS;
 }
+
+int32_t REC_OutBufFlush(TLS_Ctx *ctx)
+{
+    RecBuf *writeBuf = ctx->recCtx->outBuf;
+    if (writeBuf == NULL || writeBuf->start == writeBuf->end) {
+        return HITLS_SUCCESS; // No data to flush
+    }
+    if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
+        return HITLS_SUCCESS;
+    }
+    RecConnState *state = GetWriteConnState(ctx);
+    /* The Recordtype is REC_TYPE_HANDSHAKE to not relase outbuffer in HITLS_MODE_RELEASE_BUFFERS mode */
+    int32_t ret = SendRecord(ctx, ctx->recCtx, state, state->seq, REC_TYPE_HANDSHAKE);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    ctx->recCtx->pendingData = NULL;
+    ctx->recCtx->pendingDataSize = 0;
+    return HITLS_SUCCESS;
+}
+
 static int32_t SequenceCompare(RecConnState *state, uint64_t value)
 {
     if (state->isWrapped == true) {
@@ -379,7 +396,6 @@ static const uint8_t *GetPlainMsgData(RecordPlaintext *recPlaintext, const uint8
 // Write a record in the TLS protocol, serialize a record message, and send the message
 int32_t TlsRecordWrite(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, uint32_t num)
 {
-    RecBuf *writeBuf = ctx->recCtx->outBuf;
     RecConnState *state = GetWriteConnState(ctx);
     RecordPlaintext recPlaintext = {0};
     REC_TextInput plainMsg = {0};
@@ -387,9 +403,15 @@ int32_t TlsRecordWrite(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, u
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
+
+    ret = RecIoBufInit(ctx, (RecCtx *)ctx->recCtx, false);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+    RecBuf *writeBuf = ctx->recCtx->outBuf;
     /* Check whether the cache exists */
     if (writeBuf->end > writeBuf->start) {
-        return SendRecord(ctx, ctx->recCtx, state, state->seq);
+        return SendRecord(ctx, ctx->recCtx, state, state->seq, recordType);
     }
     const RecCryptoFunc *funcs = RecGetCryptoFuncs(state->suiteInfo);
     ret = funcs->encryptPreProcess(ctx, recordType, data, num, &recPlaintext);
@@ -430,6 +452,44 @@ int32_t TlsRecordWrite(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, u
 #endif
     OutbufUpdate(&writeBuf->start, 0, &writeBuf->end, outBufLen);
 
-    return SendRecord(ctx, ctx->recCtx, state, state->seq);
+    return SendRecord(ctx, ctx->recCtx, state, state->seq, recordType);
 }
 #endif /* HITLS_TLS_PROTO_TLS */
+
+#ifdef HITLS_TLS_FEATURE_FLIGHT
+int32_t REC_FlightTransmit(TLS_Ctx *ctx)
+{
+    int32_t ret = HITLS_SUCCESS;
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+    /* Reset the buffer uio size */
+    ret = REC_QueryMtu(ctx);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
+    ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_FLUSH, 0, NULL);
+    if (ret == BSL_UIO_IO_BUSY) {
+#ifdef HITLS_TLS_FEATURE_MTU_QUERY
+        if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
+            return HITLS_REC_NORMAL_IO_BUSY;
+        }
+        bool exceeded = false;
+        (void)BSL_UIO_Ctrl(ctx->uio, BSL_UIO_UDP_MTU_EXCEEDED, sizeof(bool), &exceeded);
+        if (exceeded) {
+            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17362, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+                "Record write: get EMSGSIZE error.", 0, 0, 0, 0);
+            ctx->needQueryMtu = true;
+        }
+#endif /* HITLS_TLS_FEATURE_MTU_QUERY */
+        return HITLS_REC_NORMAL_IO_BUSY;
+    }
+    if (ret != BSL_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(HITLS_REC_ERR_IO_EXCEPTION);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16110, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "fail to send handshake message in bUio.", 0, 0, 0, 0);
+        return HITLS_REC_ERR_IO_EXCEPTION;
+    }
+
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_FEATURE_FLIGHT */

@@ -22,21 +22,19 @@
 #include "crypt_errno.h"
 #include "crypt_utils.h"
 #include "bsl_err_internal.h"
+#include "bsl_sal.h"
 #include "crypt_sm3.h"
 #include "sm3_local.h"
-#include "bsl_sal.h"
-#include "crypt_types.h"
-
-struct CryptSm3Ctx {
-    uint32_t h[CRYPT_SM3_DIGESTSIZE / sizeof(uint32_t)];  /* store the intermediate data of the hash value */
-    uint32_t hNum, lNum;                                  /* input data counter, maximum value 2 ^ 64 bits */
-    uint8_t block[CRYPT_SM3_BLOCKSIZE];                   /* store the remaining data which less than one block */
-    /* Number of remaining bytes in 'block' arrary that are stored less than one block */
-    uint32_t num;
-};
 
 CRYPT_SM3_Ctx *CRYPT_SM3_NewCtx(void)
 {
+    return BSL_SAL_Calloc(1, sizeof(CRYPT_SM3_Ctx));
+}
+
+CRYPT_SM3_Ctx *CRYPT_SM3_NewCtxEx(void *libCtx, int32_t algId)
+{
+    (void)libCtx;
+    (void)algId;
     return BSL_SAL_Calloc(1, sizeof(CRYPT_SM3_Ctx));
 }
 
@@ -45,13 +43,12 @@ void CRYPT_SM3_FreeCtx(CRYPT_SM3_Ctx *ctx)
     BSL_SAL_ClearFree(ctx, sizeof(CRYPT_SM3_Ctx));
 }
 
-int32_t CRYPT_SM3_Init(CRYPT_SM3_Ctx *ctx, BSL_Param *param)
+int32_t CRYPT_SM3_Init(CRYPT_SM3_Ctx *ctx)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    (void) param;
     (void)memset_s(ctx, sizeof(CRYPT_SM3_Ctx), 0, sizeof(CRYPT_SM3_Ctx));
     /* GM/T 0004-2012 chapter 4.1 */
     ctx->h[0] = 0x7380166F;
@@ -65,13 +62,19 @@ int32_t CRYPT_SM3_Init(CRYPT_SM3_Ctx *ctx, BSL_Param *param)
     return CRYPT_SUCCESS;
 }
 
-void CRYPT_SM3_Deinit(CRYPT_SM3_Ctx *ctx)
+int32_t CRYPT_SM3_InitEx(CRYPT_SM3_Ctx *ctx, void *param)
+{
+    (void)param;
+    return CRYPT_SM3_Init(ctx);
+}
+
+int32_t CRYPT_SM3_Deinit(CRYPT_SM3_Ctx *ctx)
 {
     if (ctx == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return;
+        return CRYPT_NULL_INPUT;
     }
     (void)memset_s(ctx, sizeof(CRYPT_SM3_Ctx), 0, sizeof(CRYPT_SM3_Ctx));
+    return CRYPT_SUCCESS;
 }
 
 static uint32_t IsInputOverflow(CRYPT_SM3_Ctx *ctx, uint32_t nbytes)
@@ -233,5 +236,13 @@ CRYPT_SM3_Ctx *CRYPT_SM3_DupCtx(const CRYPT_SM3_Ctx *src)
     (void)memcpy_s(newCtx, sizeof(CRYPT_SM3_Ctx), src, sizeof(CRYPT_SM3_Ctx));
     return newCtx;
 }
+
+#ifdef HITLS_CRYPTO_PROVIDER
+int32_t CRYPT_SM3_GetParam(CRYPT_SM3_Ctx *ctx, BSL_Param *param)
+{
+    (void)ctx;
+    return CRYPT_MdCommonGetParam(CRYPT_SM3_DIGESTSIZE, CRYPT_SM3_BLOCKSIZE, param);
+}
+#endif // HITLS_CRYPTO_PROVIDER
 
 #endif /* HITLS_CRYPTO_SM3 */

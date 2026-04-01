@@ -37,7 +37,6 @@
 #include "rec_conn.h"
 #include "session.h"
 #include "recv_process.h"
-#include "stub_replace.h"
 #include "frame_tls.h"
 #include "frame_msg.h"
 #include "simulate_io.h"
@@ -61,7 +60,7 @@ typedef struct {
     FRAME_LinkObj *server;
     HITLS_HandshakeState state;
     bool isClient;
-    bool isSupportExtendedMasterSecret;
+    int32_t emsMode;
     bool isSupportClientVerify;
     bool isSupportNoClientCert;
     bool isServerExtendedMasterSecret;

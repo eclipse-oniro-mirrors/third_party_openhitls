@@ -86,7 +86,7 @@ void CRYPT_DH_FreeCtx(CRYPT_DH_Ctx *ctx);
  * @retval (CRYPT_DH_Para *) Pointer to the memory space of the allocated context
  * @retval NULL              Invalid null pointer
  */
-CRYPT_DH_Para *CRYPT_DH_NewPara(const BSL_Param *para);
+CRYPT_DH_Para *CRYPT_DH_NewPara(const CRYPT_DhPara *para);
 
 /**
  * @ingroup dh
@@ -109,7 +109,7 @@ void CRYPT_DH_FreePara(CRYPT_DH_Para *dhPara);
  * @retval BN error code:           An error occurred in the internal BigNum calculation.
  * @retval CRYPT_SUCCESS            Set successfully.
  */
-int32_t CRYPT_DH_SetPara(CRYPT_DH_Ctx *ctx, const BSL_Param *param);
+int32_t CRYPT_DH_SetPara(CRYPT_DH_Ctx *ctx, const CRYPT_DhPara *para);
 
 /**
  * @ingroup dh
@@ -123,8 +123,7 @@ int32_t CRYPT_DH_SetPara(CRYPT_DH_Ctx *ctx, const BSL_Param *param);
  * @retval BN error code:       An error occurred in the internal BigNum calculation.
  * @retval CRYPT_SUCCESS        Set successfully.
  */
-int32_t CRYPT_DH_GetPara(const CRYPT_DH_Ctx *ctx, BSL_Param *param);
-
+int32_t CRYPT_DH_GetPara(const CRYPT_DH_Ctx *ctx, CRYPT_DhPara *para);
 /**
  * @ingroup dh
  * @brief Set a parameter based on the parameter ID.
@@ -134,7 +133,7 @@ int32_t CRYPT_DH_GetPara(const CRYPT_DH_Ctx *ctx, BSL_Param *param);
  * @retval (CRYPT_DH_Para *) Pointer to the memory space of the allocated context
  * @retval NULL              Invalid null pointer
  */
-CRYPT_DH_Para *CRYPT_DH_NewParaById(CRYPT_PKEY_ParaId id);
+CRYPT_DH_Para *CRYPT_DH_NewParaById(int32_t id);
 
 /**
  * @ingroup dh
@@ -197,6 +196,69 @@ int32_t CRYPT_DH_ComputeShareKey(const CRYPT_DH_Ctx *ctx, const CRYPT_DH_Ctx *pu
  * @brief DH Set the private key.
  *
  * @param ctx [OUT] dh Context structure
+ * @param prv [IN] Private key
+ *
+ * @retval CRYPT_NULL_INPUT         Invalid null pointer input
+ * @retval CRYPT_DH_PARA_ERROR      The key parameter is incorrect.
+ * @retval CRYPT_DH_KEYINFO_ERROR   The key information is incorrect.
+ * @retval CRYPT_MEM_ALLOC_FAIL     Memory allocation failure
+ * @retval BN error.                An error occurs in the internal BigNum operation.
+ * @retval CRYPT_SUCCESS            Set successfully.
+ */
+int32_t CRYPT_DH_SetPrvKey(CRYPT_DH_Ctx *ctx, const CRYPT_DhPrv *prv);
+
+/**
+ * @ingroup dh
+ * @brief DH Set the public key data.
+ *
+ * @param ctx [OUT] dh Context structure
+ * @param pub [IN] Public key data
+ *
+ * @retval CRYPT_NULL_INPUT         Error null pointer input
+ * @retval CRYPT_DH_PARA_ERROR      The key parameter data is incorrect.
+ * @retval CRYPT_DH_KEYINFO_ERROR   The key information is incorrect.
+ * @retval CRYPT_MEM_ALLOC_FAIL     Memory allocation failure
+ * @retval BN error.                An error occurs in the internal BigNum operation.
+ * @retval CRYPT_SUCCESS            Set successfully.
+ */
+int32_t CRYPT_DH_SetPubKey(CRYPT_DH_Ctx *ctx, const CRYPT_DhPub *pub);
+
+/**
+ * @ingroup dh
+ * @brief DH Obtain the private key data.
+ *
+ * @param ctx [IN] dh Context structure
+ * @param prv [OUT] Private key data
+ *
+ * @retval CRYPT_NULL_INPUT             Invalid null pointer input
+ * @retval CRYPT_DH_BUFF_LEN_NOT_ENOUGH The buffer length is insufficient.
+ * @retval CRYPT_DH_KEYINFO_ERROR       The key information is incorrect.
+ * @retval BN error.                    An error occurs in the internal BigNum operation.
+ * @retval CRYPT_SUCCESS                obtained successfully.
+ */
+int32_t CRYPT_DH_GetPrvKey(const CRYPT_DH_Ctx *ctx, CRYPT_DhPrv *prv);
+
+/**
+ * @ingroup dh
+ * @brief DH Obtain the public key data.
+ *
+ * @param ctx [IN] dh Context structure
+ * @param pub [OUT] Public key data
+ *
+ * @retval CRYPT_NULL_INPUT             Invalid null pointer input
+ * @retval CRYPT_DH_BUFF_LEN_NOT_ENOUGH The buffer length is insufficient.
+ * @retval CRYPT_DH_KEYINFO_ERROR       The key information is incorrect.
+ * @retval BN error.                    An error occurs in the internal BigNum operation.
+ * @retval CRYPT_SUCCESS                Obtained successfully.
+ */
+int32_t CRYPT_DH_GetPubKey(const CRYPT_DH_Ctx *ctx, CRYPT_DhPub *pub);
+
+#ifdef HITLS_BSL_PARAMS
+/**
+ * @ingroup dh
+ * @brief DH Set the private key.
+ *
+ * @param ctx [OUT] dh Context structure
  * @param para [IN] Private key
  *
  * @retval CRYPT_NULL_INPUT         Invalid null pointer input
@@ -206,7 +268,7 @@ int32_t CRYPT_DH_ComputeShareKey(const CRYPT_DH_Ctx *ctx, const CRYPT_DH_Ctx *pu
  * @retval BN error.                An error occurs in the internal BigNum operation.
  * @retval CRYPT_SUCCESS            Set successfully.
  */
-int32_t CRYPT_DH_SetPrvKey(CRYPT_DH_Ctx *ctx, const BSL_Param *para);
+int32_t CRYPT_DH_SetPrvKeyEx(CRYPT_DH_Ctx *ctx, const BSL_Param *para);
 
 /**
  * @ingroup dh
@@ -222,7 +284,7 @@ int32_t CRYPT_DH_SetPrvKey(CRYPT_DH_Ctx *ctx, const BSL_Param *para);
  * @retval BN error.                An error occurs in the internal BigNum operation.
  * @retval CRYPT_SUCCESS            Set successfully.
  */
-int32_t CRYPT_DH_SetPubKey(CRYPT_DH_Ctx *ctx, const BSL_Param *para);
+int32_t CRYPT_DH_SetPubKeyEx(CRYPT_DH_Ctx *ctx, const BSL_Param *para);
 
 /**
  * @ingroup dh
@@ -237,7 +299,7 @@ int32_t CRYPT_DH_SetPubKey(CRYPT_DH_Ctx *ctx, const BSL_Param *para);
  * @retval BN error.                    An error occurs in the internal BigNum operation.
  * @retval CRYPT_SUCCESS                obtained successfully.
  */
-int32_t CRYPT_DH_GetPrvKey(const CRYPT_DH_Ctx *ctx, BSL_Param *para);
+int32_t CRYPT_DH_GetPrvKeyEx(const CRYPT_DH_Ctx *ctx, BSL_Param *para);
 
 /**
  * @ingroup dh
@@ -252,9 +314,55 @@ int32_t CRYPT_DH_GetPrvKey(const CRYPT_DH_Ctx *ctx, BSL_Param *para);
  * @retval BN error.                    An error occurs in the internal BigNum operation.
  * @retval CRYPT_SUCCESS                Obtained successfully.
  */
-int32_t CRYPT_DH_GetPubKey(const CRYPT_DH_Ctx *ctx, BSL_Param *para);
+int32_t CRYPT_DH_GetPubKeyEx(const CRYPT_DH_Ctx *ctx, BSL_Param *para);
 
+/**
+ * @ingroup dh
+ * @brief Set the data of the key parameter structure to the key structure.
+ *
+ * @param ctx [IN] Key structure for setting related parameters. The key specification is 1024-8192 bits.
+ * @param para [IN] Key parameters
+ *
+ * @retval CRYPT_NULL_INPUT         Invalid null pointer input.
+ * @retval CRYPT_DH_PARA_ERROR      The key parameter data is incorrect.
+ * @retval CRYPT_MEM_ALLOC_FAIL     Internal Memory Allocation Error
+ * @retval BN error code:           An error occurred in the internal BigNum calculation.
+ * @retval CRYPT_SUCCESS            Set successfully.
+ */
+int32_t CRYPT_DH_SetParaEx(CRYPT_DH_Ctx *ctx, const BSL_Param *para);
 
+/**
+ * @ingroup dh
+ * @brief Obtain the key structure parameters.
+ *
+ * @param ctx [IN] Key structure
+ * @param para [OUT] Obtained key parameter.
+ *
+ * @retval CRYPT_NULL_INPUT     Invalid null pointer input.
+ * @retval CRYPT_DH_PARA_ERROR  The key parameter data is incorrect.
+ * @retval BN error code:       An error occurred in the internal BigNum calculation.
+ * @retval CRYPT_SUCCESS        Set successfully.
+ */
+int32_t CRYPT_DH_GetParaEx(const CRYPT_DH_Ctx *ctx, BSL_Param *para);
+#endif
+
+#ifdef HITLS_CRYPTO_DH_CHECK
+/**
+ * @ingroup dh
+ * @brief check the key pair consistency
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] dh key context structure
+ * @param pkey2 [IN] dh key context structure
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_DH_Check(uint32_t checkType, const CRYPT_DH_Ctx *pkey1, const CRYPT_DH_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_DH_CHECK
+
+#ifdef HITLS_CRYPTO_DH_CMP
 /**
  * @ingroup dh
  * @brief dh Compare public keys and parameters
@@ -270,6 +378,9 @@ int32_t CRYPT_DH_GetPubKey(const CRYPT_DH_Ctx *ctx, BSL_Param *para);
  * @retval CRYPT_DH_PARA_NOT_EQUAL  The parameters are not equal.
  */
 int32_t CRYPT_DH_Cmp(const CRYPT_DH_Ctx *a, const CRYPT_DH_Ctx *b);
+#else
+#define CRYPT_DH_Cmp NULL
+#endif
 
 /**
  * @ingroup dh
@@ -287,6 +398,18 @@ int32_t CRYPT_DH_Ctrl(CRYPT_DH_Ctx *ctx, int32_t opt, void *val, uint32_t len);
 
 /**
  * @ingroup dh
+ * @brief   copy param from src to dest.
+ *
+ * @param   src [IN] Key session
+ * @param   dest [IN] Key session
+ *
+ * @return  CRYPT_SUCCESS.
+ *          For other error codes see crypt_errno.h.
+ */
+int32_t CRYPT_DH_CopyParam(const CRYPT_DH_Ctx *src, CRYPT_DH_Ctx *dest);
+
+/**
+ * @ingroup dh
  * @brief dh get security bits
  *
  * @param ctx [IN] dh Context structure
@@ -294,6 +417,7 @@ int32_t CRYPT_DH_Ctrl(CRYPT_DH_Ctx *ctx, int32_t opt, void *val, uint32_t len);
  * @retval security bits
  */
 int32_t CRYPT_DH_GetSecBits(const CRYPT_DH_Ctx *ctx);
+
 #ifdef __cplusplus
 }
 #endif

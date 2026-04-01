@@ -35,7 +35,7 @@
 #include "frame_link.h"
 #include "hs_common.h"
 #include "change_cipher_spec.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 
 #define READ_BUF_SIZE 18432
 #define Port 7788
@@ -48,6 +48,12 @@
 #define BUF_SZIE 18432
 
 /* END_HEADER */
+
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET2(int32_t, REC_GetMaxWriteSize, const TLS_Ctx *, uint32_t *);
+
 static uint32_t g_uiPort = 18889;
 
 static void SetCertPath_2(HLT_Ctx_Config *ctxConfig, char *cipherSuite)
@@ -138,6 +144,8 @@ void SDV_HITLS_CM_HITLS_GetNegotiateGroup_FUNC_TC001(char *serverCipherSuite, ch
 
     ASSERT_TRUE(testCtx->negotiatedInfo.signScheme == CERT_SIG_SCHEME_RSA_PKCS1_SHA512);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -214,6 +222,8 @@ void SDV_HITLS_CM_HITLS_GetNegotiateGroup_FUNC_TC002(char *serverCipherSuite, ch
     HITLS_Ctx *testCtx = (HITLS_Ctx *)serverRes->ssl;
 
     ASSERT_TRUE(testCtx->negotiatedInfo.cipherSuiteInfo.cipherSuite == expectResult);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HLT_FreeAllProcess();
@@ -293,6 +303,8 @@ void SDV_HITLS_CM_HITLS_GetNegotiateGroup_FUNC_TC003(char *serverCipherSuite, ch
 
     ASSERT_TRUE(testCtx->negotiatedInfo.signScheme == CERT_SIG_SCHEME_RSA_PKCS1_SHA384);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -371,6 +383,8 @@ void SDV_HITLS_CM_HITLS_GetNegotiateGroup_FUNC_TC004(char *serverCipherSuite, ch
 
     ASSERT_TRUE(testCtx->negotiatedInfo.negotiatedGroup == HITLS_EC_GROUP_SECP256R1);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -424,17 +438,17 @@ void SDV_TLS_CM_FRAGMENTATION_FUNC_TC001(void)
 
     serverRes = HLT_ProcessTlsAccept(remoteProcess, DTLS1_2, serverConfig, NULL);
     ASSERT_TRUE(serverRes != NULL);
-
-    STUB_Init();
-    FuncStubInfo stubInfo = {0};
-    STUB_Replace(&stubInfo, REC_GetMaxWriteSize, STUB_REC_GetMaxWriteSize);
+    STUB_REPLACE(REC_GetMaxWriteSize, STUB_REC_GetMaxWriteSize);;
 
     clientRes = HLT_ProcessTlsInit(localProcess, DTLS1_2, clientConfig, NULL);
     ASSERT_TRUE(clientRes != NULL);
 
     ASSERT_TRUE(HLT_TlsConnect(clientRes->ssl) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
-    STUB_Reset(&stubInfo);
+    STUB_RESTORE(REC_GetMaxWriteSize);
     HLT_FreeAllProcess();
 }
 /* END_CASE */

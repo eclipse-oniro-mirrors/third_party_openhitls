@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 #include "hitls_build.h"
-#ifdef HITLS_TLS_HOST_SERVER
+#if defined(HITLS_TLS_HOST_SERVER) && defined(HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY)
 #include <stdint.h>
 #include <stdbool.h>
 #include "securec.h"
@@ -22,7 +22,6 @@
 #include "bsl_log_internal.h"
 #include "bsl_log.h"
 #include "bsl_err_internal.h"
-#include "bsl_bytes.h"
 #include "hitls_error.h"
 #include "tls.h"
 #include "hs_common.h"
@@ -30,16 +29,16 @@
 #include "hs_extensions.h"
 #include "pack_common.h"
 #include "pack_extensions.h"
-#include "cert_mgr_ctx.h"
+#include "hs_cert.h"
+#include "custom_extensions.h"
 
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
 typedef struct {
     uint8_t certType;
     bool isSupported;
 } PackCertTypesInfo;
-static int32_t PackCertificateTypes(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+static int32_t PackCertificateTypes(const TLS_Ctx *ctx, PackPacket *pkt)
 {
-    uint32_t offset = 0u;
     const TLS_Config *config = &(ctx->config.tlsConfig);
 
     if ((config->cipherSuites == NULL) || (config->cipherSuitesSize == 0)) {
@@ -60,7 +59,7 @@ static int32_t PackCertificateTypes(const TLS_Ctx *ctx, uint8_t *buf, uint32_t b
     uint32_t baseSignAlgorithmsSize = config->signAlgorithmsSize;
     const uint16_t *baseSignAlgorithms = config->signAlgorithms;
     for (uint32_t i = 0; i < baseSignAlgorithmsSize; i++) {
-        HITLS_CERT_KeyType keyType = SAL_CERT_SignScheme2CertKeyType(ctx, baseSignAlgorithms[i]);
+        HITLS_CERT_KeyType keyType = HS_SignScheme2CertKeyType(ctx, baseSignAlgorithms[i]);
         CERT_Type certType = CertKeyType2CertType(keyType);
         for (uint32_t j = 0; j < certTypeListsSize; j++) {
             if ((certTypeLists[j].certType == certType) && (certTypeLists[j].isSupported == false)) {
@@ -71,28 +70,27 @@ static int32_t PackCertificateTypes(const TLS_Ctx *ctx, uint8_t *buf, uint32_t b
         }
     }
 
-    if (bufLen < (sizeof(uint8_t) + supportedCertTypesSize)) {
-        return PackBufLenError(BINLOG_ID17119, BINGLOG_STR("certificate type"));
+    int32_t ret = PackAppendUint8ToBuf(pkt, supportedCertTypesSize);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
 
-    buf[offset] = supportedCertTypesSize;
-    offset += sizeof(uint8_t);
     for (uint32_t i = 0; i < certTypeListsSize; i++) {
         if (certTypeLists[i].isSupported == true) {
-            buf[offset] = certTypeLists[i].certType;
-            offset += sizeof(uint8_t);
+            ret = PackAppendUint8ToBuf(pkt, certTypeLists[i].certType);
+            if (ret != HITLS_SUCCESS) {
+                return ret;
+            }
         }
     }
 
-    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_PROTO_TLS_BASIC || HITLS_TLS_PROTO_DTLS12 */
 
 #if defined(HITLS_TLS_PROTO_TLS12) || defined(HITLS_TLS_PROTO_DTLS12)
-static int32_t PackSignAlgorithms(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+static int32_t PackSignAlgorithms(const TLS_Ctx *ctx, PackPacket *pkt)
 {
-    uint32_t offset = 0u;
     const TLS_Config *config = &(ctx->config.tlsConfig);
 
     if ((config->signAlgorithms == NULL) || (config->signAlgorithmsSize == 0)) {
@@ -103,58 +101,80 @@ static int32_t PackSignAlgorithms(const TLS_Ctx *ctx, uint8_t *buf, uint32_t buf
     }
 
     uint16_t signAlgorithmsSize = (uint16_t)config->signAlgorithmsSize * sizeof(uint16_t);
-    if (bufLen < (sizeof(uint16_t) + signAlgorithmsSize)) {
-        return PackBufLenError(BINLOG_ID15683, BINGLOG_STR("sign algorithms"));
+    int32_t ret = PackAppendUint16ToBuf(pkt, signAlgorithmsSize);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
 
-    BSL_Uint16ToByte(signAlgorithmsSize, &buf[offset]);
-    offset += sizeof(uint16_t);
     for (uint32_t index = 0; index < config->signAlgorithmsSize; index++) {
-        BSL_Uint16ToByte(config->signAlgorithms[index], &buf[offset]);
-        offset += sizeof(uint16_t);
+        ret = PackAppendUint16ToBuf(pkt, config->signAlgorithms[index]);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
     }
 
-    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_PROTO_TLS12 || HITLS_TLS_PROTO_DTLS12 */
 
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
-int32_t PackCertificateRequest(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+static int32_t PackCALists(const TLS_Ctx *ctx, PackPacket *pkt)
 {
-    uint32_t offset = 0u;
-    uint32_t len = 0u;
+    const TLS_Config *config = &(ctx->config.tlsConfig);
+    
+    if (config->caList == NULL) {
+        return PackAppendUint16ToBuf(pkt, 0);
+    }
 
-    int32_t ret = PackCertificateTypes(ctx, buf, bufLen, &len);
+    uint32_t caListLenPosition = 0u;
+    int32_t ret = PackStartLengthField(pkt, sizeof(uint16_t), &caListLenPosition);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-    offset += len;
+
+    ret = PackTrustedCAList(config->caList, pkt);
+    if (ret != HITLS_SUCCESS) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17370, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "pack CA list error", 0, 0, 0, 0);
+        return ret;
+    }
+
+    PackCloseUint16Field(pkt, caListLenPosition);
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+
+int32_t PackCertificateRequest(const TLS_Ctx *ctx, PackPacket *pkt)
+{
+    int32_t ret = PackCertificateTypes(ctx, pkt);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
 
 #if defined(HITLS_TLS_PROTO_TLS12) || defined(HITLS_TLS_PROTO_DTLS12)
     /* TLCP does not have the signature algorithm field */
     if (ctx->negotiatedInfo.version != HITLS_VERSION_TLCP_DTLCP11) {
-        len = 0u;
-        ret = PackSignAlgorithms(ctx, &buf[offset], bufLen - offset, &len);
+        ret = PackSignAlgorithms(ctx, pkt);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
-        offset += len;
     }
 #endif
-    /* The distinguishable name of the certificate authorization list. The currently supported certificate authorization
-     * list is empty */
-    BSL_Uint16ToByte(0, &buf[offset]);
-    offset += sizeof(uint16_t);
-
-    *usedLen = offset;
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+    ret = PackCALists(ctx, pkt);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
     return HITLS_SUCCESS;
+#else
+    return PackAppendUint16ToBuf(pkt, 0);
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
 }
 #endif /* HITLS_TLS_PROTO_TLS_BASIC || HITLS_TLS_PROTO_DTLS12 */
 #ifdef HITLS_TLS_PROTO_TLS13
-static int32_t PackSignAlgorithmsExtension(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+static int32_t PackSignAlgorithmsExtension(const TLS_Ctx *ctx, PackPacket *pkt)
 {
-    uint32_t offset = 0u;
     const TLS_Config *config = &(ctx->config.tlsConfig);
 
     if ((config->signAlgorithms == NULL) || (config->signAlgorithmsSize == 0)) {
@@ -174,47 +194,35 @@ static int32_t PackSignAlgorithmsExtension(const TLS_Ctx *ctx, uint8_t *buf, uin
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
         return HITLS_CERT_ERR_NO_SIGN_SCHEME_MATCH;
     }
-
+#ifdef HITLS_TLS_FEATURE_SM_TLS13
+    if (IS_SM_TLS13(ctx->negotiatedInfo.cipherSuiteInfo.cipherSuite)) {
+        signAlgorithmsSize = 1;
+        signAlgorithms[0] = CERT_SIG_SCHEME_SM2_SM3;
+    }
+#endif
     uint16_t exMsgHeaderLen = sizeof(uint16_t);
     uint16_t exMsgDataLen = sizeof(uint16_t) * (uint16_t)signAlgorithmsSize;
 
-    int32_t ret = PackExtensionHeader(HS_EX_TYPE_SIGNATURE_ALGORITHMS, exMsgHeaderLen + exMsgDataLen, buf, bufLen);
+    int32_t ret = PackExtensionHeader(HS_EX_TYPE_SIGNATURE_ALGORITHMS, exMsgHeaderLen + exMsgDataLen, pkt);
     if (ret != HITLS_SUCCESS) {
         BSL_SAL_FREE(signAlgorithms);
         return ret;
     }
-    offset += HS_EX_HEADER_LEN;
 
-    if (bufLen < sizeof(uint16_t) + offset) {
-        BSL_SAL_FREE(signAlgorithms);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16920, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "buflen err", 0, 0, 0, 0);
-        return HITLS_PACK_NOT_ENOUGH_BUF_LENGTH;
-    }
-    BSL_Uint16ToByte(exMsgDataLen, &buf[offset]);
-    offset += sizeof(uint16_t);
+    (void)PackAppendUint16ToBuf(pkt, exMsgDataLen);
 
-    if (bufLen < exMsgDataLen + offset) {
-        BSL_SAL_FREE(signAlgorithms);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16921, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "buflen err", 0, 0, 0, 0);
-        return HITLS_PACK_NOT_ENOUGH_BUF_LENGTH;
-    }
     for (uint32_t index = 0; index < signAlgorithmsSize; index++) {
-        BSL_Uint16ToByte(signAlgorithms[index], &buf[offset]);
-        offset += sizeof(uint16_t);
+        (void)PackAppendUint16ToBuf(pkt, signAlgorithms[index]);
     }
     BSL_SAL_FREE(signAlgorithms);
 
-    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 
-static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+// Pack the extension of the Tls1.3 Certificate Request
+static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, PackPacket *pkt)
 {
     int32_t ret = HITLS_SUCCESS;
-    uint32_t listSize;
-    uint32_t exLen = 0u;
-    uint32_t offset = 0u;
-
     const PackExtInfo extMsgList[] = {
         {.exMsgType = HS_EX_TYPE_SIGNATURE_ALGORITHMS,
          .needPack = true,
@@ -222,100 +230,77 @@ static int32_t PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t 
         {.exMsgType = HS_EX_TYPE_SIGNATURE_ALGORITHMS_CERT,
          .needPack = false,
          .packFunc = NULL},
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
+        {.exMsgType = HS_EX_TYPE_CERTIFICATE_AUTHORITIES,
+         .needPack = ctx->config.tlsConfig.caList != NULL,
+         .packFunc = PackClientCAList},
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
     };
 
-    listSize = sizeof(extMsgList) / sizeof(extMsgList[0]);
+    uint32_t listSize = sizeof(extMsgList) / sizeof(extMsgList[0]);
 #ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
     if (IsPackNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), HITLS_EX_TYPE_TLS1_3_CERTIFICATE_REQUEST)) {
-        ret = PackCustomExtensions(ctx, &buf[offset], bufLen - offset, &exLen, HITLS_EX_TYPE_TLS1_3_CERTIFICATE_REQUEST, NULL, 0);
+        ret = PackCustomExtensions(ctx, pkt, HITLS_EX_TYPE_TLS1_3_CERTIFICATE_REQUEST, NULL, 0);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
-        offset += exLen;
     }
 #endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
 
     for (uint32_t index = 0; index < listSize; index++) {
         if (extMsgList[index].packFunc == NULL) {
-            exLen = 0u;
-            ret = PackEmptyExtension(extMsgList[index].exMsgType, extMsgList[index].needPack,
-                &buf[offset], bufLen - offset, &exLen);
+            ret = PackEmptyExtension(extMsgList[index].exMsgType, extMsgList[index].needPack, pkt);
             if (ret != HITLS_SUCCESS) {
                 return ret;
             }
-            offset += exLen;
         }
         if (extMsgList[index].packFunc != NULL && extMsgList[index].needPack) {
-            exLen = 0u;
-            ret = extMsgList[index].packFunc(ctx, &buf[offset], bufLen - offset, &exLen);
+            ret = extMsgList[index].packFunc(ctx, pkt);
             if (ret != HITLS_SUCCESS) {
                 return ret;
             }
-            offset += exLen;
         }
     }
 
-    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 
-int32_t Tls13PackCertReqExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *len)
+static int32_t Tls13PackCertReqExtensions(const TLS_Ctx *ctx, PackPacket *pkt)
 {
-    int32_t ret = HITLS_SUCCESS;
-    uint32_t headerLen;
-    uint32_t exLen = 0u;
-
-    headerLen = sizeof(uint16_t);
-    if (bufLen < headerLen) {
-        return PackBufLenError(BINLOG_ID15687, BINGLOG_STR("certReq extension"));
-    }
-
-    /* Pack the extended content of the Tls1.3 Certificate Request */
-    ret = PackCertReqExtensions(ctx, &buf[headerLen], bufLen - headerLen, &exLen);
+    /* Start packing extensions length */
+    uint32_t extensionsLenPosition = 0u;
+    int32_t ret = PackStartLengthField(pkt, sizeof(uint16_t), &extensionsLenPosition);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
 
-    if (exLen > 0u) {
-        BSL_Uint16ToByte((uint16_t)exLen, buf);
-        *len = exLen + headerLen;
-    } else {
-        BSL_Uint16ToByte((uint16_t) 0, buf);
-        *len = 0u + headerLen;
+    /* Pack the extended content of the Tls1.3 Certificate Request */
+    ret = PackCertReqExtensions(ctx, pkt);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
 
+    /* Close extensions length field */
+    PackCloseUint16Field(pkt, extensionsLenPosition);
+    
     return HITLS_SUCCESS;
 }
 
-int32_t Tls13PackCertificateRequest(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+int32_t Tls13PackCertificateRequest(const TLS_Ctx *ctx, PackPacket *pkt)
 {
-    int32_t ret = HITLS_SUCCESS;
-    uint32_t offset = 0u;
-    uint32_t exMsgLen = 0u;
-
-    if (bufLen < sizeof(uint8_t) + ctx->certificateReqCtxSize) {
-        return PackBufLenError(BINLOG_ID15688, BINGLOG_STR("tls1.3 certReq"));
-    }
-    /* Pack certificate_request_context */
-    buf[offset] = (uint8_t)ctx->certificateReqCtxSize;
-    offset++;
-
-    if (ctx->certificateReqCtxSize > 0) {
-        (void)memcpy_s(&buf[offset], bufLen - offset, ctx->certificateReqCtx, ctx->certificateReqCtxSize);
-        offset += ctx->certificateReqCtxSize;
+    int32_t ret = PackCertificateReqCtx(ctx, pkt);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
 
-    ret = Tls13PackCertReqExtensions(ctx, &buf[offset], bufLen - offset, &exMsgLen);
+    ret = Tls13PackCertReqExtensions(ctx, pkt);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15690, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "pack tls1.3 certificate request msg extension content fail.", 0, 0, 0, 0);
         return ret;
     }
-    offset += exMsgLen;
-    *usedLen = offset;
 
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_PROTO_TLS13 */
-
-#endif /* HITLS_TLS_HOST_SERVER */
+#endif /* HITLS_TLS_HOST_SERVER && HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY */

@@ -34,7 +34,6 @@
 #include "bsl_sal.h"
 #include "bsl_uio.h"
 #include "alert.h"
-#include "stub_replace.h"
 #include "cert_callback.h"
 #include "crypt_eal_rand.h"
 #include "hitls_crypt_reg.h"
@@ -116,7 +115,7 @@ void UT_TLS_CERT_CM_SetVerifyDepth_API_TC001(int version)
     HITLS_Config *tlsConfig = NULL;
     HITLS_Ctx *ctx = NULL;
     uint32_t depth = 5;
-    uint32_t dep = 0;
+    int32_t dep = 0;
 
     tlsConfig = HitlsNewCtx(version);
     ASSERT_TRUE(tlsConfig != NULL);
@@ -716,7 +715,7 @@ void StubListDataDestroy(void *data)
 *   6. Create a peer certificate management instance and a certificate chain. Expected result 6.
 *   7. Add the created certificates to the certificate linked list one by one. Expected result 7.
 *   8. Invoke HITLS_GetPeerCertChain to obtain the peer certificate chain. Expected result 8.
-*   9. Invoke the HITLS_GetClientCAList client certificate authority (CA) list. Expected result 9.
+*   9. Invoke the HITLS_GetPeerCAList client certificate authority (CA) list. Expected result 9.
 * @expect
 *   1. The creation is successful.
 *   2. Obtaining failed. The session is empty.
@@ -789,9 +788,11 @@ void UT_TLS_CERT_GET_CALIST_FUNC_TC001(int version)
 
     ret = BSL_LIST_AddElement((BslList *)tmpCAList, newNode2, BSL_LIST_POS_END);
     ASSERT_TRUE(ret == 0);
-    HITLS_TrustedCAList *caList = HITLS_GetClientCAList(ctx);
+    HITLS_TrustedCAList *caList = HITLS_GetPeerCAList(ctx);
     ASSERT_TRUE(caList != NULL);
     ASSERT_EQ(caList->count, 2);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
@@ -1086,9 +1087,10 @@ void UT_TLS_CRL_VERIFICATION_HANDSHAKE_TC001(void)
     server = FRAME_CreateLinkBase(config, BSL_UIO_TCP, false);
     ASSERT_TRUE(server != NULL);
 
-    ASSERT_EQ(HITLS_CFG_LoadCrlFile(config, crlPath, TLS_PARSE_FORMAT_ASN1), HITLS_SUCCESS);
     client = FRAME_CreateLinkBase(config, BSL_UIO_TCP, false);
     ASSERT_TRUE(client != NULL);
+    ASSERT_EQ(HITLS_CFG_LoadCrlFile(config, crlPath, TLS_PARSE_FORMAT_ASN1), HITLS_SUCCESS);
+
     HITLS_CFG_SetVerifyFlags(config, HITLS_X509_VFY_FLAG_CRL_DEV);
 
     ASSERT_NE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
@@ -1099,5 +1101,135 @@ EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+
+/* @
+* @test    UT_TLS_PARTIAL_CHAIN_VERIFICATION_HANDSHAKE_TC001(void)
+* @title   Partial chain verification in TLS handshake functional test
+* @precon  This test case covers partial chain verification functionality during TLS handshake process
+@ */
+/* BEGIN_CASE */
+void UT_TLS_PARTIAL_CHAIN_VERIFICATION_HANDSHAKE_TC001(int partialChain, int expectRet)
+{
+    HitlsInit();
+    FRAME_Init();
+
+    // Test data paths
+    const char *serverCertPath = "../testdata/tls/certificate/der/ed25519/ed25519.end.der";
+    const char *serverKeyPath = "../testdata/tls/certificate/der/ed25519/ed25519.end.key.der";
+    const char *intCaPath = "../testdata/tls/certificate/der/ed25519/ed25519.intca.der";
+
+    // Test 1: Handshake without CRL - should succeed
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+    if (partialChain == 1) {
+        HITLS_CFG_SetVerifyFlags(config, HITLS_X509_VFY_FLAG_PARTIAL_CHAIN);
+    }
+
+    // Configure server with certificate and key
+    ASSERT_EQ(HITLS_CFG_LoadCertFile(config, serverCertPath, TLS_PARSE_FORMAT_ASN1), HITLS_SUCCESS);
+    ASSERT_EQ(HITLS_CFG_LoadKeyFile(config, serverKeyPath, TLS_PARSE_FORMAT_ASN1), HITLS_SUCCESS);
+
+    HITLS_CERT_X509 *caCert = HITLS_CFG_ParseCert(config, (const uint8_t *)intCaPath, strlen(intCaPath),
+        TLS_PARSE_TYPE_FILE, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_TRUE(caCert != NULL);
+    ASSERT_EQ(HITLS_CFG_AddCertToStore(config, caCert, TLS_CERT_STORE_TYPE_DEFAULT, false), HITLS_SUCCESS);
+
+    FRAME_LinkObj *server = FRAME_CreateLinkBase(config, BSL_UIO_TCP, false);
+    ASSERT_TRUE(server != NULL);
+
+    FRAME_LinkObj *client = FRAME_CreateLinkBase(config, BSL_UIO_TCP, false);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), expectRet);
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/* @
+* @test    UT_TLS_CERT_CM_SetVerifyFlags_API_TC001
+* @title   The input parameter of the HITLS_CFG_SetVerifyFlags interface is replaced.
+* @precon  This test case covers the HITLS_CFG_SetVerifyFlags, HITLS_CFG_GetVerifyFlags
+* @brief   1.Invoke the HITLS_CFG_SetVerifyFlags interface. The value of ctx is empty and the value of flags is 5.
+*            Expected result 1 is obtained.
+*          2.Invoke the HITLS_CFG_SetVerifyFlags interface. The values of ctx and flags are not empty.
+*            Expected result 2 is obtained.
+*          3.Invoke the HITLS_CFG_GetVerifyFlags interface. The ctx field is empty and the ff address is not empty.
+*            Expected result 1 is obtained.
+*          4.Invoke the HITLS_CFG_GetVerifyFlags interface. The values of ctx and ff address are not empty.
+*            Expected result 2 is obtained.
+* @expect  1.Returns HITLS_NULL_INPUT
+*          2.Returns HITLS_SUCCESS
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CERT_CM_SetVerifyFlags_API_TC001(int version)
+{
+    HitlsInit();
+    HITLS_Config *tlsConfig = NULL;
+    HITLS_Ctx *ctx = NULL;
+    uint32_t flags = 5;
+    uint32_t ff = 0;
+
+    tlsConfig = HitlsNewCtx(version);
+    ASSERT_TRUE(tlsConfig != NULL);
+
+    ASSERT_TRUE(HITLS_CFG_SetVerifyFlags(NULL, flags) == HITLS_NULL_INPUT);
+    ASSERT_EQ(HITLS_CFG_SetVerifyFlags(tlsConfig, flags), HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_GetVerifyFlags(tlsConfig, &ff) == HITLS_SUCCESS);
+    ASSERT_EQ(flags, ff);
+    ASSERT_TRUE(HITLS_CFG_GetVerifyFlags(NULL, &ff) == HITLS_NULL_INPUT);
+    ASSERT_TRUE(HITLS_CFG_GetVerifyFlags(tlsConfig, NULL) == HITLS_NULL_INPUT);
+
+    ctx = HITLS_New(tlsConfig);
+    ASSERT_TRUE(ctx != NULL);
+    flags = 10;
+    uint32_t ff2 = 0;
+    ASSERT_TRUE(HITLS_SetVerifyFlags(NULL, flags) == HITLS_NULL_INPUT);
+    ASSERT_EQ(HITLS_SetVerifyFlags(ctx, flags), HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_GetVerifyFlags(ctx, &ff2) == HITLS_SUCCESS);
+    ASSERT_EQ((flags | ff), ff2);
+    ASSERT_TRUE(HITLS_GetVerifyFlags(NULL, &ff2) == HITLS_NULL_INPUT);
+    ASSERT_TRUE(HITLS_GetVerifyFlags(ctx, NULL) == HITLS_NULL_INPUT);
+
+EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
+    HITLS_Free(ctx);
+}
+/* END_CASE */
+
+static int TestHITLS_AppVerifyCb(HITLS_CERT_StoreCtx *storeCtx, void *arg)
+{
+    (void)storeCtx;
+    (void)arg;
+    return 1;
+}
+
+/* @
+* @test    UT_TLS_CERT_CFG_Set_APPVerifyCb_API_TC001
+* @title   HITLS_CFG_SetCertVerifyCb interface input parameter test
+* @precon  This test case covers the HITLS_CFG_SetCertVerifyCb
+* @brief   1. Invoke the HITLS_CFG_SetCertVerifyCb interface. Input empty tlsConfig and non-empty certificate
+*          verification callback. Expected result 1
+*          2. Invoke the HITLS_CFG_SetCertVerifyCb interface. Input non-empty tlsConfig and non-empty certificate
+*          verification callback. Expected result 2
+* @expect  1. Return HITLS_NULL_INPUT
+*          2. Return HITLS_SUCCESS
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CERT_CFG_Set_APPVerifyCb_API_TC001()
+{
+    HitlsInit();
+    HITLS_Config *tlsConfig = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(tlsConfig != NULL);
+    void *arg = NULL;
+    ASSERT_TRUE(HITLS_CFG_SetCertVerifyCb(NULL, TestHITLS_AppVerifyCb, arg) == HITLS_NULL_INPUT);
+    ASSERT_TRUE(HITLS_CFG_SetCertVerifyCb(tlsConfig, NULL, NULL) == HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_SetCertVerifyCb(tlsConfig, TestHITLS_AppVerifyCb, arg) == HITLS_SUCCESS);
+EXIT:
+    HITLS_CFG_FreeConfig(tlsConfig);
 }
 /* END_CASE */

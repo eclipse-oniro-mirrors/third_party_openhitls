@@ -149,8 +149,10 @@ void SDV_BSL_HASH_LIST_FUNC_TC001(void)
     }
 
     ASSERT_TRUE(BSL_HASH_Size(hash) == (size_t)0);
-    BSL_HASH_Destory(hash);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+   
 EXIT:
+    BSL_HASH_Destroy(hash);
     return;
 }
 /* END_CASE */
@@ -226,8 +228,10 @@ void SDV_BSL_HASH_LIST_FUNC_TC002(void)
     }
 
     ASSERT_TRUE(BSL_HASH_Size(hash) == (size_t)0);
-    BSL_HASH_Destory(hash);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
+    BSL_HASH_Destroy(hash);
     return;
 }
 /* END_CASE */
@@ -286,6 +290,7 @@ void SDV_BSL_HASH_LIST_FUNC_TC003(void)
     ASSERT_TRUE(BSL_ListPopBack(list) == BSL_SUCCESS);
 
     ASSERT_TRUE(BSL_ListIterErase(list, it) != NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_ListDeinit(list);
@@ -339,6 +344,7 @@ void SDV_BSL_HASH_LIST_FUNC_TC004(void)
     ASSERT_EQ(ListRawPopBack(list), BSL_SUCCESS);
 
     ASSERT_EQ(ListRawDeinit(list), BSL_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(list);
     BSL_SAL_Free(node);

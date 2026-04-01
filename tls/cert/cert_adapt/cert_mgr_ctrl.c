@@ -36,15 +36,6 @@ int32_t SAL_CERT_SetCertStore(CERT_MgrCtx *mgrCtx, HITLS_CERT_Store *store)
     return HITLS_SUCCESS;
 }
 
-HITLS_CERT_Store *SAL_CERT_GetCertStore(CERT_MgrCtx *mgrCtx)
-{
-    if (mgrCtx == NULL) {
-        return NULL;
-    }
-
-    return mgrCtx->certStore;
-}
-
 int32_t SAL_CERT_SetChainStore(CERT_MgrCtx *mgrCtx, HITLS_CERT_Store *store)
 {
     if (mgrCtx == NULL) {
@@ -54,15 +45,6 @@ int32_t SAL_CERT_SetChainStore(CERT_MgrCtx *mgrCtx, HITLS_CERT_Store *store)
     SAL_CERT_StoreFree(mgrCtx, mgrCtx->chainStore);
     mgrCtx->chainStore = store;
     return HITLS_SUCCESS;
-}
-
-HITLS_CERT_Store *SAL_CERT_GetChainStore(CERT_MgrCtx *mgrCtx)
-{
-    if (mgrCtx == NULL) {
-        return NULL;
-    }
-
-    return mgrCtx->chainStore;
 }
 
 int32_t SAL_CERT_SetVerifyStore(CERT_MgrCtx *mgrCtx, HITLS_CERT_Store *store)
@@ -76,14 +58,6 @@ int32_t SAL_CERT_SetVerifyStore(CERT_MgrCtx *mgrCtx, HITLS_CERT_Store *store)
     return HITLS_SUCCESS;
 }
 
-HITLS_CERT_Store *SAL_CERT_GetVerifyStore(CERT_MgrCtx *mgrCtx)
-{
-    if (mgrCtx == NULL) {
-        return NULL;
-    }
-
-    return mgrCtx->verifyStore;
-}
 static int32_t GetOrInsertCertPair(CERT_MgrCtx *mgrCtx, HITLS_CERT_KeyType keyType, CERT_Pair **certPair)
 {
     CERT_Pair *newCertPair = NULL;
@@ -135,18 +109,14 @@ int32_t SAL_CERT_SetCurrentCert(HITLS_Config *config, HITLS_CERT_X509 *cert, boo
         return HITLS_MEMALLOC_FAIL;
     }
 
-    HITLS_CERT_Key **privateKey = NULL;
-    HITLS_CERT_X509 **certPairCert = NULL;
+    HITLS_CERT_Key **privateKey = &certPair->privateKey;
+    HITLS_CERT_X509 **certPairCert = &certPair->cert;
 #ifdef HITLS_TLS_PROTO_TLCP11
     if (isTlcpEncCert) {
         privateKey = &certPair->encPrivateKey;
         certPairCert = &certPair->encCert;
-    } else
-#endif
-    {
-        privateKey = &certPair->privateKey;
-        certPairCert = &certPair->cert;
     }
+#endif
     if (*privateKey != NULL) {
         ret = SAL_CERT_CheckPrivateKey(config, cert, *privateKey);
         if (ret != HITLS_SUCCESS) {
@@ -365,7 +335,8 @@ void SAL_CERT_ClearCertAndKey(CERT_MgrCtx *mgrCtx)
     BSL_HASH_Hash *certPairs = mgrCtx->certPairs;
     for (BSL_HASH_Iterator it = BSL_HASH_IterBegin(certPairs); it != BSL_HASH_IterEnd(certPairs);) {
         uint32_t keyType = (uint32_t)BSL_HASH_HashIterKey(certPairs, it);
-        CERT_Pair *certPair = (CERT_Pair *)BSL_HASH_IterValue(certPairs, it);
+        uintptr_t ptr = BSL_HASH_IterValue(certPairs, it);
+        CERT_Pair *certPair = (CERT_Pair *)ptr;
         SAL_CERT_PairClear(mgrCtx, certPair);
         BSL_SAL_FREE(certPair);
         it = BSL_HASH_Erase(certPairs, keyType);
@@ -401,10 +372,13 @@ int32_t SAL_CERT_AddExtraChainCert(CERT_MgrCtx *mgrCtx, HITLS_CERT_X509 *cert)
     return HITLS_SUCCESS;
 }
 
-HITLS_CERT_Chain *SAL_CERT_GetExtraChainCerts(CERT_MgrCtx *mgrCtx)
+HITLS_CERT_Chain *SAL_CERT_GetExtraChainCerts(CERT_MgrCtx *mgrCtx, bool isExtraChainCertsOnly)
 {
     if (mgrCtx == NULL) {
         return NULL;
+    }
+    if (mgrCtx->extraChain == NULL && !isExtraChainCertsOnly) {
+        return SAL_CERT_GetCurrentChainCerts(mgrCtx);
     }
 
     return mgrCtx->extraChain;
@@ -423,80 +397,6 @@ void SAL_CERT_ClearExtraChainCerts(CERT_MgrCtx *mgrCtx)
     SAL_CERT_ChainFree(chain);
     mgrCtx->extraChain = NULL;
     return;
-}
-
-int32_t SAL_CERT_SetVerifyDepth(CERT_MgrCtx *mgrCtx, uint32_t depth)
-{
-    if (mgrCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
-        return HITLS_NULL_INPUT;
-    }
-    mgrCtx->verifyParam.verifyDepth = depth;
-    return HITLS_SUCCESS;
-}
-
-int32_t SAL_CERT_GetVerifyDepth(CERT_MgrCtx *mgrCtx, uint32_t *depth)
-{
-    if (mgrCtx == NULL || depth == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
-        return HITLS_NULL_INPUT;
-    }
-    *depth = mgrCtx->verifyParam.verifyDepth;
-    return HITLS_SUCCESS;
-}
-
-int32_t SAL_CERT_SetDefaultPasswordCb(CERT_MgrCtx *mgrCtx, HITLS_PasswordCb cb)
-{
-    if (mgrCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
-        return HITLS_NULL_INPUT;
-    }
-    mgrCtx->defaultPasswdCb = cb;
-    return HITLS_SUCCESS;
-}
-
-HITLS_PasswordCb SAL_CERT_GetDefaultPasswordCb(CERT_MgrCtx *mgrCtx)
-{
-    if (mgrCtx == NULL) {
-        return NULL;
-    }
-    return mgrCtx->defaultPasswdCb;
-}
-
-int32_t SAL_CERT_SetDefaultPasswordCbUserdata(CERT_MgrCtx *mgrCtx, void *userdata)
-{
-    if (mgrCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
-        return HITLS_NULL_INPUT;
-    }
-    mgrCtx->defaultPasswdCbUserData = userdata;
-    return HITLS_SUCCESS;
-}
-
-void *SAL_CERT_GetDefaultPasswordCbUserdata(CERT_MgrCtx *mgrCtx)
-{
-    if (mgrCtx == NULL) {
-        return NULL;
-    }
-    return mgrCtx->defaultPasswdCbUserData;
-}
-
-int32_t SAL_CERT_SetVerifyCb(CERT_MgrCtx *mgrCtx, HITLS_VerifyCb cb)
-{
-    if (mgrCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
-        return HITLS_NULL_INPUT;
-    }
-    mgrCtx->verifyCb = cb;
-    return HITLS_SUCCESS;
-}
-
-HITLS_VerifyCb SAL_CERT_GetVerifyCb(CERT_MgrCtx *mgrCtx)
-{
-    if (mgrCtx == NULL) {
-        return NULL;
-    }
-    return mgrCtx->verifyCb;
 }
 
 int32_t SAL_CERT_CtrlVerifyParams(HITLS_Config *config, HITLS_CERT_Store *store, uint32_t cmd, void *in, void *out)
@@ -519,3 +419,86 @@ int32_t SAL_CERT_CtrlVerifyParams(HITLS_Config *config, HITLS_CERT_Store *store,
     }
     return HITLS_SUCCESS;
 }
+
+int32_t SAL_CERT_SetDefaultPasswordCb(CERT_MgrCtx *mgrCtx, HITLS_PasswordCb cb)
+{
+    if (mgrCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
+        return HITLS_NULL_INPUT;
+    }
+    mgrCtx->defaultPasswdCb = cb;
+    return HITLS_SUCCESS;
+}
+
+int32_t SAL_CERT_SetDefaultPasswordCbUserdata(CERT_MgrCtx *mgrCtx, void *userdata)
+{
+    if (mgrCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
+        return HITLS_NULL_INPUT;
+    }
+    mgrCtx->defaultPasswdCbUserData = userdata;
+    return HITLS_SUCCESS;
+}
+
+#ifdef HITLS_TLS_CONFIG_CERT_CALLBACK
+int32_t SAL_CERT_SetVerifyCb(CERT_MgrCtx *mgrCtx, HITLS_VerifyCb cb)
+{
+    if (mgrCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
+        return HITLS_NULL_INPUT;
+    }
+    mgrCtx->verifyCb = cb;
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_CONFIG_CERT_CALLBACK */
+
+int32_t SAL_CERT_SetActiveCert(CERT_MgrCtx *mgrCtx, long option)
+{
+    if (mgrCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
+        return HITLS_NULL_INPUT;
+    }
+    BSL_HASH_Hash *certPairs = mgrCtx->certPairs;
+    BSL_HASH_Iterator it = NULL;
+    if (option == HITLS_CERT_SET_FIRST) {
+        it = BSL_HASH_IterBegin(certPairs);
+    } else if (option == HITLS_CERT_SET_NEXT) {
+        it = BSL_HASH_Find(certPairs, mgrCtx->currentCertKeyType);
+        if (it == BSL_HASH_IterEnd(certPairs)) {
+            BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_INVALID_KEY_TYPE);
+            return HITLS_CERT_ERR_INVALID_KEY_TYPE;
+        }
+        it = BSL_HASH_IterNext(certPairs, it);
+        if (it == BSL_HASH_IterEnd(certPairs)) {
+            BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_INVALID_KEY_TYPE);
+            return HITLS_CERT_ERR_INVALID_KEY_TYPE;
+        }
+    } else {
+        return HITLS_INVALID_INPUT;
+    }
+
+    for (; it != BSL_HASH_IterEnd(certPairs); it = BSL_HASH_IterNext(certPairs, it)) {
+        uint32_t keyType = (uint32_t)BSL_HASH_HashIterKey(certPairs, it);
+        uintptr_t ptr = BSL_HASH_IterValue(certPairs, it);
+        CERT_Pair *certPair = (CERT_Pair *)ptr;
+        if (certPair->cert && certPair->privateKey) {
+            mgrCtx->currentCertKeyType = keyType;
+            return HITLS_SUCCESS;
+        }
+    }
+    BSL_ERR_PUSH_ERROR(HITLS_CERT_ERR_SET_CERT);
+    return HITLS_CERT_ERR_SET_CERT;
+}
+
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+int32_t SAL_CERT_SetCertCb(CERT_MgrCtx *mgrCtx, HITLS_CertCb certCb, void *arg)
+{
+    if (mgrCtx == NULL) {
+        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
+        return HITLS_NULL_INPUT;
+    }
+    mgrCtx->certCb = certCb;
+    mgrCtx->certCbArg = arg;
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_FEATURE_CERT_CB */

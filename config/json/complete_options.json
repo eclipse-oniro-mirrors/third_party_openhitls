@@ -32,7 +32,6 @@
             "-Wstack-usage=8192",
             "-Wframe-larger-than=4096",
             "-Wconversion",
-            "-Wcast-qual",
             "-Wcast-align",
             "-Wvla",
             "-Wunused",
@@ -80,6 +79,8 @@
             "-Wignored-qualifiers",
             "-Wimplicit-fallthrough=3",
             "-Wtype-limits",
+            "-Wno-type-limits",
+            "-Wno-cast-function-type",
             "-Wno-stringop-overread"
         ],
         "CC_SEC_FLAGS": [
@@ -113,6 +114,7 @@
             "-O0",
             "-O1",
             "-O2",
+            "-O3",
             "-Os",
             "-Oz"
         ],
@@ -135,8 +137,9 @@
             "-fpack-struct=4",
             "-fno-exceptions",
             "-fno-delete-null-pointer-checks",
-            "-fno-merge-constants",
-            "-fpack-struct=4"
+            "-fno-short-enums",
+            "-fshort-enums",
+            "-fno-merge-constants"
         ],
         "CC_OVERALL_FLAGS": [
             "-pipe"
@@ -170,6 +173,9 @@
             "-DHITLS_SIXTY_FOUR_BITS",
             "-DHITLS_THIRTY_TWO_BITS",
             "-DHITLS_BSL_SAL_LINUX",
+            "-DHITLS_ATOMIC_THREAD_LOCK",
+            "-DHITLS_NO_CONFIG_CHECK",
+            "-DHITLS_CRYPTO_EAL_REPORT",
             "-DHITLS_CRYPTO_NIST_ECC_ACCELERATE",
             "-DHITLS_CRYPTO_SHA1_SMALL_MEM",
             "-DHITLS_CRYPTO_SHA256_SMALL_MEM",
@@ -189,7 +195,10 @@
             "-DHITLS_CRYPTO_BN_CB",
             "-DHITLS_CRYPTO_RSA_BSSA",
             "-DHITLS_AARCH64_PACIASP",
-            "-DHITLS_CRYPTO_SM2_PRECOMPUTE_512K_TBL"
+            "-DHITLS_CRYPTO_SM2_PRECOMPUTE_512K_TBL",
+            "-DHITLS_CRYPTO_ACVP_TESTS",
+            "-DHITLS_CRYPTO_DSA_GEN_PARA",
+            "-DHITLS_CRYPTO_SP800_STRICT_CHECK"
         ],
         "CC_DEBUG_FLAGS": [
             "-g",

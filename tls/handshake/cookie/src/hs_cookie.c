@@ -24,7 +24,6 @@
 #include "bsl_bytes.h"
 #include "bsl_errno.h"
 #include "sal_net.h"
-#include "uio_base.h"
 #include "hitls.h"
 #include "hitls_error.h"
 #include "hitls_cookie.h"
@@ -84,15 +83,15 @@ static int32_t GenerateCookieCalcMaterial(const TLS_Ctx *ctx, const ClientHelloM
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16916, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "addr New fail", 0, 0, 0, 0);
         return HITLS_MEMCPY_FAIL;
     }
-    int32_t peerAddrLen = SAL_SockAddrSize(peerAddr);
+    int32_t peerAddrLen = (int32_t)SAL_SockAddrSize(peerAddr);
     /* Add the peer IP address */
     ret = BSL_UIO_Ctrl(ctx->uio, BSL_UIO_GET_PEER_IP_ADDR, peerAddrLen, peerAddr);
     if (ret == BSL_SUCCESS) {
-        if (memcpy_s(ipAddr, MAX_IP_ADDR_SIZE, peerAddr, SAL_SockAddrSize(peerAddr)) != EOK) {
+        if (memcpy_s(ipAddr, MAX_IP_ADDR_SIZE, peerAddr, (size_t)peerAddrLen) != EOK) {
             SAL_SockAddrFree(peerAddr);
             return BSL_MEMCPY_FAIL;
         }
-        param.size = SAL_SockAddrSize(peerAddr);
+        param.size = (uint32_t)peerAddrLen;
         if (memcpy_s(material, materialSize, ipAddr, param.size) != EOK) {
             BSL_ERR_PUSH_ERROR(HITLS_MEMCPY_FAIL);
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15692, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -246,7 +245,7 @@ static int32_t CheckCookie(TLS_Ctx *ctx, const ClientHelloMsg *clientHello, bool
     }
 
     if ((cookieLen == clientHello->cookieLen) &&
-        (memcmp((char *)cookie, (char *)clientHello->cookie, cookieLen) == 0)) {
+        (ConstTimeMemcmp(cookie, clientHello->cookie, cookieLen) != 0)) {
         *isCookieValid = true;
     }
     (void)memset_s(cookie, TLS_HS_MAX_COOKIE_SIZE, 0, TLS_HS_MAX_COOKIE_SIZE);
@@ -282,17 +281,19 @@ static int32_t CheckCookieWithPreMacKey(TLS_Ctx *ctx, const ClientHelloMsg *clie
     return HITLS_SUCCESS;
 }
 
+#ifdef HITLS_TLS_FEATURE_RENEGOTIATION
 static int32_t CheckCookieDuringRenegotiation(TLS_Ctx *ctx, const ClientHelloMsg *clientHello, bool *isCookieValid)
 {
     uint8_t *cookie = ctx->negotiatedInfo.cookie;
     uint16_t cookieLen = (uint16_t)ctx->negotiatedInfo.cookieSize;
 
     if ((cookieLen == clientHello->cookieLen) &&
-        (memcmp((char *)cookie, (char *)clientHello->cookie, cookieLen) == 0)) {
+        (ConstTimeMemcmp(cookie, clientHello->cookie, cookieLen) != 0)) {
         *isCookieValid = true;
     }
     return HITLS_SUCCESS;
 }
+#endif
 
 int32_t HS_CheckCookie(TLS_Ctx *ctx, const ClientHelloMsg *clientHello, bool *isCookieValid)
 {
@@ -310,10 +311,12 @@ int32_t HS_CheckCookie(TLS_Ctx *ctx, const ClientHelloMsg *clientHello, bool *is
         return HITLS_SUCCESS;
     }
 
+#ifdef HITLS_TLS_FEATURE_RENEGOTIATION
     /* In the renegotiation scenario, the cookie stored in the negotiatedInfo is used for verification */
     if (ctx->negotiatedInfo.isRenegotiation) {
         return CheckCookieDuringRenegotiation(ctx, clientHello, isCookieValid);
     }
+#endif
 
     /* If the user's cookie validation callback is registered, use the user's callback interface */
     HITLS_AppVerifyCookieCb cookieCb = ctx->globalConfig->appVerifyCookieCb;

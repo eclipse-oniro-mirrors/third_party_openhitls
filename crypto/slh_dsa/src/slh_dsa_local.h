@@ -24,8 +24,8 @@
 #include "crypt_algid.h"
 #include "crypt_types.h"
 #include "crypt_utils.h"
-#include "slh_dsa_hash.h"
-#include "crypt_types.h"
+#include "xmss_common.h"
+#include "xmss_tree.h"
 
 #define SLH_DSA_ADRS_LEN            32
 #define SLH_DSA_ADRS_COMPRESSED_LEN 22
@@ -33,6 +33,12 @@
 #define SLH_DSA_MAX_M               49
 #define SLH_DSA_LGW                 4
 #define SLH_DSA_W                   16 // 2^SLH_DSA_LGW
+
+#define SLH_DSA_PRVKEY 0x1
+#define SLH_DSA_PUBKEY 0x10
+
+typedef union Adrs SlhDsaAdrs;
+typedef struct SlhDsaCtx CryptSlhDsaCtx;
 
 typedef enum {
     WOTS_HASH,
@@ -46,7 +52,7 @@ typedef enum {
 
 /**
  * @brief Address structure definition
- * 
+ *
  *  all the address is big-endian
  *  it can be a address or a compressed address
  *  Address:
@@ -54,7 +60,7 @@ typedef enum {
  *  | tree address  | 12 bytes
  *  | type          | 4 bytes
  *  | padding       | 12 bytes
- * 
+ *
  *  Compressed Address:
  *  | layer address | 1 bytes
  *  | tree address  | 8 bytes
@@ -78,41 +84,12 @@ union Adrs {
     uint8_t bytes[SLH_DSA_ADRS_LEN];
 };
 
-// adrs operations functions
-typedef void (*AdrsSetLayerAddr)(SlhDsaAdrs *adrs, uint32_t layer);
-typedef void (*AdrsSetTreeAddr)(SlhDsaAdrs *adrs, uint64_t tree);
-typedef void (*AdrsSetType)(SlhDsaAdrs *adrs, AdrsType type);
-typedef void (*AdrsSetKeyPairAddr)(SlhDsaAdrs *adrs, uint32_t keyPair);
-typedef void (*AdrsSetChainAddr)(SlhDsaAdrs *adrs, uint32_t chain);
-typedef void (*AdrsSetTreeHeight)(SlhDsaAdrs *adrs, uint32_t height);
-typedef void (*AdrsSetHashAddr)(SlhDsaAdrs *adrs, uint32_t hash);
-typedef void (*AdrsSetTreeIndex)(SlhDsaAdrs *adrs, uint32_t index);
-typedef uint32_t (*AdrsGetTreeHeight)(const SlhDsaAdrs *adrs);
-typedef uint32_t (*AdrsGetTreeIndex)(const SlhDsaAdrs *adrs);
-typedef void (*AdrsCopyKeyPairAddr)(SlhDsaAdrs *adrs, const SlhDsaAdrs *adrs2);
-typedef uint32_t (*AdrsGetAdrsLen)(void);
-
-typedef struct {
-    AdrsSetLayerAddr setLayerAddr;
-    AdrsSetTreeAddr setTreeAddr;
-    AdrsSetType setType;
-    AdrsSetKeyPairAddr setKeyPairAddr;
-    AdrsSetChainAddr setChainAddr;
-    AdrsSetTreeHeight setTreeHeight;
-    AdrsSetHashAddr setHashAddr;
-    AdrsSetTreeIndex setTreeIndex;
-    AdrsGetTreeHeight getTreeHeight;
-    AdrsGetTreeIndex getTreeIndex;
-    AdrsCopyKeyPairAddr copyKeyPairAddr;
-    AdrsGetAdrsLen getAdrsLen;
-} AdrsOps;
-
 // b can be 4, 6, 8, 9, 12, 14
 // so use uint32_t to receive the BaseB value
 void BaseB(const uint8_t *x, uint32_t xLen, uint32_t b, uint32_t *out, uint32_t outLen);
 
 typedef struct {
-    int algId; // CRYPT_PKEY_ParaId (SLH_DSA_AlgId or XMSS_AlgId)
+    int32_t algId; // CRYPT_PKEY_ParaId (SLH_DSA_AlgId or XMSS_AlgId)
     bool isCompressed;
     uint32_t n;
     uint32_t h;
@@ -127,15 +104,16 @@ typedef struct {
 } SlhDsaPara;
 
 typedef struct {
-    uint8_t seed[SLH_DSA_MAX_N]; // pubkey seed for generating keys
-    uint8_t root[SLH_DSA_MAX_N]; // pubkey root for generating keys
+    uint8_t seed[MAX_MDSIZE]; // pubkey seed for generating keys
+    uint8_t root[MAX_MDSIZE]; // pubkey root for generating keys
 } SlhDsaPubKey;
 /**
  * @brief SLH-DSA private key structure
  */
 typedef struct {
-    uint8_t seed[SLH_DSA_MAX_N]; // prvkey seed for generating keys
-    uint8_t prf[SLH_DSA_MAX_N]; // prvkey prf for generating keys
+    uint8_t seed[MAX_MDSIZE]; // prvkey seed for generating keys
+    uint8_t prf[MAX_MDSIZE]; // prvkey prf for generating keys
+    uint64_t index; // the next unused WOTS+ key index, for XMSS only
     SlhDsaPubKey pub;
 } SlhDsaPrvKey;
 
@@ -148,10 +126,12 @@ struct SlhDsaCtx {
     uint32_t addrandLen; // length of the optional random bytes
     bool isPrehash;
     SlhDsaPrvKey prvKey;
-    SlhDsaHashFuncs hashFuncs;
-    AdrsOps adrsOps;
+    const CryptHashFuncs *hashFuncs;  // Generic hash function table pointer
+    CryptAdrsOps adrsOps;     // Generic address operation function pointers
+    uint8_t keyType; /* specify the key type */
     void *libCtx;
 };
 
+void InitTreeCtxFromSlhDsaCtx(TreeCtx* treeCtx, const CryptSlhDsaCtx *ctx);
 #endif // HITLS_CRYPTO_SLH_DSA
 #endif // SLH_DSA_LOCAL_H

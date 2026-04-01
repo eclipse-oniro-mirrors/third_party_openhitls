@@ -32,7 +32,20 @@
 extern "C" {
 #endif // __cplusplus
 
-typedef struct EalKdfCtx CRYPT_EAL_KdfCTX;
+typedef struct EalKdfCtx CRYPT_EAL_KdfCtx;
+
+#define CRYPT_EAL_KdfCTX CRYPT_EAL_KdfCtx
+
+/**
+ * @ingroup crypt_eal_kdf
+ * @brief   Check whether the given kdf algorithm ID is valid.
+ * @note    Not supported in provider mode.
+ *
+ * @param   id [IN] kdf algorithm ID.
+ * @retval Valid, true is returned.
+ *         Invalid, false is returned.
+ */
+bool CRYPT_EAL_KdfIsValidAlgId(CRYPT_KDF_AlgId id);
 
 /**
  * @ingroup crypt_eal_kdf
@@ -41,19 +54,19 @@ typedef struct EalKdfCtx CRYPT_EAL_KdfCTX;
  * @param libCtx [IN] Library context
  * @param attrName [IN] Specify expected attribute values
  * @param algId [IN] kdf algorithm ID.
- * @retval Success: cipher ctx.
+ * @retval Success: kdf ctx.
  *         Fails: NULL.
  */
-CRYPT_EAL_KdfCTX *CRYPT_EAL_ProviderKdfNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t algId, const char *attrName);
+CRYPT_EAL_KdfCtx *CRYPT_EAL_ProviderKdfNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t algId, const char *attrName);
 
 /**
  * @ingroup crypt_eal_kdf
  * @brief Generate kdf handles
  * @param algId [IN] kdf algorithm ID.
- * @retval Success: cipher ctx.
+ * @retval Success: kdf ctx.
  *         Fails: NULL.
  */
-CRYPT_EAL_KdfCTX *CRYPT_EAL_KdfNewCtx(CRYPT_KDF_AlgId algId);
+CRYPT_EAL_KdfCtx *CRYPT_EAL_KdfNewCtx(CRYPT_KDF_AlgId algId);
 
 /**
  * @ingroup crypt_eal_kdf
@@ -62,10 +75,10 @@ CRYPT_EAL_KdfCTX *CRYPT_EAL_KdfNewCtx(CRYPT_KDF_AlgId algId);
  * @param ctx [IN] kdf context
  * @param param [IN] parameters
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
-int32_t CRYPT_EAL_KdfSetParam(CRYPT_EAL_KdfCTX *ctx, const BSL_Param *param);
+int32_t CRYPT_EAL_KdfSetParam(CRYPT_EAL_KdfCtx *ctx, const BSL_Param *param);
 
  /**
  * @ingroup crypt_eal_kdf
@@ -75,10 +88,10 @@ int32_t CRYPT_EAL_KdfSetParam(CRYPT_EAL_KdfCTX *ctx, const BSL_Param *param);
  * @param key [OUT] Derived key
  * @param keyLen [IN] Specify the key derivation length
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
-int32_t CRYPT_EAL_KdfDerive(CRYPT_EAL_KdfCTX *ctx, uint8_t *key, uint32_t keyLen);
+int32_t CRYPT_EAL_KdfDerive(CRYPT_EAL_KdfCtx *ctx, uint8_t *key, uint32_t keyLen);
 
 /**
  * @ingroup crypt_eal_kdf
@@ -86,10 +99,10 @@ int32_t CRYPT_EAL_KdfDerive(CRYPT_EAL_KdfCTX *ctx, uint8_t *key, uint32_t keyLen
  *
  * @param ctx [IN] kdf context
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
-int32_t CRYPT_EAL_KdfDeInitCtx(CRYPT_EAL_KdfCTX *ctx);
+int32_t CRYPT_EAL_KdfDeInitCtx(CRYPT_EAL_KdfCtx *ctx);
 
  /**
  * @ingroup crypt_eal_kdf
@@ -98,7 +111,7 @@ int32_t CRYPT_EAL_KdfDeInitCtx(CRYPT_EAL_KdfCTX *ctx);
  * @param ctx [IN] kdf context
  *
  */
-void CRYPT_EAL_KdfFreeCtx(CRYPT_EAL_KdfCTX *ctx);
+void CRYPT_EAL_KdfFreeCtx(CRYPT_EAL_KdfCtx *ctx);
 
  /**
  * @ingroup crypt_eal_kdf
@@ -109,17 +122,17 @@ void CRYPT_EAL_KdfFreeCtx(CRYPT_EAL_KdfCTX *ctx);
  * @param to [OUT] kdf context
  *
  */
-int32_t CRYPT_EAL_KdfCopyCtx(CRYPT_EAL_KdfCTX *to, const CRYPT_EAL_KdfCTX *from);
+int32_t CRYPT_EAL_KdfCopyCtx(CRYPT_EAL_KdfCtx *to, const CRYPT_EAL_KdfCtx *from);
 
 /**
  * @ingroup crypt_eal_kdf
  * @brief   Dup the kdf context.
  *
  * @param   from [IN] original kdf context.
- * @retval  CRYPT_EAL_KdfCTX, kdf context pointer.
+ * @retval  CRYPT_EAL_KdfCtx, kdf context pointer.
  *          NULL, if the operation fails.
  */
-CRYPT_EAL_KdfCTX *CRYPT_EAL_KdfDupCtx(const CRYPT_EAL_KdfCTX *from);
+CRYPT_EAL_KdfCtx *CRYPT_EAL_KdfDupCtx(const CRYPT_EAL_KdfCtx *from);
 
 #ifdef __cplusplus
 }

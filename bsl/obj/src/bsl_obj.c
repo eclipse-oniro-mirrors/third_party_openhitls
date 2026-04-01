@@ -16,12 +16,13 @@
 #include "hitls_build.h"
 #ifdef HITLS_BSL_OBJ
 #include <stddef.h>
+#include <string.h>
 #include "securec.h"
 #include "bsl_sal.h"
 #include "bsl_obj.h"
 #include "bsl_obj_internal.h"
 #include "bsl_err_internal.h"
-#ifdef HITLS_BSL_HASH
+#ifdef HITLS_BSL_OBJ_CUSTOM
 #include "bsl_hash.h"
 
 #define BSL_OBJ_HASH_BKT_SIZE 256u
@@ -30,19 +31,29 @@ BSL_HASH_Hash *g_oidHashTable = NULL;
 
 static BSL_SAL_ThreadLockHandle g_oidHashRwLock = NULL;
 
-static uint32_t g_oidHashInitOnce = BSL_SAL_ONCE_INIT;
-#endif // HITLS_BSL_HASH
+BSL_SAL_DECLARE_THREAD_ONCE(g_oidHashInitOnce);
+#endif // HITLS_BSL_OBJ_CUSTOM
 
 #define BSL_OBJ_ARCS_X_MAX 2
 #define BSL_OBJ_ARCS_Y_MAX 40
 #define BSL_OBJ_ARCS_MAX (BSL_OBJ_ARCS_X_MAX * BSL_OBJ_ARCS_Y_MAX + BSL_OBJ_ARCS_Y_MAX - 1)
 
 BslOidInfo g_oidTable[] = {
-    {{9, "\140\206\110\1\145\3\4\1\2", BSL_OID_GLOBAL}, "AES128-CBC", BSL_CID_AES128_CBC},
-    {{9, "\140\206\110\1\145\3\4\1\26", BSL_OID_GLOBAL}, "AES192-CBC", BSL_CID_AES192_CBC},
-    {{9, "\140\206\110\1\145\3\4\1\52", BSL_OID_GLOBAL}, "AES256-CBC", BSL_CID_AES256_CBC},
-    {{9, "\52\206\110\206\367\15\1\1\1", BSL_OID_GLOBAL}, "RSAENCRYPTION", BSL_CID_RSA}, // rsa subkey
-    {{7, "\52\206\110\316\70\4\1", BSL_OID_GLOBAL}, "DSAENCRYPTION", BSL_CID_DSA}, // dsa subkey
+    {{9, "\140\206\110\1\145\3\4\1\1", BSL_OID_GLOBAL}, "aes-128-ecb", BSL_CID_AES128_ECB},
+    {{9, "\140\206\110\1\145\3\4\1\2", BSL_OID_GLOBAL}, "aes-128-cbc", BSL_CID_AES128_CBC},
+    {{9, "\140\206\110\1\145\3\4\1\3", BSL_OID_GLOBAL}, "aes-128-ofb", BSL_CID_AES128_OFB},
+    {{9, "\140\206\110\1\145\3\4\1\4", BSL_OID_GLOBAL}, "aes-128-cfb", BSL_CID_AES128_CFB},
+    {{9, "\140\206\110\1\145\3\4\1\25", BSL_OID_GLOBAL}, "aes-192-ecb", BSL_CID_AES192_ECB},
+    {{9, "\140\206\110\1\145\3\4\1\26", BSL_OID_GLOBAL}, "aes-192-cbc", BSL_CID_AES192_CBC},
+    {{9, "\140\206\110\1\145\3\4\1\27", BSL_OID_GLOBAL}, "aes-192-ofb", BSL_CID_AES192_OFB},
+    {{9, "\140\206\110\1\145\3\4\1\30", BSL_OID_GLOBAL}, "aes-192-cfb", BSL_CID_AES192_CFB},
+    {{9, "\140\206\110\1\145\3\4\1\51", BSL_OID_GLOBAL}, "aes-256-ecb", BSL_CID_AES256_ECB},
+    {{9, "\140\206\110\1\145\3\4\1\52", BSL_OID_GLOBAL}, "aes-256-cbc", BSL_CID_AES256_CBC},
+    {{9, "\140\206\110\1\145\3\4\1\53", BSL_OID_GLOBAL}, "aes-256-ofb", BSL_CID_AES256_OFB},
+    {{9, "\140\206\110\1\145\3\4\1\54", BSL_OID_GLOBAL}, "aes-256-cfb", BSL_CID_AES256_CFB},
+    {{9, "\52\206\110\206\367\15\1\1\1", BSL_OID_GLOBAL}, "rsaEncryption", BSL_CID_RSA}, // rsa subkey
+    {{7, "\52\206\110\316\70\4\1", BSL_OID_GLOBAL}, "dsaEncryption", BSL_CID_DSA}, // dsa subkey
+    {{7, "\52\206\110\316\76\2\1", BSL_OID_GLOBAL}, "dhPublicNumber", BSL_CID_DH}, // dhPublicNumber
     {{8, "\52\206\110\206\367\15\2\5", BSL_OID_GLOBAL}, "MD5", BSL_CID_MD5},
     {{5, "\53\16\3\2\32", BSL_OID_GLOBAL}, "SHA1", BSL_CID_SHA1},
     {{9, "\140\206\110\1\145\3\4\2\4", BSL_OID_GLOBAL}, "SHA224", BSL_CID_SHA224},
@@ -55,22 +66,22 @@ BslOidInfo g_oidTable[] = {
     {{8, "\52\206\110\206\367\15\2\11", BSL_OID_GLOBAL}, "HMAC-SHA256", BSL_CID_HMAC_SHA256},
     {{8, "\52\206\110\206\367\15\2\12", BSL_OID_GLOBAL}, "HMAC-SHA384", BSL_CID_HMAC_SHA384},
     {{8, "\52\206\110\206\367\15\2\13", BSL_OID_GLOBAL}, "HMAC-SHA512", BSL_CID_HMAC_SHA512},
-    {{9, "\52\206\110\206\367\15\1\1\4", BSL_OID_GLOBAL}, "MD5WITHRSA", BSL_CID_MD5WITHRSA},
-    {{9, "\52\206\110\206\367\15\1\1\5", BSL_OID_GLOBAL}, "SHA1WITHRSA", BSL_CID_SHA1WITHRSA},
-    {{7, "\52\206\110\316\70\4\3", BSL_OID_GLOBAL}, "DSAWITHSHA1", BSL_CID_DSAWITHSHA1},
-    {{7, "\52\206\110\316\75\4\1", BSL_OID_GLOBAL}, "ECDSAWITHSHA1", BSL_CID_ECDSAWITHSHA1},
-    {{8, "\52\206\110\316\75\4\3\1", BSL_OID_GLOBAL}, "ECDSAWITHSHA224", BSL_CID_ECDSAWITHSHA224},
-    {{8, "\52\206\110\316\75\4\3\2", BSL_OID_GLOBAL}, "ECDSAWITHSHA256", BSL_CID_ECDSAWITHSHA256},
-    {{8, "\52\206\110\316\75\4\3\3", BSL_OID_GLOBAL}, "ECDSAWITHSHA384", BSL_CID_ECDSAWITHSHA384},
-    {{8, "\52\206\110\316\75\4\3\4", BSL_OID_GLOBAL}, "ECDSAWITHSHA512", BSL_CID_ECDSAWITHSHA512},
-    {{9, "\52\206\110\206\367\15\1\1\13", BSL_OID_GLOBAL}, "SHA256WITHRSA", BSL_CID_SHA256WITHRSAENCRYPTION},
-    {{9, "\52\206\110\206\367\15\1\1\14", BSL_OID_GLOBAL}, "SHA384WITHRSA", BSL_CID_SHA384WITHRSAENCRYPTION},
-    {{9, "\52\206\110\206\367\15\1\1\15", BSL_OID_GLOBAL}, "SHA512WITHRSA", BSL_CID_SHA512WITHRSAENCRYPTION},
-    {{8, "\52\206\110\316\75\3\1\1", BSL_OID_GLOBAL}, "PRIME192V1", BSL_CID_PRIME192V1},
-    {{8, "\52\206\110\316\75\3\1\7", BSL_OID_GLOBAL}, "PRIME256V1", BSL_CID_PRIME256V1},
+    {{9, "\52\206\110\206\367\15\1\1\4", BSL_OID_GLOBAL}, "md5WithRSAEncryption", BSL_CID_MD5WITHRSA},
+    {{9, "\52\206\110\206\367\15\1\1\5", BSL_OID_GLOBAL}, "sha1WithRSAEncryption", BSL_CID_SHA1WITHRSA},
+    {{7, "\52\206\110\316\70\4\3", BSL_OID_GLOBAL}, "dsaWithSHA1", BSL_CID_DSAWITHSHA1},
+    {{7, "\52\206\110\316\75\4\1", BSL_OID_GLOBAL}, "ecdsa-with-SHA1", BSL_CID_ECDSAWITHSHA1},
+    {{8, "\52\206\110\316\75\4\3\1", BSL_OID_GLOBAL}, "ecdsa-with-SHA224", BSL_CID_ECDSAWITHSHA224},
+    {{8, "\52\206\110\316\75\4\3\2", BSL_OID_GLOBAL}, "ecdsa-with-SHA256", BSL_CID_ECDSAWITHSHA256},
+    {{8, "\52\206\110\316\75\4\3\3", BSL_OID_GLOBAL}, "ecdsa-with-SHA384", BSL_CID_ECDSAWITHSHA384},
+    {{8, "\52\206\110\316\75\4\3\4", BSL_OID_GLOBAL}, "ecdsa-with-SHA512", BSL_CID_ECDSAWITHSHA512},
+    {{9, "\52\206\110\206\367\15\1\1\13", BSL_OID_GLOBAL}, "sha256WithRSAEncryption", BSL_CID_SHA256WITHRSAENCRYPTION},
+    {{9, "\52\206\110\206\367\15\1\1\14", BSL_OID_GLOBAL}, "sha384WithRSAEncryption", BSL_CID_SHA384WITHRSAENCRYPTION},
+    {{9, "\52\206\110\206\367\15\1\1\15", BSL_OID_GLOBAL}, "sha512WithRSAEncryption", BSL_CID_SHA512WITHRSAENCRYPTION},
+    {{8, "\52\206\110\316\75\3\1\1", BSL_OID_GLOBAL}, "prime192v1", BSL_CID_PRIME192V1},
+    {{8, "\52\206\110\316\75\3\1\7", BSL_OID_GLOBAL}, "prime256v1", BSL_CID_PRIME256V1},
     {{9, "\52\206\110\206\367\15\1\5\14", BSL_OID_GLOBAL}, "PBKDF2", BSL_CID_PBKDF2},
     {{9, "\52\206\110\206\367\15\1\5\15", BSL_OID_GLOBAL}, "PBES2", BSL_CID_PBES2},
-    {{9, "\52\206\110\206\367\15\1\11\16", BSL_OID_GLOBAL}, "Requested Extensions", BSL_CID_EXTENSIONREQUEST},
+    {{9, "\52\206\110\206\367\15\1\11\16", BSL_OID_GLOBAL}, "Extension Request", BSL_CID_EXTENSIONREQUEST},
     {{3, "\125\4\4", BSL_OID_GLOBAL}, "SN", BSL_CID_AT_SURNAME},
     {{3, "\125\4\52", BSL_OID_GLOBAL}, "GN", BSL_CID_AT_GIVENNAME},
     {{3, "\125\4\53", BSL_OID_GLOBAL}, "initials", BSL_CID_AT_INITIALS},
@@ -91,8 +102,11 @@ BslOidInfo g_oidTable[] = {
     {{3, "\125\35\16", BSL_OID_GLOBAL}, "SubjectKeyIdentifier", BSL_CID_CE_SUBJECTKEYIDENTIFIER},
     {{3, "\125\35\17", BSL_OID_GLOBAL}, "KeyUsage", BSL_CID_CE_KEYUSAGE},
     {{3, "\125\35\21", BSL_OID_GLOBAL}, "SubjectAltName", BSL_CID_CE_SUBJECTALTNAME},
+    {{3, "\125\35\22", BSL_OID_GLOBAL}, "IssuerAlternativeName", BSL_CID_CE_ISSUERALTNAME},
     {{3, "\125\35\23", BSL_OID_GLOBAL}, "BasicConstraints", BSL_CID_CE_BASICCONSTRAINTS},
+    {{3, "\125\35\37", BSL_OID_GLOBAL}, "CRLDistributionPoints", BSL_CID_CE_CRLDISTRIBUTIONPOINTS},
     {{3, "\125\35\45", BSL_OID_GLOBAL}, "ExtendedKeyUsage", BSL_CID_CE_EXTKEYUSAGE},
+    {{4, "\125\35\45\0", BSL_OID_GLOBAL}, "AnyExtendedKeyUsage", BSL_CID_ANYEXTENDEDKEYUSAGE},
     {{8, "\53\6\1\5\5\7\3\1", BSL_OID_GLOBAL}, "ServerAuth", BSL_CID_KP_SERVERAUTH},
     {{8, "\53\6\1\5\5\7\3\2", BSL_OID_GLOBAL}, "ClientAuth", BSL_CID_KP_CLIENTAUTH},
     {{8, "\53\6\1\5\5\7\3\3", BSL_OID_GLOBAL}, "CodeSigning", BSL_CID_KP_CODESIGNING},
@@ -100,6 +114,7 @@ BslOidInfo g_oidTable[] = {
     {{8, "\53\6\1\5\5\7\3\10", BSL_OID_GLOBAL}, "TimeStamping", BSL_CID_KP_TIMESTAMPING},
     {{8, "\53\6\1\5\5\7\3\11", BSL_OID_GLOBAL}, "OSCPSigning", BSL_CID_KP_OCSPSIGNING},
     {{3, "\125\35\56", BSL_OID_GLOBAL}, "FreshestCRL", BSL_CID_CE_FRESHESTCRL},
+    {{8, "\53\6\1\5\5\7\1\1", BSL_OID_GLOBAL}, "AuthorityInformationAccess", BSL_CID_PE_AUTHORITYINFOACCESS},
     {{3, "\125\35\24", BSL_OID_GLOBAL}, "CrlNumber", BSL_CID_CE_CRLNUMBER},
     {{3, "\125\35\34", BSL_OID_GLOBAL}, "IssuingDistributionPoint", BSL_CID_CE_ISSUINGDISTRIBUTIONPOINT},
     {{3, "\125\35\33", BSL_OID_GLOBAL}, "DeltaCrlIndicator", BSL_CID_CE_DELTACRLINDICATOR},
@@ -116,75 +131,83 @@ BslOidInfo g_oidTable[] = {
     {{9, "\52\206\110\206\367\15\1\11\24", BSL_OID_GLOBAL}, "friendlyName", BSL_CID_FRIENDLYNAME},
     {{9, "\52\206\110\206\367\15\1\11\25", BSL_OID_GLOBAL}, "localKeyId", BSL_CID_LOCALKEYID},
     {{9, "\52\206\110\206\367\15\1\7\1", BSL_OID_GLOBAL}, "data", BSL_CID_PKCS7_SIMPLEDATA},
+    {{9, "\52\206\110\206\367\15\1\7\2", BSL_OID_GLOBAL}, "signedData", BSL_CID_PKCS7_SIGNEDDATA},
     {{9, "\52\206\110\206\367\15\1\7\6", BSL_OID_GLOBAL}, "encryptedData", BSL_CID_PKCS7_ENCRYPTEDDATA},
-    {{5, "\53\201\4\0\42", BSL_OID_GLOBAL}, "SECP384R1", BSL_CID_SECP384R1},
-    {{5, "\53\201\4\0\43", BSL_OID_GLOBAL}, "SECP521R1", BSL_CID_SECP521R1},
+    {{9, "\52\206\110\206\367\15\1\11\3", BSL_OID_GLOBAL}, "contentType", BSL_CID_PKCS9_AT_CONTENTTYPE},
+    {{9, "\52\206\110\206\367\15\1\11\4", BSL_OID_GLOBAL}, "messageDigest", BSL_CID_PKCS9_AT_MESSAGEDIGEST},
+    {{9, "\52\206\110\206\367\15\1\11\5", BSL_OID_GLOBAL}, "signingTime", BSL_CID_PKCS9_AT_SIGNINGTIME},
+
+    {{5, "\53\201\4\0\42", BSL_OID_GLOBAL}, "secp384r1", BSL_CID_SECP384R1},
+    {{5, "\53\201\4\0\43", BSL_OID_GLOBAL}, "secp521r1", BSL_CID_SECP521R1},
     {{8, "\52\201\34\317\125\1\203\21", BSL_OID_GLOBAL}, "SM3", BSL_CID_SM3},
+    {{10, "\52\201\34\317\125\1\203\21\3\1", BSL_OID_GLOBAL}, "HMAC-SM3", BSL_CID_HMAC_SM3},
     {{8, "\52\201\34\317\125\1\203\165", BSL_OID_GLOBAL}, "SM2DSAWITHSM3", BSL_CID_SM2DSAWITHSM3},
     {{8, "\52\201\34\317\125\1\203\166", BSL_OID_GLOBAL}, "SM2DSAWITHSHA1", BSL_CID_SM2DSAWITHSHA1},
     {{8, "\52\201\34\317\125\1\203\167", BSL_OID_GLOBAL}, "SM2DSAWITHSHA256", BSL_CID_SM2DSAWITHSHA256},
     {{8, "\52\201\34\317\125\1\202\55", BSL_OID_GLOBAL}, "SM2PRIME256", BSL_CID_SM2PRIME256},
     {{3, "\125\4\11", BSL_OID_GLOBAL}, "STREET", BSL_CID_AT_STREETADDRESS},
-    {{5, "\53\201\4\0\41", BSL_OID_GLOBAL}, "PRIME224", BSL_CID_NIST_PRIME224},
+    {{5, "\53\201\4\0\41", BSL_OID_GLOBAL}, "secp224r1", BSL_CID_NIST_PRIME224},
     {{3, "\53\145\160", BSL_OID_GLOBAL}, "ED25519", BSL_CID_ED25519},
     {{3, "\53\145\156", BSL_OID_GLOBAL}, "X25519", BSL_CID_X25519},
-    {{9, "\52\206\110\206\367\15\1\1\12", BSL_OID_GLOBAL}, "RSASSAPSS", BSL_CID_RSASSAPSS},
+    {{9, "\52\206\110\206\367\15\1\1\12", BSL_OID_GLOBAL}, "RSASSA-PSS", BSL_CID_RSASSAPSS},
     {{9, "\52\206\110\206\367\15\1\1\10", BSL_OID_GLOBAL}, "MGF1", BSL_CID_MGF1},
-    {{8, "\52\201\34\317\125\1\150\2", BSL_OID_GLOBAL}, "SM4-CBC", BSL_CID_SM4_CBC},
-    {{8, "\52\201\34\317\125\1\203\170", BSL_OID_GLOBAL}, "SM3WITHRSA", BSL_CID_SM3WITHRSAENCRYPTION},
-    {{9, "\140\206\110\1\145\3\4\3\2", BSL_OID_GLOBAL}, "DSAWITHSHA256", BSL_CID_DSAWITHSHA256},
-    {{9, "\140\206\110\1\145\3\4\3\1", BSL_OID_GLOBAL}, "DSAWITHSHA224", BSL_CID_DSAWITHSHA224},
-    {{9, "\140\206\110\1\145\3\4\3\3", BSL_OID_GLOBAL}, "DSAWITHSHA384", BSL_CID_DSAWITHSHA384},
-    {{9, "\140\206\110\1\145\3\4\3\4", BSL_OID_GLOBAL}, "DSAWITHSHA512", BSL_CID_DSAWITHSHA512},
-    {{9, "\52\206\110\206\367\15\1\1\16", BSL_OID_GLOBAL}, "SHA224WITHRSA", BSL_CID_SHA224WITHRSAENCRYPTION},
+    {{8, "\52\201\34\317\125\1\150\2", BSL_OID_GLOBAL}, "sm4-cbc", BSL_CID_SM4_CBC},
+    {{8, "\52\201\34\317\125\1\203\170", BSL_OID_GLOBAL}, "sm3WithRSAEncryption", BSL_CID_SM3WITHRSAENCRYPTION},
+    {{9, "\140\206\110\1\145\3\4\3\2", BSL_OID_GLOBAL}, "dsa-with-SHA256", BSL_CID_DSAWITHSHA256},
+    {{9, "\140\206\110\1\145\3\4\3\1", BSL_OID_GLOBAL}, "dsa-with-SHA224", BSL_CID_DSAWITHSHA224},
+    {{9, "\140\206\110\1\145\3\4\3\3", BSL_OID_GLOBAL}, "dsa-with-SHA384", BSL_CID_DSAWITHSHA384},
+    {{9, "\140\206\110\1\145\3\4\3\4", BSL_OID_GLOBAL}, "dsa-with-SHA512", BSL_CID_DSAWITHSHA512},
+    {{9, "\52\206\110\206\367\15\1\1\16", BSL_OID_GLOBAL}, "sha224WithRSAEncryption", BSL_CID_SHA224WITHRSAENCRYPTION},
     {{9, "\140\206\110\1\145\3\4\2\7", BSL_OID_GLOBAL}, "SHA3-224", BSL_CID_SHA3_224},
     {{9, "\140\206\110\1\145\3\4\2\10", BSL_OID_GLOBAL}, "SHA3-256", BSL_CID_SHA3_256},
     {{9, "\140\206\110\1\145\3\4\2\11", BSL_OID_GLOBAL}, "SHA3-384", BSL_CID_SHA3_384},
     {{9, "\140\206\110\1\145\3\4\2\12", BSL_OID_GLOBAL}, "SHA3-512", BSL_CID_SHA3_512},
     {{9, "\140\206\110\1\145\3\4\2\13", BSL_OID_GLOBAL}, "SHAKE128", BSL_CID_SHAKE128},
     {{9, "\140\206\110\1\145\3\4\2\14", BSL_OID_GLOBAL}, "SHAKE256", BSL_CID_SHAKE256},
-    {{9, "\140\206\110\1\145\3\4\1\5", BSL_OID_GLOBAL}, "AES-128-WRAP-NOPAD", BSL_CID_AES128_WRAP_NOPAD },
-    {{9, "\140\206\110\1\145\3\4\1\31", BSL_OID_GLOBAL}, "AES-192-WRAP-NOPAD", BSL_CID_AES192_WRAP_NOPAD },
-    {{9, "\140\206\110\1\145\3\4\1\55", BSL_OID_GLOBAL}, "AES256-WRAP-NOPAD", BSL_CID_AES256_WRAP_NOPAD},
-    {{9, "\140\206\110\1\145\3\4\1\10", BSL_OID_GLOBAL}, "AES-128-WRAP-PAD", BSL_CID_AES128_WRAP_PAD },
-    {{9, "\140\206\110\1\145\3\4\1\34", BSL_OID_GLOBAL}, "AES-192-WRAP-PAD", BSL_CID_AES192_WRAP_PAD },
-    {{9, "\140\206\110\1\145\3\4\1\60", BSL_OID_GLOBAL}, "AES-256-WRAP-PAD", BSL_CID_AES256_WRAP_PAD },
-    {{9, "\53\44\3\3\2\10\1\1\7", BSL_OID_GLOBAL}, "BRAINPOOLP256R1", BSL_CID_ECC_BRAINPOOLP256R1},
-    {{9, "\53\44\3\3\2\10\1\1\13", BSL_OID_GLOBAL}, "BRAINPOOLP384R1", BSL_CID_ECC_BRAINPOOLP384R1},
-    {{9, "\53\44\3\3\2\10\1\1\15", BSL_OID_GLOBAL}, "BRAINPOOLP512R1", BSL_CID_ECC_BRAINPOOLP512R1},
-    {{7, "\52\206\110\316\75\2\1", BSL_OID_GLOBAL}, "EC-PUBLICKEY", BSL_CID_EC_PUBLICKEY}, // ecc subkey
+    {{8, "\53\157\2\214\123\0\1\1", BSL_OID_GLOBAL}, "aes-128-xts", BSL_CID_AES128_XTS},
+    {{8, "\53\157\2\214\123\0\1\2", BSL_OID_GLOBAL}, "aes-256-xts", BSL_CID_AES256_XTS},
+    {{9, "\140\206\110\1\145\3\4\1\5", BSL_OID_GLOBAL}, "aes-128-wrap-nopad", BSL_CID_AES128_WRAP_NOPAD},
+    {{9, "\140\206\110\1\145\3\4\1\31", BSL_OID_GLOBAL}, "aes-192-wrap-nopad", BSL_CID_AES192_WRAP_NOPAD},
+    {{9, "\140\206\110\1\145\3\4\1\55", BSL_OID_GLOBAL}, "aes-256-wrap-nopad", BSL_CID_AES256_WRAP_NOPAD},
+    {{9, "\140\206\110\1\145\3\4\1\10", BSL_OID_GLOBAL}, "aes-128-wrap-pad", BSL_CID_AES128_WRAP_PAD},
+    {{9, "\140\206\110\1\145\3\4\1\34", BSL_OID_GLOBAL}, "aes-192-wrap-pad", BSL_CID_AES192_WRAP_PAD},
+    {{9, "\140\206\110\1\145\3\4\1\60", BSL_OID_GLOBAL}, "aes-256-wrap-pad", BSL_CID_AES256_WRAP_PAD},
+    {{8, "\52\201\34\317\125\1\150\12", BSL_OID_GLOBAL}, "sm4-xts", BSL_CID_SM4_XTS},
+    {{8, "\52\201\34\317\125\1\150\7", BSL_OID_GLOBAL}, "sm4-ctr", BSL_CID_SM4_CTR},
+    {{8, "\52\201\34\317\125\1\150\10", BSL_OID_GLOBAL}, "sm4-gcm", BSL_CID_SM4_GCM},
+    {{8, "\52\201\34\317\125\1\150\4", BSL_OID_GLOBAL}, "sm4-cfb", BSL_CID_SM4_CFB},
+    {{8, "\52\201\34\317\125\1\150\3", BSL_OID_GLOBAL}, "sm4-ofb", BSL_CID_SM4_OFB},
+    {{9, "\53\44\3\3\2\10\1\1\7", BSL_OID_GLOBAL}, "brainpoolP256r1", BSL_CID_ECC_BRAINPOOLP256R1},
+    {{9, "\53\44\3\3\2\10\1\1\13", BSL_OID_GLOBAL}, "brainpoolP384r1", BSL_CID_ECC_BRAINPOOLP384R1},
+    {{9, "\53\44\3\3\2\10\1\1\15", BSL_OID_GLOBAL}, "brainpoolP512r1", BSL_CID_ECC_BRAINPOOLP512R1},
+    {{7, "\52\206\110\316\75\2\1", BSL_OID_GLOBAL}, "id-ecPublicKey", BSL_CID_EC_PUBLICKEY}, // ecc subkey
     {{10, "\11\222\46\211\223\362\54\144\1\1", BSL_OID_GLOBAL}, "UID", BSL_CID_AT_USERID},
-};
-
-
-/**
- * RFC 5280: A.1. Explicitly Tagged Module, 1988 Syntax
- * -- Upper Bounds
-*/
-
-static const BslAsn1DnInfo g_asn1StrTab[] = {
-    {BSL_CID_AT_COMMONNAME, 1, 64}, // ub-common-name INTEGER ::= 64
-    {BSL_CID_AT_SURNAME, 1, 40}, // ub-surname-length INTEGER ::= 40
-    {BSL_CID_AT_SERIALNUMBER, 1, 64}, // ub-serial-number INTEGER ::= 64
-    {BSL_CID_AT_COUNTRYNAME, 2, 2}, // ub-country-name-alpha-length INTEGER ::= 2
-    {BSL_CID_AT_LOCALITYNAME, 1, 128}, // ub-locality-name INTEGER ::= 128
-    {BSL_CID_AT_STATEORPROVINCENAME, 1, 128}, // ub-state-name INTEGER ::= 128
-    {BSL_CID_AT_STREETADDRESS, 1, -1}, // no limited
-    {BSL_CID_AT_ORGANIZATIONNAME, 1, 64}, // ub-organization-name INTEGER ::= 64
-    {BSL_CID_AT_ORGANIZATIONALUNITNAME, 1, 64}, // ub-organizational-unit-name INTEGER ::= 64
-    {BSL_CID_AT_TITLE, 1, 64}, // ub-title INTEGER ::= 64
-    {BSL_CID_AT_GIVENNAME, 1, 32768}, // ub-name INTEGER ::= 32768
-    {BSL_CID_AT_INITIALS, 1, 32768}, // ub-name INTEGER ::= 32768
-    {BSL_CID_AT_GENERATIONQUALIFIER, 1, 32768}, // ub-name INTEGER ::= 32768
-    {BSL_CID_AT_DNQUALIFIER, 1, -1}, // no limited
-    {BSL_CID_AT_PSEUDONYM, 1, 128}, // ub-pseudonym INTEGER ::= 128
-    {BSL_CID_DOMAINCOMPONENT, 1, -1, }, // no limited
-    {BSL_CID_AT_USERID, 1, 256}, // RFC1274
+    {{9, "\140\206\110\1\145\3\4\3\21", BSL_OID_GLOBAL}, "ML-DSA-44", BSL_CID_ML_DSA_44},
+    {{9, "\140\206\110\1\145\3\4\3\22", BSL_OID_GLOBAL}, "ML-DSA-65", BSL_CID_ML_DSA_65},
+    {{9, "\140\206\110\1\145\3\4\3\23", BSL_OID_GLOBAL}, "ML-DSA-87", BSL_CID_ML_DSA_87},
+    {{9, "\140\206\110\1\145\3\4\4\1", BSL_OID_GLOBAL}, "ML-KEM-512", BSL_CID_ML_KEM_512},
+    {{9, "\140\206\110\1\145\3\4\4\2", BSL_OID_GLOBAL}, "ML-KEM-768", BSL_CID_ML_KEM_768},
+    {{9, "\140\206\110\1\145\3\4\4\3", BSL_OID_GLOBAL}, "ML-KEM-1024", BSL_CID_ML_KEM_1024},
+    {{9, "\140\206\110\1\145\3\4\3\24", BSL_OID_GLOBAL}, "SLH-DSA-SHA2-128S", BSL_CID_SLH_DSA_SHA2_128S},
+    {{9, "\140\206\110\1\145\3\4\3\32", BSL_OID_GLOBAL}, "SLH-DSA-SHAKE-128S", BSL_CID_SLH_DSA_SHAKE_128S},
+    {{9, "\140\206\110\1\145\3\4\3\25", BSL_OID_GLOBAL}, "SLH-DSA-SHA2-128F", BSL_CID_SLH_DSA_SHA2_128F},
+    {{9, "\140\206\110\1\145\3\4\3\33", BSL_OID_GLOBAL}, "SLH-DSA-SHAKE-128F", BSL_CID_SLH_DSA_SHAKE_128F},
+    {{9, "\140\206\110\1\145\3\4\3\26", BSL_OID_GLOBAL}, "SLH-DSA-SHA2-192S", BSL_CID_SLH_DSA_SHA2_192S},
+    {{9, "\140\206\110\1\145\3\4\3\34", BSL_OID_GLOBAL}, "SLH-DSA-SHAKE-192S", BSL_CID_SLH_DSA_SHAKE_192S},
+    {{9, "\140\206\110\1\145\3\4\3\27", BSL_OID_GLOBAL}, "SLH-DSA-SHA2-192F", BSL_CID_SLH_DSA_SHA2_192F},
+    {{9, "\140\206\110\1\145\3\4\3\35", BSL_OID_GLOBAL}, "SLH-DSA-SHAKE-192F", BSL_CID_SLH_DSA_SHAKE_192F},
+    {{9, "\140\206\110\1\145\3\4\3\30", BSL_OID_GLOBAL}, "SLH-DSA-SHA2-256S", BSL_CID_SLH_DSA_SHA2_256S},
+    {{9, "\140\206\110\1\145\3\4\3\36", BSL_OID_GLOBAL}, "SLH-DSA-SHAKE-256S", BSL_CID_SLH_DSA_SHAKE_256S},
+    {{9, "\140\206\110\1\145\3\4\3\31", BSL_OID_GLOBAL}, "SLH-DSA-SHA2-256F", BSL_CID_SLH_DSA_SHA2_256F},
+    {{9, "\140\206\110\1\145\3\4\3\37", BSL_OID_GLOBAL}, "SLH-DSA-SHAKE-256F", BSL_CID_SLH_DSA_SHAKE_256F},
+    {{8, "\53\6\1\5\5\7\6\42", BSL_OID_GLOBAL}, "XMSS", BSL_CID_XMSS}, // XMSS
+    {{10, "\52\206\110\206\367\15\1\11\27\1", BSL_OID_GLOBAL}, "x509crl", BSL_CID_X509CRL},
+    {{9, "\52\206\110\206\367\15\1\11\17", BSL_OID_GLOBAL}, "smimeCapabilities", BSL_CID_SMIMECAP},
 };
 
 uint32_t g_tableSize = (uint32_t)sizeof(g_oidTable)/sizeof(g_oidTable[0]);
 
-#ifdef HITLS_BSL_HASH
+#ifdef HITLS_BSL_OBJ_CUSTOM
 static void FreeBslOidInfo(void *data)
 {
     if (data == NULL) {
@@ -212,7 +235,7 @@ static void InitOidHashTableOnce(void)
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
     }
 }
-#endif // HITLS_BSL_HASH
+#endif // HITLS_BSL_OBJ_CUSTOM
 
 static int32_t GetOidIndex(int32_t inputCid)
 {
@@ -232,25 +255,24 @@ static int32_t GetOidIndex(int32_t inputCid)
     return -1;
 }
 
-BslCid BSL_OBJ_GetCID(const BslOidString *oidstr)
+BslCid BSL_OBJ_GetCidFromOidBuff(const uint8_t *oid, uint32_t len)
 {
-    if (oidstr == NULL || oidstr->octs == NULL) {
+    if (oid == NULL || len == 0) {
         return BSL_CID_UNKNOWN;
     }
 
     /* First, search in the g_oidTable */
     for (uint32_t i = 0; i < g_tableSize; i++) {
-        if (g_oidTable[i].strOid.octetLen == oidstr->octetLen) {
-            if (memcmp(g_oidTable[i].strOid.octs, oidstr->octs, oidstr->octetLen) == 0) {
+        if (g_oidTable[i].strOid.octetLen == len) {
+            if (memcmp(g_oidTable[i].strOid.octs, oid, len) == 0) {
                 return g_oidTable[i].cid;
             }
         }
     }
-#ifndef HITLS_BSL_HASH
+#ifndef HITLS_BSL_OBJ_CUSTOM
     return BSL_CID_UNKNOWN;
 #else
     if (g_oidHashTable == NULL) {
-        BSL_ERR_PUSH_ERROR(BSL_OBJ_INVALID_HASH_TABLE);
         return BSL_CID_UNKNOWN;
     }
 
@@ -268,8 +290,8 @@ BslCid BSL_OBJ_GetCID(const BslOidString *oidstr)
     
     while (iter != end) {
         BslOidInfo *oidInfo = (BslOidInfo *)BSL_HASH_IterValue(g_oidHashTable, iter);
-        if (oidInfo != NULL && oidInfo->strOid.octetLen == oidstr->octetLen &&
-            memcmp(oidInfo->strOid.octs, oidstr->octs, oidstr->octetLen) == 0) {
+        if (oidInfo != NULL && oidInfo->strOid.octetLen == len &&
+            memcmp(oidInfo->strOid.octs, oid, len) == 0) {
             cid = oidInfo->cid;
             break;
         }
@@ -278,7 +300,15 @@ BslCid BSL_OBJ_GetCID(const BslOidString *oidstr)
 
     (void)BSL_SAL_ThreadUnlock(g_oidHashRwLock);
     return cid;
-#endif // HITLS_BSL_HASH
+#endif // HITLS_BSL_OBJ_CUSTOM
+}
+
+BslCid BSL_OBJ_GetCID(const BslOidString *oidstr)
+{
+    if (oidstr == NULL) {
+        return BSL_CID_UNKNOWN;
+    }
+    return BSL_OBJ_GetCidFromOidBuff((const uint8_t *)oidstr->octs, oidstr->octetLen);
 }
 
 BslOidString *BSL_OBJ_GetOID(BslCid ulCID)
@@ -293,13 +323,12 @@ BslOidString *BSL_OBJ_GetOID(BslCid ulCID)
     if (index != -1) {
         return &g_oidTable[index].strOid;
     }
-#ifndef HITLS_BSL_HASH
+#ifndef HITLS_BSL_OBJ_CUSTOM
     return NULL;
 #else
 
     /* Initialize hash table if needed */
     if (g_oidHashTable == NULL) {
-        BSL_ERR_PUSH_ERROR(BSL_OBJ_INVALID_HASH_TABLE);
         return NULL;
     }
 
@@ -320,24 +349,24 @@ BslOidString *BSL_OBJ_GetOID(BslCid ulCID)
     }
 
     return oidString;
-#endif // HITLS_BSL_HASH
+#endif // HITLS_BSL_OBJ_CUSTOM
 }
 
-const char *BSL_OBJ_GetOidNameFromOid(const BslOidString *oid)
+const char *BSL_OBJ_GetOidNameFromOidBuff(const uint8_t *oid, uint32_t len)
 {
-    if (oid == NULL || oid->octs == NULL) {
+    if (oid == NULL || len == 0) {
         return NULL;
     }
 
     /* First, search in the g_oidTable */
     for (uint32_t i = 0; i < g_tableSize; i++) {
-        if (g_oidTable[i].strOid.octetLen == oid->octetLen) {
-            if (memcmp(g_oidTable[i].strOid.octs, oid->octs, oid->octetLen) == 0) {
+        if (g_oidTable[i].strOid.octetLen == len) {
+            if (memcmp(g_oidTable[i].strOid.octs, oid, len) == 0) {
                 return g_oidTable[i].oidName;
             }
         }
     }
-#ifndef HITLS_BSL_HASH
+#ifndef HITLS_BSL_OBJ_CUSTOM
     return NULL;
 #else
     if (g_oidHashTable == NULL) {
@@ -359,8 +388,8 @@ const char *BSL_OBJ_GetOidNameFromOid(const BslOidString *oid)
 
     while (iter != end) {
         BslOidInfo *oidInfo = (BslOidInfo *)BSL_HASH_IterValue(g_oidHashTable, iter);
-        if (oidInfo != NULL && oidInfo->strOid.octetLen == oid->octetLen &&
-            memcmp(oidInfo->strOid.octs, oid->octs, oid->octetLen) == 0) {
+        if (oidInfo != NULL && oidInfo->strOid.octetLen == len &&
+            memcmp(oidInfo->strOid.octs, oid, len) == 0) {
             oidName = oidInfo->oidName;
             break;
         }
@@ -369,21 +398,88 @@ const char *BSL_OBJ_GetOidNameFromOid(const BslOidString *oid)
 
     (void)BSL_SAL_ThreadUnlock(g_oidHashRwLock);
     return oidName;
-#endif // HITLS_BSL_HASH
+#endif // HITLS_BSL_OBJ_CUSTOM
 }
 
-const BslAsn1DnInfo *BSL_OBJ_GetDnInfoFromCid(BslCid cid)
+const char *BSL_OBJ_GetOidNameFromOid(const BslOidString *oid)
 {
-    for (size_t i = 0; i < sizeof(g_asn1StrTab) / sizeof(g_asn1StrTab[0]); i++) {
-        if (cid == g_asn1StrTab[i].cid) {
-            return &g_asn1StrTab[i];
+    if (oid == NULL) {
+        return NULL;
+    }
+    return BSL_OBJ_GetOidNameFromOidBuff((const uint8_t *)oid->octs, oid->octetLen);
+}
+
+#if defined(HITLS_PKI_X509) || defined(HITLS_PKI_INFO)
+
+/**
+ * RFC 5280: A.1. Explicitly Tagged Module, 1988 Syntax
+ * -- Upper Bounds
+*/
+
+static const BslAsn1DnInfo g_asn1DnTab[] = {
+    {BSL_CID_AT_COMMONNAME, 1, 64, "CN"}, // ub-common-name INTEGER ::= 64
+    {BSL_CID_AT_SURNAME, 1, 40, "SN"}, // ub-surname-length INTEGER ::= 40
+    {BSL_CID_AT_SERIALNUMBER, 1, 64, "serialNumber"}, // ub-serial-number INTEGER ::= 64
+    {BSL_CID_AT_COUNTRYNAME, 2, 2, "C"}, // ub-country-name-alpha-length INTEGER ::= 2
+    {BSL_CID_AT_LOCALITYNAME, 1, 128, "L"}, // ub-locality-name INTEGER ::= 128
+    {BSL_CID_AT_STATEORPROVINCENAME, 1, 128, "ST"}, // ub-state-name INTEGER ::= 128
+    {BSL_CID_AT_STREETADDRESS, 1, -1, "street"}, // no limited
+    {BSL_CID_AT_ORGANIZATIONNAME, 1, 64, "O"}, // ub-organization-name INTEGER ::= 64
+    {BSL_CID_AT_ORGANIZATIONALUNITNAME, 1, 64, "OU"}, // ub-organizational-unit-name INTEGER ::= 64
+    {BSL_CID_AT_TITLE, 1, 64, "title"}, // ub-title INTEGER ::= 64
+    {BSL_CID_AT_GIVENNAME, 1, 32768, "GN"}, // ub-name INTEGER ::= 32768
+    {BSL_CID_AT_INITIALS, 1, 32768, "initials"}, // ub-name INTEGER ::= 32768
+    {BSL_CID_AT_GENERATIONQUALIFIER, 1, 32768, "generationQualifier"}, // ub-name INTEGER ::= 32768
+    {BSL_CID_AT_DNQUALIFIER, 1, -1, "dnQualifier"}, // no limited
+    {BSL_CID_AT_PSEUDONYM, 1, 128, "pseudonym"}, // ub-pseudonym INTEGER ::= 128
+    {BSL_CID_DOMAINCOMPONENT, 1, -1, "DC"}, // no limited
+    {BSL_CID_AT_USERID, 1, 256, "UID"}, // RFC1274
+};
+
+#define BSL_DN_STR_CNT (sizeof(g_asn1DnTab) / sizeof(g_asn1DnTab[0]))
+
+const BslAsn1DnInfo *BSL_OBJ_GetDnInfoFromShortName(const char *shortName)
+{
+    for (size_t i = 0; i < BSL_DN_STR_CNT; i++) {
+        if (strcmp(g_asn1DnTab[i].shortName, shortName) == 0) {
+            return &g_asn1DnTab[i];
         }
     }
 
     return NULL;
 }
 
-#ifdef HITLS_BSL_HASH
+const BslAsn1DnInfo *BSL_OBJ_GetDnInfoFromCid(BslCid cid)
+{
+    for (size_t i = 0; i < sizeof(g_asn1DnTab) / sizeof(g_asn1DnTab[0]); i++) {
+        if (cid == g_asn1DnTab[i].cid) {
+            return &g_asn1DnTab[i];
+        }
+    }
+
+    return NULL;
+}
+
+#endif // HITLS_PKI_X509 || HITLS_PKI_INFO
+
+#if defined(HITLS_PKI_X509) || defined(HITLS_PKI_INFO) || defined(HITLS_CRYPTO_KEY_INFO)
+
+const char *BSL_OBJ_GetOidNameFromCID(BslCid ulCID)
+{
+    if (ulCID >= BSL_CID_MAX) { /* check if ulCID is within range */
+        return NULL;
+    }
+    int32_t index = GetOidIndex(ulCID);
+    if (index == -1) {
+        return NULL;
+    }
+    return g_oidTable[index].oidName;
+}
+
+#endif // HITLS_PKI_X509 || HITLS_PKI_INFO || HITLS_CRYPTO_KEY_INFO
+
+
+#ifdef HITLS_BSL_OBJ_CUSTOM
 static int32_t BslOidStringCopy(const BslOidString *srcOidStr, BslOidString *oidString)
 {
     oidString->octs = BSL_SAL_Dump(srcOidStr->octs, srcOidStr->octetLen);
@@ -523,17 +619,86 @@ void BSL_OBJ_FreeHashTable(void)
             BSL_ERR_PUSH_ERROR(ret);
             return;
         }
-        BSL_HASH_Destory(g_oidHashTable);
+        BSL_HASH_Destroy(g_oidHashTable);
         g_oidHashTable = NULL;
         (void)BSL_SAL_ThreadUnlock(g_oidHashRwLock);
         if (g_oidHashRwLock != NULL) {
             (void)BSL_SAL_ThreadLockFree(g_oidHashRwLock);
             g_oidHashRwLock = NULL;
         }
-        g_oidHashInitOnce = BSL_SAL_ONCE_INIT;
+        (void)memset_s(&g_oidHashInitOnce, sizeof(g_oidHashInitOnce), 0, sizeof(g_oidHashInitOnce));
     }
 }
-#endif // HITLS_BSL_HASH
+#endif // HITLS_BSL_OBJ_CUSTOM
+
+/*
+* Conversion Rules:
+* The first byte represents the first two nodes: X.Y, where X = first byte / 40, Y = first byte % 40.
+* Subsequent nodes use variable length encoding (Base 128), where the highest bit of each byte indicates
+* whether there are subsequent bytes (1 indicates continuation, 0 indicates end).
+* Detailed conversion process:
+* 1、Split the first two nodes, the first byte is decomposed into two numbers: first_node and second_node,
+* first_node = byte_value / 40, second_node = byte_value % 40.
+* 2、Decoding subsequent nodes, Each node may be composed of multiple bytes, with the most significant bit (MSB)
+* of each byte being the continuation flag and the remaining 7 bits being a part of the actual value,
+* Multiple 7-bit groups are combined in big endian order.
+*/
+char *BSL_OBJ_GetOidNumericString(const uint8_t *oid, uint32_t len)
+{
+    if (oid == NULL || len < 1 || oid[0] > BSL_OBJ_ARCS_MAX) {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        return NULL;
+    }
+
+    char buffer[256] = {0};
+    if (snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "%d.%d", oid[0] / BSL_OBJ_ARCS_Y_MAX,
+        oid[0] % BSL_OBJ_ARCS_Y_MAX) < 0) {
+        return NULL;
+    }
+
+    uint64_t value = 0;
+    uint32_t currentPos = strlen(buffer);
+    for (uint32_t i = 1; i < len; i++) {
+        if (value > (UINT64_MAX >> 7)) {
+            /* Overflow check */
+            BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+            return NULL;
+        }
+        if ((value == 0) && ((oid[i]) == 0x80)) {
+            /* Any value must be encoded with the minimum number of bytes.
+              No unnecessary or meaningless leading bytes are allowed */
+            BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+            return NULL;
+        }
+
+        value = (value << 7) | (oid[i] & 0x7F);
+        if (!(oid[i] & 0x80)) {
+            char temp[20] = {0};
+            int32_t tempLen = snprintf_s(temp, sizeof(temp), sizeof(temp) - 1, ".%lu", value);
+            if (tempLen < 0) {
+                BSL_ERR_PUSH_ERROR(BSL_INTERNAL_EXCEPTION);
+                return NULL;
+            }
+            if (currentPos + tempLen >= sizeof(buffer)) {
+                BSL_ERR_PUSH_ERROR(BSL_INTERNAL_EXCEPTION);
+                return NULL;
+            }
+            if (memcpy_s(buffer + currentPos, tempLen, temp, tempLen) != 0) {
+                BSL_ERR_PUSH_ERROR(BSL_INTERNAL_EXCEPTION);
+                return NULL;
+            }
+            currentPos += tempLen;
+            value = 0;
+        }
+    }
+
+    if (value != 0) {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        return NULL;
+    }
+
+    return BSL_SAL_Dump(buffer, sizeof(buffer));
+}
 
 static void BslEncodeOidPart(uint64_t num, uint8_t *output, uint32_t *offset)
 {

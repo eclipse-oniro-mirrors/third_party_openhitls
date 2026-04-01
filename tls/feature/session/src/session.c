@@ -29,7 +29,6 @@
 #include "cert_mgr.h"
 #include "session_type.h"
 #include "session.h"
-#include "cert_mgr_ctx.h"
 #ifdef HITLS_TLS_FEATURE_SESSION
 #define MAX_PRINTF_BUF 1024
 #define CTIME_BUF 26
@@ -95,8 +94,6 @@ void HITLS_SESS_UpRef(HITLS_Session *sess)
     BSL_SAL_ThreadWriteLock(sess->lock);
     sess->references++;
     BSL_SAL_ThreadUnlock(sess->lock);
-
-    return;
 }
 
 void HITLS_SESS_Free(HITLS_Session *sess)
@@ -127,7 +124,7 @@ void HITLS_SESS_Free(HITLS_Session *sess)
 static HITLS_Session *DeepCopySess(HITLS_Session *src, HITLS_Session *dest)
 {
     dest->certMgrCtx = SAL_CERT_MgrCtxProviderNew(LIBCTX_FROM_CERT_MGR_CTX(src->certMgrCtx),
-        ATTRIBUTE_FROM_CERT_MGR_CTX(src->certMgrCtx));
+        ATTR_FROM_CERT_MGR_CTX(src->certMgrCtx));
     if (dest->certMgrCtx == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16717, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "MgrCtxNew fail", 0, 0, 0, 0);
         return NULL;
@@ -217,10 +214,8 @@ void SESS_Disable(HITLS_Session *sess)
         sess->enable = false;
         BSL_SAL_ThreadUnlock(sess->lock);
     }
-    return;
 }
 
-#ifdef HITLS_TLS_FEATURE_SESSION_ID
 int32_t HITLS_SESS_GetSessionId(const HITLS_Session *sess, uint8_t *sessionId, uint32_t *sessionIdSize)
 {
     if (sess == NULL || sessionId == NULL || sessionIdSize == NULL) {
@@ -242,6 +237,7 @@ int32_t HITLS_SESS_GetSessionId(const HITLS_Session *sess, uint8_t *sessionId, u
     return HITLS_SUCCESS;
 }
 
+#ifdef HITLS_TLS_FEATURE_SESSION_ID
 int32_t HITLS_SESS_SetSessionIdCtx(HITLS_Session *sess, uint8_t *sessionIdCtx, uint32_t sessionIdCtxSize)
 {
     if (sess == NULL || sessionIdCtx == NULL) {
@@ -424,13 +420,13 @@ int32_t SESS_SetPeerCert(HITLS_Session *sess, CERT_Pair *peerCert, bool isClient
     /* The peer_cert_chain of the client stores the device certificate of the server */
     if (isClient && peerCert != NULL) {
         /* Obtain the cert */
-        HITLS_CERT_X509 *tmpCert = SAL_CERT_PairGetX509(peerCert);
+        HITLS_CERT_X509 *tmpCert = SAL_CERT_PAIR_GET_X509(peerCert);
         if (tmpCert == NULL) {
             /* If cert in CERT_Pair is empty, the unlocking is returned */
             goto EXIT;
         }
         /* Obtain the chain */
-        HITLS_CERT_Chain *tmpChain = SAL_CERT_PairGetChain(peerCert);
+        HITLS_CERT_Chain *tmpChain = SAL_CERT_PAIR_GET_CHAIN(peerCert);
         if (tmpChain == NULL) {
             /* If the chain in CERT_Pair is empty, the unlocking is returned */
             goto EXIT;
@@ -510,6 +506,20 @@ int32_t HITLS_SESS_SetTimeout(HITLS_Session *sess, uint64_t timeout)
     sess->timeout = timeout;
     BSL_SAL_ThreadUnlock(sess->lock);
     return HITLS_SUCCESS;
+}
+
+uint64_t HITLS_SESS_GetTimeout(HITLS_Session *sess)
+{
+    if (sess == NULL) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16744, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "input null", 0, 0, 0, 0);
+        BSL_ERR_PUSH_ERROR(HITLS_NULL_INPUT);
+        return 0;
+    }
+
+    BSL_SAL_ThreadReadLock(sess->lock);
+    uint64_t timeout = sess->timeout;
+    BSL_SAL_ThreadUnlock(sess->lock);
+    return timeout;
 }
 
 int32_t HITLS_SESS_SetCipherSuite(HITLS_Session *sess, uint16_t cipherSuite)
@@ -695,4 +705,26 @@ uint32_t SESS_GetTicketAgeAdd(const HITLS_Session *sess)
     return ticketAgeAdd;
 }
 
+void *HITLS_SESS_GetUserData(const HITLS_Session *sess)
+{
+    if (sess == NULL) {
+        return NULL;
+    }
+    void *data = NULL;
+    BSL_SAL_ThreadReadLock(sess->lock);
+    data = sess->userData;
+    BSL_SAL_ThreadUnlock(sess->lock);
+    return data;
+}
+
+int32_t HITLS_SESS_SetUserData(HITLS_Session *sess, void *userData)
+{
+    if (sess == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    BSL_SAL_ThreadWriteLock(sess->lock);
+    sess->userData = userData;
+    BSL_SAL_ThreadUnlock(sess->lock);
+    return HITLS_SUCCESS;
+}
 #endif /* HITLS_TLS_FEATURE_SESSION */

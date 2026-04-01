@@ -25,15 +25,20 @@
 #include "crypt_dsa.h"
 #include "crypt_eal_pkey.h"
 #include "crypt_eal_rand.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "crypt_util_rand.h"
-#include "crypt_encode_internal.h"
+#include "crypt_encode.h"
 #include "crypt_eal_md.h"
 #include "crypt_dsa.h"
 #include "crypt_ecdh.h"
 #include "crypt_ecdsa.h"
 #include "crypt_ecc.h"
 #include "eal_pkey_local.h"
+
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET3(int32_t, BN_RandRangeEx, void *, BN_BigNum *, const BN_BigNum *);
 
 #define SUCCESS 0
 #define ERROR (-1)
@@ -42,7 +47,6 @@
 #define PUBKEY_MAX_LEN 133  // 521(The public key length of the longest curve.) * 2 + 1 1043
 #define PRVKEY_MAX_LEN 65
 #define ECC_MAX_BIT_LEN 521
-#define CRYPT_EAL_PKEY_KEYMGMT_OPERATE 0
 static uint8_t gkRandBuf[80];
 static uint32_t gkRandBufLen = 0;
 
@@ -70,13 +74,23 @@ static int32_t RandFuncEx(void *libCtx, uint8_t *randNum, uint32_t randLen)
     return 0;
 }
 
-static int32_t STUB_RandRangeK(void *libCtx, BN_BigNum *r, const BN_BigNum *p)
+// Custom random function to return fixed K value for signature tests (macOS provider mode fix)
+static int32_t STUB_RandForSignature(uint8_t *byte, uint32_t len)
 {
-    (void)p;
-    (void)libCtx;
-    BN_Bin2Bn(r, gkRandBuf, gkRandBufLen);
-    return CRYPT_SUCCESS;
+    if (len > sizeof(gkRandBuf)) {
+        return CRYPT_NULL_INPUT;
+    }
+    // Return the fixed K value from test vector
+    return memcpy_s(byte, len, gkRandBuf, len);
 }
+
+#ifdef HITLS_CRYPTO_PROVIDER
+static int32_t STUB_RandForSignatureEx(void *libCtx, uint8_t *byte, uint32_t len)
+{
+    (void)libCtx;
+    return STUB_RandForSignature(byte, len);
+}
+#endif
 
 static int32_t EccPointToBuffer(Hex *pubKeyX, Hex *pubKeyY, CRYPT_PKEY_PointFormat pointFormat, KeyData *pubKey)
 {
@@ -182,7 +196,6 @@ static int Ecc_GenKey(
     int algId, int eccId, Hex *prvKeyVector, Hex *pubKeyX, Hex *pubKeyY, int pointFormat, int isProvider)
 {
     int ret;
-    FuncStubInfo tmpRpInfo;
     CRYPT_EAL_PkeyCtx *pkey = NULL;
     KeyData pubKeyVector = {{0}, KEY_MAX_LEN};
     CRYPT_EAL_PkeyPub ecdsaPubKey = {0};
@@ -192,19 +205,25 @@ static int Ecc_GenKey(
     TestMemInit();
 
     /* Create a key structure. */
-    pkey = TestPkeyNewCtx(NULL, algId, CRYPT_EAL_PKEY_KEYMGMT_OPERATE, "provider=default", isProvider);
+    pkey = TestPkeyNewCtx(NULL, algId, CRYPT_EAL_PKEY_UNKNOWN_OPERATE, "provider=default", isProvider);
     ASSERT_TRUE(pkey != NULL);
 
     ASSERT_EQ(CRYPT_EAL_PkeySetParaById(pkey, eccId), CRYPT_SUCCESS);
 
-    /* Mock BN_RandRange to STUB_RandRangeK */
+    /* Setup fixed random value for deterministic key generation */
     ASSERT_TRUE(memcpy_s(gkRandBuf, sizeof(gkRandBuf), prvKeyVector->x, prvKeyVector->len) == 0);
     gkRandBufLen = prvKeyVector->len;
-    STUB_Init();
-    STUB_Replace(&tmpRpInfo, BN_RandRangeEx, STUB_RandRangeK);
+
+    /* Init DRBG first, then register our callback AFTER to override TestSimpleRand */
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+
+    /* Register callback to return fixed random value (must be AFTER TestRandInit) */
+    CRYPT_RandRegist(STUB_RandForSignature);
+#ifdef HITLS_CRYPTO_PROVIDER
+    CRYPT_RandRegistEx(STUB_RandForSignatureEx);
+#endif
 
     /* Generate a key pair */
-    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyGen(pkey), CRYPT_SUCCESS);
 
     /* Set point format*/
@@ -241,14 +260,16 @@ static int Ecc_GenKey(
 
     free(ecdsaPubKey.key.eccPub.data);
     free(ecdsaPrvKey.key.eccPrv.data);
-    STUB_Reset(&tmpRpInfo);
+    CRYPT_RandRegist(NULL);
+    CRYPT_RandRegistEx(NULL);
     TestRandDeInit();
     CRYPT_EAL_PkeyFreeCtx(pkey);
     return SUCCESS;
 EXIT:
     free(ecdsaPubKey.key.eccPub.data);
     free(ecdsaPrvKey.key.eccPrv.data);
-    STUB_Reset(&tmpRpInfo);
+    CRYPT_RandRegist(NULL);
+    CRYPT_RandRegistEx(NULL);
     TestRandDeInit();
     CRYPT_EAL_PkeyFreeCtx(pkey);
     return ERROR;
@@ -476,7 +497,7 @@ int EAL_PkeyGetPrv_Provider_Api_TC001(int algId, Hex *prvKey)
     TestMemInit();
 
     /* Create a key structure. */
-    ctx = TestPkeyNewCtx(NULL, algId, CRYPT_EAL_PKEY_KEYMGMT_OPERATE, "provider=default", true);
+    ctx = TestPkeyNewCtx(NULL, algId, CRYPT_EAL_PKEY_UNKNOWN_OPERATE, "provider=default", true);
     ASSERT_TRUE_AND_LOG("NewCtx", ctx != NULL);
     ASSERT_TRUE_AND_LOG("SetParaById", CRYPT_EAL_PkeySetParaById(ctx, CRYPT_ECC_NISTP224) == CRYPT_SUCCESS);
 
@@ -552,7 +573,7 @@ int EAL_PkeyGetPub_Provider_Api_TC001(int algId, Hex *pubKeyX, Hex *pubKeyY)
     TestMemInit();
 
     /* Create a key structure. */
-    ctx = TestPkeyNewCtx(NULL, algId, CRYPT_EAL_PKEY_KEYMGMT_OPERATE, "provider=default", true);
+    ctx = TestPkeyNewCtx(NULL, algId, CRYPT_EAL_PKEY_UNKNOWN_OPERATE, "provider=default", true);
     ASSERT_TRUE_AND_LOG("NewCtx", ctx != NULL);
     ASSERT_TRUE_AND_LOG("SetParaById", CRYPT_EAL_PkeySetParaById(ctx, CRYPT_ECC_NISTP224) == CRYPT_SUCCESS);
 
@@ -728,7 +749,7 @@ int EAL_PkeySetPub_Api_TC003(int algId, int eccId, Hex *pubKey, Hex *errorPubKey
 
     TestMemInit();
     /* Create a key structure. */
-    pkey = TestPkeyNewCtx(NULL, algId, CRYPT_EAL_PKEY_KEYMGMT_OPERATE, "provider=default", isProvider);
+    pkey = TestPkeyNewCtx(NULL, algId, CRYPT_EAL_PKEY_UNKNOWN_OPERATE, "provider=default", isProvider);
     ASSERT_TRUE_AND_LOG("NewCtx", pkey != NULL);
     ASSERT_TRUE(CRYPT_EAL_PkeySetParaById(pkey, eccId) == CRYPT_SUCCESS);
 
@@ -839,9 +860,9 @@ int EAL_PkeyCmp_Provider_Api_TC001(int algId, Hex *pubKeyX, Hex *pubKeyY)
     TestMemInit();
     ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
     CRYPT_EAL_PkeyCtx *ctx1 = TestPkeyNewCtx(NULL, algId,
-        CRYPT_EAL_PKEY_KEYMGMT_OPERATE + CRYPT_EAL_PKEY_SIGN_OPERATE, "provider=default", true);
+         CRYPT_EAL_PKEY_SIGN_OPERATE, "provider=default", true);
     CRYPT_EAL_PkeyCtx *ctx2 = TestPkeyNewCtx(NULL, algId,
-        CRYPT_EAL_PKEY_KEYMGMT_OPERATE + CRYPT_EAL_PKEY_SIGN_OPERATE, "provider=default", true);
+         CRYPT_EAL_PKEY_SIGN_OPERATE, "provider=default", true);
     ASSERT_TRUE(ctx1 != NULL && ctx2 != NULL);
 
     ASSERT_EQ(CRYPT_EAL_PkeyCmp(ctx1, ctx2), CRYPT_ECC_KEY_PUBKEY_NOT_EQUAL);

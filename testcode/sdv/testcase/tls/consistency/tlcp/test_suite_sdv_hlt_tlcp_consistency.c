@@ -15,7 +15,6 @@
  /* BEGIN_HEADER */
 
 #include <stdio.h>
-#include "stub_replace.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -58,7 +57,7 @@ typedef struct {
     FRAME_LinkObj *server;
     HITLS_HandshakeState state;
     bool isClient;
-    bool isSupportExtendedMasterSecret;
+    int32_t emsMode;
     bool isSupportClientVerify;
     bool isSupportNoClientCert;
     bool isServerExtendedMasterSecret;
@@ -115,7 +114,7 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC001(int version, int connType)
     serverConfigId = HLT_RpcTlsNewCtx(remoteProcess, version, false);
 #endif
     cachemode = GetSessionCacheMode(clientCtxConfig);
-    ASSERT_EQ(cachemode , HITLS_SESS_CACHE_SERVER);
+    ASSERT_TRUE((cachemode & HITLS_SESS_CACHE_SERVER) != 0);
     ASSERT_TRUE(HLT_TlsSetCtx(clientConfig, clientCtxConfig) == 0);
     ASSERT_TRUE(HLT_RpcTlsSetCtx(remoteProcess, serverConfigId, serverCtxConfig) == 0);
 
@@ -185,6 +184,8 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC001(int version, int connType)
         }
         cnt++;
     } while (cnt <= 2);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_SESS_Free(session);
@@ -405,6 +406,9 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC003(int version, int connType)
         }
         cnt++;
     } while (cnt < 3);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_SESS_Free(session);
     HLT_FreeAllProcess();
@@ -547,6 +551,9 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC004(int version, int connType)
         }
         count++;
     } while (count <= 2);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_SESS_Free(session);
     HLT_FreeAllProcess();
@@ -596,12 +603,11 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC005(int version, int connType)
     serverConfigId = HLT_RpcTlsNewCtx(remoteProcess, version, false);
 #endif
     cachemode = GetSessionCacheMode(clientCtxConfig);
-    ASSERT_EQ(cachemode , HITLS_SESS_CACHE_SERVER);
+    ASSERT_TRUE((cachemode & HITLS_SESS_CACHE_SERVER) != 0);
     ASSERT_TRUE(HLT_TlsSetCtx(clientConfig, clientCtxConfig) == 0);
     ASSERT_TRUE(HLT_RpcTlsSetCtx(remoteProcess, serverConfigId, serverCtxConfig) == 0);
 
     do {
-
         DataChannelParam channelParam;
         channelParam.port = PORT;
         channelParam.type = connType;
@@ -664,6 +670,9 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC005(int version, int connType)
         }
         cnt++;
     } while (cnt <= 4);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
     HITLS_SESS_Free(session);
     HLT_FreeAllProcess();
@@ -712,12 +721,11 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC006(int version, int connType)
     serverConfigId = HLT_RpcTlsNewCtx(remoteProcess, version, false);
 #endif
     cachemode = GetSessionCacheMode(clientCtxConfig);
-    ASSERT_EQ(cachemode , HITLS_SESS_CACHE_SERVER);
+    ASSERT_TRUE((cachemode & HITLS_SESS_CACHE_SERVER) != 0);
     ASSERT_TRUE(HLT_TlsSetCtx(clientConfig, clientCtxConfig) == 0);
     ASSERT_TRUE(HLT_RpcTlsSetCtx(remoteProcess, serverConfigId, serverCtxConfig) == 0);
 
     do {
-
         DataChannelParam channelParam;
         channelParam.port = PORT;
         channelParam.type = connType;
@@ -779,6 +787,9 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC006(int version, int connType)
         }
         cnt++;
     } while (cnt <= 2);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_SESS_Free(session);
     HLT_FreeAllProcess();
@@ -827,12 +838,11 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC007(int version, int connType)
     serverConfigId = HLT_RpcTlsNewCtx(remoteProcess, version, false);
 #endif
     cachemode = GetSessionCacheMode(clientCtxConfig);
-    ASSERT_EQ(cachemode , HITLS_SESS_CACHE_SERVER);
+    ASSERT_TRUE((cachemode & HITLS_SESS_CACHE_SERVER) != 0);
     ASSERT_TRUE(HLT_TlsSetCtx(clientConfig, clientCtxConfig) == 0);
     ASSERT_TRUE(HLT_RpcTlsSetCtx(remoteProcess, serverConfigId, serverCtxConfig) == 0);
 
     do {
-
         DataChannelParam channelParam;
         channelParam.port = PORT;
         channelParam.type = connType;
@@ -942,7 +952,7 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC008(int version, int connType)
     serverConfigId = HLT_RpcTlsNewCtx(remoteProcess, version, false);
 #endif
     cachemode = GetSessionCacheMode(clientCtxConfig);
-    ASSERT_EQ(cachemode , HITLS_SESS_CACHE_SERVER);
+    ASSERT_TRUE((cachemode & HITLS_SESS_CACHE_SERVER) != 0);
     ASSERT_TRUE(HLT_TlsSetCtx(clientConfig, clientCtxConfig) == 0);
     ASSERT_TRUE(HLT_RpcTlsSetCtx(remoteProcess, serverConfigId, serverCtxConfig) == 0);
 
@@ -1041,6 +1051,8 @@ void SDV_TLS_TLCP_CONSISTENCY_TRANSPORT_FUNC_TC01(void)
     uint32_t readLen;
     ASSERT_TRUE(HLT_ProcessTlsRead(remoteProcess, clientRes, readBuf, READ_BUF_SIZE, &readLen) == 0);
     ASSERT_TRUE(readLen == 16384);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HLT_FreeAllProcess();
@@ -1157,6 +1169,9 @@ void SDV_TLS_TLCP_CONSISTENCY_RESUME_FUNC_TC009(int mode)
             ASSERT_TRUE(session != NULL);
         }cnt++;
     }while(cnt < 3);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_SESS_Free(session);
     HLT_FreeAllProcess();
@@ -1283,6 +1298,8 @@ void SDV_TLS_TLCP1_1_TRANSPORT_FUNC_TC01(void)
     uint32_t readLen;
     ASSERT_TRUE(HLT_ProcessTlsRead(remoteProcess, clientRes, readBuf, READ_BUF_SIZE, &readLen) == 0);
     ASSERT_TRUE(readLen == 16384);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HLT_FreeAllProcess();

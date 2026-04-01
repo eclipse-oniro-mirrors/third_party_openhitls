@@ -15,7 +15,7 @@
 
 /**
  * @defgroup hitls_psk
- * @ingroup hitls
+ * @ingroup tls
  * @brief Basic functions for link establishment based on PSK
  */
 
@@ -32,7 +32,8 @@ extern "C" {
  * @ingroup hitls_psk
  * @brief PSK Maximum size of the identity message
  */
-#define HITLS_IDENTITY_HINT_MAX_SIZE 128
+#define HS_PSK_IDENTITY_MAX_LEN 256u
+#define HS_PSK_MAX_LEN 512u
 #define HITLS_PSK_FIND_SESSION_CB_SUCCESS 1
 #define HITLS_PSK_FIND_SESSION_CB_FAIL 0
 #define HITLS_PSK_USE_SESSION_CB_SUCCESS 1
@@ -48,7 +49,7 @@ extern "C" {
  * @param   maxIdentityLen   [IN] Maximum length of the identity buffer.
  * @param   psk              [OUT] PSK information written back by the user.
  * @param   maxPskLen        [IN] Maximum length of the psk buffer.
- * @retval  Return the PSK length.
+ * @return  Return the PSK length.
  */
 typedef uint32_t (*HITLS_PskClientCb)(HITLS_Ctx *ctx, const uint8_t *hint, uint8_t *identity, uint32_t maxIdentityLen,
     uint8_t *psk, uint32_t maxPskLen);
@@ -61,7 +62,7 @@ typedef uint32_t (*HITLS_PskClientCb)(HITLS_Ctx *ctx, const uint8_t *hint, uint8
  * @param   identity    [IN] Identity information.
  * @param   psk         [OUT] PSK information written back by the user.
  * @param   maxPskLen   [IN] Maximum length of the psk buffer.
- * @retval  Return the PSK length.
+ * @return  Return the PSK length.
  */
 typedef uint32_t (*HITLS_PskServerCb)(HITLS_Ctx *ctx, const uint8_t *identity, uint8_t *psk, uint32_t maxPskLen);
 
@@ -73,7 +74,7 @@ typedef uint32_t (*HITLS_PskServerCb)(HITLS_Ctx *ctx, const uint8_t *identity, u
  * @param   identity     [OUT] Identity information
  * @param   identityLen  [OUT] Identity information length
  * @param   session      [OUT] session
- * @retval  HITLS_PSK_FIND_SESSION_CB_SUCCESS, if successful.
+ * @return  HITLS_PSK_FIND_SESSION_CB_SUCCESS, if successful.
  *          HITLS_PSK_FIND_SESSION_CB_FAIL, if failed
  */
 typedef int32_t (*HITLS_PskFindSessionCb)(HITLS_Ctx *ctx, const uint8_t *identity, uint32_t identityLen,
@@ -88,7 +89,7 @@ typedef int32_t (*HITLS_PskFindSessionCb)(HITLS_Ctx *ctx, const uint8_t *identit
  * @param   id        [IN] Identity information
  * @param   idLen     [IN] Identity information length
  * @param   session   [OUT] session
- * @retval  HITLS_PSK_USE_SESSION_CB_SUCCESS, if successful.
+ * @return  HITLS_PSK_USE_SESSION_CB_SUCCESS, if successful.
  *          HITLS_PSK_USE_SESSION_CB_FAIL, if failed
  */
 typedef int32_t (*HITLS_PskUseSessionCb)(HITLS_Ctx *ctx, uint32_t hashAlgo, const uint8_t **id,
@@ -101,7 +102,7 @@ typedef int32_t (*HITLS_PskUseSessionCb)(HITLS_Ctx *ctx, uint32_t hashAlgo, cons
  * @param   config     [OUT] config Context
  * @param   hint       [IN] Hint
  * @param   hintSize   [IN] Hint length
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetPskIdentityHint(HITLS_Config *config, const uint8_t *hint, uint32_t hintSize);
@@ -109,11 +110,10 @@ int32_t HITLS_CFG_SetPskIdentityHint(HITLS_Config *config, const uint8_t *hint, 
 /**
  * @ingroup hitls_psk
  * @brief   Set the PSK callback function on the client, which is used to obtain the identity
- *
  * and PSK during PSK negotiation.
  * @param   config    [OUT] config Context
  * @param   callback  [IN] Client callback
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetPskClientCallback(HITLS_Config *config, HITLS_PskClientCb callback);
@@ -124,7 +124,7 @@ int32_t HITLS_CFG_SetPskClientCallback(HITLS_Config *config, HITLS_PskClientCb c
  *
  * @param   config   [OUT] config Context
  * @param   callback [IN] Client callback
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetPskServerCallback(HITLS_Config *config, HITLS_PskServerCb callback);
@@ -132,11 +132,10 @@ int32_t HITLS_CFG_SetPskServerCallback(HITLS_Config *config, HITLS_PskServerCb c
 /**
  * @ingroup hitls_psk
  * @brief    Set the PSK callback function on the client, which is used to obtain the identity and PSK
- *
  * during PSK negotiation.
  * @param   ctx   [OUT] TLS connection handle
  * @param   cb    [IN] Client callback
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_SetPskClientCallback(HITLS_Ctx *ctx, HITLS_PskClientCb cb);
@@ -147,7 +146,7 @@ int32_t HITLS_SetPskClientCallback(HITLS_Ctx *ctx, HITLS_PskClientCb cb);
  *
  * @param   ctx   [OUT] TLS connection handle
  * @param   cb    [IN] Server callback
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_SetPskServerCallback(HITLS_Ctx *ctx, HITLS_PskServerCb cb);
@@ -155,12 +154,11 @@ int32_t HITLS_SetPskServerCallback(HITLS_Ctx *ctx, HITLS_PskServerCb cb);
 /**
  * @ingroup hitls_psk
  * @brief   Set the PSK identity hint on the server, which is used to provide identity hints for the
- *
  * client during PSK negotiation.
  * @param   ctx  [OUT] TLS connection handle
  * @param   identityHint       [IN] psk identity prompt
  * @param   identityHineLen    [IN] psk Length of the identity message
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_SetPskIdentityHint(HITLS_Ctx *ctx, const uint8_t *identityHint, uint32_t identityHintLen);
@@ -171,7 +169,7 @@ int32_t HITLS_SetPskIdentityHint(HITLS_Ctx *ctx, const uint8_t *identityHint, ui
  *
  * @param   ctx       [OUT] TLS connection handle
  * @param   callback  [IN] Callback function
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetPskFindSessionCallback(HITLS_Config *config, HITLS_PskFindSessionCb callback);
@@ -182,7 +180,7 @@ int32_t HITLS_CFG_SetPskFindSessionCallback(HITLS_Config *config, HITLS_PskFindS
  *
  * @param   ctx       [OUT] TLS connection handle
  * @param   callback  [IN] Callback function
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetPskUseSessionCallback(HITLS_Config *config, HITLS_PskUseSessionCb callback);
@@ -193,7 +191,7 @@ int32_t HITLS_CFG_SetPskUseSessionCallback(HITLS_Config *config, HITLS_PskUseSes
  *
  * @param   ctx [OUT] TLS connection handle
  * @param   cb  [IN] Callback function
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_SetPskFindSessionCallback(HITLS_Ctx *ctx, HITLS_PskFindSessionCb cb);
@@ -204,7 +202,7 @@ int32_t HITLS_SetPskFindSessionCallback(HITLS_Ctx *ctx, HITLS_PskFindSessionCb c
  *
  * @param   ctx   [OUT] TLS connection handle
  * @param   cb    [IN] Callback function
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_SetPskUseSessionCallback(HITLS_Ctx *ctx, HITLS_PskUseSessionCb cb);

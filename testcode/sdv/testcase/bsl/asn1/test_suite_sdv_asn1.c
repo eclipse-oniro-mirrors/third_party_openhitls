@@ -20,7 +20,7 @@
 #include <pthread.h>
 #include <string.h>
 #include "bsl_sal.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_err.h"
 #include "bsl_log.h"
 #include "sal_time.h"
@@ -332,6 +332,110 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void SDV_BSL_ASN1_DECODE_TEMPLATE_DEPTH_MAX_SUCCESS_TC001(Hex *encode)
+{
+    BSL_ASN1_TemplateItem items[] = {
+        {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 0},
+            {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 1},
+                {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 2},
+                    {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 3},
+                        {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 4},
+                            {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 5},
+                                {BSL_ASN1_TAG_INTEGER, 0, 6},
+    };
+    BSL_ASN1_Template templ = {items, sizeof(items) / sizeof(items[0])};
+    BSL_ASN1_Buffer asnArr[1] = {0}; /* only one primitive item */
+
+    uint8_t *tmp = encode->x;
+    uint32_t tmpLen = encode->len;
+    ASSERT_EQ(BSL_ASN1_DecodeTemplate(&templ, NULL, &tmp, &tmpLen, asnArr, 1), BSL_SUCCESS);
+    ASSERT_EQ(tmpLen, 0);
+    ASSERT_EQ(asnArr[0].tag, BSL_ASN1_TAG_INTEGER);
+    ASSERT_EQ(asnArr[0].len, 1);
+    ASSERT_EQ(asnArr[0].buff[0], 0x01);
+EXIT:
+    return;
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_DECODE_TEMPLATE_LAYER_END_OPTIONAL_TC001(Hex *encode)
+{
+    BSL_ASN1_TemplateItem items[] = {
+        {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 0}, /* outer */
+            {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 1}, /* inner */
+                {BSL_ASN1_TAG_INTEGER, 0, 2}, /* inner int */
+                {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE,
+                    BSL_ASN1_FLAG_OPTIONAL | BSL_ASN1_FLAG_HEADERONLY, 2}, /* OPTIONAL inner seq */
+                    {BSL_ASN1_TAG_INTEGER, 0, 3}, /* child (skipped by HEADERONLY) */
+            {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 1}, /* outer sibling seq */
+                {BSL_ASN1_TAG_INTEGER, 0, 2}, /* sibling int */
+    };
+    BSL_ASN1_Template templ = {items, sizeof(items) / sizeof(items[0])};
+    BSL_ASN1_Buffer asnArr[3] = {0}; /* inner int, optional seq(headeronly), sibling int */
+
+    uint8_t *tmp = encode->x;
+    uint32_t tmpLen = encode->len;
+    ASSERT_EQ(BSL_ASN1_DecodeTemplate(&templ, NULL, &tmp, &tmpLen, asnArr, 3), BSL_SUCCESS);
+    ASSERT_EQ(tmpLen, 0);
+
+    ASSERT_EQ(asnArr[0].tag, BSL_ASN1_TAG_INTEGER);
+    ASSERT_EQ(asnArr[0].len, 1);
+    ASSERT_EQ(asnArr[0].buff[0], 0x01);
+
+    /* optional SEQUENCE not present => tag 0 */
+    ASSERT_EQ(asnArr[1].tag, 0);
+    ASSERT_EQ(asnArr[1].len, 0);
+    ASSERT_EQ(asnArr[1].buff, NULL);
+
+    ASSERT_EQ(asnArr[2].tag, BSL_ASN1_TAG_INTEGER);
+    ASSERT_EQ(asnArr[2].len, 1);
+    ASSERT_EQ(asnArr[2].buff[0], 0x02);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+EXIT:
+    return;
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_DECODE_TEMPLATE_LAYER_END_REQUIRED_TC001(Hex *encode, int expectRet)
+{
+    BSL_ASN1_TemplateItem items[] = {
+        {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 0},
+            {BSL_ASN1_TAG_INTEGER, 0, 1},
+            {BSL_ASN1_TAG_NULL, BSL_ASN1_FLAG_OPTIONAL, 1},
+            {BSL_ASN1_TAG_INTEGER, 0, 1},
+    };
+    BSL_ASN1_Template templ = {items, sizeof(items) / sizeof(items[0])};
+    BSL_ASN1_Buffer asnArr[3] = {0}; /* INTEGER, optional NULL, INTEGER */
+
+    uint8_t *tmp = encode->x;
+    uint32_t tmpLen = encode->len;
+    ASSERT_EQ(BSL_ASN1_DecodeTemplate(&templ, NULL, &tmp, &tmpLen, asnArr, 3), expectRet);
+EXIT:
+    return;
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_DECODE_TEMPLATE_INVALID_DEPTH_SKIP_TC001(Hex *encode, int expectRet)
+{
+    BSL_ASN1_TemplateItem items[] = {
+        {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE, 0, 0},
+            {BSL_ASN1_TAG_INTEGER, 0, 2},  /* Invalid: depth jumps from 0 to 2 */
+    };
+    BSL_ASN1_Template templ = {items, sizeof(items) / sizeof(items[0])};
+    BSL_ASN1_Buffer asnArr[1] = {0};
+
+    uint8_t *tmp = encode->x;
+    uint32_t tmpLen = encode->len;
+    ASSERT_EQ(BSL_ASN1_DecodeTemplate(&templ, NULL, &tmp, &tmpLen, asnArr, 1), expectRet);
+EXIT:
+    return;
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void SDV_BSL_ASN1_PARSE_CERT_FUNC_TC001(char *path, Hex *version, Hex *serial, Hex *algId, Hex *anyAlgId,
     Hex *issuer, Hex *before, Hex *after, Hex *subject, Hex *pubId, Hex *pubAny, Hex *pubKey, Hex *issuerId,
     Hex *subjectId, Hex *ext, Hex *signAlg, Hex *signAlgAny, Hex *sign)
@@ -450,6 +554,7 @@ void SDV_BSL_ASN1_PARSE_CERT_FUNC_TC001(char *path, Hex *version, Hex *serial, H
     ASSERT_EQ_LOG("sign compare tag", asnArr[BSL_ASN1_TAG_SIGN_IDX].tag, BSL_ASN1_TAG_BITSTRING);
     ASSERT_COMPARE("sign compare", sign->x, sign->len,
         asnArr[BSL_ASN1_TAG_SIGN_IDX].buff, asnArr[BSL_ASN1_TAG_SIGN_IDX].len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_FREE(rawBuff);
 }
@@ -538,6 +643,7 @@ void SDV_BSL_ASN1_PARSE_BITSTRING_PRIMITIVEITEM_FUNC(Hex *val, int result, int u
         ASSERT_EQ((uint32_t)unusedBits, res.unusedBits);
         ASSERT_EQ(val->len - 1, res.len);
         ASSERT_COMPARE("bit string", res.buff, res.len, val->x + 1, val->len - 1);
+        ASSERT_TRUE(TestIsErrStackEmpty());
     }
     
 EXIT:
@@ -560,6 +666,7 @@ void SDV_BSL_ASN1_PARSE_TIME_PRIMITIVEITEM_FUNC(int tag, Hex *val, int result,
         ASSERT_EQ(res.hour, hour);
         ASSERT_EQ(res.minute, minute);
         ASSERT_EQ(res.second, second);
+        ASSERT_TRUE(TestIsErrStackEmpty());
     }
 EXIT:
     return;
@@ -737,6 +844,7 @@ void SDV_BSL_ASN1_ENCODE_BOOL_FUNC(int data, Hex *expect)
     ASSERT_EQ(BSL_ASN1_EncodeTemplate(&templ, &asn, 1, &encode, &encodeLen), BSL_SUCCESS);
     ASSERT_EQ(encodeLen, expect->len);
     ASSERT_COMPARE("Encode bool", expect->x, expect->len, encode, encodeLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(encode);
 }
@@ -778,6 +886,7 @@ void SDV_BSL_ASN1_ENCODE_INT_BN_FUNC(Hex *bn, Hex *expect)
     ASSERT_EQ(BSL_ASN1_EncodeTemplate(&templ, &asn, 1, &encode, &encodeLen), BSL_SUCCESS);
     ASSERT_EQ(encodeLen, expect->len);
     ASSERT_COMPARE("Encode int", expect->x, expect->len, encode, encodeLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(encode);
 }
@@ -851,6 +960,7 @@ void SDV_BSL_ASN1_ENCODE_NULL_FUNC_TC001(Hex *expect)
     ASSERT_EQ(BSL_ASN1_EncodeTemplate(&templ, asns, sizeof(asns) / sizeof(asn), &encode, &encodeLen), BSL_SUCCESS);
     ASSERT_EQ(encodeLen, expect->len);
     ASSERT_COMPARE("Encode null", expect->x, expect->len, encode, encodeLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(encode);
 }
@@ -869,6 +979,7 @@ void SDV_BSL_ASN1_ENCODE_NULL_FUNC_TC002(Hex *expect)
     ASSERT_EQ(BSL_ASN1_EncodeTemplate(&templ, &asn, 1, &encode, &encodeLen), BSL_SUCCESS);
     ASSERT_EQ(encodeLen, expect->len);
     ASSERT_COMPARE("Encode null", expect->x, expect->len, encode, encodeLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(encode);
 }
@@ -905,6 +1016,7 @@ void SDV_BSL_ASN1_ENCODE_TEMPLATE_FUNC_TC001(Hex *expect)
     ASSERT_EQ(BSL_ASN1_EncodeTemplate(&templ, asns, sizeof(asns) / sizeof(asns[0]), &encode, &encodeLen), BSL_SUCCESS);
     ASSERT_EQ(encodeLen, expect->len);
     ASSERT_COMPARE("Encode headonly", expect->x, expect->len, encode, encodeLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(encode);
 }
@@ -935,6 +1047,7 @@ void SDV_BSL_ASN1_ENCODE_TEMPLATE_FUNC_TC002(Hex *data, Hex *expect)
     ASSERT_EQ(BSL_ASN1_EncodeTemplate(&templ, asns, sizeof(asns) / sizeof(asn), &encode, &encodeLen), BSL_SUCCESS);
     ASSERT_EQ(encodeLen, expect->len);
     ASSERT_COMPARE("Encode optional|default", expect->x, expect->len, encode, encodeLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(encode);
 }
@@ -986,6 +1099,7 @@ void SDV_BSL_ASN1_ENCODE_TEMPLATE_FUNC_TC003(Hex *data, int templIdx, Hex *expec
     ASSERT_EQ(BSL_ASN1_EncodeTemplate(g_templ + templIdx, asns, MAX_INT_ASN_NUM, &encode, &encodeLen), BSL_SUCCESS);
     ASSERT_EQ(encodeLen, expect->len);
     ASSERT_COMPARE("Encode", expect->x, expect->len, encode, encodeLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(encode);
 }
@@ -1125,6 +1239,7 @@ void SDV_BSL_ASN1_ENCODE_LIST_TC001(int listSize, Hex *encode)
               BSL_SUCCESS);
     ASSERT_EQ(encode->len, out.len);
     ASSERT_COMPARE("Encode list", encode->x, encode->len, out.buff, out.len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_FREE(out.buff);
 #endif
@@ -1161,6 +1276,7 @@ void SDV_BSL_ASN1_DECODE_THEN_ENCODE_FUNC_TC001(int testIdx, char *path)
     ASSERT_EQ(BSL_ASN1_EncodeTemplate(&templ, decodeAsns, asnNum, &encode, &encodeLen), BSL_SUCCESS);
     ASSERT_EQ(encodeLen, dataLen);
     ASSERT_COMPARE("Decode then encode", rawData, dataLen, encode, encodeLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(decodeAsns);
     BSL_SAL_Free(rawData);
@@ -1235,6 +1351,7 @@ void SDV_BSL_ASN1_ENCODE_THEN_DECODE_FUNC_TC001(int boolData, int number, Hex *b
     ASSERT_EQ(time2.hour, hour);
     ASSERT_EQ(time2.minute, minute);
     ASSERT_EQ(time2.second, second);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     BSL_SAL_Free(integer.buff);
@@ -1268,6 +1385,7 @@ void SDV_BSL_ASN1_ENCODE_BMPSTRING_TC001(Hex *enc, char *dec)
     ret = BSL_ASN1_EncodeTemplate(&templ, &decode, 1, &encode.buff, &encode.len);
     ASSERT_EQ(ret, BSL_SUCCESS);
     ASSERT_COMPARE("Encode String", encode.buff + 2, encode.len - 2, enc->x, enc->len); // skip 2 bytes header
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
     BSL_SAL_FREE(encode.buff);
     ret = BSL_ASN1_EncodeTemplate(&templ, &wrong, 1, &encode.buff, &encode.len);
@@ -1290,6 +1408,7 @@ void SDV_BSL_ASN1_GET_ENCODE_LEN_FUNC_TC001(int contentLen, int expectLen, int r
     ASSERT_EQ(BSL_ASN1_GetEncodeLen(contentLen, &encodeLen), ret);
     if (ret == BSL_SUCCESS) {
         ASSERT_EQ(encodeLen, expectLen);
+        ASSERT_TRUE(TestIsErrStackEmpty());
     }
 EXIT:
     return;
@@ -1309,6 +1428,135 @@ void SDV_BSL_ASN1_GET_ENCODE_LEN_API_TC001(void)
 
     // Test length overflow
     ASSERT_EQ(BSL_ASN1_GetEncodeLen(UINT32_MAX, &encodeLen), BSL_ASN1_ERR_LEN_OVERFLOW);
+EXIT:
+    return;
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_BSL_ASN1_TO_UTF8_STRING_INLEN_EMPTY_FUNC_TC001
+ * @title  Test BSL_ASN1_ToUtf8String with empty input length.
+ * @brief  Input ASN.1 buffer has valid UTF8String tag but length is 0.
+ * @expect Convert successful and output buffer is empty.
+ */
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_TO_UTF8_STRING_INLEN_EMPTY_FUNC_TC001(void)
+{
+    BSL_ASN1_Buffer in = {0};
+    BSL_ASN1_Buffer out = {0};
+
+    in.tag = BSL_ASN1_TAG_UTF8STRING;
+    ASSERT_EQ(BSL_ASN1_ToUtf8String(&in, &out), BSL_SUCCESS);
+    ASSERT_EQ(out.tag, BSL_ASN1_TAG_UTF8STRING);
+    ASSERT_EQ(out.len, 0);
+    ASSERT_EQ(out.buff, NULL);
+EXIT:
+    return;
+}
+/* END_CASE */
+
+#ifdef HITLS_BSL_SAL_FILE
+static int32_t ReadHexFileAsBytes(const char *path, BSL_ASN1_Buffer *data)
+{
+    BSL_ASN1_Buffer temp = {0};
+    int32_t ret = BSL_SAL_ReadFile(path, &temp.buff, &temp.len);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+
+    Hex hex = {0};
+    if (ConvertHex((const char *)temp.buff, &hex) != 0) {
+        BSL_SAL_FREE(temp.buff);
+        return BSL_INVALID_ARG;
+    }
+    BSL_SAL_FREE(temp.buff);
+    data->buff = hex.x;
+    data->len = hex.len;
+    return BSL_SUCCESS;
+}
+#endif
+
+/**
+ * @test   SDV_BSL_ASN1_TO_UTF8_STRING_FUNC_TC001
+ * @title  Test BSL_ASN1_ToUtf8String with normal ASN.1 input from file.
+ * @brief  Input data is read from hex file, converted to UTF8 string.
+ * @expect Convert successful and output matches expected UTF8 data.
+ */
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_TO_UTF8_STRING_FUNC_TC001(int tag, char *path, char *expectPath)
+{
+#ifndef HITLS_BSL_SAL_FILE
+    (void)tag;
+    (void)path;
+    (void)expectPath;
+    SKIP_TEST();
+#else
+    BSL_ERR_Init();
+    BSL_ASN1_Buffer in = {0};
+    BSL_ASN1_Buffer out = {0};
+    BSL_ASN1_Buffer expectOut = {0};
+    in.tag = (uint8_t)tag;
+    ASSERT_EQ(ReadHexFileAsBytes(path, &in), BSL_SUCCESS);
+    ASSERT_EQ(ReadHexFileAsBytes(expectPath, &expectOut), BSL_SUCCESS);
+
+    ASSERT_EQ(BSL_ASN1_ToUtf8String(&in, &out), BSL_SUCCESS);
+    ASSERT_EQ(out.tag, BSL_ASN1_TAG_UTF8STRING);
+    ASSERT_EQ(out.len, expectOut.len);
+    ASSERT_TRUE(out.buff != in.buff);
+    ASSERT_COMPARE("Convert String", expectOut.buff, expectOut.len, out.buff, out.len);
+EXIT:
+    BSL_SAL_FREE(in.buff);
+    BSL_SAL_FREE(out.buff);
+    BSL_SAL_FREE(expectOut.buff);
+    return;
+#endif
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_BSL_ASN1_TO_UTF8_STRING_FUNC_TC002
+ * @title  Test BSL_ASN1_ToUtf8String with PrintableString and IA5String extended characters.
+ * @brief  Input data uses PrintableString and IA5String encoding types and contains
+ *         single-byte Unicode characters that are outside the valid character set
+ *         defined for these types.
+ * @expect Convert successful and extended characters are preserved in UTF8 output.
+ */
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_TO_UTF8_STRING_FUNC_TC002(int tag, Hex *data, Hex *expectData)
+{
+    BSL_ASN1_Buffer in = {0};
+    BSL_ASN1_Buffer out = {0};
+    in.tag = (uint8_t)tag;
+    in.len  = data->len;
+    in.buff = data->x;
+
+    ASSERT_EQ(BSL_ASN1_ToUtf8String(&in, &out), BSL_SUCCESS);
+    ASSERT_EQ(out.tag, BSL_ASN1_TAG_UTF8STRING);
+    ASSERT_EQ(out.len, expectData->len);
+    ASSERT_TRUE(out.buff != in.buff);
+    ASSERT_COMPARE("Convert String", expectData->x, expectData->len, out.buff, out.len);
+EXIT:
+    BSL_SAL_FREE(out.buff);
+    return;
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_BSL_ASN1_TO_UTF8_STRING_ERR_API_TC001
+ * @title  Test BSL_ASN1_ToUtf8String with invalid input parameters.
+ * @brief  Input parameters are abnormal.
+ * @expect Return corresponding error code.
+ */
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_TO_UTF8_STRING_ERR_API_TC001(int tag, Hex *data, int expect)
+{
+    BSL_ASN1_Buffer in = {0};
+    BSL_ASN1_Buffer out = {0};
+    in.tag = (uint8_t)tag;
+    in.len  = data->len;
+    in.buff = data->x;
+
+    ASSERT_EQ(BSL_ASN1_ToUtf8String(&in, &out), expect);
 EXIT:
     return;
 }

@@ -19,7 +19,7 @@
 #include "hitls_build.h"
 #ifdef HITLS_PKI_X509
 #include <stdint.h>
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj.h"
 #include "crypt_eal_pkey.h"
 #include "sal_atomic.h"
@@ -48,6 +48,8 @@ extern "C" {
 #define HITLS_X509_EXT_FLAG_KUSAGE (1 << 0)
 /* Identifies the basic constraints extension in the current structure */
 #define HITLS_X509_EXT_FLAG_BCONS (1 << 1)
+/* Identifies the extended keyusage extension in the current structure */
+#define HITLS_X509_EXT_FLAG_EXKUSAGE (1 << 2)
 
 #define HITLS_X509_GN_OTHER (HITLS_X509_GN_IP + 1)
 #define HITLS_X509_GN_X400  (HITLS_X509_GN_OTHER + 1)
@@ -57,6 +59,9 @@ extern "C" {
 typedef struct _HITLS_X509_NameNode {
     BSL_ASN1_Buffer nameType;
     BSL_ASN1_Buffer nameValue;
+    /* UTF-8 normalized content, used for certificate chain verification.
+       Allocate memory during the verification process and release it along with the NameNode. */
+    BSL_ASN1_Buffer utf8Value;
     uint8_t layer;
 } HITLS_X509_NameNode;
 
@@ -75,6 +80,8 @@ typedef struct _HITLS_X509_CertExt {
     int32_t maxPathLen;
     // key usage ext
     uint32_t keyUsage;
+    // extended key usage ext
+    HITLS_X509_ExtExKeyUsage exKeyUsage;
 } HITLS_X509_CertExt;
 
 typedef enum {
@@ -137,25 +144,31 @@ typedef struct {
 
 int32_t HITLS_X509_ParseTbsRawData(uint8_t *encode, uint32_t encodeLen, uint8_t **tbsRawData, uint32_t *tbsRawDataLen);
 
+#if defined(HITLS_PKI_X509_CRT_PARSE) || defined(HITLS_PKI_X509_CSR) || defined(HITLS_PKI_X509_CRL_PARSE) ||\
+    defined(HITLS_PKI_INFO_CRT) || defined(HITLS_PKI_INFO_CSR)
+int32_t HITLS_X509_ParseExtendedKeyUsage(HITLS_X509_ExtEntry *extEntry, HITLS_X509_ExtExKeyUsage *exku);
+#endif
+#if defined(HITLS_PKI_X509_CRT_PARSE) || defined(HITLS_PKI_X509_CSR_PARSE) || \
+    defined(HITLS_PKI_INFO_CRT) || defined(HITLS_PKI_INFO_CSR) || defined(HITLS_PKI_INFO_CRL)
+#endif
+
 #if defined(HITLS_PKI_X509_CRT_PARSE) || defined(HITLS_PKI_X509_CRL_PARSE) || defined(HITLS_PKI_X509_CSR_PARSE)
 // The public key  parsing is more complex, and the crypto module completes it
 int32_t HITLS_X509_ParseSignAlgInfo(BSL_ASN1_Buffer *algId, BSL_ASN1_Buffer *param, HITLS_X509_Asn1AlgId *x509Alg);
 
-int32_t HITLS_X509_ParseExtendedKeyUsage(HITLS_X509_ExtEntry *extEntry, HITLS_X509_ExtExKeyUsage *exku);
-int32_t HITLS_X509_ParseSubjectAltName(HITLS_X509_ExtEntry *extEntry,  HITLS_X509_ExtSan *san);
-
-void HITLS_X509_ClearSubjectAltName(HITLS_X509_ExtSan *san);
-
 int32_t HITLS_X509_ParseExtItem(BSL_ASN1_Buffer *extItem, HITLS_X509_ExtEntry *extEntry);
 
 int32_t HITLS_X509_ParseTime(BSL_ASN1_Buffer *before, BSL_ASN1_Buffer *after, HITLS_X509_ValidTime *time);
+#endif
 
+#if defined(HITLS_PKI_X509_CSR_GEN) || defined(HITLS_PKI_X509_CRT_GEN) || defined(HITLS_PKI_X509_CRL_GEN) || \
+    defined(HITLS_PKI_X509_VFY_LOCATION) || defined(HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES) || \
+    defined(HITLS_PKI_INFO)
+int32_t HITLS_X509_EncodeNameList(BSL_ASN1_List *list, BSL_ASN1_Buffer *name);
 #endif
 
 #if defined(HITLS_PKI_X509_CSR_GEN) || defined(HITLS_PKI_X509_CRT_GEN) || defined(HITLS_PKI_X509_CRL_GEN)
 int32_t HITLS_X509_EncodeSignAlgInfo(HITLS_X509_Asn1AlgId *x509Alg, BSL_ASN1_Buffer *asn);
-
-int32_t HITLS_X509_EncodeNameList(BSL_ASN1_List *list, BSL_ASN1_Buffer *name);
 
 int32_t HITLS_X509_SetNameList(BslList **dest, void *val, uint32_t valLen);
 
@@ -181,6 +194,8 @@ int32_t HITLS_X509_Sign(int32_t mdId, const CRYPT_EAL_PkeyCtx *prvKey, const HIT
 
 void HITLS_X509_FreeNameNode(HITLS_X509_NameNode *node);
 
+void HITLS_X509_FreeParsedNameNode(HITLS_X509_NameNode *node);
+
 int32_t HITLS_X509_ParseNameList(BSL_ASN1_Buffer *name, BSL_ASN1_List *list);
 
 int32_t HITLS_X509_ParseGeneralNames(uint8_t *encode, uint32_t encLen, BslList *list);
@@ -190,6 +205,10 @@ void HITLS_X509_ClearGeneralNames(BslList *names);
 int32_t HITLS_X509_ParseAuthorityKeyId(HITLS_X509_ExtEntry *extEntry, HITLS_X509_ExtAki *aki);
 
 int32_t HITLS_X509_ParseSubjectKeyId(HITLS_X509_ExtEntry *extEntry, HITLS_X509_ExtSki *ski);
+
+int32_t HITLS_X509_ParseSubjectAltName(HITLS_X509_ExtEntry *extEntry,  HITLS_X509_ExtSan *san);
+
+void HITLS_X509_ClearSubjectAltName(HITLS_X509_ExtSan *san);
 
 void HITLS_X509_ClearExtendedKeyUsage(HITLS_X509_ExtExKeyUsage *exku);
 
@@ -211,7 +230,7 @@ int32_t HITLS_X509_ParseX509(CRYPT_EAL_LibCtx *libCtx, const char *attrName, int
 
 int32_t HITLS_X509_CheckAlg(CRYPT_EAL_PkeyCtx *pubkey, const HITLS_X509_Asn1AlgId *subAlg);
 
-#if defined(HITLS_PKI_X509_CSR_PARSE) || defined(HITLS_PKI_PKCS12_PARSE)
+#if defined(HITLS_PKI_X509_CSR_PARSE) || defined(HITLS_PKI_PKCS12_PARSE) || defined(HITLS_PKI_CMS_SIGNEDDATA)
 int32_t HITLS_X509_ParseAttrList(BSL_ASN1_Buffer *attrBuff, HITLS_X509_Attrs *attrs, HITLS_X509_ParseAttrItemCb parseCb,
     HITLS_X509_FreeAttrItemCb freeItem);
 #endif
@@ -227,7 +246,8 @@ HITLS_X509_Attrs *HITLS_X509_AttrsNew(void);
 
 void HITLS_X509_AttrsFree(HITLS_X509_Attrs *attrs, HITLS_X509_FreeAttrItemCb freeItem);
 
-#if defined(HITLS_PKI_X509_CSR_GEN) || defined(HITLS_PKI_PKCS12_GEN)
+#if (defined(HITLS_PKI_X509_CSR_GEN) && defined(HITLS_PKI_X509_CSR_ATTR)) || defined(HITLS_PKI_PKCS12_GEN) || \
+    defined(HITLS_PKI_CMS_SIGNEDDATA)
 int32_t HITLS_X509_EncodeAttrList(uint8_t tag, HITLS_X509_Attrs *attrs, HITLS_X509_EncodeAttrItemCb encodeCb,
     BSL_ASN1_Buffer *attrAsn1);
 #endif
@@ -239,15 +259,18 @@ int32_t HITLS_X509_CheckSignature(const CRYPT_EAL_PkeyCtx *pubKey, uint8_t *rawD
 int32_t HITLS_X509_SetSm2UserId(BSL_Buffer *sm2UserId, void *val, uint32_t valLen);
 #endif
 
-int32_t HITLS_X509_RefUp(BSL_SAL_RefCount *references, int32_t *val, uint32_t valLen);
-
 int32_t HITLS_X509_GetList(BslList *list, void *val, uint32_t valLen);
+
+#if defined(HITLS_PKI_X509_CRT_GEN) || defined(HITLS_PKI_X509_CRL_GEN) || defined(HITLS_PKI_X509_CSR_GEN) || \
+    defined(HITLS_PKI_X509_CRT_AUTH)
+int32_t HITLS_X509_GetEncodeDn(BslList *list, void *val, uint32_t valLen);
+#endif
 
 int32_t HITLS_X509_GetPubKey(void *ealPubKey, void **val);
 
 int32_t HITLS_X509_GetSignAlg(BslCid signAlgId, int32_t *val, uint32_t valLen);
 
-int32_t HITLS_X509_GetSignMdAlg(const HITLS_X509_Asn1AlgId *signAlgId, int32_t *val, int32_t valLen);
+int32_t HITLS_X509_GetSignMdAlg(const HITLS_X509_Asn1AlgId *signAlgId, int32_t *val, uint32_t valLen);
 
 int32_t HITLS_X509_GetEncodeLen(uint32_t encodeLen, uint32_t *val, uint32_t valLen);
 
@@ -274,8 +297,6 @@ typedef int32_t (*DecodeExtCb)(HITLS_X509_ExtEntry *, void *);
 
 int32_t HITLS_X509_GetExt(BslList *ext, BslCid cid, BSL_Buffer *val, uint32_t expectLen, DecodeExtCb decodeExt);
 
-bool X509_IsValidHashAlg(CRYPT_MD_AlgId id);
-
 #ifdef HITLS_PKI_X509_VFY
 int32_t HITLS_X509_CheckAki(HITLS_X509_Ext *issueExt, HITLS_X509_Ext *subjectExt, BSL_ASN1_List *issueName,
     BSL_ASN1_Buffer *serialNum);
@@ -287,9 +308,19 @@ bool X509_CheckCmdValid(int32_t *cmdSet, uint32_t cmdSize, int32_t cmd);
 
 int32_t X509_ExtCtrl(HITLS_X509_Ext *ext, int32_t cmd, void *val, uint32_t valLen);
 
-#ifdef HITLS_PKI_INFO
+#if defined(HITLS_PKI_INFO_DN_HASH) || defined(HITLS_PKI_X509_VFY_LOCATION)
 int32_t HITLS_X509_EncodeCanonNameList(BSL_ASN1_List *list, BSL_ASN1_Buffer *name);
 #endif
+
+int32_t HITLS_X509_GetDistinguishNameStrFromList(BSL_ASN1_List *nameList, BSL_Buffer *buff);
+
+int32_t HITLS_X509_MatchPattern(uint32_t flags, const char *pattern, const char *hostname);
+
+int32_t X509_GetHashId(const HITLS_X509_Asn1AlgId *alg, int32_t *hashId);
+
+int32_t HITLS_X509_CtrlAlgInfo(CRYPT_EAL_PkeyCtx *pubKey, int32_t hashId, const HITLS_X509_Asn1AlgId *alg);
+
+int32_t HITLS_X509_EncodeObjIdentity(BslCid cid, BSL_ASN1_Buffer *asnBuff);
 
 #ifdef __cplusplus
 }

@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include <pthread.h>
 #include "uio_base.h"
 #include "bsl_uio.h"
 #include "hitls_type.h"
@@ -49,6 +50,8 @@ extern "C" {
 #define MAX_ATTR_NAME_LEN (256)
 #define MAX_PROVIDER_PATH_LEN (256)
 #define MAX_PROVIDER_COUNT (10)
+#define KEY_LOG_CB_LEN (1024)
+#define MAX_EXPORT_MATERIAL_BUF (1024)
 
 #define DEFAULT_CERT_PATH       "../../testcode/testdata/tls/certificate/der/"
 
@@ -211,6 +214,7 @@ typedef struct {
     char alpnList[MAX_ALPN_LEN];               // alpn
     char alpnUserData[ALPN_CB_NAME_LEN];
     char alpnSelectCb[ALPN_DATA_NAME_LEN];     // Application Layer Protocol Select Callback
+    char keyLogCb[KEY_LOG_CB_LEN];
 
     // Indicates whether renegotiation is supported. The default value is False, indicating that renegotiation is not
     // supported
@@ -225,7 +229,7 @@ typedef struct {
     // The handshake will be continued regardless of the verification result. for server and client
     bool isSupportVerifyNone;
     bool isSupportPostHandshakeAuth;    // Indicates whether to support post handshake auth. The default value is false.
-    bool isSupportExtendedMasterSecret;   // supports extended master keys. The default value is True
+    int32_t emsMode;   // supports extended master keys. The default value is True
     bool isSupportSessionTicket;        // Support session ticket
     bool isEncryptThenMac;              // Encrypt-then-mac is supported
     // Users can set the DH parameter to be automatically selected. If the switch is enabled,
@@ -236,12 +240,16 @@ typedef struct {
     void *infoCb;                       // connection establishment callback function
     void *msgCb;                        // Message callback function
     void *msgArg;                       // Message callback parameter function
+    void *certCb;
+    void *certArg;
+    void *clientHelloCb;
+    void *clientHelloArg;
     // Indicates whether to enable the function of sending handshake information by flight
     bool isFlightTransmitEnable;
     bool isNoSetCert;                   // Indicates whether the certificate does not need to be set
 	int32_t securitylevel;                  // Security level
     int32_t readAhead;
-
+    void *caList;
     char psk[PSK_MAX_LEN];              // psk password
     char ticketKeyCb[TICKET_KEY_CB_NAME_LEN]; // ticket key Callback Function Name
 
@@ -261,7 +269,9 @@ typedef struct {
     int32_t providerCnt;
     char attrName[MAX_ATTR_NAME_LEN];
     uint32_t modeSupport;       // support features, such as HITLS_MODE_SEND_FALLBACK_SCSV. All mode at hitls_type.h
+    bool isMiddleBoxCompat;     // Indicates whether to enable the middle box compatibility mode.
     bool isSupportDtlsCookieExchange;
+    uint16_t recordSizeLimit;
 } HLT_Ctx_Config;
 
 typedef struct {
@@ -278,7 +288,7 @@ typedef struct {
     void *ssl; // hitls ctx
     int ctxId;
     int sslId;
-    unsigned long int acceptId;
+    pthread_t acceptId;
 } HLT_Tls_Res;
 
 typedef enum {
@@ -312,7 +322,7 @@ typedef struct {
 #if (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 #define TIME_OUT_SEC 50
 #else
-#define TIME_OUT_SEC 16
+#define TIME_OUT_SEC 8
 #endif
 
 #ifdef __cplusplus

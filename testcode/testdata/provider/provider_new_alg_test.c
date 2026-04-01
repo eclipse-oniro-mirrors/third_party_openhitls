@@ -22,9 +22,9 @@
 #include "bsl_obj.h"
 #include "bsl_err.h"
 #include "bsl_params.h"
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_obj_internal.h"
-#include "crypt_encode_decode_key.h"
+#include "crypt_codecskey.h"
 #include "crypt_errno.h"
 #include "crypt_params_key.h"
 #include "crypt_eal_implprovider.h"
@@ -179,14 +179,13 @@ static int32_t TestNewKeyGetPubKey(TestNewKeyCtx *ctx, BSL_Param *para)
     return CRYPT_SUCCESS;
 }
 
-static int32_t TestNewKeySign(const TestNewKeyCtx *ctx, int32_t algId, 
-                            const uint8_t *data, uint32_t dataLen,
-                            uint8_t *sign, uint32_t *signLen)
+static int32_t TestNewKeySign(const TestNewKeyCtx *ctx, int32_t algId, const uint8_t *data, uint32_t dataLen,
+                              uint8_t *sign, uint32_t *signLen)
 {
     if (ctx == NULL || data == NULL || sign == NULL || signLen == NULL) {
         return CRYPT_NULL_INPUT;
     }
-    
+
     if (*signLen < TEST_CRYPT_DEFAULT_SIGNLEN) {
         return CRYPT_INVALID_ARG;
     }
@@ -198,7 +197,6 @@ static int32_t TestNewKeySign(const TestNewKeyCtx *ctx, int32_t algId,
         sign[i] = ctx->pubkey[(i - 4) % ctx->pubkeyLen];
     }
     *signLen = TEST_CRYPT_DEFAULT_SIGNLEN;
-    
     return CRYPT_SUCCESS;
 }
 
@@ -234,6 +232,13 @@ static void TestNewKeyFreeCtx(TestNewKeyCtx *ctx)
     }
 }
 
+static int32_t TestNewKeyCheck(const TestNewKeyCtx *ctx1, const TestNewKeyCtx *ctx2)
+{
+    (void)ctx1;
+    (void)ctx2;
+    return CRYPT_SUCCESS;
+}
+
 static int32_t TestNewKeyCtrl(TestNewKeyCtx *ctx, int32_t cmd, void *val, uint32_t valLen)
 {
     if (ctx == NULL || val == NULL) {
@@ -256,7 +261,7 @@ static int32_t TestNewKeyCtrl(TestNewKeyCtx *ctx, int32_t cmd, void *val, uint32
             *((uint32_t *)val) = NEW_PARA_ALGID;
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_SET_PARA_BY_ID:
-            ctx->paraId = *((uint32_t *)val);
+            ctx->paraId = *((int32_t *)val);
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_GET_SIGNLEN:
             *((uint32_t *)val) = TEST_CRYPT_DEFAULT_SIGNLEN;
@@ -342,6 +347,7 @@ const CRYPT_EAL_Func g_testKeyMgmtNewKey[] = {
     {CRYPT_EAL_IMPLPKEYMGMT_CTRL, (CRYPT_EAL_ImplPkeyMgmtCtrl)TestNewKeyCtrl},
     {CRYPT_EAL_IMPLPKEYMGMT_IMPORT, (CRYPT_EAL_ImplPkeyMgmtImport)TestNewKeyImport},
     {CRYPT_EAL_IMPLPKEYMGMT_EXPORT, (CRYPT_EAL_ImplPkeyMgmtExport)TestNewKeyExport},
+    {CRYPT_EAL_IMPLPKEYMGMT_CHECK, (CRYPT_EAL_ImplPkeyMgmtCheck)TestNewKeyCheck},
     {CRYPT_EAL_IMPLPKEYMGMT_FREECTX, (CRYPT_EAL_ImplPkeyMgmtFreeCtx)TestNewKeyFreeCtx},
     CRYPT_EAL_FUNC_END
 };
@@ -904,15 +910,15 @@ int32_t CRYPT_EAL_ProviderInit(CRYPT_EAL_ProvMgrCtx *mgrCtx, BSL_Param *param,
     if (mgrCtx == NULL || capFuncs == NULL || outFuncs == NULL || provCtx == NULL) {
         return CRYPT_NULL_INPUT;
     }
-    
+
     TestProvCtx *ctx = malloc(sizeof(TestProvCtx));
     if (ctx == NULL) {
         return CRYPT_MEM_ALLOC_FAIL;
     }
-    
+
     ctx->mgrCtxHandle = mgrCtx;
     *provCtx = ctx;
     *outFuncs = g_testProvOutFuncs;
-    
+
     return CRYPT_SUCCESS;
 }

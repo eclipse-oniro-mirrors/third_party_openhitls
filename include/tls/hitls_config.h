@@ -15,7 +15,7 @@
 
 /**
  * @defgroup hitls_config
- * @ingroup  hitls
+ * @ingroup tls
  * @brief    TLS parameter configuration
  */
 
@@ -197,6 +197,9 @@ typedef enum {
     HITLS_CHACHA20_POLY1305_SHA256 = 0x1303,
     HITLS_AES_128_CCM_SHA256 = 0x1304,
     HITLS_AES_128_CCM_8_SHA256 = 0x1305,
+    /* RFC 8998 */
+    HITLS_SM4_GCM_SM3 = 0x00C6,
+    HITLS_SM4_CCM_SM3 = 0x00C7,
     /* TLCP 1.1 cipher suite */
     HITLS_ECDHE_SM4_CBC_SM3 = 0xE011,
     HITLS_ECC_SM4_CBC_SM3 = 0xE013,
@@ -208,7 +211,6 @@ typedef enum {
  * @ingroup hitls_config
  * @brief   Create DTLS12 configuration items, including the default settings. The user can call the
  *          HITLS_CFG_SetXXX interface to modify the settings.
- *
  * @attention The default configuration is as follows:
     Version number: HITLS_VERSION_DTLS12
     Algorithm suite: HITLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, HITLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -227,16 +229,16 @@ typedef enum {
     This API is a version-specific API. After the configuration context is created,
     the HITLS_SetVersion, HITLS_CFG_SetVersion, HITLS_SetVersionSupport, HITLS_CFG_SetVersionSupport,
     HITLS_SetMinProtoVersion, or HITLS_SetMaxProtoVersion interface cannot be used to set other supported versions.
- * @retval  HITLS_Config, object pointer succeeded.
- * @retval  NULL, failed to apply for the object.
+ * @return  HITLS_Config, object pointer succeeded.
+ * @return  NULL, failed to apply for the object.
  * @see HITLS_CFG_FreeConfig
  */
 HITLS_Config *HITLS_CFG_NewDTLS12Config(void);
 
 /**
  * @ingroup hitls_config
- * @brief   Create DTLS12 configuration items with provider, including the default settings. Same as HITLS_CFG_NewDTLS12Config
- * except that it requires libCtx and attribute parameters.
+ * @brief   Create DTLS12 configuration items with provider, including the default settings.
+ * Same as HITLS_CFG_NewDTLS12Config except that it requires libCtx and attribute parameters.
  *
  * @param[in] libCtx: The library context.
  * @param[in] attrName: The attribute name.
@@ -250,12 +252,10 @@ HITLS_Config *HITLS_CFG_ProviderNewDTLS12Config(HITLS_Lib_Ctx *libCtx, const cha
 /**
  * @ingroup hitls_config
  * @brief   Create TLCP configuration items, including default settings.
- *
  * The user can call the HITLS_CFG_SetXXX interface to modify the settings.
- *
  * @attention   The default configuration is as follows:
     Version number: HITLS_VERSION_TLCP_DTLCP11
-    Algorithm suite: HITLS_ECDHE_SM4_CBC_SM3, HITLS_ECC_SM4_CBC_SM3, HITLS_ECDHE_SM4_GCM_SM3, HITLS_ECC_SM4_GCM_SM3
+    Algorithm suite: HITLS_ECDHE_SM4_CBC_SM3, HITLS_ECC_SM4_CBC_SM3
     EC point format: HITLS_POINT_FORMAT_UNCOMPRESSED
     groups:sm2
     Extended Master Key: Enabled
@@ -266,15 +266,16 @@ HITLS_Config *HITLS_CFG_ProviderNewDTLS12Config(HITLS_Lib_Ctx *libCtx, const cha
     This API is a version-specific API. After the configuration context is created,
     the HITLS_SetVersion, HITLS_CFG_SetVersion, HITLS_SetVersionSupport, HITLS_CFG_SetVersionSupport,
     HITLS_SetMinProtoVersion, or HITLS_SetMaxProtoVersion interface cannot be used to set other supported versions.
- * @retval  HITLS_Config, object pointer succeeded.
- * @retval  NULL, object application failed.
+ * @return  HITLS_Config, object pointer succeeded.
+ * @return  NULL, object application failed.
+ * @see HITLS_CFG_FreeConfig
  */
 HITLS_Config *HITLS_CFG_NewTLCPConfig(void);
 
 /**
  * @ingroup hitls_config
- * @brief   Create TLCP configuration items with provider, including the default settings. Same as HITLS_CFG_NewTLCPConfig
- * except that it requires libCtx and attribute parameters.
+ * @brief   Create TLCP configuration items with provider, including the default settings.
+ * Same as HITLS_CFG_NewTLCPConfig except that it requires libCtx and attribute parameters.
  *
  * @param[in] libCtx: The library context.
  * @param[in] attrName: The attribute name.
@@ -310,8 +311,8 @@ HITLS_Config *HITLS_CFG_NewDTLCPConfig(void);
 
 /**
  * @ingroup hitls_config
- * @brief   Create DTLCP configuration items with provider, including the default settings. Same as HITLS_CFG_NewDTLCPConfig
- * except that it requires libCtx and attribute parameters.
+ * @brief   Create DTLCP configuration items with provider, including the default settings. Same as
+ * HITLS_CFG_NewDTLCPConfig except that it requires libCtx and attribute parameters.
  *
  * @param[in] libCtx: The library context.
  * @param[in] attrName: The attribute name.
@@ -325,9 +326,7 @@ HITLS_Config *HITLS_CFG_ProviderNewDTLCPConfig(HITLS_Lib_Ctx *libCtx, const char
 /**
  * @ingroup hitls_config
  * @brief   Create a TLS12 configuration item, including the default configuration.
- *
  * The user can call the HITLS_CFG_SetXXX interface to modify the configuration.
- *
  * @attention   The default configuration is as follows:
     Version number: HITLS_VERSION_TLS12
     Algorithm suite: HITLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, HITLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -346,15 +345,16 @@ HITLS_Config *HITLS_CFG_ProviderNewDTLCPConfig(HITLS_Lib_Ctx *libCtx, const char
     This API is a version-specific API. After the configuration context is created,
     the HITLS_SetVersion, HITLS_CFG_SetVersion, HITLS_SetVersionSupport, HITLS_CFG_SetVersionSupport,
     HITLS_SetMinProtoVersion, or HITLS_SetMaxProtoVersion interface cannot be used to set other supported versions.
- * @retval  HITLS_Config, object pointer succeeded.
- * @retval  NULL, object application failed.
+ * @return  HITLS_Config, object pointer succeeded.
+ * @return  NULL, object application failed.
+ * @see HITLS_CFG_FreeConfig
  */
 HITLS_Config *HITLS_CFG_NewTLS12Config(void);
 
 /**
  * @ingroup hitls_config
- * @brief   Create TLS12 configuration items with provider, including the default settings. Same as HITLS_CFG_NewTLS12Config
- * except that it requires libCtx and attribute parameters.
+ * @brief   Create TLS12 configuration items with provider, including the default settings.
+ * Same as HITLS_CFG_NewTLS12Config, except that it requires libCtx and attribute parameters.
  *
  * @param[in] libCtx: The library context.
  * @param[in] attrName: The attribute name.
@@ -368,9 +368,7 @@ HITLS_Config *HITLS_CFG_ProviderNewTLS12Config(HITLS_Lib_Ctx *libCtx, const char
 /**
  * @ingroup hitls_config
  * @brief   Creates the default TLS13 configuration.
- *
  * The HITLS_CFG_SetXXX interface can be used to modify the default TLS13 configuration.
- *
  * @attention   The default configuration is as follows:
     Version number: HITLS_VERSION_TLS13
     Algorithm suite: HITLS_AES_128_GCM_SHA256, HITLS_CHACHA20_POLY1305_SHA256, HITLS_AES_128_GCM_SHA256
@@ -384,15 +382,16 @@ HITLS_Config *HITLS_CFG_ProviderNewTLS12Config(HITLS_Lib_Ctx *libCtx, const char
     the HITLS_SetVersion, HITLS_CFG_SetVersion, HITLS_SetVersionSupport,
     HITLS_CFG_SetVersionSupport, HITLS_SetMinProtoVersion, and HITLS_SetMaxProtoVersion
     interface cannot be used to set other supported versions.
- * @retval  HITLS_Config, object pointer succeeded.
- * @retval  NULL, failed to apply for the object
+ * @return  HITLS_Config, object pointer succeeded.
+ * @return  NULL, failed to apply for the object.
+ * @see HITLS_CFG_FreeConfig
  */
 HITLS_Config *HITLS_CFG_NewTLS13Config(void);
 
 /**
  * @ingroup hitls_config
- * @brief   Create TLS13 configuration items with provider, including the default settings. Same as HITLS_CFG_NewTLS13Config
- * except that it requires libCtx and attribute parameters.
+ * @brief   Create TLS13 configuration items with provider, including the default settings.
+ * Same as HITLS_CFG_NewTLS13Config, except that it requires libCtx and attribute parameters.
  *
  * @param[in] libCtx: The library context.
  * @param[in] attrName: The attribute name.
@@ -406,9 +405,9 @@ HITLS_Config *HITLS_CFG_ProviderNewTLS13Config(HITLS_Lib_Ctx *libCtx, const char
 /**
  * @ingroup hitls_config
  * @brief   Create full TLS configurations. The HITLS_CFG_SetXXX interface can be used to modify the configurations.
- *
  * @attention   The default configuration is as follows:
-    Version number: HITLS_VERSION_TLS12, HITLS_VERSION_TLS13
+    Version number: HITLS_VERSION_SSL30, HITLS_VERSION_TLS10,
+                    HITLS_VERSION_TLS11, HITLS_VERSION_TLS12, HITLS_VERSION_TLS13
     Algorithm suite: HITLS_AES_128_GCM_SHA256, HITLS_CHACHA20_POLY1305_SHA256, HITLS_AES_128_GCM_SHA256
             HITLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, HITLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
             HITLS_DHE_DSS_WITH_AES_256_GCM_SHA384, HITLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -431,8 +430,9 @@ HITLS_Config *HITLS_CFG_ProviderNewTLS13Config(HITLS_Lib_Ctx *libCtx, const char
     HITLS_CFG_SetVersionSupport, HITLS_SetMinProtoVersion, and HITLS_SetMaxProtoVersion are used together,
     Set the supported version. However, only the TLS configuration item is configured in this interface.
     Therefore, the DTLS version cannot be set.
- * @retval  HITLS_Config, object pointer succeeded.
- * @retval  NULL, object application failed.
+ * @return  HITLS_Config, object pointer succeeded.
+ * @return  NULL, object application failed.
+ * @see HITLS_CFG_FreeConfig
  */
 HITLS_Config *HITLS_CFG_NewTLSConfig(void);
 
@@ -454,7 +454,6 @@ HITLS_Config *HITLS_CFG_ProviderNewTLSConfig(HITLS_Lib_Ctx *libCtx, const char *
  * @ingroup hitls_config
  * @brief   Create full DTLS configurations. The HITLS_CFG_SetXXX interface can be called
  * to modify the DTLS configuration.
- *
  * @attention   The default configuration is as follows:
     Version number: HITLS_VERSION_DTLS10, HITLS_VERSION_DTLS12
     Algorithm suite: HITLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, HITLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -474,15 +473,16 @@ HITLS_Config *HITLS_CFG_ProviderNewTLSConfig(HITLS_Lib_Ctx *libCtx, const char *
     HITLS_CFG_SetVersionSupport, HITLS_SetMinProtoVersion, and HITLS_SetMaxProtoVersion are used together,
     Set the supported version. However, only the DTLS configuration item is configured in this interface.
     Therefore, the TLS version cannot be set.
- * @retval  HITLS_Config, object pointer succeeded.
- * @retval  NULL, Object application failed.
+ * @return  HITLS_Config, object pointer succeeded.
+ * @return  NULL, Object application failed.
+ * @see HITLS_CFG_FreeConfig
  */
 HITLS_Config *HITLS_CFG_NewDTLSConfig(void);
 
 /**
  * @ingroup hitls_config
- * @brief   Create DTLS configuration items with provider, including the default settings. Same as HITLS_CFG_NewDTLSConfig
- * except that it requires libCtx and attribute parameters.
+ * @brief   Create DTLS configuration items with provider, including the default settings.
+ * Same as HITLS_CFG_NewDTLSConfig, except that it requires libCtx and attribute parameters.
  *
  * @param[in] libCtx: The library context.
  * @param[in] attrName: The attribute name.
@@ -498,7 +498,7 @@ HITLS_Config *HITLS_CFG_ProviderNewDTLSConfig(HITLS_Lib_Ctx *libCtx, const char 
  * @brief   Release the config file.
  *
  * @param   config [OUT] Config handle.
- * @retval  void
+ * @return  void
  */
 void HITLS_CFG_FreeConfig(HITLS_Config *config);
 
@@ -515,12 +515,11 @@ int32_t HITLS_CFG_UpRef(HITLS_Config *config);
 /**
  * @ingroup hitls_config
  * @brief   Set the supported version number range.
- *
  * @param   config      [OUT] Config handle
  * @param   minVersion  [IN] Minimum version number
  * @param   maxVersion  [IN] Maximum version number
  * @attention   The maximum version number and minimum version number must be both TLS and DTLS.
- *              Currently, only DTLS 1.2.
+ * Currently, only DTLS 1.2.
  * HITLS_CFG_NewDTLSConfig, HITLS_CFG_NewTLSConfig can be used with full configuration interfaces.
  * If TLS full configuration is configured, only the TLS version can be set.
  * If DTLS full configuration is configured, only the DTLS version can be set.
@@ -546,6 +545,9 @@ int32_t HITLS_CFG_SetVersionForbid(HITLS_Config *config, uint32_t noVersion);
  *
  * @param   config   [OUT] Config handle
  * @param   support  [IN] Whether to support the function. The options are as follows: True: yes; False: no.
+ * @attention If you enable this feature, it is recommended to also set HITLS_CFG_SetLegacyRenegotiateSupport
+ *            to false and HITLS_CFG_GetExtendedMasterSecretMode to HITLS_EMS_MODE_FORCE, otherwise renegotiation
+ *            attacks and triple handshake attacks may be possible.
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  HITLS_NULL_INPUT, config is null.
  */
@@ -585,15 +587,14 @@ int32_t HITLS_CFG_SetResumptionOnRenegoSupport(HITLS_Config *config, bool suppor
 /**
  * @ingroup hitls_config
  * @brief   Sets whether to verify the client certificate.
- *          Client: This setting has no impact
- *          Server: The certificate request will be sent.
- *
+            Client: This setting has no impact
+            Server: The certificate request will be sent.
  * @param   config  [OUT] Config handle
  * @param   support [IN] Indicates whether the client certificate can be verified.True: yes; False: no.
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  HITLS_NULL_INPUT, The config parameter is empty.
  * @attention The settings on the client are invalid. Only the settings on the server take effect.
- *             If this parameter is not set, single-ended verification is used by default.
+ * If this parameter is not set, single-ended verification is used by default.
  */
 int32_t HITLS_CFG_SetClientVerifySupport(HITLS_Config *config, bool support);
 
@@ -601,10 +602,9 @@ int32_t HITLS_CFG_SetClientVerifySupport(HITLS_Config *config, bool support);
  * @ingroup hitls_config
  * @brief   Sets whether to allow the client certificate to be empty.
  *          This parameter takes effect only when client certificate verification is enabled.
- *          Client: This setting has no impact
- *          Server: Check whether the certificate passes the verification when receiving an empty
- *                certificate from the client. The verification fails by default.
- *
+            Client: This setting has no impact
+            Server: Check whether the certificate passes the verification when receiving an empty
+               certificate from the client. The verification fails by default.
  * @param   config  [OUT] Config handle
  * @param   support [IN] Indicates whether the authentication is successful when no client certificate is available.
             true: The server still passes the verification when the certificate sent by the client is empty.
@@ -620,7 +620,7 @@ int32_t HITLS_CFG_SetNoClientCertSupport(HITLS_Config *config, bool support);
  *
  * @param   config  [OUT] Config handle
  * @param   support [IN] Indicates whether to forcibly support extended master keys.
-                         The options are as follows: True: yes; False: no. The default value is true.
+ The options are as follows: True: yes; False: no. The default value is true.
  * @retval  HITLS_SUCCESS.
  * @retval  HITLS_NULL_INPUT, config is NULL
  */
@@ -629,7 +629,6 @@ int32_t HITLS_CFG_SetExtendedMasterSecretSupport(HITLS_Config *config, bool supp
 /**
  * @ingroup hitls_config
  * @brief   Set whether the DH parameter can be automatically selected by users.
- *
  * If the value is true, the DH parameter is automatically selected based on the length of the
  * certificate private key. If the value is false, the DH parameter needs to be set.
  *
@@ -699,6 +698,29 @@ int32_t HITLS_CFG_GetExtendedMasterSecretSupport(HITLS_Config *config, bool *isS
 
 /**
  * @ingroup hitls_config
+ * @brief   Set extended master secret mode.
+ *
+ * @param   config [IN] TLS config handle
+ * @param   mode   [IN] EMS mode. See HITLS_EMS_MODE_*.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, if config is NULL.
+ * @retval  HITLS_INVALID_INPUT, if mode is invalid.
+ */
+int32_t HITLS_CFG_SetExtendedMasterSecretMode(HITLS_Config *config, int32_t mode);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Get extended master secret mode.
+ *
+ * @param   config [IN] TLS config handle
+ * @param   mode   [OUT] EMS mode. See HITLS_EMS_MODE_*.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, if config or mode is NULL.
+ */
+int32_t HITLS_CFG_GetExtendedMasterSecretMode(HITLS_Config *config, int32_t *mode);
+
+/**
+ * @ingroup hitls_config
  * @brief   Query whether the DH parameter can be automatically selected by the user. If yes,
  * the DH parameter will be automatically selected based on the length of the certificate private key.
  *
@@ -715,7 +737,6 @@ int32_t HITLS_CFG_GetDhAutoSupport(HITLS_Config *config, bool *isSupport);
             client: If the client supports pha, the client sends pha extensions.
             Server: supports pha. After the handshake, the upper-layer interface HITLS_VerifyClientPostHandshake
                initiates certificate verification.
- *
  * @param   config  [OUT] Config handle
  * @param   support [IN] Whether to support pha
             True: pha is supported.
@@ -741,7 +762,7 @@ int32_t HITLS_CFG_GetPostHandshakeAuthSupport(HITLS_Config *config, bool *isSupp
 /**
  * @ingroup hitls_config
  * @brief   Sets whether to support not perform dual-ended verification
- *
+ * @param   config  [IN] Config handle
  * @param   support [IN] True: yes; False: no.
  * @retval  HITLS_SUCCESS, if successful.
  * @retval  HITLS_NULL_INPUT, config is null.
@@ -789,17 +810,29 @@ int32_t HITLS_CFG_GetClientOnceVerifySupport(HITLS_Config *config, bool *isSuppo
  * @param   config [OUT] Config handle.
  * @param   cipherSuites [IN] cipher suite array, corresponding to the HITLS_CipherSuite enumerated value.
  * @param   cipherSuitesSize [IN] cipher suite array length.
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetCipherSuites(HITLS_Config *config, const uint16_t *cipherSuites, uint32_t cipherSuitesSize);
 
 /**
  * @ingroup hitls_config
+ * @brief  Get the supported cipher suites array.
+ * @param   config [IN] Config handle.
+ * @param   data [OUT] Array for storing cipher suites.
+ * @param   dataLen [IN] Array length.
+ * @param   cipherSuitesSize [OUT] cipher suite array length.
+ * @return  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_GetCipherSuites(HITLS_Config *config, uint16_t *data, uint32_t dataLen, uint32_t *cipherSuitesSize);
+
+/**
+ * @ingroup hitls_config
  * @brief   Clear the TLS1.3 cipher suite.
  *
  * @param   config [IN] Config handle.
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_ClearTLS13CipherSuites(HITLS_Config *config);
@@ -807,13 +840,12 @@ int32_t HITLS_CFG_ClearTLS13CipherSuites(HITLS_Config *config);
 /**
  * @ingroup hitls_config
  * @brief   Set the format of the ec point.
- *
  * @attention Currently, this parameter can only be set to HITLS_ECPOINTFORMAT_UNCOMPRESSED.
  *
  * @param   config [OUT] Config context.
  * @param   pointFormats [IN] EC point format, corresponding to the HITLS_ECPointFormat enumerated value.
  * @param   pointFormatsSize [IN] EC point format length
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetEcPointFormats(HITLS_Config *config, const uint8_t *pointFormats, uint32_t pointFormatsSize);
@@ -822,26 +854,38 @@ int32_t HITLS_CFG_SetEcPointFormats(HITLS_Config *config, const uint8_t *pointFo
  * @ingroup hitls_config
  * @brief   Set the group supported during key exchange. The group supported
  * by HiTLS can be queried in HITLS_NamedGroup.
- *
  * @attention If a group is not supported, an error will be reported during configuration check.
  * @param   config [OUT] Config context.
  * @param   groups [IN] Key exchange group. Corresponds to the HITLS_NamedGroup enumerated value.
  * @param   groupsSize [IN] Group length
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetGroups(HITLS_Config *config, const uint16_t *groups, uint32_t groupsSize);
 
 /**
  * @ingroup hitls_config
+ * @brief   Set the group supported during key exchange. The group supported
+ * by HiTLS can be queried in HITLS_NamedGroup.
+ * @attention If a group is not supported, an error will be reported during configuration check.
+ * @param   config [OUT] Config context.
+ * @param   groupNames [IN] Key exchange group. Separate with colons,
+ * for example, "HITLS_EC_GROUP_SECP256R1:HITLS_EC_GROUP_SECP384R1"
+ * @param   groupNamesLen [IN] Key exchange group string length
+ * @return  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_SetGroupList(HITLS_Config *config, const char *groupNames, uint32_t groupNamesLen);
+
+/**
+ * @ingroup hitls_config
  * @brief   Set the signature algorithms supported during negotiation. The signature algorithms supported
  * by the HiTLS can be queried in the HITLS_SignHashAlgo file.
- *
  * @attention If an unsupported signature algorithm is set, an error will be reported during configuration check.
  * @param   config      [OUT] Config context
  * @param   signAlgs    [IN] Signature algorithm array, that is, the enumerated value of HITLS_SignHashAlgo.
  * @param   signAlgsSize [IN] Signature algorithm array length
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetSignature(HITLS_Config *config, const uint16_t *signAlgs, uint16_t signAlgsSize);
@@ -854,7 +898,7 @@ int32_t HITLS_CFG_SetSignature(HITLS_Config *config, const uint16_t *signAlgs, u
  * @param   caType  [IN] CA indication type
  * @param   data [IN] CA indication data
  * @param   len [IN] Data length
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_AddCAIndication(HITLS_Config *config, HITLS_TrustedCAType caType, const uint8_t *data, uint32_t len);
@@ -864,15 +908,26 @@ int32_t HITLS_CFG_AddCAIndication(HITLS_Config *config, HITLS_TrustedCAType caTy
  * @brief   Obtain the CA list.
  *
  * @param   config [OUT] TLS link configuration
- * @retval  CA list
+ * @return  CA list
  */
 HITLS_TrustedCAList *HITLS_CFG_GetCAList(const HITLS_Config *config);
 
 /**
  * @ingroup hitls_config
+ * @brief   Set the CA list.
+ *
+ * @param   config [in] TLS link configuration
+ * @param   list [in] CA list
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_SetCAList(HITLS_Config *config, HITLS_TrustedCAList *list);
+
+/**
+ * @ingroup hitls_config
  * @brief   Clear the CA list.
  * @param   config [OUT] TLS link configuration
- * @retval  CA list
+ * @return  CA list
  */
 void HITLS_CFG_ClearCAList(HITLS_Config *config);
 
@@ -882,8 +937,8 @@ void HITLS_CFG_ClearCAList(HITLS_Config *config);
  *
  * @param   config  [OUT] TLS link configuration
  * @param   mode  [IN] PSK key exchange mode. Currently, only TLS13_KE_MODE_PSK_ONLY and TLS13_KE_MODE_PSK_WITH_DHE
- *                     are supported. The corresponding bit is set to 1.
- * @retval  HITLS_SUCCESS, if successful.
+ * are supported. The corresponding bit is set to 1.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetKeyExchMode(HITLS_Config *config, uint32_t mode);
@@ -893,14 +948,16 @@ int32_t HITLS_CFG_SetKeyExchMode(HITLS_Config *config, uint32_t mode);
  * @brief   Obtain the key exchange mode, which is used by TLS1.3.
  *
  * @param   config  [OUT] TLS link configuration
- * @retval  Key exchange mode
+ * @return  Key exchange mode
  */
 uint32_t HITLS_CFG_GetKeyExchMode(HITLS_Config *config);
 
 /* If the ClientHello callback is successfully executed, the handshake continues */
-#define HITLS_CONTINUE_HANDHSAKE 1
+#define HITLS_CLIENT_HELLO_SUCCESS 1
 /* The  ClientHello callback fails. Send an alert message and terminate the handshake */
-#define HITLS_ALERT_HANDSHAKE 0
+#define HITLS_CLIENT_HELLO_FAILED 0
+/* The ClientHello callback is suspended. The handshake process is suspended and the callback is called again */
+#define HITLS_CLIENT_HELLO_RETRY (-1)
 
 /**
  * @ingroup hitls_config
@@ -909,18 +966,19 @@ uint32_t HITLS_CFG_GetKeyExchMode(HITLS_Config *config);
  * @param   ctx  [IN] Ctx context
  * @param   alert   [OUT] The callback that returns a failure should indicate the alert value to be sent in al.
  * @param   arg  [IN] Product input context
- * @retval  HITLS_CONTINUE_HANDHSAKE: successful. Other values are considered as failure.
+ * @retval  HITLS_CLIENT_HELLO_SUCCESS: successful.
+ * @retval  HITLS_CLIENT_HELLO_RETRY: suspend the handshake process
+ * @retval  HITLS_CLIENT_HELLO_FAILED: failed, send an alert message and terminate the handshake
  */
 typedef int32_t (*HITLS_ClientHelloCb)(HITLS_Ctx *ctx, int32_t *alert, void *arg);
 
 /**
  * @ingroup hitls_config
- * @brief   Set the ClientHello callback on the server.
- *
+ * @brief   Set the cookie verification callback on the server.
  * @param   config [OUT] Config context
  * @param   callback [IN] ClientHello callback
  * @param   arg  [IN] Product input context
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_SUCCESS, if successful.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_SetClientHelloCb(HITLS_Config *config, HITLS_ClientHelloCb callback, void *arg);
@@ -950,7 +1008,7 @@ int32_t HITLS_CFG_SetDtlsTimerCb(HITLS_Config *config, HITLS_DtlsTimerCb callbac
  *
  * @param   config  [IN] Config context
  * @param   minVersion  [OUT] Minimum version supported
- * @retval  HITLS_SUCCESS is obtained successfully.
+ * @return  HITLS_SUCCESS is obtained successfully.
  *          For details about other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_GetMinVersion(const HITLS_Config *config, uint16_t *minVersion);
@@ -961,7 +1019,7 @@ int32_t HITLS_CFG_GetMinVersion(const HITLS_Config *config, uint16_t *minVersion
  *
  * @param   config  [IN] Config context
  * @param   maxVersion  [OUT] Maximum supported version
- * @retval  HITLS_SUCCESS is obtained successfully.
+ * @return  HITLS_SUCCESS is obtained successfully.
  *          For other error codes, see hitls_error.h.
  */
 int32_t HITLS_CFG_GetMaxVersion(const HITLS_Config *config, uint16_t *maxVersion);
@@ -1026,8 +1084,8 @@ int32_t HITLS_CFG_GetKeyExchId(const HITLS_Cipher *cipher, HITLS_KeyExchAlgo *kx
  * @brief   Obtain the cipher suite name based on the cipher suite.
  *
  * @param   cipher [IN] Cipher suite
- * @retval  "(NONE)" Invalid cipher suite.
- * @retval  Name of the given cipher suite
+ * @return  "(NONE)" Invalid cipher suite.
+ * @return  Name of the given cipher suite
  */
 const uint8_t* HITLS_CFG_GetCipherSuiteName(const HITLS_Cipher *cipher);
 
@@ -1037,8 +1095,8 @@ const uint8_t* HITLS_CFG_GetCipherSuiteName(const HITLS_Cipher *cipher);
  *
  * @param   cipherSuite [IN] cipher suite
  *
- * @retval  "(NONE)" Invalid cipher suite.
- * @retval  RFC standard name for the given cipher suite
+ * @return  "(NONE)" Invalid cipher suite.
+ * @return  RFC standard name for the given cipher suite
  */
 const uint8_t* HITLS_CFG_GetCipherSuiteStdName(const HITLS_Cipher *cipher);
 
@@ -1048,8 +1106,8 @@ const uint8_t* HITLS_CFG_GetCipherSuiteStdName(const HITLS_Cipher *cipher);
  *
  * @param stdName [IN] RFC Standard Name
  *
- * @retval NULL. Failed to obtain the cipher suite.
- * @retval Pointer to the obtained cipher suite information.
+ * @return NULL. Failed to obtain the cipher suite.
+ * @return Pointer to the obtained cipher suite information.
  */
 const HITLS_Cipher* HITLS_CFG_GetCipherSuiteByStdName(const uint8_t* stdName);
 
@@ -1071,7 +1129,7 @@ int32_t HITLS_CFG_GetDescription(const HITLS_Cipher *cipher, uint8_t *buf, int32
  *
  * @param   cipher [IN] Cipher suite information
  * @param   isAead [OUT] Indicates whether to use the AEAD algorithm.
- * @retval  HITLS_SUCCESS, obtained successfully.
+ * @return  HITLS_SUCCESS, obtained successfully.
  *          HITLS_NULL_INPUT, the input parameter pointer is null.
  */
 int32_t HITLS_CIPHER_IsAead(const HITLS_Cipher *cipher, bool *isAead);
@@ -1093,8 +1151,8 @@ int32_t HITLS_CFG_GetCipherVersion(const HITLS_Cipher *cipher, int32_t *version)
  *
  * @param   cipherSuite [IN] Cipher suite ID
  *
- * @retval  HITLS_CONFIG_UNSUPPORT_CIPHER_SUITE, Unsupported cipher suites
- * @retval  Pointer to the obtained cipher suite information.
+ * @return  HITLS_CONFIG_UNSUPPORT_CIPHER_SUITE, Unsupported cipher suites
+ * @return  Pointer to the obtained cipher suite information.
  */
 const HITLS_Cipher *HITLS_CFG_GetCipherByID(uint16_t cipherSuite);
 
@@ -1124,7 +1182,6 @@ int32_t HITLS_CFG_GetVersionSupport(const HITLS_Config *config, uint32_t *versio
 /**
  * @ingroup hitls_config
  * @brief   Set the supported version number.
- *
  * @param   config [OUT] Config handle
  * @param   version [IN] Supported version number.
  * @attention   The maximum version number and minimum version number must be both TLS and DTLS.
@@ -1149,6 +1206,36 @@ int32_t HITLS_CFG_SetVersionSupport(HITLS_Config *config, uint32_t version);
  * @retval  HITLS_NULL_INPUT, config is null.
  */
 int32_t HITLS_CFG_SetNeedCheckPmsVersion(HITLS_Config *config, bool needCheck);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Set the function to support the specified feature.
+ * @param   config  [OUT] Config handle.
+ * @param   mode  [IN] Mode features to be enabled.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, config is null.
+ */
+int32_t HITLS_CFG_SetModeSupport(HITLS_Config *config, uint32_t mode);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Disable the specified feature.
+ * @param   config  [OUT] Config handle.
+ * @param   mode  [IN] Mode features to be disabled.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, config is null.
+ */
+int32_t HITLS_CFG_ClearModeSupport(HITLS_Config *config, uint32_t mode);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Obtain the mode of the function feature in the config file.
+ * @param   config  [OUT] Config handle
+ * @param   mode  [OUT] Mode obtains the output parameters of the mode.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  HITLS_NULL_INPUT, config is null.
+*/
+int32_t HITLS_CFG_GetModeSupport(const HITLS_Config *config, uint32_t *mode);
 
 /**
  * @ingroup hitls_config
@@ -1212,13 +1299,11 @@ int32_t HITLS_CFG_GetEncryptThenMac(const HITLS_Config *config, bool *encryptThe
  * @ingroup hitls_config
  * @brief   Obtain the user data from the HiTLS Config object.
  * Generally, this function is called during the callback registered with the HiTLS.
- *
  * @attention must be called before HITLS_Connect and HITLS_Accept.
  *            The life cycle of the user identifier must be longer than that of the TLS object.
  * @param   config [OUT] TLS connection handle.
- * @param   userData [IN] User identifier.
- * @retval  HITLS_SUCCESS, if successful.
- * @retval  HITLS_NULL_INPUT, The TLS object pointer of the input parameter is null.
+ * @return  HITLS_SUCCESS, if successful.
+ * @return  HITLS_NULL_INPUT, The TLS object pointer of the input parameter is null.
  */
 void *HITLS_CFG_GetConfigUserData(const HITLS_Config *config);
 
@@ -1226,7 +1311,6 @@ void *HITLS_CFG_GetConfigUserData(const HITLS_Config *config);
  * @ingroup hitls_config
  * @brief   User data is stored in the HiTLS Config. The user data can be obtained
  * from the callback registered with the HiTLS.
- *
  * @attention  must be called before HITLS_Connect and HITLS_Accept.
  * The life cycle of the user identifier must be longer than that of the TLS object.
  * If the user data needs to be cleared, the HITLS_SetUserData(ctx, NULL) interface can be called directly.
@@ -1241,6 +1325,8 @@ int32_t HITLS_CFG_SetConfigUserData(HITLS_Config *config, void *userData);
 /**
  * @ingroup hitls_config
  * @brief   UserData free callback
+ * @param  userData [IN] Pointer to user data to be freed.
+ * @return void
  */
 typedef void (*HITLS_ConfigUserDataFreeCb)(void *);
 
@@ -1261,7 +1347,7 @@ int32_t HITLS_CFG_SetConfigUserDataFreeCb(HITLS_Config *config, HITLS_ConfigUser
  *
  * @param   config [IN] TLS link configuration.
  * @param   isDtls [OUT] Indicates whether to use DTLS.
- * @retval  HITLS_SUCCESS, obtained successfully.
+ * @return  HITLS_SUCCESS, obtained successfully.
  *          HITLS_NULL_INPUT, the input parameter pointer is null.
  */
 int32_t HITLS_CFG_IsDtls(const HITLS_Config *config, bool *isDtls);
@@ -1291,7 +1377,7 @@ int32_t HITLS_CFG_GetCipherServerPreference(const HITLS_Config *config, bool *is
 
 /**
  * @ingroup hitls_config
- * @brief   Set whether to send handshake messages by route.
+ * @brief   Set whether to send handshake messages by route. DTLS over SCTP does not support this ability.
  *
  * @param   config [IN/OUT] TLS link configuration
  * @param   isEnable [IN] Indicates whether to enable the function of sending handshake information by range.
@@ -1314,10 +1400,10 @@ int32_t HITLS_CFG_GetFlightTransmitSwitch(const HITLS_Config *config, bool *isEn
 
 /**
  * @ingroup hitls_config
- * @brief   Set whether to send hello verify request message.
+ * @brief   Set whether the DTLS performs cookie exchange.
  *
- * @param   config [IN] TLS link configuration.
- * @param   isSupport [IN] Indicates whether to send hello verify request message.
+ * @param   config [IN] TLS link configuration
+ * @param   isSupport [IN] Indicates whether to perform cookie exchange.
  * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
  * @retval  HITLS_SUCCESS, if successful.
  */
@@ -1325,10 +1411,10 @@ int32_t HITLS_CFG_SetDtlsCookieExchangeSupport(HITLS_Config *config, bool isSupp
 
 /**
  * @ingroup hitls_config
- * @brief   Obtains the status of whether to send hello verify request message.
+ * @brief   Return whether the DTLS performs cookie exchange.
  *
  * @param   config [IN] TLS link configuration.
- * @param   isSupport [OUT] Indicates whether to send hello verify request message.
+ * @param   isSupport [OUT] Support or not.
  * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
  * @retval  HITLS_SUCCESS, if successful.
  */
@@ -1358,6 +1444,52 @@ int32_t HITLS_CFG_GetEmptyRecordsNum(const HITLS_Config *config, uint32_t *empty
 
 /**
  * @ingroup hitls_config
+ * @brief   Set the max send fragment to restrict the amount of plaintext bytes in any record
+ *
+ * @param   config [IN/OUT] TLS link configuration
+ * @param   maxSendFragment [IN] Indicates the max send fragment to restrict the amount of plaintext bytes in any record
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_CONFIG_INVALID_LENGTH, the maxSendFragment is less than 64 or greater than 16384.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_SetMaxSendFragment(HITLS_Config *config, uint16_t maxSendFragment);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Obtain the max send fragment to restrict the amount of plaintext bytes in any record
+ *
+ * @param   config [IN] TLS link configuration.
+ * @param   maxSendFragment [OUT] Indicates the max send fragment
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_GetMaxSendFragment(const HITLS_Config *config, uint16_t *maxSendFragment);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Set the rec inbuffer inital size
+ *
+ * @param   config [IN/OUT] TLS link configuration
+ * @param   recInbufferSize [IN] Indicates the rec inbuffer inital size
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_CONFIG_INVALID_LENGTH, the recInbufferSize is less than 512 or greater than 18432.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_SetRecInbufferSize(HITLS_Config *config, uint32_t recInbufferSize);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Obtain the rec inbuffer inital size
+ *
+ * @param   config [IN] TLS link configuration.
+ * @param   recInbufferSize [OUT] Indicates the rec inbuffer inital size
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_GetRecInbufferSize(const HITLS_Config *config, uint32_t *recInbufferSize);
+
+/**
+ * @ingroup hitls_config
  * @brief   Set the maximum size of the certificate chain that can be sent by the peer end.
  *
  * @param   config [IN/OUT] TLS link configuration.
@@ -1378,6 +1510,15 @@ int32_t HITLS_CFG_SetMaxCertList(HITLS_Config *config, uint32_t maxSize);
  */
 int32_t HITLS_CFG_GetMaxCertList(const HITLS_Config *config, uint32_t *maxSize);
 
+/**
+ * @ingroup hitls_config
+ * @brief   Generate temporary DH key.
+ *
+ * @param  ctx  [IN] Ctx context
+ * @param  isExport [IN] Flag indicating whether the key is for export.
+ * @param  keyLen [IN] Length of the key to generate.
+ * @return HITLS_CRYPT_Key, The memory created by this interface is released using SAL_CRYPT_FreeDhKey.
+ */
 typedef HITLS_CRYPT_Key *(*HITLS_DhTmpCb)(HITLS_Ctx *ctx, int32_t isExport, uint32_t keyLen);
 
 /**
@@ -1390,6 +1531,17 @@ typedef HITLS_CRYPT_Key *(*HITLS_DhTmpCb)(HITLS_Ctx *ctx, int32_t isExport, uint
  */
 int32_t HITLS_CFG_SetTmpDhCb(HITLS_Config *config, HITLS_DhTmpCb callback);
 
+/**
+ * @ingroup hitls_config
+ * @brief   Callback function for handling TLS record padding.
+ *
+ * @param  ctx  [IN] Ctx context
+ * @param  type [IN] Record type
+ * @param  length [IN] Original record length.
+ * @param arg [IN] User-defined argument for padding.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
 typedef uint64_t (*HITLS_RecordPaddingCb)(HITLS_Ctx *ctx, int32_t type, uint64_t length, void *arg);
 
 /**
@@ -1429,8 +1581,8 @@ int32_t HITLS_CFG_SetRecordPaddingCbArg(HITLS_Config *config, void *arg);
  * @brief   Obtains the parameter arg required by the RecordPadding callback function.
  *
  * @param   config [OUT] Config context
- * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
- * @retval  HITLS_SUCCESS, if successful.
+ * @return  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @return  HITLS_SUCCESS, if successful.
  */
 void *HITLS_CFG_GetRecordPaddingCbArg(HITLS_Config *config);
 
@@ -1468,37 +1620,98 @@ int32_t HITLS_CFG_GetReadAhead(HITLS_Config *config, int32_t *onOff);
 
 /**
  * @ingroup hitls_config
- * @brief   Set the function to support the specified feature.
- *
- * @param   config [OUT] Config context
- * @param   mode [IN] Mode features to enabled.
- * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @brief   Set whether to save the peer certificate.
+ * @param   config [IN] Hitls config.
+ * @param   isKeepPeerCert [IN] Set whether to save the peer certificate.
  * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
  */
-int32_t HITLS_CFG_SetModeSupport(HITLS_Config *config, uint32_t mode);
+int32_t HITLS_CFG_SetKeepPeerCertificate(HITLS_Config *config, bool isKeepPeerCert);
 
 /**
  * @ingroup hitls_config
- * @brief   Disable the specified feature.
- *
- * @param   config [OUT] Config context
- * @param   mode [IN] Mode features to disabled.
- * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
- * @retval  HITLS_SUCCESS, if successful.
+ * @brief   The default record size limit is 0 to unsupport the record size limit extension (RFC 8449).
+ *          If negotiated, it is used only to limit the size of records sent by the peer in the receive direction.
+ *          However, the record size sent to the peer is limited by the record size limit value of the peer.
+ * @param   config [OUT] Hitls config
+ * @param   recordSize [IN] Set the default record size limit value to be negotiated (64 to 16385)
+ * @retval  HITLS_NULL_INPUT
+ * @retval  HITLS_SUCCESS
  */
-int32_t HITLS_CFG_ClearModeSupport(HITLS_Config *config, uint32_t mode);
+int32_t HITLS_CFG_SetRecordSizeLimit(HITLS_Config *config, uint16_t recordSize);
 
 /**
  * @ingroup hitls_config
- * @brief   Obtain the mode of the function feature in the config file.
+ * @brief   Obtains the record size limit value of ctx.
  *
+ * @param   config [OUT] Hitls config
+ * @param   recordSize [IN] the currently in config configured record size limit value
+ * @retval  HITLS_NULL_INPUT
+ * @retval  HITLS_SUCCESS
+ */
+int32_t HITLS_CFG_GetRecordSizeLimit(HITLS_Config *config, uint16_t *recordSize);
+
+/**
+ * @ingroup tls
+ * @brief   Sets whether to support middle box compat mode.
  * @param   config [OUT] Config context
- * @param   mode [OUT] Mode obtain the output parameters of the mode.
- * @retval  HITLS_NULL_INPUT, the input parameter pointer is null.
+ * @param   isMiddleBox [IN] Support or Not.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
  * @retval  HITLS_SUCCESS, if successful.
  */
-int32_t HITLS_CFG_GetModeSupport(const HITLS_Config *config, uint32_t *mode);
+int32_t HITLS_CFG_SetMiddleBoxCompat(HITLS_Config *config, bool isMiddleBox);
 
+/**
+ * @ingroup tls
+ * @brief   Obtain whether middle box compat mode is supported.
+ * @param   config [IN] Config context
+ * @param   isMiddleBox [OUT] Support or Not.
+ * @retval  HITLS_NULL_INPUT, the input parameter pointer is NULL.
+ * @retval  HITLS_SUCCESS, if successful.
+ */
+int32_t HITLS_CFG_GetMiddleBoxCompat(HITLS_Config *config, bool *isMiddleBox);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Set whether the current configuration is a client configuration.
+ *
+ * @param   config [OUT] Config context.
+ * @param   isClient [IN] Indicates whether it is a client configuration.
+ * @retval  HITLS_SUCCESS, if successful.
+ *          For details about other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_SetEndPoint(HITLS_Config *config, bool isClient);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Get whether to support session restoration during renegotiation.
+ * By default, session restoration is not supported.
+ * @param   config   [IN] Config handle
+ * @param   isSupport  [OUT] Indicates whether to support session restoration during renegotiation.
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_GetResumptionOnRenegoSupport(HITLS_Config *config, bool *isSupport);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Get whether to allow a renegotiate request from the client
+ * @param   config   [IN] Config handle
+ * @param   isSupport  [OUT] Indicates whether to allow a renegotiate request from the client
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_GetClientRenegotiateSupport(HITLS_Config *config, bool *isSupport);
+
+/**
+ * @ingroup hitls_config
+ * @brief   Set enable support tls1.3 SM
+ * @param   config   [IN] Config handle
+ * @param   isOnlySupportSM  [OUT] Indicates whether to only support tls1.3 SM
+ * @retval  HITLS_SUCCESS, if successful.
+ * @retval  For other error codes, see hitls_error.h.
+ */
+int32_t HITLS_CFG_EnableTls13SM(HITLS_Config *config, bool isOnlySupportSM);
 #ifdef __cplusplus
 }
 #endif

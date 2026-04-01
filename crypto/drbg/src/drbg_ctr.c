@@ -23,6 +23,7 @@
 #include "crypt_utils.h"
 #include "bsl_sal.h"
 #include "crypt_types.h"
+#include "crypt_drbg.h"
 #include "bsl_err_internal.h"
 #include "drbg_local.h"
 
@@ -116,7 +117,7 @@ int32_t DRBG_CtrUpdate(DRBG_Ctx *drbg, const CRYPT_Data *in1, const CRYPT_Data *
     // The lower bits of temp.data are used for ctx->K, and the upper bits are used for ctx->V.
     (void)memcpy_s(ctx->v, AES_BLOCK_LEN, temp.data + ctx->keyLen, AES_BLOCK_LEN);
 EXIT:
-    ciphMeth->cipherDeInitCtx(ctx->ctrCtx);
+    (void)ciphMeth->cipherDeInitCtx(ctx->ctrCtx);
     return ret;
 }
 
@@ -552,14 +553,18 @@ void DRBG_CtrUnInstantiate(DRBG_Ctx *drbg)
 
 DRBG_Ctx *DRBG_CtrDup(DRBG_Ctx *drbg)
 {
-    DRBG_CtrCtx *ctx = NULL;
-
     if (drbg == NULL) {
         return NULL;
     }
 
-    ctx = (DRBG_CtrCtx*)drbg->ctx;
-    return DRBG_NewCtrCtx(ctx->ciphMeth, ctx->keyLen,  drbg->isGm, ctx->isUsedDf, &(drbg->seedMeth), drbg->seedCtx);
+    DRBG_CtrCtx *ctx = (DRBG_CtrCtx*)drbg->ctx;
+    DRBG_Ctx *newDrbg = DRBG_NewCtrCtx(ctx->ciphMeth, ctx->keyLen,  drbg->isGm, ctx->isUsedDf, &(drbg->seedMeth),
+        drbg->seedCtx);
+    if (newDrbg == NULL) {
+        return NULL;
+    }
+    newDrbg->libCtx = drbg->libCtx;
+    return newDrbg;
 }
 
 void DRBG_CtrFree(DRBG_Ctx *drbg)
@@ -572,11 +577,34 @@ void DRBG_CtrFree(DRBG_Ctx *drbg)
     DRBG_CtrCtx *ctx = (DRBG_CtrCtx*)drbg->ctx;
     BSL_SAL_FREE(ctx->dfCtx);
     BSL_SAL_FREE(drbg);
-    return;
 }
 
-DRBG_Ctx *DRBG_NewCtrCtx(const EAL_SymMethod *ciphMeth, const uint32_t keyLen, bool isGm, const bool isUsedDf,
-    const CRYPT_RandSeedMethod *seedMeth, void *seedCtx)
+static void DRBG_InitializeRanges(DRBG_Ctx *drbg, const DRBG_CtrCtx *ctx, bool isUsedDf, uint32_t keyLen)
+{
+    // NIST.SP.800-90Ar1, Section 10.3.1 Table 3 defined those initial value.
+    if (isUsedDf) {
+        // shift rightwards by 3, converting from bit length to byte length
+        drbg->entropyRange.min = (drbg->isGm) ? DRBG_CTR_MIN_ENTROPYLEN : keyLen;
+        drbg->entropyRange.max = DRBG_MAX_LEN;
+        drbg->maxPersLen = DRBG_MAX_LEN;
+        drbg->maxAdinLen = DRBG_MAX_LEN;
+
+        // NIST.SP.800-90Ar1, Section 8.6.7 defined, a nonce needs (security_strength/2) bits of entropy at least.
+        drbg->nonceRange.min = drbg->entropyRange.min / DRBG_NONCE_FROM_ENTROPY;
+        drbg->nonceRange.max = DRBG_MAX_LEN;
+    } else {
+        drbg->entropyRange.min = ctx->seedLen;
+        drbg->entropyRange.max = ctx->seedLen;
+        drbg->maxPersLen = ctx->seedLen;
+        drbg->maxAdinLen = ctx->seedLen;
+
+        drbg->nonceRange.min = 0;
+        drbg->nonceRange.max = 0;
+    }
+}
+
+DRBG_Ctx *DRBG_NewCtrCtx(const EAL_SymMethod *ciphMeth, uint32_t keyLen, bool isGm,
+    bool isUsedDf, const CRYPT_RandSeedMethod *seedMeth, void *seedCtx)
 {
     static DRBG_Method meth = {
         DRBG_CtrInstantiate,
@@ -624,27 +652,11 @@ DRBG_Ctx *DRBG_NewCtrCtx(const EAL_SymMethod *ciphMeth, const uint32_t keyLen, b
 
     drbg->strength = keyLen * 8;
     drbg->maxRequest = (drbg->isGm) ? DRBG_MAX_REQUEST_SM4 : DRBG_MAX_REQUEST;
+    
+    DRBG_InitializeRanges(drbg, ctx, isUsedDf, keyLen);
+
+    drbg->predictionResistance = false;
     drbg->forkId = BSL_SAL_GetPid();
-    // NIST.SP.800-90Ar1, Section 10.3.1 Table 3 defined those initial value.
-    if (isUsedDf) {
-        // shift rightwards by 3, converting from bit length to byte length
-        drbg->entropyRange.min = (drbg->isGm) ? DRBG_CTR_MIN_ENTROPYLEN : keyLen;
-        drbg->entropyRange.max = DRBG_MAX_LEN;
-        drbg->maxPersLen = DRBG_MAX_LEN;
-        drbg->maxAdinLen = DRBG_MAX_LEN;
-
-        // NIST.SP.800-90Ar1, Section 8.6.7 defined, a nonce needs (security_strength/2) bits of entropy at least.
-        drbg->nonceRange.min = drbg->entropyRange.min / DRBG_NONCE_FROM_ENTROPY;
-        drbg->nonceRange.max = DRBG_MAX_LEN;
-    } else {
-        drbg->entropyRange.min = ctx->seedLen;
-        drbg->entropyRange.max = ctx->seedLen;
-        drbg->maxPersLen = ctx->seedLen;
-        drbg->maxAdinLen = ctx->seedLen;
-
-        drbg->nonceRange.min = 0;
-        drbg->nonceRange.max = 0;
-    }
 
     return drbg;
 }

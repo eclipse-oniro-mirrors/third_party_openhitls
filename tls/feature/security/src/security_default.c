@@ -119,13 +119,14 @@ int32_t SECURITY_DefaultCb(const HITLS_Ctx *ctx, const HITLS_Config *config, int
     void *other, void *exData)
 {
     (void)exData;
-    int32_t ret;
     int32_t level = HITLS_DEFAULT_SECURITY_LEVEL;
 
     if (config != NULL) {
         (void)HITLS_CFG_GetSecurityLevel(config, &level);
     } else if (ctx != NULL) {
         (void)HITLS_GetSecurityLevel(ctx, &level);
+    } else {
+        return SECURITY_ERR;
     }
     /* No restrictions are imposed when Level is 0. */
     if (level <= HITLS_SECURITY_LEVEL_MIN) {
@@ -141,8 +142,7 @@ int32_t SECURITY_DefaultCb(const HITLS_Ctx *ctx, const HITLS_Config *config, int
     switch (option) {
         case HITLS_SECURITY_SECOP_VERSION:
             /* Check the version. */
-            ret = CheckVersion(id, level);
-            break;
+            return CheckVersion(id, level);
         case HITLS_SECURITY_SECOP_CIPHER_SUPPORTED:
         case HITLS_SECURITY_SECOP_CIPHER_SHARED:
         case HITLS_SECURITY_SECOP_CIPHER_CHECK:
@@ -150,15 +150,10 @@ int32_t SECURITY_DefaultCb(const HITLS_Ctx *ctx, const HITLS_Config *config, int
             return CheckCipherSuite(other, level);
         case HITLS_SECURITY_SECOP_TICKET:
             /* Check the session ticket. */
-            ret = CheckSessionTicket(level);
-            break;
+            return CheckSessionTicket(level);
         default:
-            if (bits < minBits) {
-                return SECURITY_ERR;
-            }
-            return SECURITY_SUCCESS;
+            return (bits < minBits) ? SECURITY_ERR : SECURITY_SUCCESS;
     }
-    return ret;
 }
 
 void SECURITY_SetDefault(HITLS_Config *config)
@@ -169,7 +164,6 @@ void SECURITY_SetDefault(HITLS_Config *config)
     /*  Default security settings. Set the default security level and default security callback function. */
     config->securityLevel = HITLS_DEFAULT_SECURITY_LEVEL;
     config->securityCb = SECURITY_DefaultCb;
-    return;
 }
 
 int32_t SECURITY_CfgCheck(const HITLS_Config *config, int32_t option, int32_t bits, int32_t id, void *other)
@@ -209,11 +203,12 @@ int32_t SECURITY_CfgCheck(const HITLS_Config *config, int32_t option, int32_t bi
             }
             ianaId = (uint16_t)id;
             return config->securityCb(NULL, config, option, 0, 0, &ianaId, config->securityExData);
+
         default:
-            break;
+            return config->securityCb(NULL, config, option, bits, id, other, config->securityExData);
     }
-    return config->securityCb(NULL, config, option, bits, id, other, config->securityExData);
 }
+
 int32_t SECURITY_SslCheck(const HITLS_Ctx *ctx, int32_t option, int32_t bits, int32_t id, void *other)
 {
     if (ctx == NULL) {

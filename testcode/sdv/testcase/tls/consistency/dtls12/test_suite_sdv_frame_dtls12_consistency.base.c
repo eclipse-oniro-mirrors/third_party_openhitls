@@ -29,7 +29,7 @@
 #include "hs_state_recv.h"
 #include "conn_init.h"
 #include "recv_process.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "stub_crypt.h"
 #include "frame_tls.h"
 #include "frame_msg.h"
@@ -52,6 +52,11 @@
 #include "bsl_log.h"
 #include "cert_callback.h"
 
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET4(int32_t, HS_CalcCookie, TLS_Ctx *, const ClientHelloMsg *, uint8_t *, uint32_t *);
+STUB_DEFINE_RET3(int32_t, HS_CheckCookie, TLS_Ctx *, const ClientHelloMsg *, bool *);
 
 #define BUF_SIZE_DTO_TEST 18432
 int32_t g_uiPort = 18887;
@@ -71,7 +76,7 @@ typedef struct {
     FRAME_LinkObj *server;
     HITLS_HandshakeState state;
     bool isClient;
-    bool isSupportExtendedMasterSecret;
+    int32_t emsMode;
     bool isSupportClientVerify;
     bool isSupportNoClientCert;
 } HandshakeTestInfo;
@@ -109,7 +114,7 @@ int32_t DefaultCfgStatusPark(HandshakeTestInfo *testInfo, int uioType)
     }
     HITLS_CFG_SetCheckKeyUsage(testInfo->config, false);
     HITLS_CFG_SetDtlsCookieExchangeSupport(testInfo->config, false);
-    testInfo->config->isSupportExtendedMasterSecret = testInfo->isSupportExtendedMasterSecret;
+    testInfo->config->emsMode = testInfo->emsMode;
     testInfo->config->isSupportClientVerify = testInfo->isSupportClientVerify;
     testInfo->config->isSupportNoClientCert = testInfo->isSupportNoClientCert;
     testInfo->config->isSupportDhAuto = true;
@@ -128,7 +133,7 @@ int32_t DefaultCfgStatusParkWithSuite(HandshakeTestInfo *testInfo, int uioType)
     uint16_t cipherSuits[] = {HITLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384};
     HITLS_CFG_SetCipherSuites(testInfo->config, cipherSuits, sizeof(cipherSuits) / sizeof(uint16_t));
 
-    testInfo->config->isSupportExtendedMasterSecret = testInfo->isSupportExtendedMasterSecret;
+    testInfo->config->emsMode = testInfo->emsMode;
     testInfo->config->isSupportClientVerify = testInfo->isSupportClientVerify;
     testInfo->config->isSupportNoClientCert = testInfo->isSupportNoClientCert;
 

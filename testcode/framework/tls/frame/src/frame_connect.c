@@ -20,11 +20,20 @@
 #include "hs_ctx.h"
 #include "hs_common.h"
 #include "change_cipher_spec.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
+
+/* Stub definitions - works with dynamic linking (.dylib/.so)
+ * With shared libraries, dlsym(RTLD_NEXT) can find the real implementation at runtime
+ * NOTE: STUB mechanism disabled for macOS static linking compatibility
+ * Using direct state polling approach instead (see FRAME_CreateConnection)
+ */
+STUB_DEFINE_RET2(int32_t, HS_ChangeState, TLS_Ctx *, uint32_t);
+
 #include "frame_tls.h"
 #include "frame_io.h"
 #include "frame_link.h"
-
+#include "parse.h"
+#include "rec_wrapper.h"
 #define ENTER_USER_SPECIFY_STATE (HITLS_UIO_FAIL_START + 0xFFFF)
 
 #define READ_BUF_SIZE 18432
@@ -67,6 +76,8 @@ static int32_t STUB_ChangeState(TLS_Ctx *ctx, uint32_t nextState)
     int32_t ret = HITLS_SUCCESS;
     if (g_nextState == nextState) {
         if (g_isClient == ctx->isClient) {
+            HS_CleanMsg(ctx->hsCtx->hsMsg);
+            ctx->hsCtx->hsMsg = NULL;
             ret = HITLS_REC_NORMAL_RECV_BUF_EMPTY;
         }
     }
@@ -94,6 +105,7 @@ static bool StateCompare(FRAME_LinkObj *link, bool isClient, HITLS_HandshakeStat
         // In tls1.3, the server may receive the CCS message in the TRY_RECV_CERTIFICATIONATE phase
         if (state == TRY_RECV_CERTIFICATE){
             if (link->needStopBeforeRecvCCS || CCS_IsRecv(link->ssl) == true ||
+                link->ssl->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11 ||
 #ifdef HITLS_TLS_PROTO_TLS13
                 link->ssl->hsCtx->haveHrr == true ||
 #endif /* HITLS_TLS_PROTO_TLS13 */
@@ -116,12 +128,15 @@ int32_t FRAME_CreateConnection(FRAME_LinkObj *client, FRAME_LinkObj *server, boo
         return HITLS_NULL_INPUT;
     }
 
+    // Apply registered wrappers EARLY - before first HITLS_Connect/Accept
+    // This initializes recCtx and installs wrappers before handshake begins
+    // Matches HLT framework pattern in hlt_func.c:LocalProcessTlsInit
+    ApplyWrapperToConnectionEarly(client->ssl);
+    ApplyWrapperToConnectionEarly(server->ssl);
+
     g_isClient = isClient;
     g_nextState = state;
-
-    FuncStubInfo tmpRpInfo = {0};
-    STUB_Init();
-    STUB_Replace(&tmpRpInfo, HS_ChangeState, STUB_ChangeState);
+    STUB_REPLACE(HS_ChangeState, STUB_ChangeState);
 
     do {
         // Check whether the client needs to be stopped. If yes, return success
@@ -198,7 +213,7 @@ int32_t FRAME_CreateConnection(FRAME_LinkObj *client, FRAME_LinkObj *server, boo
         }
     }
 
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(HS_ChangeState);
     return ret;
 }
 
@@ -343,10 +358,7 @@ int32_t FRAME_CreateRenegotiationState(FRAME_LinkObj *client, FRAME_LinkObj *ser
 
     g_isClient = isClient;
     g_nextState = state;
-
-    FuncStubInfo tmpRpInfo = {0};
-    STUB_Init();
-    STUB_Replace(&tmpRpInfo, HS_ChangeState, STUB_ChangeState);
+    STUB_REPLACE(HS_ChangeState, STUB_ChangeState);
 
     do {
         // Check whether the client needs to be stopped. If yes, return success
@@ -415,6 +427,6 @@ int32_t FRAME_CreateRenegotiationState(FRAME_LinkObj *client, FRAME_LinkObj *ser
             ret = HITLS_INTERNAL_EXCEPTION;
         }
     }
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(HS_ChangeState);
     return ret;
 }

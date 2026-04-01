@@ -30,6 +30,7 @@
 #include "hs_extensions.h"
 #include "parse_extensions.h"
 #include "parse_common.h"
+#include "custom_extensions.h"
 
 #if defined(HITLS_TLS_PROTO_TLS12) || defined(HITLS_TLS_PROTO_DTLS12) || defined(HITLS_TLS_PROTO_TLS13)
 
@@ -68,18 +69,25 @@ static int32_t ParseSignatureAndHashAlgo(ParsePacket *pkt, CertificateRequestMsg
         msg->signatureAlgorithms[index] = BSL_ByteToUint16(&pkt->buf[*pkt->bufOffset]);
         *pkt->bufOffset += sizeof(uint16_t);
     }
-
+    BSL_SAL_FREE(pkt->ctx->peerInfo.signatureAlgorithms);
+    pkt->ctx->peerInfo.signatureAlgorithms =
+        BSL_SAL_Dump(msg->signatureAlgorithms, msg->signatureAlgorithmsSize * sizeof(uint16_t));
+    if (pkt->ctx->peerInfo.signatureAlgorithms == NULL) {
+        return ParseErrorProcess(pkt->ctx, HITLS_MEMALLOC_FAIL, BINLOG_ID17381,
+            BINGLOG_STR("signatureAlgorithms malloc fail."), ALERT_UNKNOWN);
+    }
+    pkt->ctx->peerInfo.signatureAlgorithmsSize = msg->signatureAlgorithmsSize;
     msg->haveSignatureAndHashAlgo = true;
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_PROTO_TLS12 || HITLS_TLS_PROTO_DTLS12 || HITLS_TLS_PROTO_TLS13 */
 
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
 static void CaListNodeInnerDestroy(void *data)
 {
     HITLS_TrustedCANode *tmpData = (HITLS_TrustedCANode *)data;
     BSL_SAL_FREE(tmpData->data);
     BSL_SAL_FREE(tmpData);
-    return;
 }
 
 void FreeDNList(HITLS_TrustedCAList *caList)
@@ -87,8 +95,6 @@ void FreeDNList(HITLS_TrustedCAList *caList)
     BslList *tmpCaList = (BslList *)caList;
 
     BSL_LIST_FREE(tmpCaList, CaListNodeInnerDestroy);
-
-    return;
 }
 
 HITLS_TrustedCANode *ParseDN(const uint8_t *data, uint32_t len)
@@ -193,8 +199,12 @@ static int32_t ParseDistinguishedName(ParsePacket *pkt, CertificateRequestMsg *m
     }
 
     if (distinguishedNamesLen > 0u) {
-        msg->caList = ParseDNList(&pkt->buf[*pkt->bufOffset], distinguishedNamesLen);
-        if (msg->caList == NULL) {
+        if (pkt->ctx->peerInfo.caList != NULL) {
+            FreeDNList(pkt->ctx->peerInfo.caList);
+            pkt->ctx->peerInfo.caList = NULL;
+        }
+        pkt->ctx->peerInfo.caList = ParseDNList(&pkt->buf[*pkt->bufOffset], distinguishedNamesLen);
+        if (pkt->ctx->peerInfo.caList == NULL) {
             return ParseErrorProcess(pkt->ctx, HITLS_PARSE_CA_LIST_ERR, BINLOG_ID16951,
                 BINGLOG_STR("ParseDNList fail"), ALERT_DECODE_ERROR);
         }
@@ -204,6 +214,8 @@ static int32_t ParseDistinguishedName(ParsePacket *pkt, CertificateRequestMsg *m
     msg->haveDistinguishedName = true;
     return HITLS_SUCCESS;
 }
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
 // Parse the certificate type field in the certificate request message.
 static int32_t ParseClientCertificateType(ParsePacket *pkt, CertificateRequestMsg *msg)
@@ -249,7 +261,22 @@ int32_t ParseCertificateRequest(TLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLe
         }
     }
 #endif /* HITLS_TLS_PROTO_TLS12 || HITLS_TLS_PROTO_DTLS12 */
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
     return ParseDistinguishedName(&pkt, msg);
+#else
+    uint16_t distinguishedNamesLen = 0;
+    const char *logStr = BINGLOG_STR("parse distinguishedNamesLen fail.");
+    ret = ParseBytesToUint16(&pkt, &distinguishedNamesLen);
+    if (ret != HITLS_SUCCESS) {
+        return ParseErrorProcess(pkt.ctx, HITLS_PARSE_INVALID_MSG_LEN, BINLOG_ID15465, logStr, ALERT_DECODE_ERROR);
+    }
+
+    if (distinguishedNamesLen != (pkt.bufLen - *pkt.bufOffset)) {
+        return ParseErrorProcess(pkt.ctx, HITLS_PARSE_INVALID_MSG_LEN, BINLOG_ID15466, logStr, ALERT_DECODE_ERROR);
+    }
+    *pkt.bufOffset += distinguishedNamesLen;
+    return HITLS_SUCCESS;
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
 }
 #endif /* HITLS_TLS_PROTO_TLS_BASIC || HITLS_TLS_PROTO_DTLS12 */
 
@@ -264,8 +291,10 @@ static int32_t ParseCertificateRequestExBody(TLS_Ctx *ctx, uint16_t extMsgType, 
     switch (extMsgType) {
         case HS_EX_TYPE_SIGNATURE_ALGORITHMS:
             return ParseSignatureAndHashAlgo(&pkt, msg);
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
         case HS_EX_TYPE_CERTIFICATE_AUTHORITIES:
             return ParseDistinguishedName(&pkt, msg);
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
         default:
             break;
     }
@@ -289,14 +318,8 @@ int32_t ParseTls13CertificateRequestExtensions(ParsePacket *pkt, CertificateRequ
     while (*pkt->bufOffset < pkt->bufLen) {
         uint16_t extMsgType = HS_EX_TYPE_END;
         uint32_t extMsgLen = 0u;
-        int32_t ret =
-            ParseExHeader(pkt->ctx, &pkt->buf[*pkt->bufOffset], pkt->bufLen - *pkt->bufOffset, &extMsgType, &extMsgLen);
-        if (ret != HITLS_SUCCESS) {
-            return ret;
-        }
-        *pkt->bufOffset += HS_EX_HEADER_LEN;
-        uint32_t extensionId = HS_GetExtensionTypeId(extMsgType);
-        ret = CheckForDuplicateExtension(msg->extensionTypeMask, extensionId, pkt->ctx);
+        uint32_t extensionId = 0;
+        int32_t ret = CheckForDuplicateExtension(pkt, &extMsgType, &extMsgLen, &extensionId, msg->extensionTypeMask);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
@@ -381,8 +404,5 @@ void CleanCertificateRequest(CertificateRequestMsg *msg)
     BSL_SAL_FREE(msg->certificateReqCtx);
     BSL_SAL_FREE(msg->signatureAlgorithmsCert);
 #endif /* HITLS_TLS_PROTO_TLS13 */
-    FreeDNList(msg->caList);
-    msg->caList = NULL;
-    return;
 }
 #endif /* HITLS_TLS_HOST_CLIENT */

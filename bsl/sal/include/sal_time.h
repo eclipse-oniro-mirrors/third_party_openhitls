@@ -28,11 +28,6 @@
 extern "C" {
 #endif
 
-#define BSL_TIME_CMP_ERROR   0U   /* The comparison between two dates is incorrect. */
-#define BSL_TIME_CMP_EQUAL   1U   /* The two dates are the same. */
-#define BSL_TIME_DATE_BEFORE 2U   /* The first date is earlier than the second date */
-#define BSL_TIME_DATE_AFTER  3U   /* The first date is later than the second date. */
-
 #define BSL_TIME_YEAR_START 1900U
 #define BSL_TIME_SYSTEM_EPOCH_YEAR 1970U
 #define BSL_TIME_DAY_PER_NONLEAP_YEAR 365U
@@ -60,17 +55,9 @@ extern "C" {
 
 #define BSL_UTCTIME_MAX 2005949145599L /* UTC time corresponding to December 31, 65535 23:59:59 */
 
-bool BSL_IsLeapYear(uint32_t year);
+#define BSL_TIME_SECS_PER_DAY 86400L /* seconds per day */
 
-/**
- * @brief Obtain the date in string format.
- * @param dateTime [IN] Pointer to the date structure to be converted into a string.
- * @param timeStr [OUT] Pointer to the date string buffer.
- * @param len [IN] Date string buffer length, which must be greater than 26.
- * @return BSL_SUCCESS is successfully executed.
- *         BSL_INTERNAL_EXCEPTION Execution Failure
- */
-uint32_t BSL_DateToStrConvert(const BSL_TIME *dateTime, char *timeStr, size_t len);
+bool BSL_IsLeapYear(uint32_t year);
 
 /**
  * @brief Add the time.
@@ -79,7 +66,18 @@ uint32_t BSL_DateToStrConvert(const BSL_TIME *dateTime, char *timeStr, size_t le
  * @return BSL_SUCCESS is successfully executed.
  * For other failures, see BSL_SAL_DateToUtcTimeConvert and BSL_SAL_UtcTimeToDateConvert.
  */
-uint32_t BSL_DateTimeAddUs(BSL_TIME *dateR, const BSL_TIME *dateA, uint32_t us);
+int32_t BSL_DateTimeAddUs(BSL_TIME *dateR, const BSL_TIME *dateA, uint32_t us);
+
+/**
+ * @brief Add day and second to the given time
+ * @param dateR [OUT] Destination time
+ * @param dateA [IN]  Base time to start from.
+ * @param offDay [IN] Number of days to add (can be negative).
+ * @param offsetSecond [IN] Number of seconds to add (can be negative).
+ * @return BSL_SUCCESS is successfully executed.
+ * BSL_SUCCESS on success, otherwise BSL_INTERNAL_EXCEPTION.
+ */
+int32_t BSL_DateTimeAddDaySecond(BSL_TIME *dateR, const BSL_TIME *dateA, int32_t offsetDay, int64_t offsetSecond);
 
 /**
  * @brief Check whether the time format is correct.

@@ -29,7 +29,7 @@
 #include "hs_state_recv.h"
 #include "conn_init.h"
 #include "recv_process.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "stub_crypt.h"
 #include "frame_tls.h"
 #include "frame_msg.h"
@@ -71,7 +71,7 @@ typedef struct {
     FRAME_LinkObj *server;
     HITLS_HandshakeState state;
     bool isClient;
-    bool isSupportExtendedMasterSecret;
+    int32_t emsMode;
     bool isSupportClientVerify;
     bool isSupportNoClientCert;
     bool isSupportRenegotiation;
@@ -88,6 +88,13 @@ int32_t StatusPark(HandshakeTestInfo *testInfo, int uioType)
     if (testInfo->server == NULL) {
         return HITLS_INTERNAL_EXCEPTION;
     }
+
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+    if (uioType == BSL_UIO_UDP) {
+        HITLS_SetMtu(testInfo->client->ssl, 16384);
+        HITLS_SetMtu(testInfo->server->ssl, 16384);
+    }
+#endif
 
     if (FRAME_CreateConnection(testInfo->client, testInfo->server,
                                testInfo->isClient, testInfo->state) != HITLS_SUCCESS) {
@@ -108,7 +115,7 @@ int32_t DefaultCfgStatusPark(HandshakeTestInfo *testInfo, int uioType)
     }
 
     HITLS_CFG_SetCheckKeyUsage(testInfo->config, false);
-    testInfo->config->isSupportExtendedMasterSecret = testInfo->isSupportExtendedMasterSecret;
+    testInfo->config->emsMode = testInfo->emsMode;
     testInfo->config->isSupportClientVerify = testInfo->isSupportClientVerify;
     testInfo->config->isSupportNoClientCert = testInfo->isSupportNoClientCert;
     testInfo->config->isSupportRenegotiation = testInfo->isSupportRenegotiation;
@@ -130,7 +137,7 @@ int32_t DefaultCfgStatusParkWithSuite(HandshakeTestInfo *testInfo)
     uint16_t cipherSuits[] = {HITLS_ECDHE_SM4_CBC_SM3,HITLS_ECC_SM4_CBC_SM3};
     HITLS_CFG_SetCipherSuites(testInfo->config, cipherSuits, sizeof(cipherSuits) / sizeof(uint16_t));
 
-    testInfo->config->isSupportExtendedMasterSecret = testInfo->isSupportExtendedMasterSecret;
+    testInfo->config->emsMode = testInfo->emsMode;
     testInfo->config->isSupportClientVerify = testInfo->isSupportClientVerify;
     testInfo->config->isSupportNoClientCert = testInfo->isSupportNoClientCert;
 

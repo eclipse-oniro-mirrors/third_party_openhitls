@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include "crypt_algid.h"
 #include "crypt_types.h"
-#include "crypt_eal_provider.h"
 #include "bsl_params.h"
 
 #ifdef __cplusplus
@@ -282,7 +281,7 @@ CRYPT_EAL_RndCtx *CRYPT_EAL_DrbgNew(CRYPT_RAND_AlgId id, CRYPT_RandSeedMethod *s
  * @param attrName [IN] Specify expected attribute values
  * @param param [IN] Transparent transmission of underlying parameters
  *
- * @retval Success: cipher ctx.
+ * @retval Success: DRBG ctx.
  *         Fails: NULL.
  */
 CRYPT_EAL_RndCtx *CRYPT_EAL_ProviderDrbgNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_t algId, const char *attrName,
@@ -368,15 +367,15 @@ bool CRYPT_EAL_RandIsValidAlgId(CRYPT_RAND_AlgId id);
  * This function instantiates the Deterministic Random Bit Generator (DRBG) with personalization string.
  * It supports multi-thread access.
  *
- * @param ctx      [IN] DRBG handle
+ * @param rndCtx   [IN] DRBG handle
  * @param pers [IN] Personal data, which can be NULL.
  * @param persLen [IN] Personal data length. the range is [0,0x7FFFFFF0].
  * @retval #CRYPT_SUCCESS, if successful.
  *         For other error codes, see crypt_errno.h.
  */
-int32_t CRYPT_EAL_DrbgInstantiate(CRYPT_EAL_RndCtx *ctx, const uint8_t *pers, uint32_t persLen);
+int32_t CRYPT_EAL_DrbgInstantiate(CRYPT_EAL_RndCtx *rndCtx, const uint8_t *pers, uint32_t persLen);
 
- /**
+/**
  * @ingroup crypt_eal_rand
  * @brief get or set rand param
  *
@@ -385,10 +384,20 @@ int32_t CRYPT_EAL_DrbgInstantiate(CRYPT_EAL_RndCtx *ctx, const uint8_t *pers, ui
  * @param val [IN/OUT] Data to be set/obtained
  * @param valLen [IN] Length of the data marked as "val"
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_DrbgCtrl(CRYPT_EAL_RndCtx *ctx, int32_t cmd, void *val, uint32_t valLen);
+
+/**
+ * @ingroup crypt_eal_rand
+ * @brief Get the seed of Primary DRBG.
+ *
+ * @param isParentEntropy [IN] If true, return primary DRBG; otherwise, return g_globalRndCtx.
+ *
+ * @retval  DRBG handle.
+ */
+CRYPT_EAL_RndCtx *CRYPT_EAL_GetSeedCtx(bool isParentEntropy);
 
 #ifdef __cplusplus
 }

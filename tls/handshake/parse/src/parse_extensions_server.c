@@ -131,8 +131,15 @@ static int32_t ParseClientSignatureAlgorithms(ParsePacket *pkt, ClientHelloMsg *
 
     msg->extension.content.signatureAlgorithmsSize = signatureAlgorithmsSize;
     msg->extension.content.signatureAlgorithms = signatureAlgorithms;
+    BSL_SAL_FREE(pkt->ctx->peerInfo.signatureAlgorithms);
+    pkt->ctx->peerInfo.signatureAlgorithms =
+        BSL_SAL_Dump(signatureAlgorithms, signatureAlgorithmsSize * sizeof(uint16_t));
+    if (pkt->ctx->peerInfo.signatureAlgorithms == NULL) {
+        return ParseErrorProcess(pkt->ctx, HITLS_MEMALLOC_FAIL, BINLOG_ID17382,
+            BINGLOG_STR("signatureAlgorithms malloc fail."), ALERT_UNKNOWN);
+    }
+    pkt->ctx->peerInfo.signatureAlgorithmsSize = signatureAlgorithmsSize;
     msg->extension.flag.haveSignatureAlgorithms = true;
-
     return HITLS_SUCCESS;
 }
 
@@ -164,11 +171,13 @@ static int32_t ParseClientPointFormats(ParsePacket *pkt, ClientHelloMsg *msg)
     return HITLS_SUCCESS;
 }
 
+#ifdef HITLS_TLS_FEATURE_EXTENDED_MASTER_SECRET
 static int32_t ParseClientExtMasterSecret(ParsePacket *pkt, ClientHelloMsg *msg)
 {
     return ParseEmptyExtension(pkt->ctx, HS_EX_TYPE_EXTENDED_MASTER_SECRET, pkt->bufLen,
         &msg->extension.flag.haveExtendedMasterSecret);
 }
+#endif
 #ifdef HITLS_TLS_FEATURE_SNI
 static void SetRevMsgExtServernameInfo(ClientHelloMsg *msg, uint8_t serverNameType, uint8_t *serverName,
     uint16_t serverNameLen)
@@ -632,6 +641,7 @@ static int32_t ParseClientPreSharedKey(ParsePacket *pkt, ClientHelloMsg *msg)
     return HITLS_SUCCESS;
 }
 
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
 static int32_t ParseClientTrustedCaList(ParsePacket *pkt, ClientHelloMsg *msg)
 {
     /* Refer to the CAList parsing method of the CertificateRequest Msg. */
@@ -671,6 +681,8 @@ static int32_t ParseClientTrustedCaList(ParsePacket *pkt, ClientHelloMsg *msg)
 
     return HITLS_SUCCESS;
 }
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
+
 static int32_t ParseClientPskKeyExModes(ParsePacket *pkt, ClientHelloMsg *msg)
 {
     /* Parsed extensions of the same type */
@@ -770,7 +782,16 @@ static int32_t ParseClientTicket(ParsePacket *pkt, ClientHelloMsg *msg)
     if (msg->extension.flag.haveTicket == true) {
         return ParseDupExtProcess(pkt->ctx, BINLOG_ID15975, BINGLOG_STR("tiket"));
     }
-
+#ifdef HITLS_TLS_FEATURE_SESSION_CUSTOM_TICKET
+    if (pkt->ctx->config.tlsConfig.sessionTicketExtCb != NULL) {
+        int32_t ret = pkt->ctx->config.tlsConfig.sessionTicketExtCb(pkt->ctx, pkt->buf, pkt->bufLen,
+                                                                 pkt->ctx->config.tlsConfig.sessionTicketExtCbArg);
+        if (ret == 0) {
+            return ParseErrorProcess(pkt->ctx, HITLS_PARSE_SESSION_TICKET_FAIL, BINLOG_ID17379,
+                BINGLOG_STR("parse ticket extension failed."), ALERT_INTERNAL_ERROR);
+        }
+    }
+#endif /* HITLS_TLS_FEATURE_SESSION_CUSTOM_TICKET */
     if (pkt->bufLen != 0) {
         ticket = (uint8_t *)BSL_SAL_Dump(&pkt->buf[0], pkt->bufLen);
         if (ticket == NULL) {
@@ -785,6 +806,29 @@ static int32_t ParseClientTicket(ParsePacket *pkt, ClientHelloMsg *msg)
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_FEATURE_SESSION_TICKET */
+
+#ifdef HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT
+static int32_t ParseClientRecordSizeLimit(ParsePacket *pkt, ClientHelloMsg *msg)
+{
+    /* Parsed extensions of the same type */
+    if (msg->extension.flag.haveRecordSizeLimit == true) {
+        return ParseDupExtProcess(pkt->ctx, BINLOG_ID16243, BINGLOG_STR("recordSizeLimit"));
+    }
+
+    int32_t ret = ParseBytesToUint16(pkt, &msg->extension.content.recordSizeLimit);
+    if (ret != HITLS_SUCCESS) {
+        return ParseErrorExtLengthProcess(pkt->ctx, BINLOG_ID16244, BINGLOG_STR("recordSizeLimit"));
+    }
+
+    /*
+     * Endpoints MUST NOT send a "record_size_limit" extension with a value
+     * smaller than 64.  An endpoint MUST treat receipt of a smaller value
+     * as a fatal error and generate an "illegal_parameter" alert.
+     */
+    msg->extension.flag.haveRecordSizeLimit = true;
+    return HITLS_SUCCESS;
+}
+#endif
 
 // parses the extension message from client
 static int32_t ParseClientExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_t *buf, uint32_t extMsgLen,
@@ -802,8 +846,9 @@ static int32_t ParseClientExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
 #ifdef HITLS_TLS_FEATURE_SNI
         { .exMsgType = HS_EX_TYPE_SERVER_NAME, .parseFunc = ParseClientServerName},
 #endif /* HITLS_TLS_FEATURE_SNI */
-
+#ifdef HITLS_TLS_FEATURE_EXTENDED_MASTER_SECRET
         { .exMsgType = HS_EX_TYPE_EXTENDED_MASTER_SECRET, .parseFunc = ParseClientExtMasterSecret},
+#endif
 #ifdef HITLS_TLS_FEATURE_ALPN
         { .exMsgType = HS_EX_TYPE_APP_LAYER_PROTOCOLS, .parseFunc = ParseClientAlpnProposeList},
 #endif
@@ -812,7 +857,9 @@ static int32_t ParseClientExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
         { .exMsgType = HS_EX_TYPE_PRE_SHARED_KEY, .parseFunc = ParseClientPreSharedKey},
         { .exMsgType = HS_EX_TYPE_PSK_KEY_EXCHANGE_MODES, .parseFunc = ParseClientPskKeyExModes},
         { .exMsgType = HS_EX_TYPE_COOKIE, .parseFunc = ParseClientCookie},
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
         { .exMsgType = HS_EX_TYPE_CERTIFICATE_AUTHORITIES, .parseFunc = ParseClientTrustedCaList},
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
         { .exMsgType = HS_EX_TYPE_POST_HS_AUTH, .parseFunc = ParseClientPostHsAuth},
         { .exMsgType = HS_EX_TYPE_KEY_SHARE, .parseFunc = ParseClientKeyShare},
 #endif /* HITLS_TLS_PROTO_TLS13 */
@@ -825,6 +872,9 @@ static int32_t ParseClientExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
 #ifdef HITLS_TLS_FEATURE_ETM
         { .exMsgType = HS_EX_TYPE_ENCRYPT_THEN_MAC, .parseFunc = ParseClientEncryptThenMac},
 #endif /* HITLS_TLS_FEATURE_ETM */
+#ifdef HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT
+        { .exMsgType = HS_EX_TYPE_RECORD_SIZE_LIMIT, .parseFunc = ParseClientRecordSizeLimit},
+#endif
     };
     for (uint32_t index = 0; index < sizeof(extMsgList) / sizeof(extMsgList[0]); index++) {
         if (extMsgList[index].exMsgType == extMsgType) {
@@ -846,20 +896,15 @@ static int32_t ParseClientExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
 int32_t ParseClientExtension(TLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, ClientHelloMsg *msg)
 {
     uint32_t bufOffset = 0u;
-    int32_t ret = HITLS_SUCCESS;
+    uint8_t extensionCount = 0;
+    ParsePacket pkt = {.ctx = ctx, .buf = buf, .bufLen = bufLen, .bufOffset = &bufOffset};
 
     /* Parse the extended message from client */
     while (bufOffset < bufLen) {
         uint16_t extMsgType = HS_EX_TYPE_END;
         uint32_t extMsgLen = 0u;
-        ret = ParseExHeader(ctx, &buf[bufOffset], bufLen - bufOffset, &extMsgType, &extMsgLen);
-        if (ret != HITLS_SUCCESS) {
-            return ret;
-        }
-        bufOffset += HS_EX_HEADER_LEN;
-
-        uint32_t extensionId = HS_GetExtensionTypeId(extMsgType);
-        ret = CheckForDuplicateExtension(msg->extensionTypeMask, extensionId, ctx);
+        uint32_t extensionId = 0;
+        int32_t ret = CheckForDuplicateExtension(&pkt, &extMsgType, &extMsgLen, &extensionId, msg->extensionTypeMask);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
@@ -884,6 +929,7 @@ int32_t ParseClientExtension(TLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, 
             return ParseErrorProcess(ctx, HITLS_PARSE_PRE_SHARED_KEY_FAILED, BINLOG_ID16136,
                 BINGLOG_STR("psk is not the last extension."), ALERT_ILLEGAL_PARAMETER);
         }
+        extensionCount++;
     }
 
     /* The extended content is the last field of the clientHello packet and no other data is allowed. If the parsed
@@ -891,9 +937,23 @@ int32_t ParseClientExtension(TLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, 
     if (bufOffset != bufLen) {
         return ParseErrorExtLengthProcess(ctx, BINLOG_ID15192, BINGLOG_STR("client hello"));
     }
-
+#ifdef HITLS_TLS_FEATURE_CLIENT_HELLO_CB
+    if (ctx->globalConfig != NULL && ctx->globalConfig->clientHelloCb != NULL) {
+        msg->extensionBuff = BSL_SAL_Dump(buf, bufLen);
+        if (msg->extensionBuff == NULL) {
+            BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
+            return ParseErrorProcess(ctx, HITLS_MEMALLOC_FAIL, BINLOG_ID17356,
+                BINGLOG_STR("extensionBuff dump fail."), ALERT_INTERNAL_ERROR);
+        }
+        msg->extensionBuffLen = bufLen;
+        msg->extensionCount = extensionCount;
+    }
+#else
+    (void)extensionCount;
+#endif /* HITLS_TLS_FEATURE_CLIENT_HELLO_CB */
     return HITLS_SUCCESS;
 }
+
 #ifdef HITLS_TLS_PROTO_TLS13
 void CleanPreShareKey(PreSharedKey *preSharedKey)
 {
@@ -945,9 +1005,10 @@ void CleanClientHelloExtension(ClientHelloMsg *msg)
     msg->extension.content.keyShare = NULL;
     CleanPreShareKey(msg->extension.content.preSharedKey);
     msg->extension.content.preSharedKey = NULL;
+#ifdef HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES
     FreeDNList(msg->extension.content.caList);
+#endif /* HITLS_TLS_FEATURE_CERTIFICATE_AUTHORITIES */
     msg->extension.content.caList = NULL;
 #endif /* HITLS_TLS_PROTO_TLS13 */
-    return;
 }
 #endif /* HITLS_TLS_HOST_SERVER */

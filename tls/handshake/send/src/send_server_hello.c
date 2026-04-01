@@ -33,6 +33,7 @@
 #include "send_process.h"
 #include "hs_kx.h"
 #include "config_type.h"
+#include "alert.h"
 
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
 #ifdef HITLS_TLS_FEATURE_SESSION
@@ -50,8 +51,8 @@ static int32_t ServerPrepareSessionId(TLS_Ctx *ctx)
     }
 
     if (ctx->negotiatedInfo.isResume == false) {
-        HITLS_SESS_CACHE_MODE sessCacheMode = SESSMGR_GetCacheMode(ctx->config.tlsConfig.sessMgr);
-        bool needSessionId = (sessCacheMode == HITLS_SESS_CACHE_SERVER || sessCacheMode == HITLS_SESS_CACHE_BOTH) &&
+        HITLS_SESS_CACHE_MODE sessCacheMode = SESSMGR_GetCacheMode(ctx->globalConfig->sessMgr);
+        bool needSessionId = ((sessCacheMode & HITLS_SESS_CACHE_SERVER) != 0) &&
             (!ctx->negotiatedInfo.isTicket);
         if (needSessionId) {
             hsCtx->sessionIdSize = HITLS_SESSION_ID_MAX_SIZE;
@@ -180,7 +181,7 @@ int32_t ServerSendServerHelloProcess(TLS_Ctx *ctx)
             return ret;
         }
 
-        ret = HS_PackMsg(ctx, SERVER_HELLO, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, SERVER_HELLO);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15550, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "pack server hello msg fail.", 0, 0, 0, 0);
@@ -226,10 +227,10 @@ static int32_t Tls13ServerPrepareKeyShare(TLS_Ctx *ctx)
      /* The ecdhe and dhe groups can invoke the same interface to generate keys. */
     key = SAL_CRYPT_GenEcdhKeyPair(ctx, &curveParams);
     if (key == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_CRYPT_ERR_ENCODE_ECDH_KEY);
+        BSL_ERR_PUSH_ERROR(HITLS_CRYPT_ERR_GEN_KEY_PAIR);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15552, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "client generate key share key pair error.", 0, 0, 0, 0);
-        return HITLS_CRYPT_ERR_ENCODE_ECDH_KEY;
+        return HITLS_CRYPT_ERR_GEN_KEY_PAIR;
     }
     kxCtx->key = key;
 
@@ -250,34 +251,25 @@ int32_t Tls13ServerSendServerHelloProcess(TLS_Ctx *ctx)
 
         ret = SAL_CRYPT_Rand(LIBCTX_FROM_CTX(ctx), hsCtx->serverRandom, HS_RANDOM_SIZE);
         if (ret != HITLS_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15553, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "get server random error.", 0, 0, 0, 0);
-            return ret;
+            return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15553, "SAL_CRYPT_Rand fail");
         }
 
         /* Set the verify information */
         ret = VERIFY_SetHash(LIBCTX_FROM_CTX(ctx), ATTRIBUTE_FROM_CTX(ctx),
             hsCtx->verifyCtx, ctx->negotiatedInfo.cipherSuiteInfo.hashAlg);
         if (ret != HITLS_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15554, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "set verify info fail.",
-                0, 0, 0, 0);
-            return ret;
+            return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15554, "set verify info fail");
         }
 
         /* Server secret derivation */
         ret = HS_TLS13CalcServerHelloProcessSecret(ctx);
         if (ret != HITLS_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16190, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "Derive-Sevret failed.", 0, 0, 0, 0);
-            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_ILLEGAL_PARAMETER);
-            return ret;
+            return RETURN_ALERT_PROCESS(ctx, ret, BINLOG_ID16190, "Derive-Secret fail", ALERT_ILLEGAL_PARAMETER);
         }
 
-        ret = HS_PackMsg(ctx, SERVER_HELLO, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, SERVER_HELLO);
         if (ret != HITLS_SUCCESS) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15555, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "pack tls1.3 server hello msg fail.", 0, 0, 0, 0);
-            return ret;
+            return RETURN_ERROR_NUMBER_PROCESS(ret, BINLOG_ID15555, "pack tls1.3 server hello msg fail");
         }
     }
 
@@ -295,7 +287,7 @@ int32_t Tls13ServerSendServerHelloProcess(TLS_Ctx *ctx)
         "send tls1.3 server hello msg success.", 0, 0, 0, 0);
 
     /* In the middlebox mode, If the scenario is not hrr, the CCS needs to be sent before the EE */
-    if (!ctx->hsCtx->haveHrr) {
+    if (ctx->config.tlsConfig.isMiddleBoxCompat && !ctx->hsCtx->haveHrr) {
         ctx->hsCtx->ccsNextState = TRY_SEND_ENCRYPTED_EXTENSIONS;
         return HS_ChangeState(ctx, TRY_SEND_CHANGE_CIPHER_SPEC);
     }
@@ -321,7 +313,7 @@ int32_t Tls13ServerSendHelloRetryRequestProcess(TLS_Ctx *ctx)
         }
 
         /* Pack the message. The hello retry request is assembled in the server hello format */
-        ret = HS_PackMsg(ctx, SERVER_HELLO, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, SERVER_HELLO);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15558, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "pack tls1.3 hello retry request msg fail.", 0, 0, 0, 0);
@@ -342,7 +334,9 @@ int32_t Tls13ServerSendHelloRetryRequestProcess(TLS_Ctx *ctx)
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-
+    if (!ctx->config.tlsConfig.isMiddleBoxCompat) {
+        return HS_ChangeState(ctx, TRY_RECV_CLIENT_HELLO);
+    }
     /* In middlebox mode, the peer sends CCS messages. Set this parameter to allow receiving CCS messages */
     ctx->method.ctrlCCS(ctx, CCS_CMD_RECV_READY);
     /* In middlebox mode, the server sends the CCS immediately after sending the hrr */

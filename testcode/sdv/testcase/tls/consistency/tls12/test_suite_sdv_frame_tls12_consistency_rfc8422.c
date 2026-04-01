@@ -17,7 +17,6 @@
 /* INCLUDE_BASE test_suite_tls12_consistency_rfc5246 */
 
 #include "securec.h"
-#include "stub_replace.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -69,6 +68,8 @@ void UT_TLS_TLS12_RFC8422_CONSISTENCY_ECDHE_LOSE_POINT_FUNC_TC001(void)
     // the client can receive the server hello done message.
     ASSERT_TRUE(
         FRAME_CreateConnection(testInfo.client, testInfo.server, true, TRY_RECV_SERVER_HELLO_DONE) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_CFG_FreeConfig(testInfo.config);

@@ -15,6 +15,7 @@
 
 /* BEGIN_HEADER */
 #include "bsl_sal.h"
+#include "bsl_err.h"
 #include "crypt_errno.h"
 #include "crypt_eal_pkey.h"
 #include "crypt_util_rand.h"
@@ -146,6 +147,7 @@ void SDV_CRYPTO_HYBRID_ENCAPS_DECAPS_FUNC_TC001(int algid, int type, int isProvi
 
     ASSERT_EQ(CRYPT_EAL_PkeyDecaps(ctxA, ciphertext, cipherLen, sharedKeyB, &sharedLenB), CRYPT_SUCCESS);
     ASSERT_COMPARE("compare sharedKey", sharedKeyB, sharedLenB, sharedKeyA, sharedLenA);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(ek.key.kemEk.data);
     BSL_SAL_Free(ciphertext);
@@ -286,7 +288,6 @@ void SDV_CRYPTO_HYBRID_ENCAPS_DECAPS_FUNC_TC002(int algid, int type, int isProvi
     ek.id = algid;
     ek.key.kemEk.len = encapsKeyA->len;
     ek.key.kemEk.data = encapsKeyA->x;
-    ASSERT_EQ(CRYPT_EAL_PkeySetPub(ctxA, &ek), CRYPT_SUCCESS);
     CRYPT_EAL_PkeyPrv dk = { 0 };
     dk.id = algid;
     dk.key.kemDk.len = decapsKeyA->len;
@@ -307,6 +308,7 @@ void SDV_CRYPTO_HYBRID_ENCAPS_DECAPS_FUNC_TC002(int algid, int type, int isProvi
     ASSERT_EQ(CRYPT_EAL_PkeyEncaps(ctxB, ciphertext, &cipherLen, sharedKeyB, &sharedLenB), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeyDecaps(ctxA, ciphertext, cipherLen, sharedKeyA, &sharedLenA), CRYPT_SUCCESS);
     ASSERT_COMPARE("compare sharedKey", sharedKeyB, sharedLenB, sharedKeyA, sharedLenA);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(ciphertext);
     BSL_SAL_Free(sharedKeyA);

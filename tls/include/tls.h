@@ -22,7 +22,6 @@
 #include "cipher_suite.h"
 #include "tls_config.h"
 #include "hitls_error.h"
-#include "custom_extensions.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,8 +43,7 @@ extern "C" {
 #define IS_SUPPORT_STREAM(versionBits) (((versionBits) & STREAM_VERSION_BITS) != 0x0u)
 #define IS_SUPPORT_DATAGRAM(versionBits) (((versionBits) & DATAGRAM_VERSION_BITS) != 0x0u)
 #define IS_SUPPORT_TLCP(versionBits) (((versionBits) & TLCP_VERSION_BITS) != 0x0u)
-
-#define DTLS_COOKIE_LEN 255
+#define IS_SUPPORT_TLS(versionBits) (((versionBits) & TLS_VERSION_MASK) != 0x0u)
 
 #define MAC_KEY_LEN 32u              /* the length of mac key */
 
@@ -124,7 +122,9 @@ typedef enum {
     CM_STATE_RENEGOTIATION,
     CM_STATE_ALERTING,
     CM_STATE_ALERTED,
+#ifdef HITLS_TLS_PROTO_CLOSE_STATE
     CM_STATE_CLOSED,
+#endif
     CM_STATE_END
 } CM_State;
 
@@ -142,9 +142,9 @@ typedef enum {
     TLS_CONNECTED,                  /* Handshake succeeded */
     TRY_SEND_HELLO_REQUEST,         /* sends hello request message */
     TRY_SEND_CLIENT_HELLO,          /* sends client hello message */
+    TRY_SEND_HELLO_VERIFY_REQUEST,  /* sends hello verify request message */
     TRY_SEND_HELLO_RETRY_REQUEST,   /* sends hello retry request message */
     TRY_SEND_SERVER_HELLO,          /* sends server hello message */
-    TRY_SEND_HELLO_VERIFY_REQUEST,  /* sends hello verify request message */
     TRY_SEND_ENCRYPTED_EXTENSIONS,  /* sends encrypted extensions message */
     TRY_SEND_CERTIFICATE,           /* sends certificate message */
     TRY_SEND_SERVER_KEY_EXCHANGE,   /* sends server key exchange message */
@@ -158,8 +158,8 @@ typedef enum {
     TRY_SEND_FINISH,                /* sends finished message */
     TRY_SEND_KEY_UPDATE,            /* sends keyupdate message */
     TRY_RECV_CLIENT_HELLO,          /* attempts to receive client hello message */
-    TRY_RECV_SERVER_HELLO,          /* attempts to receive server hello message */
     TRY_RECV_HELLO_VERIFY_REQUEST,  /* attempts to receive hello verify request message */
+    TRY_RECV_SERVER_HELLO,          /* attempts to receive server hello message */
     TRY_RECV_ENCRYPTED_EXTENSIONS,  /* attempts to receive encrypted extensions message */
     TRY_RECV_CERTIFICATE,           /* attempts to receive certificate message */
     TRY_RECV_SERVER_KEY_EXCHANGE,   /* attempts to receive server key exchange message */
@@ -175,7 +175,14 @@ typedef enum {
     HS_STATE_BUTT = 255             /* enumerated Maximum Value */
 } HITLS_HandshakeState;
 
+typedef enum {
+    TLS_PROCESS_STATE_A,
+    TLS_PROCESS_STATE_B
+} HitlsProcessState;
+
 typedef void (*SendAlertCallback)(const TLS_Ctx *ctx, ALERT_Level level, ALERT_Description description);
+
+typedef void (*ClearAlertCallBack)(TLS_Ctx *ctx, uint32_t recordType);
 
 typedef bool (*GetAlertFlagCallback)(const TLS_Ctx *ctx);
 
@@ -185,9 +192,10 @@ typedef int32_t (*UnexpectMsgHandleCallback)(TLS_Ctx *ctx, uint32_t msgType, con
 /** Connection management configure */
 typedef struct TLSCtxConfig {
     void *userData;                         /* user data */
+    uint16_t linkMtu;                       /* Maximum transport unit of a path (bytes),
+                                               including IP header and udp/tcp header */
     uint16_t pmtu;                          /* Maximum transport unit of a path (bytes) */
 
-    bool isSupportPto;                      /* is support process based TLS offload */
     uint8_t reserved[1];                    /* four-byte alignment */
 
     TLS_Config tlsConfig;                   /* tls configure context */
@@ -234,6 +242,10 @@ typedef struct {
     bool isEncryptThenMacWrite;                    /* Whether to enable EncryptThenMacWrite */
     bool isTicket;                                 /* whether to negotiate tickets, only below tls1.3 */
     bool isSniStateOK;                             /* Whether server successfully processes the server_name callback */
+#ifdef HITLS_TLS_FEATURE_SNI
+    uint8_t *serverName;
+    uint32_t serverNameSize;
+#endif
 } TLS_NegotiatedInfo;
 
 typedef struct {
@@ -242,6 +254,8 @@ typedef struct {
     uint16_t *cipherSuites;             /* all cipher suites sent by the peer end */
     uint16_t cipherSuitesSize;          /* size of a cipher suites */
     HITLS_SignHashAlgo peerSignHashAlg; /* peer signature algorithm */
+    uint16_t *signatureAlgorithms;
+    uint16_t signatureAlgorithmsSize;
     HITLS_ERROR verifyResult;           /* record the certificate verification result of the peer end */
     HITLS_TrustedCAList *caList;        /* peer trusted ca list */
 } PeerInfo;
@@ -268,6 +282,7 @@ struct TlsCtx {
         SendCcsCallback sendCCS;            /* send a CCS message */
         CtrlCcsCallback ctrlCCS;            /* controlling CCS */
         SendAlertCallback sendAlert;        /* set the alert message to be sent */
+        ClearAlertCallBack clearAlert;      /* Clear the number of consecutive received warnings */
         GetAlertFlagCallback getAlertFlag;  /* get alert state */
         UnexpectMsgHandleCallback unexpectedMsgProcessCb;   /* the callback for unexpected messages */
     } method;
@@ -281,6 +296,7 @@ struct TlsCtx {
     uint8_t clientAppTrafficSecret[MAX_DIGEST_SIZE];   /* TLS1.3 client app traffic secret */
     uint8_t serverAppTrafficSecret[MAX_DIGEST_SIZE];   /* TLS1.3 server app traffic secret */
     uint8_t resumptionMasterSecret[MAX_DIGEST_SIZE];   /* TLS1.3 session resume secret */
+    uint8_t exporterMasterSecret[MAX_DIGEST_SIZE];     /* TLS1.3 export the master secret */
 
     uint32_t bytesLeftToRead;               /* bytes left to read after hs header has parsed */
     uint32_t keyUpdateType;                 /* TLS1.3 key update type */
@@ -298,12 +314,27 @@ struct TlsCtx {
     bool isDtlsListen;
     bool plainAlertForbid;                  /* tls1.3 forbid to receive plain alert message */
     bool allowAppOut;                       /* whether user used HITLS_read to start renegotiation */
+    bool noQueryMtu;                        /* Don't query the mtu from bio */
+    bool needQueryMtu;                      /* whether need query mtu from bio */
+    bool mtuModified;                       /* whether mtu has been modified */
+    /* To reduce the calculation amount for determining timeout, use the end time instead of the start time. If the end
+     * time is exceeded, the receiving times out. */
+    BSL_TIME deadline;     /* End time */
 };
 
-#define LIBCTX_FROM_CTX(ctx) ((ctx == NULL) ? NULL : (ctx)->config.tlsConfig.libCtx)
-#define ATTRIBUTE_FROM_CTX(ctx) ((ctx == NULL) ? NULL : (ctx)->config.tlsConfig.attrName)
+typedef struct {
+    uint8_t **buf;       // &hsCtx->msgbuf
+    uint32_t *bufLen;    // &hsCtx->bufferLen
+    uint32_t *bufOffset; // &hsCtx->msgLen
+} PackPacket;
 
-#define CUSTOM_EXT_FROM_CTX(ctx) ((ctx == NULL) ? NULL : (ctx)->config.tlsConfig.customExts)
+#define LIBCTX_FROM_CTX(ctx) (((ctx) == NULL) ? NULL : (ctx)->config.tlsConfig.libCtx)
+#define ATTRIBUTE_FROM_CTX(ctx) (((ctx) == NULL) ? NULL : (ctx)->config.tlsConfig.attrName)
+
+#define CUSTOM_EXT_FROM_CTX(ctx) (((ctx) == NULL) ? NULL : (ctx)->config.tlsConfig.customExts)
+
+#define GET_VERSION_FROM_CTX(ctx) \
+    ((ctx)->negotiatedInfo.version > 0 ? (ctx)->negotiatedInfo.version : (ctx)->config.tlsConfig.maxVersion)
 
 #ifdef __cplusplus
 }

@@ -176,7 +176,7 @@ void SDV_CRYPTO_EAL_AES_WRAP_FUNC_TC001(int algId, Hex *key, Hex *iv, Hex *in, H
     }
     uint8_t *outTmp = BSL_SAL_Malloc(len);
     ASSERT_TRUE(outTmp != NULL);
-
+ 
     CRYPT_EAL_CipherCtx *ctx = CRYPT_EAL_CipherNewCtx(algId);
     ASSERT_TRUE(ctx != NULL);
     ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key->x, key->len, iv->x, iv->len, enc), CRYPT_SUCCESS);

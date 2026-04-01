@@ -25,18 +25,17 @@
 #include "hs.h"
 #include "hs_ctx.h"
 #include "hs_common.h"
+#include "hs_dtls_timer.h"
 #include "parse.h"
 #include "hs_state_recv.h"
 #include "hs_state_send.h"
 #include "bsl_errno.h"
 #include "bsl_uio.h"
-#include "uio_base.h"
 #ifdef HITLS_TLS_FEATURE_INDICATOR
 #include "indicator.h"
 #endif /* HITLS_TLS_FEATURE_INDICATOR */
 #include "transcript_hash.h"
 #include "recv_process.h"
-#include "hs_dtls_timer.h"
 
 static int32_t HandshakeDone(TLS_Ctx *ctx)
 {
@@ -59,7 +58,6 @@ static int32_t HandshakeDone(TLS_Ctx *ctx)
     }
 #endif /* HITLS_TLS_FEATURE_FLIGHT */
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_SCTP)
-
     if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_SCTP)) {
         return HITLS_SUCCESS;
     }
@@ -92,14 +90,14 @@ static int32_t HandshakeDone(TLS_Ctx *ctx)
     return ret;
 }
 
-static bool IsHsSendState(HITLS_HandshakeState state)
+bool IsHsSendState(HITLS_HandshakeState state)
 {
     switch (state) {
         case TRY_SEND_HELLO_REQUEST:
         case TRY_SEND_CLIENT_HELLO:
+        case TRY_SEND_HELLO_VERIFY_REQUEST:
         case TRY_SEND_HELLO_RETRY_REQUEST:
         case TRY_SEND_SERVER_HELLO:
-        case TRY_SEND_HELLO_VERIFY_REQUEST:
         case TRY_SEND_ENCRYPTED_EXTENSIONS:
         case TRY_SEND_CERTIFICATE:
         case TRY_SEND_SERVER_KEY_EXCHANGE:
@@ -124,8 +122,8 @@ static bool IsHsRecvState(HITLS_HandshakeState state)
 {
     switch (state) {
         case TRY_RECV_CLIENT_HELLO:
-        case TRY_RECV_SERVER_HELLO:
         case TRY_RECV_HELLO_VERIFY_REQUEST:
+        case TRY_RECV_SERVER_HELLO:
         case TRY_RECV_ENCRYPTED_EXTENSIONS:
         case TRY_RECV_CERTIFICATE:
         case TRY_RECV_SERVER_KEY_EXCHANGE:
@@ -213,7 +211,7 @@ int32_t HS_CheckKeyUpdateState(TLS_Ctx *ctx, uint32_t updateType)
 int32_t HS_CheckAndProcess2MslTimeout(TLS_Ctx *ctx)
 {
     /* In non-UDP scenarios, the 2MSL timer timeout does not need to be checked */
-    if ((ctx->hsCtx == NULL) || !BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
+    if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
         return HITLS_SUCCESS;
     }
 
@@ -228,7 +226,6 @@ int32_t HS_CheckAndProcess2MslTimeout(TLS_Ctx *ctx)
     /* If the retransmission queue times out, the retransmission queue is cleared and the hsCtx memory is released */
     if (isTimeout) {
         REC_RetransmitListClean(ctx->recCtx);
-        HS_DeInit(ctx);
     }
     return HITLS_SUCCESS;
 }

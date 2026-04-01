@@ -178,12 +178,13 @@ void SDV_BSL_LOG_VERSION_API_TC001(void)
     uint32_t versionLen = 100;
     ASSERT_TRUE(BSL_LOG_GetVersion(NULL, NULL) == BSL_LOG_ERR_BAD_PARAM);
     ASSERT_TRUE(BSL_LOG_GetVersion((char *)version, &versionLen) == BSL_LOG_ERR_BAD_PARAM);
-    const char *versionStr = "openHiTLS 0.2.1 20 May 2025";
+
     versionLen = 200;
     ASSERT_TRUE(BSL_LOG_GetVersion((char *)version, &versionLen) == BSL_SUCCESS);
-    ASSERT_COMPARE("version", versionStr, strlen(versionStr), version, versionLen);
+    ASSERT_TRUE(versionLen == strlen("openHiTLS 0.3.2 9 Mar 2026"));
+ 	ASSERT_TRUE(memcmp(version, "openHiTLS 0.3.2 9 Mar 2026", versionLen) == 0);
     uint64_t versionNum = BSL_LOG_GetVersionNum();
-    ASSERT_EQ(versionNum, 0x0020001fULL);
+    ASSERT_EQ(versionNum, 0x0030002fULL);
 EXIT:
     return;
 }
@@ -238,8 +239,10 @@ void SDV_BSL_REG_BIN_LOG_FUNC_TC001(void)
 
     func.fixLenFunc = BinLogFixLenFunc;
     func.varLenFunc = BinLogVarLenFunc;
+    TestErrClear();
     ASSERT_TRUE(BSL_LOG_RegBinLogFunc(&func) == BSL_SUCCESS);
     ASSERT_TRUE(BSL_LOG_RegBinLogFunc(&func) == BSL_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }
@@ -441,6 +444,7 @@ void SDV_BSL_BIN_LOG_FUNC_TC001(void)
 
     BSL_LOG_BINLOG_VARLEN(BINLOG_ID05003, BSL_LOG_LEVEL_FATAL, BSL_LOG_BINLOG_TYPE_RUN,
         "this is test msg: %s", "hello world");
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     fclose(g_LogOutput); // flush and close

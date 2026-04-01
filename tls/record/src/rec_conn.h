@@ -36,7 +36,7 @@ extern "C" {
 
 #define REC_CONN_SEQ_SIZE 8u            /* Sequence number size */
 
-/**
+/*
  * Cipher suite information, which is required for local encryption and decryption
  * For details, see RFC5246 6.1
  */
@@ -70,7 +70,7 @@ typedef struct {
     bool isWrapped;                         /* tls: Check whether the sequence number is wrapped */
 
     uint16_t epoch;                         /* dtls: 2 byte epoch */
-#if defined(HITLS_BSL_UIO_UDP)
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
     uint16_t reserve;                       /* Four-byte alignment is reserved */
     RecSlidWindow window;                   /* dtls record sliding window (for anti-replay) */
 #endif
@@ -269,7 +269,7 @@ void RecConnInitGenerateMacInput(const REC_TextInput *in, const uint8_t *text, u
     REC_TextInput *out);
 
 #ifdef HITLS_TLS_SUITE_CIPHER_CBC
-uint32_t RecGetHashAlgoFromMACAlgo(HITLS_MacAlgo macAlgo);
+uint32_t RecGetHashAlgoFromMacAlgo(HITLS_MacAlgo macAlgo);
 #endif
 #ifdef __cplusplus
 }

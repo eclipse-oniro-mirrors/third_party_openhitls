@@ -15,6 +15,7 @@
 
 #include "hitls_build.h"
 #include "hitls_error.h"
+#include "sal_time.h"
 #include "bsl_err_internal.h"
 #include "tls_binlog_id.h"
 #include "bsl_log_internal.h"
@@ -29,11 +30,15 @@
 #include "hs_common.h"
 #include "hs_ctx.h"
 #include "crypt.h"
+#include "hs_dtls_timer.h"
 #include "hs_state_recv.h"
 #include "bsl_bytes.h"
-#include "hs_dtls_timer.h"
 
 #define HS_MESSAGE_LEN_FIELD 3u
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+// The HITLS protocol specifies the specification for the maximum timeout period, 3600 seconds.
+#define DTLS_SPECIFY_MAX_TIMEOUT_VALUE  3600
+#endif
 static int32_t ReadEventInIdleState(HITLS_Ctx *ctx, uint8_t *data, uint32_t bufSize, uint32_t *readLen)
 {
     (void)ctx;
@@ -69,6 +74,7 @@ int32_t RecvUnexpectMsgInTransportingStateProcess(HITLS_Ctx *ctx)
 }
 static int32_t RecvRenegoReqPreprocess(TLS_Ctx *ctx, uint8_t type)
 {
+#ifdef HITLS_TLS_PROTO_TLS13
     /* If the version is TLS1.3, ignore the message */
     if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16514, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
@@ -76,10 +82,9 @@ static int32_t RecvRenegoReqPreprocess(TLS_Ctx *ctx, uint8_t type)
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
         return HITLS_MSG_HANDLE_UNEXPECTED_MESSAGE;
     }
-
+#endif
     /* If the message is not a renegotiation request, ignore the message */
-    if ((ctx->isClient && (type == CLIENT_HELLO)) ||
-        (!ctx->isClient && (type == HELLO_REQUEST))) {
+    if ((ctx->isClient && (type == CLIENT_HELLO)) || (!ctx->isClient && (type == HELLO_REQUEST))) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16515, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "ignore the message", 0, 0, 0, 0);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
@@ -106,7 +111,7 @@ static int32_t RecvRenegoReqPreprocess(TLS_Ctx *ctx, uint8_t type)
             return HITLS_SUCCESS;
         }
     }
-
+#ifdef HITLS_TLS_FEATURE_RENEGOTIATION
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
     REC_RetransmitListClean(ctx->recCtx); /* dtls over udp scenario, the retransmission queue needs to be cleared */
 #endif
@@ -116,7 +121,7 @@ static int32_t RecvRenegoReqPreprocess(TLS_Ctx *ctx, uint8_t type)
         // nextSendSeq increases to 1. Then, the hsctx is released and the nextSendSeq is reset to 0.
         // Therefore, the value of nextSendSeq should return to 1 when sending server hello.
 #ifdef HITLS_TLS_PROTO_DTLS12
-        if (ctx->userRenego && IS_DTLS_VERSION(ctx->negotiatedInfo.version)) {
+        if (ctx->userRenego && IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask)) {
             ctx->hsCtx->nextSendSeq++;
         }
 #endif
@@ -124,9 +129,11 @@ static int32_t RecvRenegoReqPreprocess(TLS_Ctx *ctx, uint8_t type)
     } else {
         (void)HS_ChangeState(ctx, TRY_RECV_HELLO_REQUEST);
     }
+#endif /* HITLS_TLS_FEATURE_RENEGOTIATION */
     return HITLS_SUCCESS;
 }
 
+#ifdef HITLS_TLS_PROTO_TLS13
 static int32_t RecvKeyUpdatePreprocess(TLS_Ctx *ctx)
 {
     if (ctx->negotiatedInfo.version != HITLS_VERSION_TLS13) {
@@ -170,7 +177,7 @@ static int32_t RecvCertPreprocess(TLS_Ctx *ctx)
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
         return HITLS_MSG_HANDLE_UNEXPECTED_MESSAGE;
     }
-
+    SAL_CRYPT_DigestFree(ctx->hsCtx->verifyCtx->hashCtx);
     ctx->hsCtx->verifyCtx->hashCtx = ctx->phaCurHash;
     ctx->phaCurHash = NULL;
 
@@ -189,6 +196,7 @@ static int32_t RecvNSTPreprocess(TLS_Ctx *ctx)
     ChangeConnState(ctx, CM_STATE_HANDSHAKING);
     return HS_ChangeState(ctx, TRY_RECV_NEW_SESSION_TICKET);
 }
+#endif /* HITLS_TLS_PROTO_TLS13 */
 
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
 static int32_t RecvPostFinishPreprocess(TLS_Ctx *ctx)
@@ -211,7 +219,6 @@ static int32_t RecvPostFinishPreprocess(TLS_Ctx *ctx)
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16522, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "HS_IsTimeout fail or timeout", 0, 0, 0, 0);
         REC_RetransmitListClean(ctx->recCtx);
-        HS_DeInit(ctx);
         return HITLS_REC_NORMAL_RECV_UNEXPECT_MSG;
     }
     if ((ctx->isClient && !ctx->negotiatedInfo.isResume) || (!ctx->isClient && ctx->negotiatedInfo.isResume)) {
@@ -250,32 +257,27 @@ static int32_t PreprocessUnexpectHsMsg(HITLS_Ctx *ctx)
     switch (hsCtx->msgBuf[0]) {
         case HELLO_REQUEST:
         case CLIENT_HELLO:
-            ret = RecvRenegoReqPreprocess(ctx, hsCtx->msgBuf[0]);
-            break;
+            return RecvRenegoReqPreprocess(ctx, hsCtx->msgBuf[0]);
+#ifdef HITLS_TLS_PROTO_TLS13
         case KEY_UPDATE:
-            ret = RecvKeyUpdatePreprocess(ctx);
-            break;
+            return RecvKeyUpdatePreprocess(ctx);
         case CERTIFICATE_REQUEST:
-            ret = RecvCertReqPreprocess(ctx);
-            break;
+            return RecvCertReqPreprocess(ctx);
         case CERTIFICATE:
-            ret = RecvCertPreprocess(ctx);
-            break;
+            return RecvCertPreprocess(ctx);
         case NEW_SESSION_TICKET:
-            ret = RecvNSTPreprocess(ctx);
-            break;
+            return RecvNSTPreprocess(ctx);
+#endif
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
         case FINISHED:
-            ret = RecvPostFinishPreprocess(ctx);
-            break;
+            return RecvPostFinishPreprocess(ctx);
 #endif
         default:
             BSL_LOG_BINLOG_VARLEN(BINLOG_ID16529, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "Unexpected %s handshake state message.", HS_GetMsgTypeStr(hsCtx->msgBuf[0]));
             ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
-            ret = HITLS_MSG_HANDLE_UNEXPECTED_MESSAGE;
+            return HITLS_MSG_HANDLE_UNEXPECTED_MESSAGE;
     }
-    return ret;
 }
 
 static void ConsumeHandshakeMessage(HITLS_Ctx *ctx)
@@ -315,12 +317,16 @@ static int32_t ReadEventInTransportingState(HITLS_Ctx *ctx, uint8_t *data, uint3
         ret = APP_Read(ctx, data, bufSize, readLen);
         if (ret == HITLS_SUCCESS) {
             if ((!ctx->negotiatedInfo.isRenegotiation) && (ctx->hsCtx != NULL)) {
+                /* In the UDP scenario, if an APP message is received, the peer end considers that the link
+                 * establishment is complete. In this case, the hsCtx memory needs to be released */
                 HS_DeInit(ctx);
             }
             /* An APP message is received */
             break;
         }
 
+        /* The handshake message processing flow starts when an error code such as alarm, CCS,
+            unknown type message, or decoding error is received. */
         if (ret == HITLS_REC_NORMAL_RECV_UNEXPECT_MSG && REC_GetUnexpectedMsgType(ctx) == REC_TYPE_HANDSHAKE) {
             unexpectMsgRet = PreprocessUnexpectHsMsg(ctx);
             if (unexpectMsgRet != HITLS_SUCCESS) {
@@ -339,11 +345,12 @@ static int32_t ReadEventInTransportingState(HITLS_Ctx *ctx, uint8_t *data, uint3
                 InnerRenegotiationProcess(ctx);
             }
 #endif
+#ifdef HITLS_TLS_PROTO_DFX_ALERT_NUMBER
             if (ALERT_HaveExceeded(ctx, MAX_ALERT_COUNT)) {
                 /* If multiple consecutive alerts exist, the link is abnormal and needs to be disconnected */
                 ALERT_Send(ctx, ALERT_LEVEL_FATAL, ALERT_UNEXPECTED_MESSAGE);
             }
-
+#endif
             unexpectMsgRet = AlertEventProcess(ctx);
             if (unexpectMsgRet != HITLS_SUCCESS) {
                 /* If the alert fails to be sent, a response is returned to the user for processing */
@@ -351,10 +358,13 @@ static int32_t ReadEventInTransportingState(HITLS_Ctx *ctx, uint8_t *data, uint3
             }
 
             /* If fatal alert or close_notify has been processed, the link must be disconnected */
-            if (ctx->state == CM_STATE_ALERTED || ctx->state == CM_STATE_CLOSED) {
+            if (ctx->state == CM_STATE_ALERTED
+#ifdef HITLS_TLS_PROTO_CLOSE_STATE
+                || ctx->state == CM_STATE_CLOSED
+#endif
+            ) {
                 return ret;
             }
-            continue;
         }
 
         if (ret != HITLS_REC_NORMAL_RECV_UNEXPECT_MSG) {
@@ -365,6 +375,11 @@ static int32_t ReadEventInTransportingState(HITLS_Ctx *ctx, uint8_t *data, uint3
         if (unexpectMsgRet != HITLS_SUCCESS) {
             return unexpectMsgRet;
         }
+#ifdef HITLS_TLS_FEATURE_MODE_AUTO_RETRY
+        if ((ctx->config.tlsConfig.modeSupport & HITLS_MODE_AUTO_RETRY) == 0) {
+            return HITLS_REC_NORMAL_RECV_BUF_EMPTY;
+        }
+#endif
     } while (ret != HITLS_SUCCESS);
 
     return ret;
@@ -419,6 +434,7 @@ static int32_t ReadEventInAlertedState(HITLS_Ctx *ctx, uint8_t *data, uint32_t b
     return HITLS_CM_LINK_FATAL_ALERTED;
 }
 
+#ifdef HITLS_TLS_PROTO_CLOSE_STATE
 static int32_t ReadEventInClosedState(HITLS_Ctx *ctx, uint8_t *data, uint32_t bufSize, uint32_t *readLen)
 {
     // Non-closed state
@@ -446,6 +462,8 @@ static int32_t ReadEventInClosedState(HITLS_Ctx *ctx, uint8_t *data, uint32_t bu
     // Directly return to link closed.
     return HITLS_CM_LINK_CLOSED;
 }
+#endif
+
 static int32_t ReadProcess(HITLS_Ctx *ctx, uint8_t *data, uint32_t bufSize, uint32_t *readLen)
 {
     ReadEventProcess readEventProcess[CM_STATE_END] = {
@@ -455,7 +473,9 @@ static int32_t ReadProcess(HITLS_Ctx *ctx, uint8_t *data, uint32_t bufSize, uint
         ReadEventInRenegotiationState,
         NULL,
         ReadEventInAlertedState,
+#ifdef HITLS_TLS_PROTO_CLOSE_STATE
         ReadEventInClosedState
+#endif
     };
 
     if ((GetConnState(ctx) >= CM_STATE_END) || (GetConnState(ctx) == CM_STATE_ALERTING)) {
@@ -518,3 +538,83 @@ uint32_t HITLS_GetReadPendingBytes(const HITLS_Ctx *ctx)
 {
     return APP_GetReadPendingBytes(ctx);
 }
+
+#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
+int32_t HITLS_DtlsProcessTimeout(HITLS_Ctx *ctx)
+{
+    if (ctx == NULL || ctx->hsCtx == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+    bool isTimeout = false;
+    int32_t ret = HS_IsTimeout(ctx, &isTimeout);
+    if (ret != HITLS_SUCCESS) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17032, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "HS_IsTimeout fail", 0, 0, 0, 0);
+        return ret;
+    }
+
+    if (isTimeout) {
+        ret = HS_TimeoutProcess(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+        /* Receive the message of the last flight when the receiving times out */
+        ret = REC_RetransmitListFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
+        return HITLS_SUCCESS;
+    }
+    return HITLS_MSG_HANDLE_DTLS_RETRANSMIT_NOT_TIMEOUT;
+}
+
+int32_t HITLS_DtlsGetTimeout(HITLS_Ctx *ctx, uint64_t *remainTimeOut)
+{
+    if (ctx == NULL || ctx->hsCtx == NULL || remainTimeOut == NULL) {
+        return HITLS_NULL_INPUT;
+    }
+
+    *remainTimeOut = 0;
+    if (!BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP) || ctx->hsCtx->timeoutValue == 0) {
+        return HITLS_MSG_HANDLE_ERR_WITHOUT_TIMEOUT_ACTION;
+    }
+    BSL_TIME curTime;
+    int32_t ret = BSL_SAL_SysTimeGet(&curTime);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+    BSL_TIME endTime = ctx->deadline;
+    ret = BSL_SAL_DateTimeCompareByUs(&curTime, &endTime);
+    if (ret == BSL_TIME_DATE_AFTER || ret == BSL_TIME_CMP_EQUAL) {
+        return HITLS_SUCCESS;
+    } else if (ret == BSL_TIME_CMP_ERROR) {
+        return HITLS_INTERNAL_EXCEPTION;
+    }
+
+    int64_t curUtcTime = 0;
+    int64_t endUtcTime = 0;
+    /* Convert the date into seconds. */
+    ret = BSL_SAL_DateToUtcTimeConvert(&curTime, &curUtcTime);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+    ret = BSL_SAL_DateToUtcTimeConvert(&endTime, &endUtcTime);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+
+    uint64_t remainSecTimeout = (uint64_t)(endUtcTime - curUtcTime);
+    if (remainSecTimeout >= DTLS_SPECIFY_MAX_TIMEOUT_VALUE) {
+        *remainTimeOut = DTLS_SPECIFY_MAX_TIMEOUT_VALUE * BSL_SECOND_TRANSFER_RATIO * BSL_SECOND_TRANSFER_RATIO;
+        return HITLS_SUCCESS;
+    }
+
+    uint64_t endMicroSec = endTime.millSec * BSL_SECOND_TRANSFER_RATIO + endTime.microSec;
+    uint64_t curMicroSec = curTime.millSec * BSL_SECOND_TRANSFER_RATIO + curTime.microSec;
+
+    *remainTimeOut = remainSecTimeout * BSL_SECOND_TRANSFER_RATIO * BSL_SECOND_TRANSFER_RATIO +
+        endMicroSec - curMicroSec;
+
+    return HITLS_SUCCESS;
+}
+#endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */

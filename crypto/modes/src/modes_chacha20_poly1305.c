@@ -63,7 +63,6 @@ void Poly1305SetKey(Poly1305Ctx *ctx, const uint8_t key[POLY1305_KEYSIZE])
 
 void Poly1305Update(Poly1305Ctx *ctx, const uint8_t *data, uint32_t dataLen)
 {
-    uint32_t i;
     uint32_t len = dataLen;
     const uint8_t *off = data;
     if (ctx->lastLen != 0) {
@@ -71,8 +70,11 @@ void Poly1305Update(Poly1305Ctx *ctx, const uint8_t *data, uint32_t dataLen)
         if (end > POLY1305_BLOCKSIZE) {
             end = POLY1305_BLOCKSIZE;
         }
-        for (i = ctx->lastLen; i < end; i++) {
-            ctx->last[i] = *off;
+        uint8_t *last = ctx->last + ctx->lastLen;
+        uint8_t *lastEnd = ctx->last + end;
+        while (last < lastEnd) {
+            *last = *off;
+            last++;
             off++;
         }
         len -= (uint32_t)(end - ctx->lastLen);
@@ -92,10 +94,13 @@ void Poly1305Update(Poly1305Ctx *ctx, const uint8_t *data, uint32_t dataLen)
     }
     ctx->lastLen = len & 0x0f; // mod 16;
     off += len - ctx->lastLen;
-    for (i = 0; i < ctx->lastLen; i++) {
-        ctx->last[i] = off[i];
+    uint8_t *last = ctx->last;
+    const uint8_t *lastSrcEnd = off + ctx->lastLen;
+    while (off < lastSrcEnd) {
+        *last = *off;
+        last++;
+        off++;
     }
-    return;
 }
 
 void Poly1305Final(Poly1305Ctx *ctx, uint8_t mac[POLY1305_TAGSIZE])
@@ -313,14 +318,15 @@ int32_t MODES_CHACHA20POLY1305_SetDecryptKey(MODES_CipherChaChaPolyCtx *ctx, con
     }
     return ctx->method->setDecryptKey(ctx->key, key, len);
 }
-int32_t MODES_CHACHA20POLY1305_Ctrl(MODES_CHACHAPOLY_Ctx *modeCtx, int32_t opt, void *val, uint32_t len)
+
+int32_t MODES_CHACHA20POLY1305_Ctrl(MODES_CHACHAPOLY_Ctx *modeCtx, int32_t cmd, void *val, uint32_t len)
 {
     if (modeCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
-        return CRYPT_INVALID_ARG;
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
     }
     
-    switch (opt) {
+    switch (cmd) {
         case CRYPT_CTRL_REINIT_STATUS:
             return SetIv(&modeCtx->chachaCtx, val, len);
         case CRYPT_CTRL_GET_TAG:
@@ -339,7 +345,7 @@ int32_t MODES_CHACHA20POLY1305_Ctrl(MODES_CHACHAPOLY_Ctx *modeCtx, int32_t opt, 
                 BSL_ERR_PUSH_ERROR(CRYPT_MODES_CTRL_TYPE_ERROR);
                 return CRYPT_MODES_CTRL_TYPE_ERROR;
             }
-            return modeCtx->chachaCtx.method->cipherCtrl(modeCtx->chachaCtx.key, opt, val, len);
+            return modeCtx->chachaCtx.method->cipherCtrl(modeCtx->chachaCtx.key, cmd, val, len);
     }
 }
 
@@ -366,6 +372,12 @@ MODES_CHACHAPOLY_Ctx *MODES_CHACHA20POLY1305_NewCtx(int32_t algId)
 
     ctx->chachaCtx.method = method;
     return ctx;
+}
+
+MODES_CHACHAPOLY_Ctx *MODES_CHACHA20POLY1305_NewCtxEx(void *libCtx, int32_t algId)
+{
+    (void)libCtx;
+    return MODES_CHACHA20POLY1305_NewCtx(algId);
 }
 
 int32_t MODES_CHACHA20POLY1305_InitCtx(MODES_CHACHAPOLY_Ctx *modeCtx, const uint8_t *key, uint32_t keyLen,

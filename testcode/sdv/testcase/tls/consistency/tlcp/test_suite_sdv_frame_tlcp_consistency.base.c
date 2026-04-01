@@ -15,7 +15,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -50,10 +50,16 @@
 #include "common_func.h"
 #include "crypt_default.h"
 #include "stub_crypt.h"
-#include "hitls_x509_local.h"
 #ifdef HITLS_TLS_FEATURE_PROVIDER
 #include "hitls_crypt.h"
 #endif
+
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET5(int32_t, TlsRecordRead, TLS_Ctx *, REC_Type, uint8_t *, uint32_t *, uint32_t);
+STUB_DEFINE_RET1(int32_t, GenerateEccPremasterSecret, TLS_Ctx *);
+STUB_DEFINE_RET4(int32_t, APP_Write, TLS_Ctx *, const uint8_t *, uint32_t, uint32_t *);
 
 #define PORT 11111
 #define TEMP_DATA_LEN 1024              /* Length of a single message. */
@@ -85,7 +91,7 @@ typedef struct {
     FRAME_LinkObj *server;
     HITLS_HandshakeState state;
     bool isClient;
-    bool isSupportExtendedMasterSecret;
+    int32_t emsMode;
     bool isSupportClientVerify;
     bool isSupportNoClientCert;
     bool isServerExtendedMasterSecret;
@@ -188,7 +194,7 @@ int32_t DefaultCfgStatusPark(HandshakeTestInfo *testInfo)
         return HITLS_INTERNAL_EXCEPTION;
     }
     HITLS_CFG_SetCheckKeyUsage(testInfo->config, false);
-    testInfo->config->isSupportExtendedMasterSecret = testInfo->isSupportExtendedMasterSecret;
+    testInfo->config->emsMode = testInfo->emsMode;
     testInfo->config->isSupportClientVerify = testInfo->isSupportClientVerify;
     testInfo->config->isSupportNoClientCert = testInfo->isSupportNoClientCert;
     testInfo->config->isSupportRenegotiation = testInfo->isSupportRenegotiation;
@@ -209,7 +215,7 @@ int32_t DefaultCfgStatusParkWithSuite(HandshakeTestInfo *testInfo)
     uint16_t cipherSuits[] = {HITLS_ECDHE_SM4_CBC_SM3};
     HITLS_CFG_SetCipherSuites(testInfo->config, cipherSuits, sizeof(cipherSuits) / sizeof(uint16_t));
 
-    testInfo->config->isSupportExtendedMasterSecret = testInfo->isSupportExtendedMasterSecret;
+    testInfo->config->emsMode = testInfo->emsMode;
     testInfo->config->isSupportClientVerify = testInfo->isSupportClientVerify;
     testInfo->config->isSupportNoClientCert = testInfo->isSupportNoClientCert;
 

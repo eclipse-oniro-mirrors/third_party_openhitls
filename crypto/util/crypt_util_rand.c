@@ -15,7 +15,7 @@
 
 #include "hitls_build.h"
 #if defined(HITLS_CRYPTO_DRBG) || defined(HITLS_CRYPTO_CURVE25519) || \
-    defined(HITLS_CRYPTO_RSA) || defined(HITLS_CRYPTO_BN_RAND)
+    defined(HITLS_CRYPTO_RSA) || defined(HITLS_CRYPTO_BN_RAND) || defined(HITLS_CRYPTO_SM9)
 
 #include <stdlib.h>
 #include "crypt_errno.h"
@@ -28,6 +28,11 @@ static CRYPT_EAL_RandFuncEx g_randFuncEx = NULL;
 void CRYPT_RandRegist(CRYPT_EAL_RandFunc func)
 {
     g_randFunc = func;
+}
+
+CRYPT_EAL_RandFunc CRYPT_RandRegistGet(void)
+{
+    return g_randFunc;
 }
 
 int32_t CRYPT_Rand(uint8_t *rand, uint32_t randLen)
@@ -46,6 +51,11 @@ int32_t CRYPT_Rand(uint8_t *rand, uint32_t randLen)
 void CRYPT_RandRegistEx(CRYPT_EAL_RandFuncEx func)
 {
     g_randFuncEx = func;
+}
+
+CRYPT_EAL_RandFuncEx CRYPT_RandRegistExGet(void)
+{
+    return g_randFuncEx;
 }
 
 int32_t CRYPT_RandEx(void *libCtx, uint8_t *rand, uint32_t randLen)

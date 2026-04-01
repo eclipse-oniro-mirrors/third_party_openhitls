@@ -19,7 +19,7 @@
 #include "hitls_build.h"
 #ifdef HITLS_PKI_X509_VFY
 #include <stdint.h>
-#include "bsl_asn1.h"
+#include "bsl_asn1_internal.h"
 #include "bsl_list.h"
 #include "hitls_pki_x509.h"
 #include "sal_atomic.h"
@@ -35,9 +35,10 @@ typedef enum {
 
 typedef struct _HITLS_X509_VerifyParam {
     int32_t maxDepth;
-    int64_t time;
     uint32_t securityBits;
+    int64_t time;
     uint64_t flags;
+    int32_t purpose;
 #ifdef HITLS_CRYPTO_SM2
     BSL_Buffer sm2UserId;
 #endif
@@ -48,9 +49,20 @@ struct _HITLS_X509_StoreCtx {
     HITLS_X509_List *crl;
     BSL_SAL_RefCount references;
     HITLS_X509_VerifyParam verifyParam;
-    BslList *caPaths;                 // List of CA directory paths for on-demand loading (char*)
     CRYPT_EAL_LibCtx *libCtx;         // Provider context
     const char *attrName;             // Provider attribute name
+    HITLS_X509_List *certChain;       // Certificate chain built during verification
+#ifdef HITLS_PKI_X509_VFY_LOCATION
+    BslList *caPaths;                 // List of CA directory paths for on-demand loading (char*)
+#endif
+#ifdef HITLS_PKI_X509_VFY_CB
+    int32_t error;                    // Error code
+    int32_t curDepth;                 // Current verification depth
+    HITLS_X509_Cert *curCert;         // Current certificate being verified
+    X509_STORECTX_VerifyCb verifyCb;  // Verification callback function
+    void *usrData;                    // user data
+    HITLS_X509_List *peerCertChain;   // Cert chain from peer
+#endif
 };
 
 
@@ -61,6 +73,10 @@ int32_t HITLS_X509_VerifyParamAndExt(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_L
  * You can configure not to verify or only verify the terminal certificate
  */
 int32_t HITLS_X509_VerifyCrl(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_List *chain);
+
+int32_t HITLS_X509_CertCmp(HITLS_X509_Cert *certOri, HITLS_X509_Cert *cert);
+
+int32_t HITLS_X509_CrlCmp(HITLS_X509_Crl *crlOri, HITLS_X509_Crl *crl);
 
 int32_t HITLS_X509_GetIssuerFromStore(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_Cert *cert, HITLS_X509_Cert **issuer);
 

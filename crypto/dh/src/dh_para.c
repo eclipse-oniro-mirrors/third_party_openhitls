@@ -20,7 +20,6 @@
 #include "crypt_bn.h"
 #include "crypt_errno.h"
 #include "crypt_types.h"
-#include "crypt_params_key.h"
 #include "dh_local.h"
 #include "crypt_dh.h"
 
@@ -844,26 +843,29 @@ static const DH_PARA_VECTOR *DhIdIsVaild(uint32_t id)
     return NULL;
 }
 
-CRYPT_DH_Para *CRYPT_DH_NewParaById(CRYPT_PKEY_ParaId id)
+CRYPT_DH_Para *CRYPT_DH_NewParaById(int32_t id)
 {
     CRYPT_DH_Para *retPara = NULL;
-    const DH_PARA_VECTOR *vector = DhIdIsVaild(id);
+    const DH_PARA_VECTOR *vector = DhIdIsVaild((uint32_t)id);
     if (vector == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_ERR_ALGID);
         return NULL;
     }
-    BSL_Param para[4] = {
-        {CRYPT_PARAM_DH_P, BSL_PARAM_TYPE_OCTETS, vector->p->data, vector->p->len, 0},
-        {CRYPT_PARAM_DH_Q, BSL_PARAM_TYPE_OCTETS, vector->q->data, vector->q->len, 0},
-        {CRYPT_PARAM_DH_G, BSL_PARAM_TYPE_OCTETS, vector->g->data, vector->g->len, 0},
-        BSL_PARAM_END
-    };
-    retPara = CRYPT_DH_NewPara(para);
+    CRYPT_DhPara para;
+    para.p = vector->p->data;
+    para.pLen = vector->p->len;
+    para.q = vector->q->data;
+    para.qLen = vector->q->len;
+    para.g = vector->g->data;
+    para.gLen = vector->g->len;
+
+    retPara = CRYPT_DH_NewPara(&para);
     if (retPara == NULL) {
         goto ERR;
     }
     retPara->id = id;
-    static const uint32_t list[] = {
+    static const int32_t list[] = {
+        CRYPT_DH_RFC2409_768, CRYPT_DH_RFC2409_1024,
         CRYPT_DH_RFC3526_1536, CRYPT_DH_RFC3526_2048, CRYPT_DH_RFC3526_3072,
         CRYPT_DH_RFC3526_4096, CRYPT_DH_RFC3526_6144, CRYPT_DH_RFC3526_8192,
     };
@@ -901,7 +903,7 @@ ERR:
 CRYPT_PKEY_ParaId CRYPT_DH_GetParaId(const CRYPT_DH_Ctx *ctx)
 {
     if (ctx == NULL || ctx->para == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_EAL_ERR_ALGID);
+        BSL_ERR_PUSH_ERROR(CRYPT_PKEY_PARAID_MAX);
         return CRYPT_PKEY_PARAID_MAX;
     }
     return ctx->para->id;

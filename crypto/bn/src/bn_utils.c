@@ -110,7 +110,7 @@ int32_t BN_Extend(BN_BigNum *a, uint32_t words)
 // Padded 0s before bin to obtain the output data whose length is binLen.
 int32_t BN_Bn2BinFixZero(const BN_BigNum *a, uint8_t *bin, uint32_t binLen)
 {
-    if (a == NULL || bin == NULL || binLen == 0) {
+    if (a == NULL || bin == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
@@ -229,7 +229,7 @@ int32_t BN_U64Array2Bn(BN_BigNum *r, const uint64_t *array, uint32_t len)
 #endif
 
 #if defined(HITLS_CRYPTO_CURVE_SM2_ASM) || (defined(HITLS_CRYPTO_CURVE_NISTP256_ASM) && \
-    defined(HITLS_CRYPTO_NIST_USE_ACCEL))
+    defined(HITLS_CRYPTO_NIST_ECC_ACCELERATE))
 int32_t BN_BN2Array(const BN_BigNum *src, BN_UINT *dst, uint32_t size)
 {
     if (size < src->size) {
@@ -349,7 +349,6 @@ static int32_t OutputCheck(BN_BigNum **r, int32_t num)
 
 int32_t BN_Hex2Bn(BN_BigNum **r, const char *str)
 {
-    int32_t ret;
     int32_t len;
     int32_t negtive = 0;
     if (r == NULL || str == NULL) {
@@ -357,7 +356,7 @@ int32_t BN_Hex2Bn(BN_BigNum **r, const char *str)
         return CRYPT_NULL_INPUT;
     }
     const char *inputStr = str;
-    ret = CheckInputStr(&len, inputStr, &negtive, true);
+    int32_t ret = CheckInputStr(&len, inputStr, &negtive, true);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
@@ -478,7 +477,6 @@ ERR:
 
 int32_t BN_Dec2Bn(BN_BigNum **r, const char *str)
 {
-    int32_t ret;
     int32_t num;
     int32_t negtive = 0;
     if (r == NULL || str == NULL) {
@@ -486,7 +484,7 @@ int32_t BN_Dec2Bn(BN_BigNum **r, const char *str)
         return CRYPT_NULL_INPUT;
     }
     const char *inputStr = str;
-    ret = CheckInputStr(&num, inputStr, &negtive, false);
+    int32_t ret = CheckInputStr(&num, inputStr, &negtive, false);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;

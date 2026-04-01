@@ -709,55 +709,6 @@ static int32_t PackHsExtSupportedVersion(const FRAME_HsExtArray16 *field, uint8_
     return HITLS_SUCCESS;
 }
 
-static int32_t PackClientHelloMsg(const FRAME_ClientHelloMsg *clientHello, uint8_t *buf,
-    uint32_t bufLen, uint32_t *usedLen)
-{
-    uint32_t offset = 0;
-    uint32_t bufOffset;
-
-    PackInteger16(&clientHello->version, &buf[offset], bufLen, &offset);
-    PackArray8(&clientHello->randomValue, &buf[offset], bufLen - offset, &offset);
-    PackInteger8(&clientHello->sessionIdSize, &buf[offset], bufLen - offset, &offset);
-    PackArray8(&clientHello->sessionId, &buf[offset], bufLen - offset, &offset);
-    PackInteger8(&clientHello->cookiedLen, &buf[offset], bufLen - offset, &offset);
-    PackArray8(&clientHello->cookie, &buf[offset], bufLen - offset, &offset);
-    PackInteger16(&clientHello->cipherSuitesSize, &buf[offset], bufLen - offset, &offset);
-    PackArray16(&clientHello->cipherSuites, &buf[offset], bufLen - offset, &offset);
-    PackInteger8(&clientHello->compressionMethodsLen, &buf[offset], bufLen - offset, &offset);
-    PackArray8(&clientHello->compressionMethods, &buf[offset], bufLen - offset, &offset);
-
-    bufOffset = offset;
-    if (clientHello->extensionState != MISSING_FIELD) {
-        PackInteger16(&clientHello->extensionLen, &buf[offset], bufLen - offset, &offset);
-        if (clientHello->extensionLen.state == SET_LEN_TO_ONE_BYTE) {
-            goto EXIT;
-        }
-        PackHsExtArrayForList(&clientHello->serverName, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArray16(&clientHello->signatureAlgorithms, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArray16(&clientHello->supportedGroups, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArray8(&clientHello->pointFormats, &buf[offset], bufLen - offset, &offset);
-        PackHsExtSupportedVersion(&clientHello->supportedVersion, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArrayForList(&clientHello->tls13Cookie, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArray8(&clientHello->extendedMasterSecret, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArrayForList(&clientHello->alpn, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArray8(&clientHello->pskModes, &buf[offset], bufLen - offset, &offset);
-        PackHsExtKeyShare(&clientHello->keyshares, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArray8(&clientHello->secRenego, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArrayForTicket(&clientHello->sessionTicket, &buf[offset], bufLen - offset, &offset);
-        PackHsExtArray8(&clientHello->encryptThenMac, &buf[offset], bufLen - offset, &offset);
-        PackHsExtOfferedPsks(&clientHello->psks, &buf[offset], bufLen - offset, &offset);
-        PackHsExtCaList(&clientHello->caList, &buf[offset], bufLen - offset, &offset);
-        if (clientHello->extensionLen.state == INITIAL_FIELD) {
-            uint32_t extensionLen = offset - sizeof(uint16_t) - bufOffset;
-            BSL_Uint16ToByte(extensionLen, &buf[bufOffset]);
-        }
-    }
-
-EXIT:
-    *usedLen = offset;
-    return HITLS_SUCCESS;
-}
-
 static int32_t PackHsExtUint16(const FRAME_HsExtUint16 *field, uint8_t *buf, uint32_t bufLen, uint32_t *offset)
 {
     uint32_t repeats = ONE_TIME;
@@ -796,6 +747,56 @@ static int32_t PackHsExtUint16(const FRAME_HsExtUint16 *field, uint8_t *buf, uin
     }
 
     *offset += bufoffset;
+    return HITLS_SUCCESS;
+}
+
+static int32_t PackClientHelloMsg(const FRAME_ClientHelloMsg *clientHello, uint8_t *buf,
+    uint32_t bufLen, uint32_t *usedLen)
+{
+    uint32_t offset = 0;
+    uint32_t bufOffset;
+
+    PackInteger16(&clientHello->version, &buf[offset], bufLen, &offset);
+    PackArray8(&clientHello->randomValue, &buf[offset], bufLen - offset, &offset);
+    PackInteger8(&clientHello->sessionIdSize, &buf[offset], bufLen - offset, &offset);
+    PackArray8(&clientHello->sessionId, &buf[offset], bufLen - offset, &offset);
+    PackInteger8(&clientHello->cookiedLen, &buf[offset], bufLen - offset, &offset);
+    PackArray8(&clientHello->cookie, &buf[offset], bufLen - offset, &offset);
+    PackInteger16(&clientHello->cipherSuitesSize, &buf[offset], bufLen - offset, &offset);
+    PackArray16(&clientHello->cipherSuites, &buf[offset], bufLen - offset, &offset);
+    PackInteger8(&clientHello->compressionMethodsLen, &buf[offset], bufLen - offset, &offset);
+    PackArray8(&clientHello->compressionMethods, &buf[offset], bufLen - offset, &offset);
+
+    bufOffset = offset;
+    if (clientHello->extensionState != MISSING_FIELD) {
+        PackInteger16(&clientHello->extensionLen, &buf[offset], bufLen - offset, &offset);
+        if (clientHello->extensionLen.state == SET_LEN_TO_ONE_BYTE) {
+            goto EXIT;
+        }
+        PackHsExtArrayForList(&clientHello->serverName, &buf[offset], bufLen - offset, &offset);
+        PackHsExtUint16(&clientHello->recordSizeLimit, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArray16(&clientHello->signatureAlgorithms, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArray16(&clientHello->supportedGroups, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArray8(&clientHello->pointFormats, &buf[offset], bufLen - offset, &offset);
+        PackHsExtSupportedVersion(&clientHello->supportedVersion, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArrayForList(&clientHello->tls13Cookie, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArray8(&clientHello->extendedMasterSecret, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArrayForList(&clientHello->alpn, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArray8(&clientHello->pskModes, &buf[offset], bufLen - offset, &offset);
+        PackHsExtKeyShare(&clientHello->keyshares, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArray8(&clientHello->secRenego, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArrayForTicket(&clientHello->sessionTicket, &buf[offset], bufLen - offset, &offset);
+        PackHsExtArray8(&clientHello->encryptThenMac, &buf[offset], bufLen - offset, &offset);
+        PackHsExtOfferedPsks(&clientHello->psks, &buf[offset], bufLen - offset, &offset);
+        PackHsExtCaList(&clientHello->caList, &buf[offset], bufLen - offset, &offset);
+        if (clientHello->extensionLen.state == INITIAL_FIELD) {
+            uint32_t extensionLen = offset - sizeof(uint16_t) - bufOffset;
+            BSL_Uint16ToByte(extensionLen, &buf[bufOffset]);
+        }
+    }
+
+EXIT:
+    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 
@@ -857,6 +858,7 @@ static int32_t PackServerHelloMsg(const FRAME_ServerHelloMsg *serverHello, uint8
     bufOffset = offset;
     PackInteger16(&serverHello->extensionLen, &buf[offset], bufLen - offset, &offset);
     PackHsExtArrayForList(&serverHello->serverName, &buf[offset], bufLen - offset, &offset);
+    PackHsExtUint16(&serverHello->recordSizeLimit, &buf[offset], bufLen - offset, &offset);
     PackHsExtArrayForList(&serverHello->tls13Cookie, &buf[offset], bufLen - offset, &offset);
     PackHsExtArrayForTicket(&serverHello->sessionTicket, &buf[offset], bufLen - offset, &offset);
     PackHsExtUint16(&serverHello->supportedVersion, &buf[offset], bufLen - offset, &offset);
@@ -1191,47 +1193,32 @@ static int32_t PackNewSessionTicketMsg(FRAME_Type *type, const FRAME_NewSessionT
 static int32_t PackHsMsgBody(FRAME_Type *type, const FRAME_Msg *msg,
     uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
 {
-    int32_t ret;
-
     const FRAME_HsMsg *hsMsg = &(msg->body.hsMsg);
 
     switch (type->handshakeType) {
         case CLIENT_HELLO:
-            ret = PackClientHelloMsg(&(hsMsg->body.clientHello), buf, bufLen, usedLen);
-            break;
+            return PackClientHelloMsg(&(hsMsg->body.clientHello), buf, bufLen, usedLen);
         case SERVER_HELLO:
-            ret = PackServerHelloMsg(&(hsMsg->body.serverHello), buf, bufLen, usedLen);
-            break;
+            return PackServerHelloMsg(&(hsMsg->body.serverHello), buf, bufLen, usedLen);
         case CERTIFICATE:
-            ret = PackCertificateMsg(type, &(hsMsg->body.certificate), buf, bufLen, usedLen);
-            break;
+            return PackCertificateMsg(type, &(hsMsg->body.certificate), buf, bufLen, usedLen);
         case SERVER_KEY_EXCHANGE:
-            ret = PackServerKeyExchangeMsg(type, &(hsMsg->body.serverKeyExchange), buf, bufLen, usedLen);
-            break;
+            return PackServerKeyExchangeMsg(type, &(hsMsg->body.serverKeyExchange), buf, bufLen, usedLen);
         case CERTIFICATE_REQUEST:
-            ret = PackCertificateRequestMsg(type, &(hsMsg->body.certificateReq), buf, bufLen, usedLen);
-            break;
+            return PackCertificateRequestMsg(type, &(hsMsg->body.certificateReq), buf, bufLen, usedLen);
         case SERVER_HELLO_DONE:
-            ret = PackServerHelloDoneMsg(&(hsMsg->body.serverHelloDone), buf, bufLen, usedLen);
-            break;
+            return PackServerHelloDoneMsg(&(hsMsg->body.serverHelloDone), buf, bufLen, usedLen);
         case CLIENT_KEY_EXCHANGE:
-            ret = PackClientKeyExchangeMsg(type, &(hsMsg->body.clientKeyExchange), buf, bufLen, usedLen);
-            break;
+            return PackClientKeyExchangeMsg(type, &(hsMsg->body.clientKeyExchange), buf, bufLen, usedLen);
         case CERTIFICATE_VERIFY:
-            ret = PackCertificateVerifyMsg(type, &(hsMsg->body.certificateVerify), buf, bufLen, usedLen);
-            break;
+            return PackCertificateVerifyMsg(type, &(hsMsg->body.certificateVerify), buf, bufLen, usedLen);
         case FINISHED:
-            ret = PackFinishedMsg(&(hsMsg->body.finished), buf, bufLen, usedLen);
-            break;
+            return PackFinishedMsg(&(hsMsg->body.finished), buf, bufLen, usedLen);
         case NEW_SESSION_TICKET:
-            ret = PackNewSessionTicketMsg(type, &(hsMsg->body.newSessionTicket), buf, bufLen, usedLen);
-            break;
+            return PackNewSessionTicketMsg(type, &(hsMsg->body.newSessionTicket), buf, bufLen, usedLen);
         default:
-            ret = HITLS_PACK_UNSUPPORT_HANDSHAKE_MSG;
-            break;
+            return HITLS_PACK_UNSUPPORT_HANDSHAKE_MSG;
     }
-
-    return ret;
 }
 
 static int32_t PackHandShakeMsg(FRAME_Type *type, const FRAME_Msg *msg,

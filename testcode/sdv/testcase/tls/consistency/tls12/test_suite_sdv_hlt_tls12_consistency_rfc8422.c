@@ -17,7 +17,6 @@
 /* INCLUDE_BASE test_suite_tls12_consistency_rfc5246 */
 
 #include <stdio.h>
-#include "stub_replace.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -78,6 +77,9 @@ void SDV_TLS_TLS12_RFC8422_CONSISTENCY_ECDHE_ECDSA_FUNC_TC001(void)
     ASSERT_TRUE(serverRes != NULL);
     clientRes = HLT_ProcessTlsConnect(remoteProcess, TLS1_2, clientCtxConfig, NULL);
     ASSERT_TRUE(clientRes != NULL);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
     HLT_CleanFrameHandle();
@@ -177,6 +179,9 @@ void SDV_TLS_TLS12_RFC8422_CONSISTENCY_CURVE_AND_AUTH_FUNC_TC001(void)
      *  Set serverkeyexchange to secp256r1 */
     int ret = HLT_TlsConnect(clientRes->ssl);
     ASSERT_TRUE(ret == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
     HLT_CleanFrameHandle();
@@ -277,6 +282,8 @@ static void Test_SetCipherSuites_With_Link(CipherInfo serverCipher, CipherInfo c
     ASSERT_TRUE(ret == 0);
     ASSERT_TRUE(readLen == strlen("Hello"));
     ASSERT_TRUE(memcmp("Hello", readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HLT_FreeAllProcess();
@@ -475,7 +482,7 @@ void SDV_TLS_TLS12_RFC8422_CONSISTENCYECDHE_ERR_POINT_FUNC_TC002(void)
     handle.frameCallBack = MalformedServerHelloMsgCallback;
     TestPara testPara = {0};
     testPara.port = g_uiPort;
-    testPara.isSupportExtendedMasterSecret = true;
+    testPara.emsMode = HITLS_EMS_MODE_FORCE;
     // 4. The status of the tested end is alerted.
     testPara.expectHsState = TRY_RECV_CLIENT_KEY_EXCHANGE;
     // 3. Check the status of the tested end.
@@ -526,7 +533,7 @@ void SDV_TLS_TLS12_RFC8422_CONSISTENCYECDHE_ECDHE_LOSE_CURVE_FUNC_TC001(void)
     handle.frameCallBack = MalformedNoCurveExternsionCallback;
     TestPara testPara = {0};
     testPara.port = g_uiPort;
-    testPara.isSupportExtendedMasterSecret = true;
+    testPara.emsMode = HITLS_EMS_MODE_FORCE;
     testPara.expectHsState = TRY_RECV_SERVER_HELLO;
     // 3. The server continues to establish a connection.
     testPara.expectDescription = ALERT_HANDSHAKE_FAILURE;

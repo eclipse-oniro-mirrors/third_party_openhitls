@@ -17,7 +17,7 @@
 /* INCLUDE_BASE test_suite_tls13_consistency_rfc8446 */
 
 #include <stdio.h>
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -42,6 +42,12 @@
 #include "process.h"
 #include "bsl_sal.h"
 /* END_HEADER */
+
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET4(int32_t, REC_Write, TLS_Ctx *, REC_Type, const uint8_t *, uint32_t);
+
 #define MAX_BUF 16384
 
 int32_t STUB_RecConnDecrypt(
@@ -55,7 +61,9 @@ int32_t STUB_RecConnDecrypt(
     return HITLS_SUCCESS;
 }
 
-int32_t STUB_REC_Write(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, uint32_t num)
+// Stub function for REC_Write - used by STUB_REPLACE in test cases
+// Note: Test cases can use stub mechanism, but framework cannot
+int32_t Stub_REC_Write(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, uint32_t num)
 {
     (void)ctx;
     (void)recordType;
@@ -63,8 +71,6 @@ int32_t STUB_REC_Write(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, u
     (void)num;
     return HITLS_SUCCESS;
 }
-
-extern int32_t __real_REC_Write(TLS_Ctx *ctx, REC_Type recordType, const uint8_t *data, uint32_t num);
 
 static void Test_FinishToAPP(HITLS_Ctx *ctx, uint8_t *data, uint32_t *len, uint32_t bufSize, void *user)
 {
@@ -81,7 +87,8 @@ static void Test_FinishToAPP(HITLS_Ctx *ctx, uint8_t *data, uint32_t *len, uint3
     ASSERT_EQ(parseLen, *len);
     ASSERT_EQ(frameMsg.body.hsMsg.type.data, FINISHED);
 
-    STUB_Replace(user, __real_REC_Write, STUB_REC_Write);
+    // Use stub mechanism directly - no ld --wrap needed
+    STUB_REPLACE(REC_Write, Stub_REC_Write);;
     memset_s(data, bufSize, 0, bufSize);
     FRAME_PackRecordBody(&frameType, &frameMsg, data, bufSize, len);
 
@@ -263,6 +270,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_PHA_FUNC_TC001()
     ASSERT_TRUE(readbytes == sizeof(src));
     ASSERT_TRUE(memcmp(src, dest, readbytes) == 0);
     memset_s(dest, READ_BUF_SIZE, 0, READ_BUF_SIZE);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
     return;
@@ -387,6 +397,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC003(void)
     ASSERT_TRUE(clientRes == NULL);
 
     ASSERT_TRUE(HLT_GetTlsAcceptResult(serverRes) != 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
     ClearWrapper();
@@ -707,6 +720,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC007(void)
     ASSERT_TRUE(HLT_TlsRead(serverRes->ssl, readBuf, READ_BUF_SIZE, &readLen) == 0);
     ASSERT_TRUE(readLen == strlen(writeBuf));
     ASSERT_TRUE(memcmp(writeBuf, readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -918,6 +934,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC009()
     HLT_RpcTlsClose(remoteProcess, serverSslId);
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -1174,6 +1193,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC012()
     HLT_RpcTlsClose(remoteProcess, serverSslId);
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -1438,6 +1460,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC014()
     HLT_RpcTlsClose(remoteProcess, serverSslId);
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -1466,8 +1491,6 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC015()
 {
-    STUB_Init();
-    FuncStubInfo tmpStubInfo;
 
     int version = TLS1_3;
     int connType = TCP;
@@ -1549,15 +1572,14 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC015()
     int ret = HLT_TlsConnect(clientSsl);
     ASSERT_EQ(ret, HITLS_SUCCESS);
 
-    // he server initiates a handshake for authentication
+    // the server initiates a handshake for authentication
     ASSERT_TRUE(HLT_RpcTlsVerifyClientPostHandshake(remoteProcess, serverSslId) == HITLS_SUCCESS);
-    ;
     uint8_t readBuf[READ_BUF_SIZE] = {0};
     uint32_t readLen;
     const char *writeBuf = "Hello world";
 
     // Enable the client to send an app message before sending the finish message.
-    RecWrapper wrapper = {TRY_SEND_FINISH, REC_TYPE_HANDSHAKE, false, &tmpStubInfo, Test_FinishToAPP};
+    RecWrapper wrapper = {TRY_SEND_FINISH, REC_TYPE_HANDSHAKE, false, NULL, Test_FinishToAPP};
     RegisterWrapper(wrapper);
 
     ASSERT_TRUE(HLT_RpcTlsWrite(remoteProcess, serverSslId, (uint8_t *)writeBuf, strlen(writeBuf)) == 0);
@@ -1567,7 +1589,7 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC015()
     ASSERT_TRUE(memcmp(writeBuf, readBuf, readLen) == 0);
     HLT_TlsWrite(clientSsl, (uint8_t *)writeBuf, strlen(writeBuf));
 
-    STUB_Reset(&tmpStubInfo);
+    STUB_RESTORE(REC_Write);
     HLT_TlsWrite(clientSsl, (uint8_t *)writeBuf, strlen(writeBuf));
 
     ASSERT_TRUE(memset_s(readBuf, READ_BUF_SIZE, 0, READ_BUF_SIZE) == EOK);
@@ -1578,6 +1600,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC015()
     HLT_RpcTlsClose(remoteProcess, serverSslId);
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
     HLT_FreeAllProcess();
@@ -1720,6 +1745,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC016()
     HLT_RpcTlsClose(remoteProcess, serverSslId);
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -1858,6 +1886,79 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC017()
     HLT_RpcTlsClose(remoteProcess, serverSslId);
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HLT_FreeAllProcess();
+}
+/* END_CASE */
+
+/** @
+* @test  SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC018
+* @spec  -
+* @title Close isSupportPostHandshakeAuth of server, open isSupportClientVerify, the server send certificate request
+        successfully
+* @precon  nan
+* @brief
+*   1. Apply and initialize config
+*   2. Set the client support post-handshake extension
+*   3. After the connection establishment, the server sends a certificate request message for backhandshake
+    authentication.
+*   4. Observe client behavior
+* @expect
+*   1. Initialization succeeded.
+*   2. Set succeeded.
+*   3. Authentication succeeded.
+@ */
+/* BEGIN_CASE */
+void SDV_TLS_TLS13_RFC8446_CONSISTENCY_POSTHANDSHAKE_FUNC_TC018()
+{
+    HLT_Tls_Res *serverRes = NULL;
+    HLT_Tls_Res *clientRes = NULL;
+    HLT_Process *localProcess = NULL;
+    HLT_Process *remoteProcess = NULL;
+    HLT_Ctx_Config *serverConfig = NULL;
+    HLT_Ctx_Config *clientConfig = NULL;
+
+    localProcess = HLT_InitLocalProcess(HITLS);
+    ASSERT_TRUE(localProcess != NULL);
+    remoteProcess = HLT_LinkRemoteProcess(HITLS, TCP, 18889, false);
+    ASSERT_TRUE(remoteProcess != NULL);
+
+    // Apply and initialize config
+    serverConfig = HLT_NewCtxConfig(NULL, "SERVER");
+    ASSERT_TRUE(serverConfig != NULL);
+    clientConfig = HLT_NewCtxConfig(NULL, "CLIENT");
+    ASSERT_TRUE(clientConfig != NULL);
+
+    // Set the client support post-handshake extension
+    HLT_SetPostHandshakeAuth(serverConfig, false);
+    HLT_SetClientVerifySupport(serverConfig, true);
+    HLT_SetPostHandshakeAuth(clientConfig, true);
+    HLT_SetClientVerifySupport(clientConfig, true);
+
+    serverRes = HLT_ProcessTlsAccept(localProcess, TLS1_3, serverConfig, NULL);
+    ASSERT_TRUE(serverRes != NULL);
+
+    clientRes = HLT_ProcessTlsConnect(remoteProcess, TLS1_3, clientConfig, NULL);
+    ASSERT_TRUE(clientRes != NULL);
+
+    ASSERT_EQ(HLT_GetTlsAcceptResult(serverRes), 0);
+
+    ASSERT_EQ(HITLS_VerifyClientPostHandshake(serverRes->ssl), HITLS_SUCCESS);
+    uint8_t readBuf[READ_BUF_SIZE] = {0};
+    uint32_t readLen;
+    const char *writeBuf = "Hello world";
+
+    ASSERT_TRUE(HLT_TlsWrite(serverRes->ssl, (uint8_t *)writeBuf, strlen(writeBuf)) == HITLS_SUCCESS);
+    ASSERT_TRUE(memset_s(readBuf, READ_BUF_SIZE, 0, READ_BUF_SIZE) == EOK);
+
+    // The client returns alert
+    ASSERT_TRUE(HLT_RpcTlsRead(remoteProcess, clientRes->sslId, readBuf, READ_BUF_SIZE, &readLen) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
     HLT_FreeAllProcess();
 }

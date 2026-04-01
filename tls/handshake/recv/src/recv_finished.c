@@ -30,6 +30,7 @@
 #include "hs_verify.h"
 #include "recv_process.h"
 #include "hs_kx.h"
+#include "bsl_bytes.h"
 #ifdef HITLS_TLS_FEATURE_SESSION
 #include "session_mgr.h"
 #endif
@@ -113,7 +114,7 @@ static int32_t SessionConfig(TLS_Ctx *ctx)
     /* When the SNI negotiation is HITLS_ACCEPT_ERR_OK, save the client Hello server_name extension to the session
      * structure */
     if (ctx->negotiatedInfo.isSniStateOK && isTls13 == false) {
-        ret = SESS_SetHostName(ctx->session, hsCtx->serverNameSize, hsCtx->serverName);
+        ret = SESS_SetHostName(ctx->session, ctx->negotiatedInfo.serverNameSize, ctx->negotiatedInfo.serverName);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17076, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "SetHostName fail", 0, 0, 0, 0);
@@ -157,13 +158,18 @@ static int32_t SessionConfig(TLS_Ctx *ctx)
     return HITLS_SUCCESS;
 }
 
-static int32_t HsSetSessionInfo(TLS_Ctx *ctx)
+int32_t HsSetSessionInfo(TLS_Ctx *ctx)
 {
     int32_t ret = 0;
-    TLS_SessionMgr *sessMgr = ctx->config.tlsConfig.sessMgr;
-
-    SESSMGR_ClearTimeout(sessMgr);
-
+    TLS_SessionMgr *sessMgr = NULL;
+    if (ctx->globalConfig != NULL) {
+        sessMgr = ctx->globalConfig->sessMgr;
+    }
+    HITLS_SESS_CACHE_MODE mode = SESSMGR_GetCacheMode(sessMgr);
+    if ((mode & HITLS_SESS_DISABLE_AUTO_CLEANUP) == 0) {
+        SESSMGR_ClearTimeout(ctx->globalConfig, (uint64_t)BSL_SAL_CurrentSysTimeGet());
+    }
+    
     /* This parameter is not required for session multiplexing */
     if (ctx->negotiatedInfo.isResume == true) {
         return HITLS_SUCCESS;
@@ -187,12 +193,18 @@ static int32_t HsSetSessionInfo(TLS_Ctx *ctx)
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
+    if (ctx->negotiatedInfo.version == HITLS_VERSION_TLS13) {
+        return HITLS_SUCCESS;
+    }
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
     /* The session cache does not store TLS1.3 sessions */
-    if (ctx->negotiatedInfo.version != HITLS_VERSION_TLS13) {
-        SESSMGR_InsertSession(sessMgr, ctx->session, ctx->isClient);
+    if ((mode & HITLS_SESS_DISABLE_INTERNAL_STORE) == 0) {
+        bool isStore =
+            ctx->isClient == true ? (mode & HITLS_SESS_CACHE_CLIENT) != 0 : (mode & HITLS_SESS_CACHE_SERVER) != 0;
+        SESSMGR_InsertSession(sessMgr, ctx->session, isStore);
         if (ctx->globalConfig != NULL && ctx->globalConfig->newSessionCb != NULL) {
-            HITLS_SESS_UpRef(ctx->session); // It is convenient for users to take away and needs to be released by users
+            HITLS_SESS_UpRef(ctx->session);
+            // It is convenient for users to take away and needs to be released by users
             if (ctx->globalConfig->newSessionCb(ctx, ctx->session) == 0) {
                 /* If the user does not reference the session, the number of reference times decreases by 1 */
                 HITLS_SESS_Free(ctx->session);
@@ -204,7 +216,8 @@ static int32_t HsSetSessionInfo(TLS_Ctx *ctx)
 }
 #endif /* HITLS_TLS_FEATURE_SESSION */
 
-int32_t CheckFinishedVerifyData(const FinishedMsg *finishedMsg, const uint8_t *verifyData, uint32_t verifyDataSize)
+static int32_t CheckFinishedVerifyData(const FinishedMsg *finishedMsg, const uint8_t *verifyData,
+    uint32_t verifyDataSize)
 {
     if ((finishedMsg->verifyDataSize == 0u) || (verifyDataSize == 0u)) {
         BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_INCORRECT_DIGEST_LEN);
@@ -220,7 +233,7 @@ int32_t CheckFinishedVerifyData(const FinishedMsg *finishedMsg, const uint8_t *v
         return HITLS_MSG_HANDLE_INCORRECT_DIGEST_LEN;
     }
 
-    if (memcmp(finishedMsg->verifyData, verifyData, verifyDataSize) != 0) {
+    if (ConstTimeMemcmp(finishedMsg->verifyData, verifyData, verifyDataSize) == 0) {
         BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_VERIFY_FINISHED_FAIL);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15739, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "Finished data unequal.", 0, 0, 0, 0);
@@ -229,20 +242,19 @@ int32_t CheckFinishedVerifyData(const FinishedMsg *finishedMsg, const uint8_t *v
 
     return HITLS_SUCCESS;
 }
-#ifdef HITLS_TLS_HOST_CLIENT
-int32_t ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
+
+static int32_t RecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {
-    int32_t ret = 0;
     HS_Ctx *hsCtx = (HS_Ctx *)ctx->hsCtx;
     VerifyCtx *verifyCtx = hsCtx->verifyCtx;
     const FinishedMsg *finished = &msg->body.finished;
     uint8_t verifyData[MAX_DIGEST_SIZE] = {0};
     uint32_t verifyDataSize = MAX_DIGEST_SIZE;
 
-    ret = VERIFY_GetVerifyData(verifyCtx, verifyData, &verifyDataSize);
+    int32_t ret = VERIFY_GetVerifyData(verifyCtx, verifyData, &verifyDataSize);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15740, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "client get server finished verify data error.", 0, 0, 0, 0);
+            "Get finished verify data error.", 0, 0, 0, 0);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
         return ret;
     }
@@ -250,12 +262,9 @@ int32_t ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
     ret = CheckFinishedVerifyData(finished, verifyData, verifyDataSize);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15741, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "client verify server finished data error.", 0, 0, 0, 0);
-        if (ret == HITLS_MSG_HANDLE_INCORRECT_DIGEST_LEN) {
-            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_DECODE_ERROR);
-        } else {
-            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_DECRYPT_ERROR);
-        }
+            "Verify finished data error.", 0, 0, 0, 0);
+        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL,
+            (ret == HITLS_MSG_HANDLE_INCORRECT_DIGEST_LEN) ? ALERT_DECODE_ERROR : ALERT_DECRYPT_ERROR);
         return HITLS_MSG_HANDLE_VERIFY_FINISHED_FAIL;
     }
 #ifdef HITLS_TLS_FEATURE_SESSION
@@ -267,14 +276,17 @@ int32_t ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
         return ret;
     }
 #endif /* HITLS_TLS_FEATURE_SESSION */
-    /* CCS messages are not allowed to be received later. */
-    ctx->method.ctrlCCS(ctx, CCS_CMD_RECV_EXIT_READY);
+    if (ctx->isClient) {
+        /* CCS messages are not allowed to be received later. */
+        ctx->method.ctrlCCS(ctx, CCS_CMD_RECV_EXIT_READY);
+    }
     return HITLS_SUCCESS;
 }
+#ifdef HITLS_TLS_HOST_CLIENT
 #ifdef HITLS_TLS_PROTO_TLS_BASIC
 int32_t Tls12ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {
-    int32_t ret = ClientRecvFinishedProcess(ctx, msg);
+    int32_t ret = RecvFinishedProcess(ctx, msg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -293,13 +305,16 @@ int32_t DtlsClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {
 #ifdef HITLS_BSL_UIO_UDP
     if (ctx->preState == CM_STATE_TRANSPORTING && ctx->state == CM_STATE_HANDSHAKING) {
-        REC_RetransmitListFlush(ctx);
+        int32_t ret = REC_RetransmitListFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15888, BSL_LOG_LEVEL_DEBUG, BSL_LOG_BINLOG_TYPE_RUN,
             "recv post hs finished, send retransmit msg.", 0, 0, 0, 0);
         return HS_ChangeState(ctx, TLS_CONNECTED);
     }
 #endif /* HITLS_BSL_UIO_UDP */
-    int32_t ret = ClientRecvFinishedProcess(ctx, msg);
+    int32_t ret = RecvFinishedProcess(ctx, msg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -318,7 +333,7 @@ int32_t DtlsClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 #ifdef HITLS_TLS_PROTO_TLS13
 int32_t Tls13ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {
-    int32_t ret = ClientRecvFinishedProcess(ctx, msg);
+    int32_t ret = RecvFinishedProcess(ctx, msg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -349,51 +364,10 @@ int32_t Tls13ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 #endif /* HITLS_TLS_HOST_CLIENT */
 
 #ifdef HITLS_TLS_HOST_SERVER
-
-int32_t ServerRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
-{
-    int32_t ret = 0;
-    HS_Ctx *hsCtx = (HS_Ctx *)ctx->hsCtx;
-    VerifyCtx *verifyCtx = hsCtx->verifyCtx;
-    uint8_t verifyData[MAX_DIGEST_SIZE] = {0};
-    uint32_t verifyDataSize = MAX_DIGEST_SIZE;
-    const FinishedMsg *finished = &msg->body.finished;
-
-    ret = VERIFY_GetVerifyData(verifyCtx, verifyData, &verifyDataSize);
-    if (ret != HITLS_SUCCESS) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15742, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "server get client finished verify data error.", 0, 0, 0, 0);
-        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
-        return ret;
-    }
-
-    ret = CheckFinishedVerifyData(finished, verifyData, verifyDataSize);
-    if (ret != HITLS_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_VERIFY_FINISHED_FAIL);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15743, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "server verify client finished data error.", 0, 0, 0, 0);
-        if (ret == HITLS_MSG_HANDLE_VERIFY_FINISHED_FAIL) {
-            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_DECRYPT_ERROR);
-        } else {
-            ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_DECODE_ERROR);
-        }
-        return HITLS_MSG_HANDLE_VERIFY_FINISHED_FAIL;
-    }
-#ifdef HITLS_TLS_FEATURE_SESSION
-    ret = HsSetSessionInfo(ctx);
-    if (ret != HITLS_SUCCESS) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15897, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "set session information failed.", 0, 0, 0, 0);
-        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
-        return ret;
-    }
-#endif /* HITLS_TLS_FEATURE_SESSION */
-    return HITLS_SUCCESS;
-}
 #ifdef HITLS_TLS_PROTO_TLS_BASIC
 int32_t Tls12ServerRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {
-    int32_t ret = ServerRecvFinishedProcess(ctx, msg);
+    int32_t ret = RecvFinishedProcess(ctx, msg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -415,13 +389,16 @@ int32_t DtlsServerRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {
 #ifdef HITLS_BSL_UIO_UDP
     if (ctx->preState == CM_STATE_TRANSPORTING && ctx->state == CM_STATE_HANDSHAKING) {
-        REC_RetransmitListFlush(ctx);
+        int32_t ret = REC_RetransmitListFlush(ctx);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15885, BSL_LOG_LEVEL_DEBUG, BSL_LOG_BINLOG_TYPE_RUN,
             "recv post hs finished, send retransmit msg.", 0, 0, 0, 0);
         return HS_ChangeState(ctx, TLS_CONNECTED);
     }
 #endif /* HITLS_BSL_UIO_UDP */
-    int32_t ret = ServerRecvFinishedProcess(ctx, msg);
+    int32_t ret = RecvFinishedProcess(ctx, msg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -450,7 +427,7 @@ int32_t Tls13ServerRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
     ctx->method.ctrlCCS(ctx, CCS_CMD_RECV_EXIT_READY);
     ctx->plainAlertForbid = true;
 
-    int32_t ret = ServerRecvFinishedProcess(ctx, msg);
+    int32_t ret = RecvFinishedProcess(ctx, msg);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
@@ -473,9 +450,8 @@ int32_t Tls13ServerRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
-#ifdef HITLS_TLS_FEATURE_PHA
-        if (ctx->phaState == PHA_EXTENSION && ctx->config.tlsConfig.isSupportClientVerify &&
-            ctx->config.tlsConfig.isSupportPostHandshakeAuth) {
+#if defined(HITLS_TLS_FEATURE_PHA) && defined(HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY)
+        if (ctx->phaState == PHA_EXTENSION && ctx->config.tlsConfig.isSupportClientVerify) {
             SAL_CRYPT_DigestFree(ctx->phaHash);
             ctx->phaHash = SAL_CRYPT_DigestCopy(ctx->hsCtx->verifyCtx->hashCtx);
             if (ctx->phaHash == NULL) {
@@ -485,7 +461,7 @@ int32_t Tls13ServerRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
                 return HITLS_CRYPT_ERR_DIGEST;
             }
         }
-#endif /* HITLS_TLS_FEATURE_PHA */
+#endif /* HITLS_TLS_FEATURE_PHA && HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY */
     }
 #ifdef HITLS_TLS_FEATURE_SESSION_TICKET
     /* When ticketNums is 0, no ticket is sent */

@@ -21,6 +21,7 @@
 #include "pthread.h"
 #include "securec.h"
 #include "eal_cipher_local.h"
+#include "crypto_test_util.h"
 
 #define BLOCKSIZE 16
 #define KEYSIZE 32
@@ -520,6 +521,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC001(int id, Hex *key, Hex *iv, int padding, i
     decLen = MAXSIZE - totalLen;
     ret = CRYPT_EAL_CipherFinal(ctxDec, result + totalLen, &decLen);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctxEnc);
     CRYPT_EAL_CipherFreeCtx(ctxDec);
@@ -587,6 +589,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC002(int algId, Hex *key, Hex *iv, int inLen, 
     ASSERT_EQ(CRYPT_EAL_CipherFinal(ctxDec, result + len, &leftLen), CRYPT_SUCCESS);
 
     ASSERT_TRUE(memcmp(input, result, inLen) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctxEnc);
     CRYPT_EAL_CipherFreeCtx(ctxDec);
@@ -621,6 +624,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC003(int isProvider, int id, Hex *key, Hex *pl
     ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key->x, key->len, iv->x, iv->len, true), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, plainText->x, plainText->len, out, &len), CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(out, cipherText->x, len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
 }
@@ -657,6 +661,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC004(int isProvider, int id, Hex *key, Hex *pl
     ret = CRYPT_EAL_CipherUpdate(ctx, cipherText->x, cipherText->len, out, &len);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(out, plainText->x, len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
 }
@@ -733,6 +738,7 @@ void SDV_CRYPTO_SM4_MULTI_UPDATE_TC001(int algId, Hex *key, Hex *iv, Hex *in, in
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(in->x, result, in->len) == 0);
     ASSERT_TRUE(memcmp(in->x, result + in->len, in->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctxEnc);
     CRYPT_EAL_CipherFreeCtx(ctxDec);
@@ -822,6 +828,7 @@ void SDV_CRYPTO_SM4_MULTI_UPDATE_TC002(int algId, Hex *key, Hex *iv, Hex *in, in
 
     ASSERT_TRUE(memcmp(in->x, result, BLOCKSIZE - 1) == 0);
     ASSERT_TRUE(memcmp(in->x, result + BLOCKSIZE - 1, BLOCKSIZE) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctxEnc);
     CRYPT_EAL_CipherFreeCtx(ctxDec);
@@ -981,6 +988,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC005(int isProvider, Hex *key, Hex *in1, Hex *
     ret = CRYPT_EAL_CipherUpdate(ctx, in1->x, in1->len, outTmp, &len);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(outTmp, out1->x, out1->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
 }
@@ -1060,6 +1068,7 @@ void SDV_CRYPTO_SM4_MULTI_THREAD_TC001(int algId, Hex *key, Hex *in, Hex *out, H
     for (uint32_t i = 0; i < THREAD_NUM; i++) {
         pthread_join(thrd[i], NULL);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }
@@ -1096,6 +1105,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC006(int id, Hex *key, Hex *iv, Hex *msg, int 
     ret = CRYPT_EAL_CipherUpdate(ctx, msg->x, msg->len, out, &outlen);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     outlen = MAX_OUTPUT;
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ret = CRYPT_EAL_CipherFinal(ctx, out, &outlen);
     ASSERT_TRUE(ret != CRYPT_SUCCESS);
 EXIT:
@@ -1138,6 +1148,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC007(int id, Hex *key, Hex *iv, int enc)
         ASSERT_TRUE(ret == CRYPT_SUCCESS);
     }
     ASSERT_TRUE(outlen == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
 }
@@ -1194,6 +1205,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC008(int isProvider, int algId, Hex *key, Hex 
     ret = Sm4CipherFinal(algId, ctx, outTmp + len, &finLen);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_COMPARE("Cipher compare", out->x, out->len, outTmp, len + finLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
 }
@@ -1250,6 +1262,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC009(int isProvider, int algId, Hex *key, Hex 
     ret = Sm4CipherFinal(algId, ctx, outTmp + len, &finLen);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(outTmp, out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
 }
@@ -1325,6 +1338,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC010(int algId, Hex *key, Hex *iv, int inLen, 
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
 
     ASSERT_TRUE(memcmp(input, result, inLen) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctxEnc);
     CRYPT_EAL_CipherFreeCtx(ctxDec);
@@ -1403,6 +1417,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC011(int algId, Hex *key, Hex *iv, int inLen, 
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
 
     ASSERT_TRUE(memcmp(input, result, inLen) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctxEnc);
     CRYPT_EAL_CipherFreeCtx(ctxDec);
@@ -1448,6 +1463,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC012(int algId, Hex *key, Hex *iv, Hex *in, He
         ASSERT_TRUE(ret == CRYPT_SUCCESS);
     }
     ASSERT_TRUE(memcmp(outTmp, out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
 }
@@ -1506,6 +1522,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC013(Hex *key, Hex *iv, Hex *aad, Hex *pt, Hex
         ASSERT_TRUE(memcmp(out, ct->x, ct->len) == 0);
     }
     ASSERT_COMPARE("Compare Tag", outTag, tagLen, tag->x, tag->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
@@ -1560,6 +1577,7 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC014(int isProvider, int algId, Hex *key, Hex 
 
     ASSERT_TRUE(totalLen == out->len);
     ASSERT_TRUE(memcmp(out->x, outTmp, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctxEnc);
@@ -1612,9 +1630,198 @@ void SDV_CRYPTO_SM4_ENCRYPT_FUNC_TC015(int isProvider, int algId, Hex *key, Hex 
 
     ASSERT_TRUE(totalLen == out->len);
     ASSERT_TRUE(memcmp(out->x, result, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctxDec);
     CRYPT_EAL_CipherFreeCtx(ctxDec);
 }
 /* END_CASE */
+
+/**
+ * @test  SDV_CRYPTO_SM4_CCM_TC001  
+ * @title  SM4-CCM KAT test from RFC8998
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_SM4_CCM_TC001(int isProvider, int algId, Hex *key, Hex *iv, Hex *aad, Hex *in, Hex *out, Hex *tag)
+{
+    TestMemInit();
+    uint8_t result[MAX_OUTPUT] = {0};
+    uint8_t outTag[16] = {0};
+    uint32_t outTagLen = 16;
+    uint32_t totalLen = 0;
+    uint32_t leftLen = MAX_OUTPUT;
+    uint32_t len = MAX_OUTPUT;
+    CRYPT_EAL_CipherCtx *ctx = NULL;
+
+    len = MAX_OUTPUT;
+    leftLen = MAX_OUTPUT;
+    ctx = TestCipherNewCtx(NULL, algId, "provider=default", isProvider);
+    ASSERT_TRUE(ctx != NULL);
+    ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key->x, key->len, iv->x, iv->len, true), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &outTagLen, sizeof(outTagLen)), CRYPT_SUCCESS);
+    uint64_t msgLen = in->len;
+    ASSERT_EQ(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_MSGLEN, &msgLen, sizeof(msgLen)), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_AAD, aad->x, aad->len), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, in->x, in->len, result, &len), CRYPT_SUCCESS);
+    totalLen += len;
+    leftLen = leftLen - len;
+    ASSERT_EQ(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, outTag, outTagLen), CRYPT_SUCCESS);
+    ASSERT_COMPARE("Compare ciphertext", result, out->len, out->x, out->len);
+    ASSERT_COMPARE("Compare Tag", outTag, outTagLen, tag->x, tag->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    CRYPT_EAL_CipherFreeCtx(ctx);
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_CRYPTO_SM4_HCTR_FUNC_TC001
+ * @title  HCTR mode encryption and decryption functional test against standard vector
+ * @precon HCTR mode implementation is complete and registered.
+ * @brief
+ * 1. Init HCTR context for encryption with standard key and tweak.
+ * 2. Call Update to buffer all plaintext; assert output length is 0.
+ * 3. Call Final to perform encryption and get the full ciphertext.
+ * 4. Compare the result with the expected ciphertext from GB/T 17964-2021.
+ * 5. Repeat the process for decryption.
+ * @expect
+ * All steps succeed and the results match the test vectors.
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_SM4_HCTR_FUNC_TC001(int isProvider, int algId, Hex *key, Hex *tweak, Hex *plain, Hex *cipher)
+{
+    TestMemInit();
+    CRYPT_EAL_CipherCtx *ctx = NULL;
+    uint8_t *outTmp = NULL;
+    uint8_t *decryptedTmp = NULL;
+    uint32_t outLen = 0;
+    int32_t ret;
+
+    outTmp = (uint8_t *)BSL_SAL_Malloc(plain->len);
+    ASSERT_TRUE(outTmp != NULL);
+
+    ctx = TestCipherNewCtx(NULL, algId, "provider=default", isProvider);
+    ASSERT_TRUE(ctx != NULL);
+
+    ASSERT_EQ(key->len, 32);
+    ASSERT_EQ(tweak->len, 16);
+    ret = CRYPT_EAL_CipherInit(ctx, key->x, key->len, tweak->x, tweak->len, true);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+
+    outLen = plain->len;
+    ret = CRYPT_EAL_CipherUpdate(ctx, plain->x, plain->len, outTmp, &outLen);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_EQ(outLen, 0);
+
+    outLen = plain->len;
+    ret = CRYPT_EAL_CipherFinal(ctx, outTmp, &outLen);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_EQ(outLen, plain->len);
+    
+    ASSERT_COMPARE("HCTR Encrypt Compare", cipher->x, cipher->len, outTmp, outLen);
+
+    CRYPT_EAL_CipherFreeCtx(ctx);
+    ctx = NULL;
+    BSL_SAL_Free(outTmp);
+    outTmp = NULL;
+
+    decryptedTmp = (uint8_t *)BSL_SAL_Malloc(cipher->len);
+    ASSERT_TRUE(decryptedTmp != NULL);
+    
+    ctx = TestCipherNewCtx(NULL, algId, "provider=default", isProvider);
+    ASSERT_TRUE(ctx != NULL);
+    
+    ret = CRYPT_EAL_CipherInit(ctx, key->x, key->len, tweak->x, tweak->len, false);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+
+    outLen = cipher->len;
+    ret = CRYPT_EAL_CipherUpdate(ctx, cipher->x, cipher->len, decryptedTmp, &outLen);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_EQ(outLen, 0);
+
+    outLen = cipher->len;
+    ret = CRYPT_EAL_CipherFinal(ctx, decryptedTmp, &outLen);
+    ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_EQ(outLen, cipher->len);
+
+    ASSERT_COMPARE("HCTR Decrypt Compare", plain->x, plain->len, decryptedTmp, outLen);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    CRYPT_EAL_CipherFreeCtx(ctx);
+    if (outTmp != NULL) {
+        BSL_SAL_Free(outTmp);
+    }
+    if (decryptedTmp != NULL) {
+        BSL_SAL_Free(decryptedTmp);
+    }
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_CRYPTO_EAL_SM4_FUNC_TC005
+ * @title  Verify whether SM4 encryption and decryption will alter the values of registers d8 to d15 and x19 to x28.
+ */
+/* BEGIN_CASE */
+void SDV_CRYPTO_EAL_SM4_FUNC_TC005(int algId, Hex *key, Hex *iv, Hex *pt)
+{
+#ifndef HITLS_CRYPTO_SM4_ARMV8
+    (void)algId;
+    (void)key;
+    (void)iv;
+    (void)pt;
+    SKIP_TEST();
+#else
+    if (IsAesAlgDisabled(algId)) {
+        SKIP_TEST();
+    }
+    uint8_t cipher[MAX_OUTPUT] = {0};
+    uint32_t cipherLen = MAX_OUTPUT;
+    uint8_t plain[MAX_OUTPUT] = {0};
+    uint32_t plainLen = MAX_OUTPUT;
+
+    uint8_t outTag[AEAD_MAX_TAG_LEN];
+    uint32_t tagLen = AEAD_MAX_TAG_LEN;
+
+    uint32_t finLen = 0;
+    CRYPT_EAL_CipherCtx *ctx = NULL;
+    TestMemInit();
+
+    AARCH64_PUT_CANARY();
+
+    // Encrypt
+    ASSERT_TRUE((ctx = CRYPT_EAL_CipherNewCtx(algId)) != NULL);
+    ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key->x, key->len, iv->x, iv->len, true), CRYPT_SUCCESS);
+    if (algId == CRYPT_CIPHER_SM4_GCM) {
+        ASSERT_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &tagLen, sizeof(tagLen)) == CRYPT_SUCCESS);
+    }
+    ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, pt->x, pt->len, cipher, &cipherLen), CRYPT_SUCCESS);
+    if (algId != CRYPT_CIPHER_SM4_GCM) {
+        finLen = MAX_OUTPUT - cipherLen;
+        ASSERT_EQ(CRYPT_EAL_CipherFinal(ctx, cipher + cipherLen, &finLen), CRYPT_SUCCESS);
+        cipherLen += finLen;
+    } else {
+        ASSERT_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, outTag, tagLen) == CRYPT_SUCCESS);
+    }
+
+    // Decrypt
+    CRYPT_EAL_CipherDeinit(ctx);
+    ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key->x, key->len, iv->x, iv->len, false), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, cipher, cipherLen, plain, &plainLen), CRYPT_SUCCESS);
+    if (algId != CRYPT_CIPHER_SM4_GCM) {
+        finLen = MAX_OUTPUT - plainLen;
+        ASSERT_EQ(CRYPT_EAL_CipherFinal(ctx, plain + plainLen, &finLen), CRYPT_SUCCESS);
+        plainLen += finLen;
+    }
+
+    ASSERT_COMPARE("SM4:", plain, plainLen, pt->x, pt->len);
+    CRYPT_EAL_CipherFreeCtx(ctx);
+    ctx = NULL;
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    AARCH64_CHECK_CANARY();
+EXIT:
+    CRYPT_EAL_CipherFreeCtx(ctx);
+#endif
+}

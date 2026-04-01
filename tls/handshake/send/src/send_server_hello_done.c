@@ -36,7 +36,7 @@ int32_t ServerSendServerHelloDoneProcess(TLS_Ctx *ctx)
     /* determine whether to assemble a message */
     if (hsCtx->msgLen == 0) {
         /* assemble message */
-        ret = HS_PackMsg(ctx, SERVER_HELLO_DONE, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, SERVER_HELLO_DONE);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15879, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "server pack server hello done msg fail.", 0, 0, 0, 0);
@@ -60,6 +60,7 @@ int32_t ServerSendServerHelloDoneProcess(TLS_Ctx *ctx)
     }
 #endif /* HITLS_TLS_PROTO_DTLS12 && HITLS_BSL_UIO_UDP */
 
+    /* update the state machine */
     if (hsCtx->isNeedClientCert) {
         return HS_ChangeState(ctx, TRY_RECV_CERTIFICATE);
     }

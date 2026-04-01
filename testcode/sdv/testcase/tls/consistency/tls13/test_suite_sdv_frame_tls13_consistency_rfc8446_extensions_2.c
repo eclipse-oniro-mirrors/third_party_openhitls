@@ -17,7 +17,6 @@
 /* INCLUDE_BASE test_suite_tls13_consistency_rfc8446 */
 
 #include <stdio.h>
-#include "stub_replace.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -121,6 +120,9 @@ static void Test_PskConnect(uint32_t serverMode, PskStatus pskStatus)
     bool isReused = false;
     ASSERT_EQ(HITLS_IsSessionReused(testInfo.client->ssl, &isReused), HITLS_SUCCESS);
     ASSERT_EQ(isReused, pskStatus == SESSION_RESUME_PSK);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
     HITLS_CFG_FreeConfig(testInfo.config);
@@ -231,6 +233,9 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSK_MODES_FUNC_TC005()
     bool isReused = false;
     ASSERT_EQ(HITLS_IsSessionReused(testInfo.client->ssl, &isReused), HITLS_SUCCESS);
     ASSERT_EQ(isReused, false);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
     HITLS_CFG_FreeConfig(testInfo.config);
@@ -313,6 +318,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_CERTICATE_VERIFY_FAIL_FUNC_TC001()
     ASSERT_EQ(HITLS_SetSession(testInfo.client->ssl, testInfo.clientSession), HITLS_SUCCESS);
 
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     ClearWrapper();
@@ -529,6 +536,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSKKEYSHARE_FUNC_TC001()
     HITLS_CFG_SetKeyExchMode(testInfo.config, TLS13_KE_MODE_PSK_ONLY);
     testInfo.server = FRAME_CreateLink(testInfo.config, testInfo.uioType);
     ASSERT_EQ(FRAME_CreateConnection(testInfo.client, testInfo.server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     ClearWrapper();
@@ -784,6 +793,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_SVERSION_FUNC_TC005()
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config_c);
     HITLS_CFG_FreeConfig(config_s);
@@ -845,6 +856,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_SVERSION_FUNC_TC006()
     bool isReused = false;
     ASSERT_EQ(HITLS_IsSessionReused(client->ssl, &isReused), HITLS_SUCCESS);
     ASSERT_EQ(isReused, true);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config_c);
@@ -1005,6 +1018,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_PSKTICKETLIFETIME_FUNC_TC001()
     ASSERT_EQ(HITLS_IsSessionReused(client->ssl, &isReused), HITLS_SUCCESS);
     ASSERT_EQ(isReused, false);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -1046,7 +1061,10 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_CERT_SIGNATURE_FUNC_TC001()
     server = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
 
+    // Error stack exists
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -1091,7 +1109,10 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_CERT_SIGNATURE_FUNC_TC002()
     server = FRAME_CreateLinkWithCert(config, BSL_UIO_TCP, &certInfo2);
     ASSERT_TRUE(server != NULL);
 
+    // Error stack exists
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -1134,6 +1155,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_CERT_SIGNATURE_FUNC_TC003()
     ASSERT_TRUE(server != NULL);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -1193,6 +1216,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RECVERSION_FUNC_TC001(int flag, int type)
     SetFrameType(&frameType, HITLS_VERSION_TLS12, REC_TYPE_HANDSHAKE, CLIENT_HELLO, HITLS_KEY_EXCH_ECDHE);
     ASSERT_TRUE(FRAME_ParseMsgHeader(&frameType, recvBuf, recvLen, &frameMsg, &parseLen) == HITLS_SUCCESS);
     ASSERT_EQ(frameMsg.recVersion.data, 0x0303);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -1259,6 +1284,8 @@ void UT_TLS_TLS13_RFC8446_CONSISTENCY_RECVERSION_FUNC_TC002(int flag, int type)
     SetFrameType(&frameType, HITLS_VERSION_TLS12, REC_TYPE_HANDSHAKE, CLIENT_HELLO, HITLS_KEY_EXCH_ECDHE);
     ASSERT_TRUE(FRAME_ParseMsgHeader(&frameType, recvBuf, recvLen, &frameMsg, &parseLen) == HITLS_SUCCESS);
     ASSERT_EQ(frameMsg.recVersion.data, 0x0303);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -1332,6 +1359,8 @@ void UT_TLS_TLS13_PARSE_CA_LIST_TC001()
     FRAME_CleanMsg(&frameType, &frameMsg);
     memset_s(&frameMsg, sizeof(frameMsg), 0, sizeof(frameMsg));
     ASSERT_NE(FRAME_CreateConnection(server, client, false, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);

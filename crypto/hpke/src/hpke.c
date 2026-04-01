@@ -73,7 +73,7 @@ struct CRYPT_EAL_HpkeCtx {
     uint32_t exporterSecretLen;
     uint32_t sharedSecretLen;
     uint64_t seq;                   // Message sequence number
-    CRYPT_EAL_KdfCTX *kdfCtx;
+    CRYPT_EAL_KdfCtx *kdfCtx;
     CRYPT_EAL_CipherCtx *cipherCtx;
     CRYPT_EAL_LibCtx *libCtx;
     char *attrName;
@@ -176,7 +176,7 @@ static int32_t HpkeCheckCipherSuite(const CRYPT_HPKE_CipherSuite *cipherSuite, u
 static int32_t InitCipherSuiteCtx(CRYPT_EAL_HpkeCtx *ctx, uint8_t aeadIndex, CRYPT_EAL_LibCtx *libCtx,
     const char *attrName)
 {
-    CRYPT_EAL_KdfCTX *kdfCtx = NULL;
+    CRYPT_EAL_KdfCtx *kdfCtx = NULL;
     CRYPT_EAL_CipherCtx *cipherCtx = NULL;
     kdfCtx = CRYPT_EAL_ProviderKdfNewCtx(libCtx, CRYPT_KDF_HKDF, attrName);
     if (kdfCtx == NULL) {
@@ -202,8 +202,7 @@ static int32_t HpkeInitCipherSuite(CRYPT_EAL_HpkeCtx *ctx, CRYPT_HPKE_CipherSuit
     uint8_t kemIndex;
     uint8_t kdfIndex;
     uint8_t aeadIndex;
-    int32_t ret;
-    ret = HpkeCheckCipherSuite(cipherSuite, &kemIndex, &kdfIndex, &aeadIndex);
+    int32_t ret = HpkeCheckCipherSuite(cipherSuite, &kemIndex, &kdfIndex, &aeadIndex);
     if (ret != CRYPT_SUCCESS) {
         return ret;
     }
@@ -383,6 +382,15 @@ EXIT:
     return ret;
 }
 
+static inline void HpkeGenerateKemSuiteId(uint8_t kemIdex, uint8_t *suiteId, uint32_t suiteIdLen)
+{
+    uint16_t kemId = g_hpkeKemAlgInfo[kemIdex].hpkeKemId;
+    (void)memcpy_s(suiteId, suiteIdLen, "KEM", strlen("KEM"));
+    uint32_t offset = strlen("KEM");
+
+    BSL_Uint16ToByte(kemId, suiteId + offset);
+}
+
 static inline void HpkeGenerateHpkeSuiteId(uint8_t kemIndex, uint8_t kdfIndex, uint8_t aeadIndex, uint8_t *suiteId,
     uint32_t suiteIdLen)
 {
@@ -396,15 +404,6 @@ static inline void HpkeGenerateHpkeSuiteId(uint8_t kemIndex, uint8_t kdfIndex, u
     offset += sizeof(uint16_t);
 
     BSL_Uint16ToByte(g_hpkeAeadAlgInfo[aeadIndex].hpkeAeadId, suiteId + offset);
-}
-
-static inline void HpkeGenerateKemSuiteId(uint8_t kemIdex, uint8_t *suiteId, uint32_t suiteIdLen)
-{
-    uint16_t kemId = g_hpkeKemAlgInfo[kemIdex].hpkeKemId;
-    (void)memcpy_s(suiteId, suiteIdLen, "KEM", strlen("KEM"));
-    uint32_t offset = strlen("KEM");
-
-    BSL_Uint16ToByte(kemId, suiteId + offset);
 }
 
 typedef struct {
@@ -423,7 +422,7 @@ typedef struct {
     uint32_t infoLen;
 } HPKE_HkdfExpandParam;
 
-static int32_t HpkeHkdfExtract(CRYPT_EAL_KdfCTX *hkdfCtx, HPKE_HkdfExtractParams *extractParams, uint8_t *out,
+static int32_t HpkeHkdfExtract(CRYPT_EAL_KdfCtx *hkdfCtx, HPKE_HkdfExtractParams *extractParams, uint8_t *out,
     uint32_t outLen)
 {
     int32_t ret;
@@ -469,7 +468,7 @@ static int32_t HpkeHkdfExtract(CRYPT_EAL_KdfCTX *hkdfCtx, HPKE_HkdfExtractParams
     return ret;
 }
 
-static int32_t HpkeHkdfExpand(CRYPT_EAL_KdfCTX *hkdfCtx, HPKE_HkdfExpandParam *expandParams, uint8_t *out,
+static int32_t HpkeHkdfExpand(CRYPT_EAL_KdfCtx *hkdfCtx, HPKE_HkdfExpandParam *expandParams, uint8_t *out,
     uint32_t outLen)
 {
     int32_t ret;
@@ -533,7 +532,7 @@ typedef struct {
     uint32_t suiteIdLen;
 } HPKE_LabeledExpandParams;
 
-static int32_t HpkeLabeledExtract(CRYPT_EAL_KdfCTX *hkdfCtx, HPKE_LabeledExtractParams *params, uint8_t *out,
+static int32_t HpkeLabeledExtract(CRYPT_EAL_KdfCtx *hkdfCtx, HPKE_LabeledExtractParams *params, uint8_t *out,
     uint32_t outLen)
 {
     // labeled_ikm = "HPKE-v1" || suite_id || label || ikm
@@ -567,7 +566,7 @@ static int32_t HpkeLabeledExtract(CRYPT_EAL_KdfCTX *hkdfCtx, HPKE_LabeledExtract
     return ret;
 }
 
-static int32_t HpkeLabeledExpand(CRYPT_EAL_KdfCTX *hkdfCtx, HPKE_LabeledExpandParams *params, uint8_t *out,
+static int32_t HpkeLabeledExpand(CRYPT_EAL_KdfCtx *hkdfCtx, HPKE_LabeledExpandParams *params, uint8_t *out,
     uint32_t outLen)
 {
     // labeled_info = I2OSP(L, 2) || "HPKE-v1" || suite_id || label || info
@@ -1292,7 +1291,7 @@ static int32_t HpkeAeadDecrypt(CRYPT_EAL_HpkeCtx *ctx, const uint8_t *nonce, uin
         goto EXIT;
     }
 
-    if (memcmp(tag, cipherText + (cipherTextLen - HPKE_AEAD_TAG_LEN), HPKE_AEAD_TAG_LEN) != 0) {
+    if (ConstTimeMemcmp(tag, cipherText + (cipherTextLen - HPKE_AEAD_TAG_LEN), HPKE_AEAD_TAG_LEN) == 0) {
         ret = CRYPT_HPKE_ERR_AEAD_TAG;
         BSL_ERR_PUSH_ERROR(CRYPT_HPKE_ERR_AEAD_TAG);
     }
@@ -1428,7 +1427,7 @@ static int32_t HpkeGetEccOrder(CRYPT_EAL_PkeyCtx *pkey, BN_BigNum **order)
     return CRYPT_SUCCESS;
 }
 
-static int32_t HpkeExpandEccPriKey(CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_KdfCTX *hkdfCtx, uint32_t kemIndex,
+static int32_t HpkeExpandEccPriKey(CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_KdfCtx *hkdfCtx, uint32_t kemIndex,
     HPKE_LabeledExpandParams *params, uint8_t *sk, uint32_t skLen)
 {
     BN_BigNum *order = NULL;
@@ -1477,7 +1476,7 @@ static int32_t HpkeExpandEccPriKey(CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_KdfCTX *hk
     return ret;
 }
 
-static int32_t DeriveSk(uint8_t kemIndex, CRYPT_EAL_KdfCTX *kdfCtx, CRYPT_EAL_PkeyCtx *pkey,
+static int32_t DeriveSk(uint8_t kemIndex, CRYPT_EAL_KdfCtx *kdfCtx, CRYPT_EAL_PkeyCtx *pkey,
     HPKE_LabeledExpandParams *expandParams, uint8_t *sk, uint32_t skLen)
 {
     if (g_hpkeKemAlgInfo[kemIndex].hpkeKemId == CRYPT_KEM_DHKEM_X25519_HKDF_SHA256) {
@@ -1504,7 +1503,7 @@ static int32_t HpkeDeriveKeyPair(uint8_t kemIndex, uint8_t *ikm, uint32_t ikmLen
     CRYPT_MAC_AlgId macId = g_hpkeKemAlgInfo[kemIndex].macId;
     uint32_t skLen = g_hpkeKemAlgInfo[kemIndex].privateKeyLen;
 
-    CRYPT_EAL_KdfCTX *kdfCtx = NULL;
+    CRYPT_EAL_KdfCtx *kdfCtx = NULL;
     kdfCtx = CRYPT_EAL_ProviderKdfNewCtx(libCtx, CRYPT_KDF_HKDF, attrName);
     if (kdfCtx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_HPKE_FAILED_FETCH_KDF);

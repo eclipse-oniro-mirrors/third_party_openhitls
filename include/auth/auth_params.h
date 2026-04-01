@@ -13,6 +13,17 @@
  * See the Mulan PSL v2 for more details.
  */
 
+/**
+ * @file auth_params.h
+ * @brief Parameter identifiers for authentication control-style APIs.
+ */
+
+/**
+ * @defgroup auth_params
+ * @ingroup auth
+ * @brief Parameter identifiers shared by authentication modules.
+ */
+
 #ifndef AUTH_PARAMS_H
 #define AUTH_PARAMS_H
 
@@ -41,6 +52,18 @@ extern "C" {
 #define AUTH_PARAM_PRIVPASS_CTX_TOKENKEYID                               (AUTH_PARAM_PRIVPASS_TOKEN + 16)
 #define AUTH_PARAM_PRIVPASS_CTX_TRUNCATEDTOKENKEYID                      (AUTH_PARAM_PRIVPASS_TOKEN + 17)
 #define AUTH_PARAM_PRIVPASS_CTX_NONCE                                    (AUTH_PARAM_PRIVPASS_TOKEN + 18)
+
+/* Base value for One Time Password parameters */
+#define AUTH_PARAM_OTP                       20100
+#define AUTH_PARAM_OTP_HOTP_COUNTER          (AUTH_PARAM_OTP + 1)
+#define AUTH_PARAM_OTP_TOTP_CURTIME          (AUTH_PARAM_OTP + 2)
+#define AUTH_PARAM_OTP_CTX_PROTOCOLTYPE      (AUTH_PARAM_OTP + 3)
+#define AUTH_PARAM_OTP_CTX_KEY               (AUTH_PARAM_OTP + 4)
+#define AUTH_PARAM_OTP_CTX_DIGITS            (AUTH_PARAM_OTP + 5)
+#define AUTH_PARAM_OTP_CTX_HASHALGID         (AUTH_PARAM_OTP + 6)
+#define AUTH_PARAM_OTP_CTX_TOTP_TIMESTEPSIZE (AUTH_PARAM_OTP + 7)
+#define AUTH_PARAM_OTP_CTX_TOTP_STARTOFFSET  (AUTH_PARAM_OTP + 8)
+#define AUTH_PARAM_OTP_CTX_TOTP_VALIDWINDOW  (AUTH_PARAM_OTP + 9)
 
 #ifdef __cplusplus
 }

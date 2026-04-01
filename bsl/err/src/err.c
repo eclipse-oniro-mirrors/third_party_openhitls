@@ -32,6 +32,8 @@
 /* Error information stack size */
 #define SAL_MAX_ERROR_STACK 20
 
+static BSL_ERR_OutputFunc g_outputFunc = NULL;
+
 /* Error information stack */
 typedef struct {
     /* Current point location to the stack. When the value is -1, the stack is empty. */
@@ -66,7 +68,7 @@ static uint32_t g_avlNodeCount = 0;
 static uint32_t g_maxAvlNodes = 0x0000FFFF;
 
 /* Check the initialization status. 0 means false, if the value is not 0, it means true. Run once. */
-static uint32_t g_isErrInit = 0;
+BSL_SAL_DECLARE_THREAD_ONCE(g_isErrInit);
 
 /* Handle of the thread lock */
 static BSL_SAL_ThreadLockHandle g_errLock = NULL;
@@ -79,6 +81,7 @@ static void ErrAutoInit(void)
 
 int32_t BSL_ERR_Init(void)
 {
+    g_outputFunc = NULL;
     if (g_errLock != NULL) {
         return BSL_SUCCESS;
     }
@@ -88,13 +91,12 @@ int32_t BSL_ERR_Init(void)
 
 void BSL_ERR_DeInit(void)
 {
-    g_isErrInit = 0;
+    (void)memset(&g_isErrInit, 0, sizeof(g_isErrInit));
     if (g_errLock == NULL) {
         return;
     }
     BSL_SAL_ThreadLockFree(g_errLock);
     g_errLock = NULL;
-    return;
 }
 
 static void StackReset(ErrorCodeStack *stack)
@@ -339,6 +341,11 @@ int32_t BSL_ERR_GetLastError(void)
     return GetLastErrorInfo(NULL, NULL, true);
 }
 
+int32_t BSL_ERR_PeekLastError(void)
+{
+    return GetLastErrorInfo(NULL, NULL, false);
+}
+
 int32_t BSL_ERR_GetErrorFileLine(const char **file, uint32_t *lineNo)
 {
     return GetFirstErrorInfo(file, lineNo, true);
@@ -352,6 +359,20 @@ int32_t BSL_ERR_PeekErrorFileLine(const char **file, uint32_t *lineNo)
 int32_t BSL_ERR_GetError(void)
 {
     return GetFirstErrorInfo(NULL, NULL, true);
+}
+
+int32_t BSL_ERR_PeekError(void)
+{
+    return GetFirstErrorInfo(NULL, NULL, false);
+}
+
+int32_t BSL_ERR_GetErrAll(const char **file, uint32_t *lineNo, const char **desc)
+{
+    int32_t ret = GetFirstErrorInfo(file, lineNo, true);
+    if (ret != BSL_SUCCESS && desc != NULL) {
+        *desc = BSL_ERR_GetString(ret);
+    }
+    return ret;
 }
 
 static int32_t AddErrDesc(const BSL_ERR_Desc *desc)
@@ -395,7 +416,7 @@ void BSL_ERR_RemoveErrStringBatch(void)
 {
     int32_t ret = BSL_SAL_ThreadWriteLock(g_errLock);
     if (ret != BSL_SUCCESS) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID05010, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID05085, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "acquire lock failed when removing error string, threadId %llu", BSL_SAL_ThreadGetId(), 0, 0, 0);
         return;
     }
@@ -529,4 +550,44 @@ int32_t BSL_ERR_ClearLastMark(void)
     return BSL_SUCCESS;
 }
 
+void BSL_ERR_OutputErrorStack(void)
+{
+    if (g_outputFunc == NULL) {
+        return;
+    }
+    (void)BSL_SAL_ThreadReadLock(g_errLock);
+    if (g_avlRoot == NULL) {
+        BSL_SAL_ThreadUnlock(g_errLock);
+        return;
+    }
+    const uint64_t threadId = BSL_SAL_ThreadGetId();
+    BSL_AvlTree *curNode = BSL_AVL_SearchNode(g_avlRoot, threadId);
+    if (curNode == NULL) {
+        BSL_SAL_ThreadUnlock(g_errLock);
+        return;
+    }
+    ErrorCodeStack *errStack = curNode->data; /* will not be null */
+
+    uint16_t idx = errStack->bottom;
+    uint16_t count = 0;
+    while (errStack->errorStack[idx] != 0 && count < SAL_MAX_ERROR_STACK) {
+        const char *file = errStack->filename[idx];
+        uint32_t lineNo = errStack->line[idx];
+        int32_t errCode = errStack->errorStack[idx];
+        bool mark = (errStack->errorFlags[idx] & ERR_FLAG_POP_MARK) != 0;
+        if (file == NULL) {
+            file = "NA";
+            lineNo = 0;
+        }
+        g_outputFunc(threadId, file, lineNo, errCode, mark);
+        idx = (idx + 1) % SAL_MAX_ERROR_STACK;
+        count++;
+    }
+    BSL_SAL_ThreadUnlock(g_errLock);
+}
+
+void BSL_ERR_RegErrStackLog(BSL_ERR_OutputFunc func)
+{
+    g_outputFunc = func;
+}
 #endif /* HITLS_BSL_ERR */

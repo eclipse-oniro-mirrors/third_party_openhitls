@@ -366,6 +366,14 @@ int GenFunctionWrapper(FILE *file, FunctionTable *function)
     if (ret < 0) {
         return 1;
     }
+    ret = fprintf(file, "    (void)signal(SIGALRM, handleAlarmSignal);\n");
+    if (ret < 0) {
+        return 1;
+    }
+    ret = fprintf(file, "    alarm(600u);\n");
+    if (ret < 0) {
+        return 1;
+    }
     if (function->argCount == 0) {
         ret = fprintf(file, "    (void) param;\n");
         if (ret < 0) {
@@ -400,7 +408,12 @@ int GenFunctionWrapper(FILE *file, FunctionTable *function)
             }
         }
     }
-    ret = fprintf(file, ");\n}\n\n");
+    ret = fprintf(file,
+        ");\n"
+        "#if defined(HITLS_BSL_ERR)\n"
+        "    BSL_ERR_ClearError();\n"
+        "#endif\n"
+        "}\n\n");
     if (ret < 0) {
         return 1;
     }
@@ -576,7 +589,7 @@ EXIT:
 
 int WriteHeader(FILE *outFile)
 {
-    if (fprintf(outFile, "#include \"helper.h\"\n#include \"test.h\"\n#include <time.h>\n") < 0) {
+    if (fprintf(outFile, "#include \"helper.h\"\n#include \"test.h\"\n#include <time.h>\n#include <unistd.h>\n") < 0) {
         return 1;
     }
     return 0;
@@ -934,6 +947,20 @@ int ScanFunctionFile(FILE *fpIn, FILE *fpOut, const char *dir)
         Print("scan function failed\n");
         return 1;
     }
+    if (fprintf(fpOut, "\n void handleAlarmSignal(int signum)\n{\n\
+    (void)signum; \n\
+    fprintf(stderr, \"timeout 600\\n\");\n\
+    exit(-1);\n}\n") < 0) {
+        return 1;
+    }
+
+    /* Optional: auto clear BSL error stack after each wrapper finishes. */
+    if (fprintf(fpOut,
+        "\n#if defined(HITLS_BSL_ERR)\n"
+        "#include \"bsl_err.h\"\n"
+        "#endif\n\n") < 0) {
+        return 1;
+    }
 
     for (int i = 0; i < g_testFuncCount; i++) {
         ret = GenFunctionWrapper(fpOut, &g_testFunc[i]);
@@ -1030,23 +1057,44 @@ static int ReadAllLogFile(DIR *logDir, int *totalSuiteCount, FILE *outFile, Test
                 continue;
             }
             result[suiteCount].total++;
-            cur = 0;
-            while (buf[cur] != '\0' && !(buf[cur] == '.' && buf[cur + 1] == '.')) {
-                cur++;
+            // Find the end of the string to start backward search
+            size_t lineLen = strlen(buf);
+            int end = (int)lineLen - 1;
+            // Trim trailing whitespace/newlines to ensure we start at the status text
+            while (end >= 0 && (buf[end] == '\r' || buf[end] == '\n' || buf[end] == ' ')) {
+                end--;
             }
-            if (buf[cur] == '\0') {
+            // Search backwards for the "." separator
+            int dotPos = -1;
+            for (int i = end; i >= 1; i--) {
+                // Look for the last occurrence of "."
+                if (buf[i] == '.' && buf[i - 1] != '.') {
+                    dotPos = i; // Pointing to the second dot
+                    break;
+                }
+            }
+            if (dotPos == -1) {
                 Print("Read log file %s failed\n", dir->d_name);
                 (void)fclose(fpLog);
                 (void)fclose(fpAllLog);
                 return 1;
             }
-            if (strncpy_s(testCaseName, sizeof(testCaseName) - 1, buf, cur) != EOK) {
+            int nameLen = dotPos - 1;
+            if (nameLen >= MAX_TEST_FUNCTION_NAME || nameLen < 0) {
                 Print("TestCaseName is too long\n");
                 (void)fclose(fpLog);
                 (void)fclose(fpAllLog);
                 return 1;
             }
-            testCaseName[cur] = '\0';
+
+            if (strncpy_s(testCaseName, sizeof(testCaseName), buf, nameLen) != EOK) {
+                (void)fclose(fpLog);
+                (void)fclose(fpAllLog);
+                return 1;
+            }
+            testCaseName[nameLen] = '\0';
+            // Move pointer past the dots to find the status string
+            cur = dotPos;
             while (buf[cur] == '.') {
                 cur++;
             }

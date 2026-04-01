@@ -22,10 +22,11 @@
 #include "bsl_sal.h"
 #include "bsl_params.h"
 #include "crypt_params_key.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 /* END_HEADER */
 
 #define DATA_LEN (64)
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 
 /**
  * @test   SDV_CRYPT_EAL_KDF_TLS12_API_TC001
@@ -90,6 +91,7 @@ void SDV_CRYPT_EAL_KDF_TLS12_API_TC001(int algId)
     ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), CRYPT_KDFTLS12_PARAM_ERROR);
 
     ASSERT_EQ(CRYPT_EAL_KdfDeInitCtx(ctx), CRYPT_SUCCESS);
+
 EXIT:
     CRYPT_EAL_KdfFreeCtx(ctx);
 }
@@ -133,6 +135,7 @@ void SDV_CRYPT_EAL_KDF_TLS12_FUN_TC001(int algId, Hex *key, Hex *label, Hex *see
 
     ASSERT_EQ(CRYPT_EAL_KdfDerive(ctx, out, outLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("result cmp", out, outLen, result->x, result->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     if (out != NULL) {
         free(out);
@@ -178,6 +181,7 @@ void SDV_CRYPTO_KDFTLS12_DEFAULT_PROVIDER_FUNC_TC001(int algId, Hex *key, Hex *l
     ASSERT_EQ(CRYPT_EAL_KdfSetParam(ctx, params), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_KdfDerive(ctx, out, outLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("result cmp", out, outLen, result->x, result->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     if (out != NULL) {
         free(out);
@@ -210,8 +214,7 @@ void SDV_CRYPTO_KDFTLS12_COPY_CTX_API_TC001(int isProvider)
 
     // A directly created context can also be used as the destination for copying.
     ASSERT_EQ(CRYPT_EAL_KdfCopyCtx(&ctxC, ctxA), CRYPT_SUCCESS);
-    ctxC.method->freeCtx(ctxC.data);
-    BSL_SAL_Free(ctxC.method);
+    ctxC.method.freeCtx(ctxC.data);
 EXIT:
     CRYPT_EAL_KdfFreeCtx(ctxA);
     CRYPT_EAL_KdfFreeCtx(ctxB);
@@ -385,9 +388,7 @@ void SDV_CRYPTO_HKDF_COPY_CTX_STUB_TC001(int algId, Hex *key, Hex *label, Hex *s
 {
     TestMemInit();
     uint32_t totalMallocCount = 0;
-    STUB_Init();
-    FuncStubInfo tmpRpInfo = {0};
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
 
     STUB_EnableMallocFail(false);
     STUB_ResetMallocCount();
@@ -403,6 +404,6 @@ void SDV_CRYPTO_HKDF_COPY_CTX_STUB_TC001(int algId, Hex *key, Hex *label, Hex *s
     }
 
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */

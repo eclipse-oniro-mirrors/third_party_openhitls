@@ -19,15 +19,15 @@
 #include <stdbool.h>
 #include "securec.h"
 #include "bsl_err_internal.h"
-#include "crypt_errno.h"
+#include "bsl_util_internal.h"
 #include "crypt_utils.h"
+#include "crypt_errno.h"
 #include "crypt_bn.h"
 #include "crypt_ecc.h"
 #include "ecc_local.h"
 #include "ecc_utils.h"
-#include "bsl_util_internal.h"
 
-#ifndef __SIZEOF_INT128__
+#ifndef HITLS_INT128
 #error "This nistp224 implementation require the compiler support 128-bits integer."
 #endif
 
@@ -378,7 +378,8 @@ static inline void FelemSetLimb(Felem *out, const uint64_t in)
  */
 static inline uint64_t FelemIsZero(const Felem *in)
 {
-    uint64_t isZero, isP;
+    uint64_t isZero;
+    uint64_t isP;
 
     // Check whether digits 0, 1, 2, and 3 of in are all 0.
     isZero = in->data[0] | in->data[1] | in->data[2] | in->data[3];
@@ -607,17 +608,6 @@ static void FelemContract(Felem *out, const Felem *in)
 }
 
 /*
- * field Addition
- */
-static inline void FelemAdd(Felem *out, const Felem *a, const Felem *b)
-{
-    out->data[0] = a->data[0] + b->data[0];  // out->data[0] takes the value
-    out->data[1] = a->data[1] + b->data[1];  // out->data[1] takes the value
-    out->data[2] = a->data[2] + b->data[2];  // out->data[2] takes the value
-    out->data[3] = a->data[3] + b->data[3];  // out->data[3] takes the value
-}
-
-/*
  * field element negation(NOT)
  * Input:
  *      in[] <= 2^57 - 2^41 - 2^1
@@ -637,6 +627,17 @@ static inline void FelemNeg(Felem *out, const Felem *in)
     out->data[1] = zeroBase.data[1] - in->data[1];  // out->data[1] takes the value
     out->data[2] = zeroBase.data[2] - in->data[2];  // out->data[2] takes the value
     out->data[3] = zeroBase.data[3] - in->data[3];  // out->data[3] takes the value
+}
+
+/*
+ * field Addition
+ */
+static inline void FelemAdd(Felem *out, const Felem *a, const Felem *b)
+{
+    out->data[0] = a->data[0] + b->data[0];  // out->data[0] takes the value
+    out->data[1] = a->data[1] + b->data[1];  // out->data[1] takes the value
+    out->data[2] = a->data[2] + b->data[2];  // out->data[2] takes the value
+    out->data[3] = a->data[3] + b->data[3];  // out->data[3] takes the value
 }
 
 /*
@@ -691,18 +692,6 @@ static void LongFelemSub(LongFelem *out, const LongFelem *a, const LongFelem *b)
 }
 
 /*
- * field element magnification
- * Use only a small magnification factor to ensure that in[]*scalar does not overflow.
- */
-static inline void FelemScale(Felem *out, const Felem *in, const uint32_t scalar)
-{
-    out->data[0] = in->data[0] * scalar;  // out->data[0] takes the value
-    out->data[1] = in->data[1] * scalar;  // out->data[1] takes the value
-    out->data[2] = in->data[2] * scalar;  // out->data[2] takes the value
-    out->data[3] = in->data[3] * scalar;  // out->data[3] takes the value
-}
-
-/*
  * field element magnification, input LongFelem directly.
  * Use only a small magnification factor to ensure that in[]*scalar does not overflow.
  */
@@ -715,6 +704,18 @@ static inline void LongFelemScale(LongFelem *out, const LongFelem *in, const uin
     out->data[4] = in->data[4] * scalar;  // out->data[4] takes the value
     out->data[5] = in->data[5] * scalar;  // out->data[5] takes the value
     out->data[6] = in->data[6] * scalar;  // out->data[6] takes the value
+}
+
+/*
+ * field element magnification
+ * Use only a small magnification factor to ensure that in[]*scalar does not overflow.
+ */
+static inline void FelemScale(Felem *out, const Felem *in, const uint32_t scalar)
+{
+    out->data[0] = in->data[0] * scalar;  // out->data[0] takes the value
+    out->data[1] = in->data[1] * scalar;  // out->data[1] takes the value
+    out->data[2] = in->data[2] * scalar;  // out->data[2] takes the value
+    out->data[3] = in->data[3] * scalar;  // out->data[3] takes the value
 }
 
 /*
@@ -794,16 +795,16 @@ static void FelemSqr(LongFelem *out, const Felem *a)
 
 static inline void FelemMulReduce(Felem *out, const Felem *a, const Felem *b)
 {
-    LongFelem ltmp;
-    FelemMul(&ltmp, a, b);
-    LongFelemReduce(out, &ltmp);
+    LongFelem ltemp;
+    FelemMul(&ltemp, a, b);
+    LongFelemReduce(out, &ltemp);
 }
 
 static inline void FelemSqrReduce(Felem *out, const Felem *in)
 {
-    LongFelem ltmp;
-    FelemSqr(&ltmp, in);
-    LongFelemReduce(out, &ltmp);
+    LongFelem ltemp;
+    FelemSqr(&ltemp, in);
+    LongFelemReduce(out, &ltemp);
 }
 
 /*
@@ -892,18 +893,18 @@ static void FelemInv(Felem *out, const Felem *in)
 }
 
 /* --------------------------Point group operation-------------------------- */
-static inline void PtAssign(Point *out, const Point *in)
-{
-    FelemAssign(&out->x, &in->x);
-    FelemAssign(&out->y, &in->y);
-    FelemAssign(&out->z, &in->z);
-}
-
 static inline void PtAssignWithMask(Point *out, const Point *in, const uint64_t mask)
 {
     FelemAssignWithMask(&out->x, &in->x, mask);
     FelemAssignWithMask(&out->y, &in->y, mask);
     FelemAssignWithMask(&out->z, &in->z, mask);
+}
+
+static inline void PtAssign(Point *out, const Point *in)
+{
+    FelemAssign(&out->x, &in->x);
+    FelemAssign(&out->y, &in->y);
+    FelemAssign(&out->z, &in->z);
 }
 
 /*
@@ -1204,8 +1205,8 @@ static inline void GetPointFromTable(Point *point, const Point table[], uint32_t
  */
 static inline void GetUpperPrecomputePtOfG(Point *out, const Felem *k1, int32_t curBit)
 {
-    uint32_t bits;
     uint32_t i = (uint32_t)curBit;
+    uint32_t bits;
 
     // The i bit of the upper half of digit 0. (BASE_BITS/2) is half-wide.
     bits = (uint32_t)(k1->data[0] >> (i + BASE_BITS / 2)) & 1;
@@ -1251,12 +1252,11 @@ static inline void GetLowerPrecomputePtOfG(Point *out, const Felem *k1, int32_t 
  */
 static inline void GetPrecomputePtOfP(Point *out, const Felem *k2, int32_t curBit, const Point preMulPt[TABLE_P_SIZE])
 {
-    uint32_t bits;
     uint32_t sign, value;  // the grouping sign and actual value.
     Felem negY;
     // Obtain the 5-bit signed code and read the sign bits of the next group of numbers
     // to determine whether there is a carry. The total length is 6.
-    bits = (uint32_t)FelemGetBits(k2, curBit - 1, WINDOW_SIZE + 1);
+    uint32_t bits = (uint32_t)FelemGetBits(k2, curBit - 1, WINDOW_SIZE + 1);
     DecodeScalarCode(&sign, &value, bits);
 
     GetPointFromTable(out, preMulPt, TABLE_P_SIZE, value);
@@ -1402,9 +1402,18 @@ static int32_t GetPreMulPt(Point preMulPt[TABLE_P_SIZE], const ECC_Point *pt)
     // 0pt
     (void)memset_s((void *)&preMulPt[0], sizeof(Point), 0, sizeof(Point));
     // 1pt
-    GOTO_ERR_IF_EX(BN2Felem(&preMulPt[1].x, pt->x), ret);
-    GOTO_ERR_IF_EX(BN2Felem(&preMulPt[1].y, pt->y), ret);
-    GOTO_ERR_IF_EX(BN2Felem(&preMulPt[1].z, pt->z), ret);
+    ret = BN2Felem(&preMulPt[1].x, &pt->x);
+    if (ret != CRYPT_SUCCESS) {
+        goto ERR;
+    }
+    ret = BN2Felem(&preMulPt[1].y, &pt->y);
+    if (ret != CRYPT_SUCCESS) {
+        goto ERR;
+    }
+    ret = BN2Felem(&preMulPt[1].z, &pt->z);
+    if (ret != CRYPT_SUCCESS) {
+        goto ERR;
+    }
     // 2pt ~ 15pt
     for (uint32_t i = 2; i < 15; i += 2) {
         PtDouble(&preMulPt[i], &preMulPt[i >> 1]);
@@ -1437,7 +1446,7 @@ int32_t ECP224_PointMulAdd(
     GOTO_ERR_IF(CheckBnValid(k2, FELEM_BITS), retVal);
     GOTO_ERR_IF(CheckPointValid(pt, CRYPT_ECC_NISTP224), retVal);
     // Special treatment of infinity points
-    if (BN_IsZero(pt->z)) {
+    if (BN_IsZero(&pt->z)) {
         BSL_ERR_PUSH_ERROR(CRYPT_ECC_POINT_AT_INFINITY);
         return CRYPT_ECC_POINT_AT_INFINITY;
     }
@@ -1447,9 +1456,9 @@ int32_t ECP224_PointMulAdd(
     GOTO_ERR_IF_EX(GetPreMulPt(preMulPt, pt), retVal);
 
     PtMul(&out, &fK1, &fK2, preMulPt);
-    GOTO_ERR_IF_EX(Felem2BN(r->x, &out.x), retVal);
-    GOTO_ERR_IF_EX(Felem2BN(r->y, &out.y), retVal);
-    GOTO_ERR_IF_EX(Felem2BN(r->z, &out.z), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->x, &out.x), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->y, &out.y), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->z, &out.z), retVal);
 ERR:
     return retVal;
 }
@@ -1468,7 +1477,7 @@ int32_t ECP224_PointMul(ECC_Para *para, ECC_Point *r, const BN_BigNum *k, const 
     if (pt != NULL) {
         GOTO_ERR_IF(CheckPointValid(pt, CRYPT_ECC_NISTP224), retVal);
         // Special treatment of infinity points
-        if (BN_IsZero(pt->z)) {
+        if (BN_IsZero(&pt->z)) {
             BSL_ERR_PUSH_ERROR(CRYPT_ECC_POINT_AT_INFINITY);
             return CRYPT_ECC_POINT_AT_INFINITY;
         }
@@ -1483,9 +1492,9 @@ int32_t ECP224_PointMul(ECC_Para *para, ECC_Point *r, const BN_BigNum *k, const 
         PtMul(&out, NULL, &felemK, preMulPt);
     }
 
-    GOTO_ERR_IF_EX(Felem2BN(r->x, &out.x), retVal);
-    GOTO_ERR_IF_EX(Felem2BN(r->y, &out.y), retVal);
-    GOTO_ERR_IF_EX(Felem2BN(r->z, &out.z), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->x, &out.x), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->y, &out.y), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->z, &out.z), retVal);
 ERR:
     return retVal;
 }
@@ -1501,21 +1510,21 @@ int32_t ECP224_Point2Affine(const ECC_Para *para, ECC_Point *r, const ECC_Point 
     GOTO_ERR_IF(CheckPointValid(r, CRYPT_ECC_NISTP224), retVal);
     GOTO_ERR_IF(CheckPointValid(pt, CRYPT_ECC_NISTP224), retVal);
     // Special treatment of infinity points
-    if (BN_IsZero(pt->z)) {
+    if (BN_IsZero(&pt->z)) {
         BSL_ERR_PUSH_ERROR(CRYPT_ECC_POINT_AT_INFINITY);
         return CRYPT_ECC_POINT_AT_INFINITY;
     }
 
-    GOTO_ERR_IF_EX(BN2Felem(&out.x, pt->x), retVal);
-    GOTO_ERR_IF_EX(BN2Felem(&out.y, pt->y), retVal);
-    GOTO_ERR_IF_EX(BN2Felem(&out.z, pt->z), retVal);
+    GOTO_ERR_IF_EX(BN2Felem(&out.x, &pt->x), retVal);
+    GOTO_ERR_IF_EX(BN2Felem(&out.y, &pt->y), retVal);
+    GOTO_ERR_IF_EX(BN2Felem(&out.z, &pt->z), retVal);
 
     FelemInv(&zInv, &out.z);
     PtMakeAffineWithInv(&out, &out, &zInv);
 
-    GOTO_ERR_IF_EX(Felem2BN(r->x, &out.x), retVal);
-    GOTO_ERR_IF_EX(Felem2BN(r->y, &out.y), retVal);
-    GOTO_ERR_IF_EX(Felem2BN(r->z, &out.z), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->x, &out.x), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->y, &out.y), retVal);
+    GOTO_ERR_IF_EX(Felem2BN(&r->z, &out.z), retVal);
 ERR:
     return retVal;
 }

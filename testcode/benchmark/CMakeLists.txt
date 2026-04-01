@@ -18,6 +18,12 @@ set(OPENHITLS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 file(GLOB BENCHS "*_bench.c")
 
 add_compile_options(-g)
+# -z noexecstack: Mark the stack as non-executable (ELF security feature)
+# Supported by: GNU ld (all versions), LLVM lld 7.0+
+# Not needed on: macOS (ld64 defaults to non-executable stack), Windows (uses /NXCOMPAT)
+if(UNIX AND NOT APPLE)
+    add_link_options(-z noexecstack)
+endif()
 add_executable(openhitls_benchmark benchmark.c ${BENCHS})
 
 
@@ -26,5 +32,8 @@ target_link_directories(openhitls_benchmark PRIVATE ${OPENHITLS_ROOT}/build
                                                     ${OPENHITLS_ROOT}/platform/Secure_C/lib)
 target_include_directories(openhitls_benchmark PRIVATE ${OPENHITLS_ROOT}/include/crypto
                                                        ${OPENHITLS_ROOT}/include/bsl
-                                                       ${OPENHITLS_ROOT}/platform/Secure_C/include)
+                                                       ${OPENHITLS_ROOT}/platform/Secure_C/include
+                                                       ${OPENHITLS_ROOT}/bsl/include
+                                                       ${OPENHITLS_ROOT}/crypto/include
+                                                       ${OPENHITLS_ROOT}/config/macro_config)
 target_link_libraries(openhitls_benchmark PRIVATE hitls_crypto hitls_bsl boundscheck)

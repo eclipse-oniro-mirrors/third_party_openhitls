@@ -31,7 +31,6 @@
 #include "hs_state_recv.h"
 #include "conn_init.h"
 #include "recv_process.h"
-#include "stub_replace.h"
 #include "stub_crypt.h"
 #include "frame_tls.h"
 #include "frame_msg.h"
@@ -125,6 +124,9 @@ void SDV_TLS_DTLCP_HANDSHAKE_FUNC_TC001(int connType)
     ASSERT_TRUE(HLT_ProcessTlsRead(remoteProcess, clientRes, readBuf, sizeof(readBuf), &readLen) == 0);
     ASSERT_TRUE(readLen == strlen("Hello World"));
     ASSERT_TRUE(memcmp("Hello World", readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -214,6 +216,8 @@ void SDV_TLS_DTLCP_CONSISTENCY_RFC5246_UNEXPETED_REORD_TYPE_TC001()
     ASSERT_TRUE(HLT_TlsClose(clientSsl) == 0);
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     ClearWrapper();

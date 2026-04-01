@@ -13,6 +13,34 @@
  * See the Mulan PSL v2 for more details.
  */
 
+/**
+ * @file auth_errno.h
+ * @brief Error codes for authentication-related modules.
+ */
+
+/**
+ * @defgroup auth
+ * @brief Authentication module.
+ */
+
+/**
+ * @defgroup auth_errno
+ * @ingroup auth
+ * @brief Authentication error code definitions.
+ */
+
+/**
+ * @defgroup auth_privpass
+ * @ingroup auth
+ * @brief Private Pass token interfaces.
+ */
+
+/**
+ * @defgroup auth_otp
+ * @ingroup auth
+ * @brief One-time password interfaces.
+ */
+
 #ifndef AUTH_ERRNO_H
 #define AUTH_ERRNO_H
 
@@ -20,6 +48,10 @@
 extern "C" {
 #endif
 
+/**
+ * @ingroup auth_errno
+ * @brief Error codes returned by authentication APIs.
+ */
 typedef enum {
     HITLS_AUTH_SUCCESS = 0,                           /* Operation completed successfully */
 
@@ -62,6 +94,35 @@ typedef enum {
     HITLS_AUTH_PRIVPASS_NO_BLINDEDMSG,                     /* No blinded message in token request */
     HITLS_AUTH_PRIVPASS_NO_AUTHENTICATOR,                  /* No authenticator in token */
 
+    HITLS_AUTH_OTP_INVALID_INPUT = 0x05020001,             /* Invalid input parameters */
+    HITLS_AUTH_OTP_INVALID_PROTOCOL_TYPE,                  /* Invalid protocol type */
+    HITLS_AUTH_OTP_INVALID_CMD,                            /* Invalid command */
+    HITLS_AUTH_OTP_INVALID_CRYPTO_CALLBACK_TYPE,           /* Invalid cryptographic callback type */
+    HITLS_AUTH_OTP_BUFFER_NOT_ENOUGH,                      /* Buffer size is insufficient */
+    HITLS_AUTH_OTP_NO_COUNTER,                             /* Counter is missing */
+    HITLS_AUTH_OTP_NO_CURTIME,                             /* Current time is missing */
+    HITLS_AUTH_OTP_VALIDATE_MISMATCH,                      /* The otp to validate does not match target value. */
+    
+    /* PAKE related error codes */
+    HITLS_AUTH_PAKE_INVALID_ALG_TYPE = 0x05030001,         /* Invalid PAKE algorithm type */
+    HITLS_AUTH_PAKE_INVALID_ROLE,                          /* Invalid PAKE role */
+    HITLS_AUTH_PAKE_INVALID_CIPHER_SUITE,                  /* Invalid cipher suite */
+    HITLS_AUTH_PAKE_INVALID_PASSWORD,                      /* Invalid password */
+    HITLS_AUTH_PAKE_INVALID_IDENTIFIER,                    /* Invalid identifier */
+    HITLS_AUTH_PAKE_INVALID_SHARE,                         /* Invalid share */
+    HITLS_AUTH_PAKE_INVALID_CONFIRMATION,                  /* Invalid confirmation */
+    HITLS_AUTH_PAKE_INVALID_TRANSCRIPT,                    /* Invalid transcript */
+    HITLS_AUTH_PAKE_INVALID_KEY_SCHEDULE,                  /* Invalid key schedule */
+    HITLS_AUTH_PAKE_INVALID_CONTEXT,                       /* Invalid context */
+    HITLS_AUTH_PAKE_MEMORY_ALLOC_FAIL,                     /* Memory allocation failed */
+    HITLS_AUTH_PAKE_CRYPTO_OPERATION_FAIL,                 /* Cryptographic operation failed */
+    HITLS_AUTH_PAKE_PROTOCOL_ERROR,                        /* Protocol error */
+    HITLS_AUTH_PAKE_INVALID_PARAM,                         /* Invalid parameter */
+    HITLS_AUTH_PAKE_BUFFER_TOO_SMALL,                      /* Buffer too small */
+    HITLS_AUTH_PAKE_NOT_IMPLEMENTED,                       /* Feature not implemented */
+    HITLS_AUTH_NULL_INPUT,
+    HITLS_AUTH_MEM_ALLOC_FAIL,
+    HITLS_AUTH_INVALID_ARG,
 } HITLS_AUTH_ERRNO;
 
 #ifdef __cplusplus

@@ -15,7 +15,6 @@
 #include <string.h>
 #include "securec.h"
 #include "hitls_build.h"
-#include "bsl_bytes.h"
 #include "bsl_log_internal.h"
 #include "bsl_err_internal.h"
 #ifdef HITLS_TLS_SUITE_CIPHER_AEAD
@@ -110,7 +109,6 @@ static int32_t DefaultEncryptPreProcess(TLS_Ctx *ctx, uint8_t recordType, const 
     recPlaintext->isTlsInnerPlaintext = true;
     /* Currently, the padding length is set to 0. If required, the padding length can be customized */
     uint16_t recPaddingLength = 0;
-    /* Currently, the padding length is set to 0. If required, the padding length can be customized */
     if (ctx->config.tlsConfig.recordPaddingCb != NULL) {
         recPaddingLength =
             (uint16_t)ctx->config.tlsConfig.recordPaddingCb(ctx, recordType, plainLen,
@@ -118,7 +116,7 @@ static int32_t DefaultEncryptPreProcess(TLS_Ctx *ctx, uint8_t recordType, const 
     }
 #ifdef HITLS_TLS_FEATURE_INDICATOR
     INDICATOR_MessageIndicate(
-        0, HS_GetVersion(ctx), RECORD_INNER_CONTENT_TYPE, &recordType, 1, ctx, ctx->config.tlsConfig.msgArg);
+        0, GET_VERSION_FROM_CTX(ctx), RECORD_INNER_CONTENT_TYPE, &recordType, 1, ctx, ctx->config.tlsConfig.msgArg);
 #endif
 
     /* TlsInnerPlaintext see rfc 8446 section 5.2 */
@@ -216,11 +214,11 @@ static int32_t UnsupoortDecrypt(TLS_Ctx *ctx, RecConnState *suiteInfo, const REC
     return HITLS_REC_ERR_NOT_SUPPORT_CIPHER;
 }
 
-static int32_t UnsupoortEncrypt(TLS_Ctx *ctx, RecConnState *State, const REC_TextInput *plainMsg,
+static int32_t UnsupoortEncrypt(TLS_Ctx *ctx, RecConnState *state, const REC_TextInput *plainMsg,
     uint8_t *cipherText, uint32_t cipherTextLen)
 {
     (void)ctx;
-    (void)State;
+    (void)state;
     (void)plainMsg;
     (void)cipherText;
     (void)cipherTextLen;

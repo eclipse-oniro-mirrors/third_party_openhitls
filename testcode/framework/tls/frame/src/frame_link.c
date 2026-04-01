@@ -25,6 +25,7 @@
 #include "frame_tls.h"
 #include "frame_io.h"
 #include "frame_link.h"
+#include "rec_wrapper.h"
 
 #define MAX_CERT_PATH_LENGTH (1024)
 
@@ -107,7 +108,9 @@ FRAME_LinkObj *CreateLink(HITLS_Config *config, BSL_UIO_TransportType type)
         return NULL;
     }
     HITLS_CFG_SetReadAhead(config, 1);
+#ifdef HITLS_TLS_FEATURE_FLIGHT
     HITLS_CFG_SetFlightTransmitSwitch(config, false);
+#endif
     HITLS_Ctx *sslObj = HITLS_New(config);
     if (sslObj == NULL) {
         goto ERR;
@@ -143,6 +146,12 @@ FRAME_LinkObj *CreateLink(HITLS_Config *config, BSL_UIO_TransportType type)
     }
     linkObj->io = io;
     linkObj->ssl = sslObj;
+
+    // Register connection for late wrapper application
+    // This enables RegisterWrapper to apply wrappers to connections
+    // that were created before the wrapper was registered
+    RegisterConnection(sslObj);
+
     return linkObj;
 ERR:
     FRAME_IO_FreeUserData(ioUserdata);
@@ -256,11 +265,46 @@ FRAME_LinkObj *FRAME_CreateLinkWithCert(HITLS_Config *config, BSL_UIO_TransportT
     return CreateLink(config, type);
 }
 
+FRAME_LinkObj *FRAME_CreateLinkWithCerts(HITLS_Config *config, BSL_UIO_TransportType type, const FRAME_CertInfo* certInfo, size_t certInfoLen)
+{
+#ifdef HITLS_TLS_CONFIG_KEY_USAGE
+    HITLS_CFG_SetCheckKeyUsage(config, false);
+#endif /* HITLS_TLS_CONFIG_KEY_USAGE */
+
+#ifdef HITLS_TLS_FEATURE_SECURITY
+    if (config->securityLevel == HITLS_SECURITY_LEVEL_ONE) {
+        HITLS_CFG_SetSecurityLevel(config, HITLS_SECURITY_LEVEL_ZERO);
+    }
+#endif /* HITLS_TLS_FEATURE_SECURITY */
+    int32_t ret;
+    for (size_t i = 0; i < certInfoLen; i++) {
+        ret = HiTLS_X509_LoadCertAndKey(config,
+        certInfo[i].caFile,
+        certInfo[i].chainFile,
+        certInfo[i].endEquipmentFile,
+        certInfo[i].signFile,
+        certInfo[i].privKeyFile,
+        certInfo[i].signPrivKeyFile);
+        if (ret != HITLS_SUCCESS) {
+            return NULL;
+        }
+    }
+    
+    return CreateLink(config, type);
+}
+
 void FRAME_FreeLink(FRAME_LinkObj *linkObj)
 {
     if (linkObj == NULL) {
         return;
     }
+
+    // Unregister connection from global tracking before freeing
+    if (linkObj->ssl != NULL) {
+        UnregisterConnection(linkObj->ssl);
+        RemoveWrapperFromConnection(linkObj->ssl);
+    }
+
     FRAME_IO_FreeUserData(BSL_UIO_GetUserData(linkObj->io));
     // BSL_UIO_Free is automatically invoked twice in HITLS_Free
 #ifdef HITLS_TLS_FEATURE_FLIGHT

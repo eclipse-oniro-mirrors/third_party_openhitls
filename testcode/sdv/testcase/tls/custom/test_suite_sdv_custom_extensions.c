@@ -48,7 +48,7 @@
 
 // Simple add_cb function, allocates buffer with 1 byte length and 1 byte data
 int SimpleAddCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, uint8_t **out, uint32_t *outLen,
-    HITLS_X509_Cert *cert, uint32_t certId, uint32_t *alert, void *addArg)
+    HITLS_CERT_X509 *cert, uint32_t certId, uint32_t *alert, void *addArg)
 {
     (void)ctx;
     (void)extType;
@@ -80,7 +80,7 @@ void SimpleFreeCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, 
 
 // Simple parse_cb function, reads the length and data, checks the data
 int SimpleParseCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, const uint8_t **in, uint32_t *inLen,
-    HITLS_X509_Cert *cert, uint32_t certId, uint32_t *alert, void *parseArg)
+    HITLS_CERT_X509 *cert, uint32_t certId, uint32_t *alert, void *parseArg)
 {
     (void)ctx;
     (void)extType;
@@ -138,8 +138,8 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_API_TC001(void)
     uint32_t context = 1;
 
     // Configure a single custom extension
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meth = {0};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meth = {0};
     meth.extType = extType;
     meth.context = context;
     meth.addCb = NULL;  // No callback
@@ -148,11 +148,16 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_API_TC001(void)
     exts.methsCount = 1;
     ctx->config.tlsConfig.customExts = &exts;
 
+    uint32_t bufOffset = 0;
+    uint8_t *buffAddr = &buf[0];
+    PackPacket pkt = {.buf = &buffAddr, .bufLen = &bufLen, .bufOffset = &bufOffset};
     // Call the interface under test
     // Verify the return value is success
-    ASSERT_EQ(PackCustomExtensions(ctx, buf, bufLen, &len, context, NULL, 0), HITLS_SUCCESS);
+    ASSERT_EQ(PackCustomExtensions(ctx, &pkt, context, NULL, 0), HITLS_SUCCESS);
     ctx->config.tlsConfig.customExts = NULL;
     ASSERT_EQ(len, 0);  // No data packed without add_cb
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_Free(ctx);
@@ -188,8 +193,8 @@ void SDV_TLS_PARSE_CUSTOM_EXTENSIONS_API_TC001(void)
     uint32_t extLen = 1;
 
     // Configure a single custom extension
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meth = {0};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meth = {0};
     meth.extType = extType;
     meth.parseCb = NULL;  // No callback
     exts.meths = &meth;
@@ -201,6 +206,8 @@ void SDV_TLS_PARSE_CUSTOM_EXTENSIONS_API_TC001(void)
     ctx->config.tlsConfig.customExts = NULL;
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
     // Note: Current implementation doesn't update bufOffset without parse_cb, adjust expectation if needed
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_Free(ctx);
@@ -236,8 +243,8 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_MULTIPLE_API_TC001(void)
     uint32_t methsCount = 1;
 
     // Configure multiple custom extensions
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meths[2] = {{0}, {0}};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meths[2] = {{0}, {0}};
     meths[0].extType = CUSTOM_EXTENTIONS_TYPE_1;
     meths[0].context = context;
     meths[0].addCb = NULL;  // No callback
@@ -250,11 +257,16 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_MULTIPLE_API_TC001(void)
     exts.methsCount = methsCount;
     ctx->config.tlsConfig.customExts = &exts;
 
+    uint32_t bufOffset = 0;
+    uint8_t *buffAddr = &buf[0];
+    PackPacket pkt = {.buf = &buffAddr, .bufLen = &bufLen, .bufOffset = &bufOffset};
     // Call the interface under test
-    int32_t ret = PackCustomExtensions(ctx, buf, bufLen, &len, context, NULL, 0);
+    int32_t ret = PackCustomExtensions(ctx, &pkt, context, NULL, 0);
     ctx->config.tlsConfig.customExts = NULL;
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
     ASSERT_EQ(len, 0);             // No data packed without add_cb
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_Free(ctx);
@@ -290,10 +302,15 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_EMPTY_API_TC001(void)
 
     ctx->config.tlsConfig.customExts = NULL;  // No extensions
 
+    uint32_t bufOffset = 0;
+    uint8_t *buffAddr = &buf[0];
+    PackPacket pkt = {.buf = &buffAddr, .bufLen = &bufLen, .bufOffset = &bufOffset};
     // Call the interface under test
-    int32_t ret = PackCustomExtensions(ctx, buf, bufLen, &len, context, NULL, 0);
+    int32_t ret = PackCustomExtensions(ctx, &pkt, context, NULL, 0);
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
     ASSERT_EQ(len, 0);             // Verify the packing length is 0
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
@@ -329,8 +346,8 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_CALLBACK_API_TC001(void)
     uint32_t dataLen = 1;
 
     // Configure a single custom extension with callbacks
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meth = {0};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meth = {0};
     meth.extType = extType;
     meth.context = context;
     meth.addCb = SimpleAddCb;
@@ -339,10 +356,14 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_CALLBACK_API_TC001(void)
     exts.methsCount = 1;
     ctx->config.tlsConfig.customExts = &exts;
 
+    uint32_t bufOffset = 0;
+    uint8_t *buffAddr = &buf[0];
+    PackPacket pkt = {.buf = &buffAddr, .bufLen = &bufLen, .bufOffset = &bufOffset};
     // Call the interface under test
-    int32_t ret = PackCustomExtensions(ctx, buf, bufLen, &len, context, NULL, 0);
+    int32_t ret = PackCustomExtensions(ctx, &pkt, context, NULL, 0);
     ctx->config.tlsConfig.customExts = NULL;
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
+    len += bufOffset;
     ASSERT_EQ(len, sizeof(uint16_t) + sizeof(uint16_t) + dataLen);  // ext_type (2 byte) + len (2 byte) + data (1 byte)
     // Verify the extension type
     uint16_t packedType = BSL_ByteToUint16(buf);
@@ -350,6 +371,8 @@ void SDV_TLS_PACK_CUSTOM_EXTENSIONS_CALLBACK_API_TC001(void)
     uint16_t packedLen = BSL_ByteToUint16(&buf[sizeof(uint16_t)]);
     ASSERT_EQ(packedLen, 1);  // Verify the len
     ASSERT_EQ(buf[len - 1], 0xAA);  // Verify the data
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
@@ -384,8 +407,8 @@ void SDV_TLS_PARSE_CUSTOM_EXTENSIONS_CALLBACK_API_TC001(void)
     uint32_t context = 1;
     uint32_t extLen = 1;
     // Configure a single custom extension with parse callback
-    CustomExt_Methods exts = {0};
-    CustomExt_Method meth = {0};
+    CustomExtMethods exts = {0};
+    CustomExtMethod meth = {0};
     meth.extType = extType;
     meth.context = context;
     meth.parseCb = SimpleParseCb;
@@ -397,6 +420,8 @@ void SDV_TLS_PARSE_CUSTOM_EXTENSIONS_CALLBACK_API_TC001(void)
     int32_t ret = ParseCustomExtensions(ctx, buf + bufOffset, extType, extLen, context, NULL, 0);
     ctx->config.tlsConfig.customExts = NULL;
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
@@ -450,7 +475,7 @@ void SDV_HITLS_ADD_CUSTOM_EXTENSION_API_TC001(void)
     uint32_t ret = HITLS_CFG_AddCustomExtension(tlsConfig, &params);
     ASSERT_EQ(ret, HITLS_SUCCESS);  // Verify the return value is success
     ASSERT_EQ(tlsConfig->customExts->methsCount, 1);  // Verify the number of extensions is 1
-    CustomExt_Method *meth = &tlsConfig->customExts->meths[0];
+    CustomExtMethod *meth = &tlsConfig->customExts->meths[0];
     ASSERT_EQ(meth->extType, extType);  // Verify the extension type
     ASSERT_EQ(meth->context, context);    // Verify the context
     ASSERT_EQ(meth->addCb, addCb);      // Verify add_cb
@@ -506,7 +531,7 @@ typedef struct {
 } CustomExtensionArg;
 
 int CustomExtensionAddCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, uint8_t **out, uint32_t *outLen,
-    HITLS_X509_Cert *cert, uint32_t certId, uint32_t *alert, void *addArg)
+    HITLS_CERT_X509 *cert, uint32_t certId, uint32_t *alert, void *addArg)
 {
     (void)ctx;
     (void)extType;
@@ -556,7 +581,7 @@ void CustomExtensionFreeCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t 
 
 // Simple parse_cb function, reads the length and data, checks the data
 int CustomExtensionParseCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, const uint8_t **in, uint32_t *inLen,
-    HITLS_X509_Cert *cert, uint32_t certId, uint32_t *alert, void *parseArg)
+    HITLS_CERT_X509 *cert, uint32_t certId, uint32_t *alert, void *parseArg)
 {
     (void)ctx;
     (void)extType;
@@ -650,6 +675,8 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC001(void)
     ASSERT_EQ(serverArg.addedContext[5], HITLS_EX_TYPE_TLS1_3_NEW_SESSION_TICKET);
     ASSERT_EQ(serverArg.addedContext[5], HITLS_EX_TYPE_TLS1_3_NEW_SESSION_TICKET);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(clientConfig);
     HITLS_CFG_FreeConfig(serverConfig);
@@ -663,7 +690,7 @@ EXIT:
  * @title Alert Scenario Test for Custom Extensions
  */
 /* BEGIN_CASE */
-void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC002()    
+void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC002()
 {
     FRAME_Init();  // Initialize the test framework
 
@@ -688,7 +715,7 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC002()
     params.parseArg = &serverArg;
     HITLS_CFG_AddCustomExtension(serverConfig, &params);
 
-    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);    
+    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);
     FRAME_LinkObj *server = FRAME_CreateLink(serverConfig, BSL_UIO_TCP);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), -1);
@@ -711,7 +738,7 @@ EXIT:
  * @title Empty Extension Capability Test
  */
 /* BEGIN_CASE */
-void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC003()    
+void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC003()
 {
     FRAME_Init();  // Initialize the test framework
 
@@ -739,7 +766,7 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC003()
     params.parseArg = &serverArg;
     HITLS_CFG_AddCustomExtension(serverConfig, &params);
 
-    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);    
+    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);
     FRAME_LinkObj *server = FRAME_CreateLink(serverConfig, BSL_UIO_TCP);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), 0);
@@ -754,6 +781,8 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC003()
     ASSERT_EQ(serverArg.addedContext[0], HITLS_EX_TYPE_TLS1_3_SERVER_HELLO);
     ASSERT_EQ(serverArg.parsedContext[0], HITLS_EX_TYPE_CLIENT_HELLO);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(clientConfig);
     HITLS_CFG_FreeConfig(serverConfig);
@@ -767,7 +796,7 @@ EXIT:
  * @title Pass Extension Capability Test
  */
 /* BEGIN_CASE */
-void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC004()    
+void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC004()
 {
     FRAME_Init();  // Initialize the test framework
 
@@ -793,7 +822,7 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC004()
     params.parseArg = &serverArg;
     HITLS_CFG_AddCustomExtension(serverConfig, &params);
 
-    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);    
+    FRAME_LinkObj *client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);
     FRAME_LinkObj *server = FRAME_CreateLink(serverConfig, BSL_UIO_TCP);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), 0);
@@ -803,6 +832,8 @@ void SDV_HITLS_CUSTOM_EXTENSION_FUNCTION_TC004()
 
     ASSERT_EQ(serverArg.addedContextCount, 1);
     ASSERT_EQ(serverArg.parsedContextCount, 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 
 EXIT:

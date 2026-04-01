@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
-#include <linux/limits.h>
+#include <limits.h>
 #include <unistd.h>
 #include <stdbool.h>
 
@@ -39,7 +39,6 @@
 #include "bsl_sal.h"
 #include "bsl_uio.h"
 #include "alert.h"
-#include "stub_replace.h"
 #include "cert_callback.h"
 #include "crypt_eal_rand.h"
 #include "hitls_crypt_reg.h"

@@ -21,7 +21,7 @@
 #include "bsl_log.h"
 #include "sal_file.h"
 #include "bsl_init.h"
-#include "crypt_encode_decode_key.h"
+#include "crypt_codecskey.h"
 #include "crypt_eal_codecs.h"
 #include "crypt_eal_rand.h"
 #include "crypt_errno.h"
@@ -36,6 +36,10 @@
 /* BEGIN_CASE */
 void SDV_CMS_PARSE_ENCRYPTEDDATA_TC001(Hex *buff)
 {
+#if !defined(HITLS_PKI_CMS_ENCRYPTDATA)
+    (void)buff;
+    SKIP_TEST();
+#else
     BSL_Buffer output = {0};
     char *pwd = "123456";
     uint32_t pwdlen = strlen(pwd);
@@ -73,6 +77,7 @@ void SDV_CMS_PARSE_ENCRYPTEDDATA_TC001(Hex *buff)
     ASSERT_EQ(ret, CRYPT_EAL_CIPHER_DATA_ERROR);
 EXIT:
     return;
+#endif
 }
 /* END_CASE */
 
@@ -82,15 +87,21 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_CMS_PARSE_ENCRYPTEDDATA_TC002(Hex *buff)
 {
+#if !defined(HITLS_PKI_CMS_ENCRYPTDATA)
+    (void)buff;
+    SKIP_TEST();
+#else
     BSL_Buffer output = {0};
     char *pwd = "123456";
     uint32_t pwdlen = strlen(pwd);
     int32_t ret =  CRYPT_EAL_ParseAsn1PKCS7EncryptedData(NULL, NULL, (BSL_Buffer *)buff, (const uint8_t *)pwd, pwdlen,
         &output);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(output.data);
     return;
+#endif
 }
 /* END_CASE */
 
@@ -100,6 +111,12 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_CMS_PARSE_DIGESTINFO_TC001(Hex *buff, int alg, Hex *digest)
 {
+#if !defined(HITLS_PKI_CMS_DIGESTINFO)
+    (void)buff;
+    (void)alg;
+    (void)digest;
+    SKIP_TEST();
+#else
     BSL_Buffer output = {0};
     BslCid cid = BSL_CID_UNKNOWN;
     int32_t ret = HITLS_CMS_ParseDigestInfo(NULL, &cid, &output);
@@ -116,6 +133,7 @@ void SDV_CMS_PARSE_DIGESTINFO_TC001(Hex *buff, int alg, Hex *digest)
 EXIT:
     BSL_SAL_Free(output.data);
     return;
+#endif
 }
 /* END_CASE */
 
@@ -125,15 +143,23 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_CMS_PARSE_DIGESTINFO_TC002(Hex *buff, int alg, Hex *digest)
 {
+#if !defined(HITLS_PKI_CMS_DIGESTINFO)
+    (void)buff;
+    (void)alg;
+    (void)digest;
+    SKIP_TEST();
+#else
     BSL_Buffer output = {0};
     BslCid cid = BSL_CID_UNKNOWN;
     int32_t ret =  HITLS_CMS_ParseDigestInfo((BSL_Buffer *)buff, &cid, &output);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_EQ(alg, cid);
     ASSERT_EQ(memcmp(output.data, digest->x, digest->len), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_Free(output.data);
     return;
+#endif
 }
 /* END_CASE */
 
@@ -143,6 +169,10 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_CMS_ENCODE_ENCRYPTEDDATA_TC001(Hex *buff)
 {
+#if !defined(HITLS_PKI_CMS_ENCRYPTDATA)
+    (void)buff;
+    SKIP_TEST();
+#else
     BSL_Buffer data = {buff->x, buff->len};
     BSL_Buffer output = {0};
     BSL_Buffer verify = {0};
@@ -180,6 +210,7 @@ EXIT:
     BSL_SAL_FREE(verify.data);
     BSL_SAL_FREE(output.data);
     return;
+#endif
 }
 /* END_CASE */
 
@@ -189,6 +220,9 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_CMS_ENCODE_DIGESTINFO_TC001()
 {
+#if !defined(HITLS_PKI_CMS_DIGESTINFO)
+    SKIP_TEST();
+#else
     BSL_Buffer input = {0};
     BSL_Buffer output = {0};
     BslCid cid = 0;
@@ -217,6 +251,7 @@ EXIT:
     BSL_SAL_FREE(digest.data);
     BSL_SAL_FREE(output.data);
     return;
+#endif
 }
 /* END_CASE */
 
@@ -226,6 +261,11 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_CMS_ENCODE_DIGESTINFO_TC002(int algid, Hex *in)
 {
+#if !defined(HITLS_PKI_CMS_DIGESTINFO)
+    (void)algid;
+    (void)in;
+    SKIP_TEST();
+#else
     BSL_Buffer input = {in->x, in->len};
     BSL_Buffer output = {0};
     BslCid cid = 0;
@@ -235,9 +275,11 @@ void SDV_CMS_ENCODE_DIGESTINFO_TC002(int algid, Hex *in)
     ret = HITLS_CMS_ParseDigestInfo(&output, &cid, &digest);
     ASSERT_EQ(ret, HITLS_PKI_SUCCESS);
     ASSERT_EQ(cid, algid);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_FREE(digest.data);
     BSL_SAL_FREE(output.data);
     return;
+#endif
 }
 /* END_CASE */

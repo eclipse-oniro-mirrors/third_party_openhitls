@@ -22,6 +22,7 @@
 #include "modes_local.h"
 #include "bsl_sal.h"
 #include "securec.h"
+#include "crypto_test_util.h"
 
 #define MAX_OUTPUT 5000
 #define MCT_INNER_LOOP 1000
@@ -458,7 +459,7 @@ void SDV_CRYPTO_AES_GET_PADDING_API_TC001(Hex *key, Hex *iv)
     ret = CRYPT_EAL_CipherGetPadding(ctx);
     ASSERT_TRUE(ret == CRYPT_PADDING_ZEROS);
     ret = CRYPT_EAL_CipherGetPadding(NULL);
-    ASSERT_TRUE(ret == CRYPT_NULL_INPUT);
+    ASSERT_TRUE(ret == CRYPT_PADDING_MAX_COUNT);
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -508,6 +509,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC001(int isProvider, int algId, Hex *key, Hex 
     ASSERT_EQ(totalLen, out->len);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ASSERT_EQ(memcmp(outTmp, out->x, out->len), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -559,6 +561,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC002(int algId, Hex *key, Hex *iv, Hex *in, He
     }
 
     ASSERT_TRUE(memcmp(mctResult[MCT_INNER_LOOP - 1], out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -622,6 +625,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC003(int isProvider, int algId, Hex *key, Hex 
     ret = CRYPT_EAL_CipherFinal(ctx, outTmp + len, &finLen);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(outTmp, out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -806,6 +810,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC004(int algId, Hex *key, Hex *iv, Hex *in, in
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
 
     ASSERT_TRUE(memcmp(in->x, result, in->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctxEnc);
@@ -864,6 +869,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC005(int isProvider, int algId, Hex *key, Hex 
     ret = CRYPT_EAL_CipherFinal(ctx, outTmp + totalLen, &len);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(outTmp, out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -932,6 +938,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC006(int isProvider, int algId, int feed, Hex 
     ret = CRYPT_EAL_CipherFinal(ctx, outTmp + totalLen, &len);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(outTmp, out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -973,6 +980,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC007(int algId, Hex *key, Hex *iv, Hex *in, He
     ret = CRYPT_EAL_CipherFinal(ctx, in->x + totalLen, &len);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(in->x, out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -1136,6 +1144,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC008(int isProvider, int algId, Hex *key, Hex 
 
     ASSERT_TRUE(totalLen == out->len);
     ASSERT_TRUE(memcmp(out->x, outTmp, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctxEnc);
@@ -1195,6 +1204,7 @@ void SDV_CRYPTO_AES_ENCRYPT_FUNC_TC009(int isProvider, int algId, Hex *key, Hex 
 
     ASSERT_TRUE(totalLen == out->len);
     ASSERT_TRUE(memcmp(out->x, result, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctxDec);
@@ -1279,6 +1289,7 @@ void SDV_CRYPTO_EAL_AES_FUNC_TC001(int isProvider, int algId, Hex *key, Hex *iv,
     ASSERT_TRUE(totalLen == out->len);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(outTmp, out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -1326,9 +1337,73 @@ void SDV_CRYPTO_EAL_AES_FUNC_TC005(int isProvider, int algId, Hex *key, Hex *iv,
     ret = CRYPT_EAL_CipherFinal(ctx, outTmp + len, &finLen);
     ASSERT_TRUE(ret == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(outTmp, out->x, out->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
     CRYPT_EAL_CipherFreeCtx(ctx);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_EAL_AES_FUNC_TC010(int algId, Hex *key, Hex *iv, Hex *pt)
+{
+#ifndef HITLS_CRYPTO_AES_ARMV8
+    (void)algId;
+    (void)key;
+    (void)iv;
+    (void)pt;
+    SKIP_TEST();
+#else
+    if (IsAesAlgDisabled(algId)) {
+        SKIP_TEST();
+    }
+    uint8_t cipher[MAX_OUTPUT] = {0};
+    uint32_t cipherLen = MAX_OUTPUT;
+    uint8_t plain[MAX_OUTPUT] = {0};
+    uint32_t plainLen = MAX_OUTPUT;
+
+    uint8_t outTag[AEAD_MAX_TAG_LEN];
+    uint32_t tagLen = AEAD_MAX_TAG_LEN;
+
+    uint32_t finLen = 0;
+    CRYPT_EAL_CipherCtx *ctx = NULL;
+    TestMemInit();
+
+    AARCH64_PUT_CANARY();
+
+    // Encrypt
+    ASSERT_TRUE((ctx = CRYPT_EAL_CipherNewCtx(algId)) != NULL);
+    ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key->x, key->len, iv->x, iv->len, true), CRYPT_SUCCESS);
+
+    if (algId == CRYPT_CIPHER_AES128_GCM || algId == CRYPT_CIPHER_AES192_GCM || algId == CRYPT_CIPHER_AES256_GCM) {
+        ASSERT_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &tagLen, sizeof(tagLen)) == CRYPT_SUCCESS);
+    }
+    ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, pt->x, pt->len, cipher, &cipherLen), CRYPT_SUCCESS);
+    if (algId == CRYPT_CIPHER_AES128_CBC || algId == CRYPT_CIPHER_AES192_CBC || algId == CRYPT_CIPHER_AES256_CBC) {
+        finLen = MAX_OUTPUT - cipherLen;
+        ASSERT_EQ(CRYPT_EAL_CipherFinal(ctx, cipher + cipherLen, &finLen), CRYPT_SUCCESS);
+        cipherLen += finLen;
+    } else {
+        ASSERT_TRUE(CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_GET_TAG, outTag, tagLen) == CRYPT_SUCCESS);
+    }
+
+    // Decrypt
+    CRYPT_EAL_CipherDeinit(ctx);
+    ASSERT_EQ(CRYPT_EAL_CipherInit(ctx, key->x, key->len, iv->x, iv->len, false), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_CipherUpdate(ctx, cipher, cipherLen, plain, &plainLen), CRYPT_SUCCESS);
+    if (algId == CRYPT_CIPHER_AES128_CBC || algId == CRYPT_CIPHER_AES192_CBC || algId == CRYPT_CIPHER_AES256_CBC) {
+        finLen = MAX_OUTPUT - plainLen;
+        ASSERT_EQ(CRYPT_EAL_CipherFinal(ctx, plain + plainLen, &finLen), CRYPT_SUCCESS);
+        plainLen += finLen;
+    }
+    ASSERT_COMPARE("AES:", plain, plainLen, pt->x, pt->len);
+    CRYPT_EAL_CipherFreeCtx(ctx);
+    ctx = NULL;
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    AARCH64_CHECK_CANARY();
+EXIT:
+    CRYPT_EAL_CipherFreeCtx(ctx);
+#endif
 }
 /* END_CASE */

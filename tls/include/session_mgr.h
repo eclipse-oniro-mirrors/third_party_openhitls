@@ -31,7 +31,7 @@ extern "C" {
 /* Application */
 TLS_SessionMgr *SESSMGR_New(HITLS_Lib_Ctx *libCtx);
 
-/* Copy the number of references and increase the number of references by 1 */
+/* Copy the number of references. The number of references increases by 1 */
 TLS_SessionMgr *SESSMGR_Dup(TLS_SessionMgr *mgr);
 
 /* Release */
@@ -44,10 +44,10 @@ void SESSMGR_SetTimeout(TLS_SessionMgr *mgr, uint64_t sessTimeout);
 uint64_t SESSMGR_GetTimeout(TLS_SessionMgr *mgr);
 
 /* Set the mode */
-void SESSMGR_SetCacheMode(TLS_SessionMgr *mgr, HITLS_SESS_CACHE_MODE mode);
+void SESSMGR_SetCacheMode(TLS_SessionMgr *mgr, uint32_t mode);
 
 /* Set the mode: Ensure that the pointer is not null */
-HITLS_SESS_CACHE_MODE SESSMGR_GetCacheMode(TLS_SessionMgr *mgr);
+uint32_t SESSMGR_GetCacheMode(TLS_SessionMgr *mgr);
 
 /* Set the maximum number of cache sessions */
 void SESSMGR_SetCacheSize(TLS_SessionMgr *mgr, uint32_t sessCacheSize);
@@ -56,16 +56,18 @@ void SESSMGR_SetCacheSize(TLS_SessionMgr *mgr, uint32_t sessCacheSize);
 uint32_t SESSMGR_GetCacheSize(TLS_SessionMgr *mgr);
 
 /* add */
-void SESSMGR_InsertSession(TLS_SessionMgr *mgr, HITLS_Session *sess, bool isClient);
+void SESSMGR_InsertSession(TLS_SessionMgr *mgr, HITLS_Session *sess, bool isStore);
 
 /* Find the matching session and verify the validity of the session (time) */
-HITLS_Session *SESSMGR_Find(TLS_SessionMgr *mgr, uint8_t *sessionId, uint8_t sessionIdSize);
+HITLS_Session *SESSMGR_Find(TLS_Ctx *ctx, uint8_t *sessionId, uint8_t sessionIdSize);
 
 /* Search for the matching session without checking the validity of the session (time) */
 bool SESSMGR_HasMacthSessionId(TLS_SessionMgr *mgr, uint8_t *sessionId, uint8_t sessionIdSize);
 
 /* Clear timeout sessions */
-void SESSMGR_ClearTimeout(TLS_SessionMgr *mgr);
+void SESSMGR_ClearTimeout(HITLS_Config *config, uint64_t time);
+
+int32_t SESSMGR_RemoveSession(HITLS_Config *config, HITLS_Session *sess);
 
 /* Generate session IDs to prevent duplicate session IDs */
 int32_t SESSMGR_GernerateSessionId(TLS_Ctx *ctx, uint8_t *sessionId, uint32_t sessionIdSize);
@@ -78,7 +80,7 @@ HITLS_TicketKeyCb SESSMGR_GetTicketKeyCb(TLS_SessionMgr *mgr);
  * @brief   Obtain the default ticket key of the HITLS. The key is used to encrypt and decrypt the ticket
  *          in the new session ticket when the HITLS_TicketKeyCb callback function is not set.
  *
- * @attention The returned key value is as follows: 16-bytes key name + 32-bytes AES key + 32-bytes HMAC key
+ * @attention The returned key value is as follows: 16-byte key name + 32-byte AES key + 32-byte HMAC key
  *
  * @param   mgr [IN] Session management context
  * @param   key [OUT] Obtained ticket key
@@ -94,7 +96,7 @@ int32_t SESSMGR_GetTicketKey(const TLS_SessionMgr *mgr, uint8_t *key, uint32_t k
  * @brief   Set the default ticket key of the HITLS. The key is used to encrypt and decrypt tickets
  *          in the new session ticket when the HITLS_TicketKeyCb callback function is not set.
  *
- * @attention The returned key value is as follows: 16-bytes key name + 32-bytes AES key + 32-bytes HMAC key
+ * @attention The returned key value is as follows: 16-byte key name + 32-byte AES key + 32-byte HMAC key
  *
  * @param   mgr [OUT] Session management context
  * @param   key [IN] Ticket key to be set
@@ -116,8 +118,8 @@ int32_t SESSMGR_SetTicketKey(TLS_SessionMgr *mgr, const uint8_t *key, uint32_t k
  * @retval  HITLS_SUCCESS
  * @retval  For other error codes, see hitls_error.h
  */
-int32_t SESSMGR_EncryptSessionTicket(TLS_Ctx *ctx, const TLS_SessionMgr *sessMgr, const HITLS_Session *sess, uint8_t **ticketBuf,
-    uint32_t *ticketBufSize);
+int32_t SESSMGR_EncryptSessionTicket(TLS_Ctx *ctx, const TLS_SessionMgr *sessMgr, const HITLS_Session *sess,
+    uint8_t **ticketBuf, uint32_t *ticketBufSize);
 
 /**
  * @brief   Decrypt the session ticket. This interface is invoked when the session ticket of the clientHello is received

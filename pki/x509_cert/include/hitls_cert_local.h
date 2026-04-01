@@ -19,7 +19,8 @@
 #include "hitls_build.h"
 #ifdef HITLS_PKI_X509_CRT
 #include <stdint.h>
-#include "bsl_asn1.h"
+#include <stdbool.h>
+#include "bsl_asn1_internal.h"
 #include "bsl_obj.h"
 #include "sal_atomic.h"
 #include "hitls_x509_local.h"
@@ -54,6 +55,7 @@ typedef enum {
 typedef struct _HITLS_X509_Cert {
     uint8_t flag; // Used to mark certificate parsing or generation, indicating resource release behavior.
     uint8_t state;
+    bool isProvider;
 
     uint8_t *rawData;
     uint32_t rawDataLen;
@@ -62,12 +64,13 @@ typedef struct _HITLS_X509_Cert {
     BSL_ASN1_BitString signature;
 
     BSL_SAL_RefCount references;
+
     CRYPT_EAL_LibCtx *libCtx;         // Provider context
     const char *attrName;             // Provider attribute name
 } HITLS_X509_Cert;
 
 #ifdef HITLS_PKI_X509_VFY
-int32_t HITLS_X509_CheckIssued(HITLS_X509_Cert *issue, HITLS_X509_Cert *subject, bool *res);
+bool HITLS_X509_CheckIssued(HITLS_X509_Cert *issue, HITLS_X509_Cert *subject);
 bool HITLS_X509_CertIsCA(HITLS_X509_Cert *cert);
 #endif
 

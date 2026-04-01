@@ -50,6 +50,7 @@ typedef struct {
         CRYPT_ElGamalPub elgamalPub; /**< Elgamal public key structure */
 		CRYPT_MlDsaPub mldsaPub;  /**< MLDSA public key structure */
         CRYPT_SlhDsaPub slhDsaPub; /**< SLH-DSA public key structure */
+        CRYPT_XmssPub xmssPub; /**< XMSS public key structure */
     } key;                           /**< Public key union of all algorithms */
 } CRYPT_EAL_PkeyPub;
 
@@ -77,6 +78,7 @@ typedef struct {
         CRYPT_ElGamalPrv elgamalPrv; /**< ElGamal private key structure */
 		CRYPT_MlDsaPrv mldsaPrv;  /**< MLDSA private key structure */
         CRYPT_SlhDsaPrv slhDsaPrv; /**< SLH-DSA private key structure */
+        CRYPT_XmssPrv xmssPrv; /**< XMSS private key structure */
     } key;                           /**<Private key union of all algorithms */
 } CRYPT_EAL_PkeyPrv;
 
@@ -147,11 +149,12 @@ CRYPT_EAL_PkeyCtx *CRYPT_EAL_ProviderPkeyNewCtx(CRYPT_EAL_LibCtx *libCtx, int32_
 /**
  * @ingroup crypt_eal_pkey
  * @brief   Copy the pkey context.
+ * @note    to and from must has identical key management.
  *
  * @param   to [IN/OUT] Target pkey context
  * @param   from [IN] Source pkey context
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyCopyCtx(CRYPT_EAL_PkeyCtx *to, const CRYPT_EAL_PkeyCtx *from);
@@ -161,7 +164,7 @@ int32_t CRYPT_EAL_PkeyCopyCtx(CRYPT_EAL_PkeyCtx *to, const CRYPT_EAL_PkeyCtx *fr
  * @brief   Dup the Pkey context.
  *          After the duplication is complete, call the CRYPT_EAL_PkeyFreeCtx interface to release the memory.
  *
- * @param   ctx [IN] Source Pkey context
+ * @param   pkey [IN] Source Pkey context
  *
  * @retval  CRYPT_EAL_PkeyCtx, Pkey context pointer.
  *          NULL, if the operation fails.
@@ -183,10 +186,22 @@ void CRYPT_EAL_PkeyFreeCtx(CRYPT_EAL_PkeyCtx *pkey);
  * @param   pkey [IN/OUT] Structure of the key pair to be set
  * @param   para [IN] Parameter
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeySetPara(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPara *para);
+
+/**
+ * @ingroup crypt_eal_pkey
+ * @brief   Set the key parameters.
+ *
+ * @param   pkey [IN/OUT] Structure of the key pair to be set
+ * @param   param [IN] Parameter
+ *
+ * @retval  CRYPT_SUCCESS
+ *          For other error codes, see crypt_errno.h.
+ */
+int32_t CRYPT_EAL_PkeySetParaEx(CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *param);
 
 /**
  * @ingroup crypt_eal_pkey
@@ -195,7 +210,7 @@ int32_t CRYPT_EAL_PkeySetPara(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPara 
  * @param   pkey [IN] Key pair structure
  * @param   para [OUT] Parameter to be received
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyGetPara(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPara *para);
@@ -207,7 +222,7 @@ int32_t CRYPT_EAL_PkeyGetPara(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPara 
  * @param   pkey [IN/OUT] Structure of the key pair to be set.
  * @param   id [IN] Parameter ID.
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeySetParaById(CRYPT_EAL_PkeyCtx *pkey, CRYPT_PKEY_ParaId id);
@@ -218,7 +233,7 @@ int32_t CRYPT_EAL_PkeySetParaById(CRYPT_EAL_PkeyCtx *pkey, CRYPT_PKEY_ParaId id)
  *
  * @param   pkey [IN/OUT] Key pair structure for receiving key data.
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyGen(CRYPT_EAL_PkeyCtx *pkey);
@@ -230,7 +245,7 @@ int32_t CRYPT_EAL_PkeyGen(CRYPT_EAL_PkeyCtx *pkey);
  * @param   pkey [OUT] Key pair structure for receiving key data
  * @param   key  [IN] Public key data
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeySetPub(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPub *key);
@@ -245,7 +260,7 @@ int32_t CRYPT_EAL_PkeySetPub(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPub *k
  * @param   pkey [OUT] Key pair structure for receiving key data
  * @param   param  [IN] Public key data
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeySetPubEx(CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *param);
@@ -257,7 +272,7 @@ int32_t CRYPT_EAL_PkeySetPubEx(CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *param);
  * @param   pkey [OUT] Key pair structure for receiving key data
  * @param   key  [IN] Private key data
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeySetPrv(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPrv *key);
@@ -272,7 +287,7 @@ int32_t CRYPT_EAL_PkeySetPrv(CRYPT_EAL_PkeyCtx *pkey, const CRYPT_EAL_PkeyPrv *k
  * @param   pkey [OUT] Key pair structure for receiving key data
  * @param   param  [IN] Private key data
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeySetPrvEx(CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *param);
@@ -284,7 +299,7 @@ int32_t CRYPT_EAL_PkeySetPrvEx(CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *param);
  * @param   pkey [IN] Key session
  * @param   key  [OUT] Public key data
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyGetPub(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPub *key);
@@ -299,7 +314,7 @@ int32_t CRYPT_EAL_PkeyGetPub(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPub *k
  * @param   pkey [IN] Key session
  * @param   param [IN] parameters
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyGetPubEx(const CRYPT_EAL_PkeyCtx *pkey, BSL_Param *param);
@@ -311,7 +326,7 @@ int32_t CRYPT_EAL_PkeyGetPubEx(const CRYPT_EAL_PkeyCtx *pkey, BSL_Param *param);
  * @param   pkey [IN] Key session
  * @param   key  [OUT] Private key data
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyGetPrv(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPrv *key);
@@ -326,7 +341,7 @@ int32_t CRYPT_EAL_PkeyGetPrv(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_EAL_PkeyPrv *k
  * @param   pkey [IN] Key session
  * @param   param  [OUT] Private key data
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyGetPrvEx(const CRYPT_EAL_PkeyCtx *pkey, BSL_Param *param);
@@ -344,7 +359,7 @@ int32_t CRYPT_EAL_PkeyGetPrvEx(const CRYPT_EAL_PkeyCtx *pkey, BSL_Param *param);
  * @param   signLen  [OUT/IN] Length of the signature data, You can obtain the value by calling
  * CRYPT_EAL_PkeyGetSignLen.
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeySign(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_MD_AlgId id, const uint8_t *data,
@@ -361,7 +376,7 @@ int32_t CRYPT_EAL_PkeySign(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_MD_AlgId id, con
  * @param   sign      [IN] Signature data
  * @param   signLen   [IN] Length of the signature data
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyVerify(const CRYPT_EAL_PkeyCtx *pkey, CRYPT_MD_AlgId id, const uint8_t *data,
@@ -440,8 +455,36 @@ int32_t CRYPT_EAL_PkeyDecrypt(const CRYPT_EAL_PkeyCtx *pkey, const uint8_t *data
 
 /**
  * @ingroup crypt_eal_pkey
- * @brief Check whether the public and private keys match.
- *  Currently not supported in the provider, supported in the future
+ * @brief   Homomorphic addition operations
+ *
+ * @param   pkey      [IN] Addition Context
+ * @param   input    [IN] Input ciphertext data
+ * @param   out      [OUT] The result of the addition operation
+ * @param   outLen   [OUT/IN] Pointer to the length of the addition result
+ *
+ * @retval  #CRYPT_SUCCESS, if successful.
+ *          For other error codes, see crypt_errno.h.
+ */
+int32_t CRYPT_EAL_PkeyHEAdd(const CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *input, uint8_t *out, uint32_t *outLen);
+
+/**
+ * @ingroup crypt_eal_pkey
+ * @brief   Homomorphic multiplication operations
+ *
+ * @param   pkey      [IN] Multiplication Context
+ * @param   input    [IN] Input ciphertext data
+ * @param   out      [OUT] The result of the multiplication operation
+ * @param   outLen   [OUT/IN] Pointer to the length of the multiplication result
+ *
+ * @retval  #CRYPT_SUCCESS, if successful.
+ *          For other error codes, see crypt_errno.h.
+ */
+int32_t CRYPT_EAL_PkeyHEMul(const CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *input, uint8_t *out, uint32_t *outLen);
+
+/**
+ * @ingroup crypt_eal_pkey
+ * @brief   Check whether the public and private keys match.
+ * @note    pubKey and prvKey must has identical key management.
  *
  * @param   pubKey      [IN] Public key
  * @param   prvKey      [IN] private key
@@ -450,6 +493,17 @@ int32_t CRYPT_EAL_PkeyDecrypt(const CRYPT_EAL_PkeyCtx *pkey, const uint8_t *data
  *          For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyPairCheck(CRYPT_EAL_PkeyCtx *pubKey, CRYPT_EAL_PkeyCtx *prvKey);
+
+/**
+ * @ingroup crypt_eal_pkey
+ * @brief   Check the private key is valid.
+ *
+ * @param   prvKey [IN] Private key
+ *
+ * @retval  #CRYPT_SUCCESS, if successful.
+ *          For other error codes, see crypt_errno.h.
+ */
+int32_t CRYPT_EAL_PkeyPrvCheck(CRYPT_EAL_PkeyCtx *prvKey);
 
 /**
  * @ingroup crypt_eal_pkey
@@ -621,7 +675,7 @@ void *CRYPT_EAL_PkeyGetExtData(const CRYPT_EAL_PkeyCtx *pkey);
  *
  * @param   pkey [IN] Key session
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyUpRef(CRYPT_EAL_PkeyCtx *pkey);
@@ -633,10 +687,10 @@ int32_t CRYPT_EAL_PkeyUpRef(CRYPT_EAL_PkeyCtx *pkey);
  * @param pkey [in] Pointer to the key context
  * @param params [in] Algorithm parameters
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes see crypt_errno.h.
  */
-int32_t CRYPT_EAL_PkeyEncapsInit(CRYPT_EAL_PkeyCtx *pkey, BSL_Param *params);
+int32_t CRYPT_EAL_PkeyEncapsInit(CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *params);
 
 /**
  * @ingroup crypt_eal_pkey
@@ -645,10 +699,10 @@ int32_t CRYPT_EAL_PkeyEncapsInit(CRYPT_EAL_PkeyCtx *pkey, BSL_Param *params);
  * @param pkey [in] Pointer to the key context
  * @param params [in] Algorithm parameters
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes see crypt_errno.h.
  */
-int32_t CRYPT_EAL_PkeyDecapsInit(CRYPT_EAL_PkeyCtx *pkey, BSL_Param *params);
+int32_t CRYPT_EAL_PkeyDecapsInit(CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *params);
 
 /**
  * @ingroup crypt_eal_pkey
@@ -660,7 +714,7 @@ int32_t CRYPT_EAL_PkeyDecapsInit(CRYPT_EAL_PkeyCtx *pkey, BSL_Param *params);
  * @param sharekey [out] Output buffer for shared secret
  * @param shareKeyLen [in,out] Input: buffer capacity, Output: actual secret length
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes see crypt_errno.h.
  */
 int32_t CRYPT_EAL_PkeyEncaps(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *cipher, uint32_t *cipherLen, uint8_t *sharekey,
@@ -676,11 +730,11 @@ int32_t CRYPT_EAL_PkeyEncaps(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *cipher, uin
  * @param sharekey [out] Output buffer for shared secret
  * @param shareKeyLen [in,out] Input: buffer capacity, Output: actual secret length
  *
- * @retval  #CRYPT_SUCCESS.
+ * @retval  CRYPT_SUCCESS
  *          For other error codes see crypt_errno.h.
  */
-int32_t CRYPT_EAL_PkeyDecaps(const CRYPT_EAL_PkeyCtx *pkey, uint8_t *cipher, uint32_t cipherLen, uint8_t *sharekey,
-    uint32_t *shareKeyLen);
+int32_t CRYPT_EAL_PkeyDecaps(
+    const CRYPT_EAL_PkeyCtx *pkey, const uint8_t *cipher, uint32_t cipherLen, uint8_t *sharekey, uint32_t *shareKeyLen);
 
 #ifdef __cplusplus
 }

@@ -23,42 +23,34 @@
 #include "bsl_err_internal.h"
 #include "sha2_core.h"
 #include "bsl_sal.h"
-#include "crypt_types.h"
 
 #define SHA256_INIT_ARRAY {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19}
 
 static const uint32_t SHA256_INIT_STATE[8] = SHA256_INIT_ARRAY;
-
-struct CryptSha256Ctx {
-    uint32_t h[CRYPT_SHA2_256_DIGESTSIZE / sizeof(uint32_t)]; /* 256 bits for SHA256 state */
-    uint32_t block[CRYPT_SHA2_256_BLOCKSIZE / sizeof(uint32_t)]; /* 512 bits block cache */
-    uint32_t lNum, hNum;                                           /* input bits counter, max 2^64 bits */
-    uint32_t blocklen;                                     /* block length */
-    uint32_t outlen;                                       /* digest output length */
-    uint32_t errorCode; /* error Code */
-};
 
 CRYPT_SHA2_256_Ctx *CRYPT_SHA2_256_NewCtx(void)
 {
     return BSL_SAL_Calloc(1, sizeof(CRYPT_SHA2_256_Ctx));
 }
 
+CRYPT_SHA2_256_Ctx *CRYPT_SHA2_256_NewCtxEx(void *libCtx, int32_t algId)
+{
+    (void)libCtx;
+    (void)algId;
+    return BSL_SAL_Calloc(1, sizeof(CRYPT_SHA2_256_Ctx));
+}
+
 void CRYPT_SHA2_256_FreeCtx(CRYPT_SHA2_256_Ctx *ctx)
 {
-    CRYPT_SHA2_256_Ctx *mdCtx = ctx;
-    if (mdCtx == NULL) {
-        return;
-    }
     BSL_SAL_ClearFree(ctx, sizeof(CRYPT_SHA2_256_Ctx));
 }
 
-int32_t CRYPT_SHA2_256_Init(CRYPT_SHA2_256_Ctx *ctx, BSL_Param *param)
+int32_t CRYPT_SHA2_256_Init(CRYPT_SHA2_256_Ctx *ctx)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    (void) param;
     (void)memset_s(ctx, sizeof(CRYPT_SHA2_256_Ctx), 0, sizeof(CRYPT_SHA2_256_Ctx));
     /**
      * @RFC 4634 6.1 SHA-224 and SHA-256 Initialization
@@ -77,12 +69,19 @@ int32_t CRYPT_SHA2_256_Init(CRYPT_SHA2_256_Ctx *ctx, BSL_Param *param)
     return CRYPT_SUCCESS;
 }
 
-void CRYPT_SHA2_256_Deinit(CRYPT_SHA2_256_Ctx *ctx)
+int32_t CRYPT_SHA2_256_InitEx(CRYPT_SHA2_256_Ctx *ctx, void *param)
+{
+    (void)param;
+    return CRYPT_SHA2_256_Init(ctx);
+}
+
+int32_t CRYPT_SHA2_256_Deinit(CRYPT_SHA2_256_Ctx *ctx)
 {
     if (ctx == NULL) {
-        return;
+        return CRYPT_NULL_INPUT;
     }
     BSL_SAL_CleanseData((void *)(ctx), sizeof(CRYPT_SHA2_256_Ctx));
+    return CRYPT_SUCCESS;
 }
 
 int32_t CRYPT_SHA2_256_CopyCtx(CRYPT_SHA2_256_Ctx *dst, const CRYPT_SHA2_256_Ctx *src)
@@ -257,7 +256,6 @@ int32_t CRYPT_SHA2_256_Final(CRYPT_SHA2_256_Ctx *ctx, uint8_t *digest, uint32_t 
     return CRYPT_SUCCESS;
 }
 
-
 #ifdef HITLS_CRYPTO_SHA2_MB
 
 CRYPT_SHA2_256_MB_Ctx *CRYPT_SHA256_MBNewCtx(uint32_t num)
@@ -311,8 +309,8 @@ int32_t CRYPT_SHA256_MBInit(CRYPT_SHA2_256_MB_Ctx *ctx)
         BSL_ERR_PUSH_ERROR(CRYPT_NOT_SUPPORT);
         return CRYPT_NOT_SUPPORT;
     }
-    (void)CRYPT_SHA2_256_Init(&ctx->ctxs[0], NULL);
-    (void)CRYPT_SHA2_256_Init(&ctx->ctxs[1], NULL);
+    (void)CRYPT_SHA2_256_Init(&ctx->ctxs[0]);
+    (void)CRYPT_SHA2_256_Init(&ctx->ctxs[1]);
     return CRYPT_SUCCESS;
 #else
     (void)ctx;
@@ -479,30 +477,21 @@ int32_t CRYPT_SHA256_MB(const uint8_t *data[], uint32_t nbytes, uint8_t *digest[
 }
 #endif // HITLS_CRYPTO_SHA2_MB
 
+#ifdef HITLS_CRYPTO_PROVIDER
+int32_t CRYPT_SHA2_256_GetParam(CRYPT_SHA2_256_Ctx *ctx, BSL_Param *param)
+{
+    (void)ctx;
+    return CRYPT_MdCommonGetParam(CRYPT_SHA2_256_DIGESTSIZE, CRYPT_SHA2_256_BLOCKSIZE, param);
+}
+#endif
+
 #ifdef HITLS_CRYPTO_SHA224
-
-
-CRYPT_SHA2_224_Ctx *CRYPT_SHA2_224_NewCtx(void)
-{
-    return BSL_SAL_Calloc(1, sizeof(CRYPT_SHA2_224_Ctx));
-}
-
-void CRYPT_SHA2_224_FreeCtx(CRYPT_SHA2_224_Ctx *ctx)
-{
-    CRYPT_SHA2_224_Ctx *mdCtx = ctx;
-    if (mdCtx == NULL) {
-        return;
-    }
-    BSL_SAL_ClearFree(ctx, sizeof(CRYPT_SHA2_224_Ctx));
-}
-
-int32_t CRYPT_SHA2_224_Init(CRYPT_SHA2_224_Ctx *ctx, BSL_Param *param)
+int32_t CRYPT_SHA2_224_Init(CRYPT_SHA2_224_Ctx *ctx)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    (void) param;
     (void)memset_s(ctx, sizeof(CRYPT_SHA2_224_Ctx), 0, sizeof(CRYPT_SHA2_224_Ctx));
     /**
      * @RFC 4634 6.1 SHA-224 and SHA-256 Initialization
@@ -528,49 +517,20 @@ int32_t CRYPT_SHA2_224_Init(CRYPT_SHA2_224_Ctx *ctx, BSL_Param *param)
     return CRYPT_SUCCESS;
 }
 
-void CRYPT_SHA2_224_Deinit(CRYPT_SHA2_224_Ctx *ctx)
+int32_t CRYPT_SHA2_224_InitEx(CRYPT_SHA2_224_Ctx *ctx, void *param)
 {
-    if (ctx == NULL) {
-        return;
-    }
-    BSL_SAL_CleanseData((void *)(ctx), sizeof(CRYPT_SHA2_224_Ctx));
+    (void)param;
+    return CRYPT_SHA2_224_Init(ctx);
 }
 
-int32_t CRYPT_SHA2_224_CopyCtx(CRYPT_SHA2_224_Ctx *dst, const CRYPT_SHA2_224_Ctx *src)
+#ifdef HITLS_CRYPTO_PROVIDER
+int32_t CRYPT_SHA2_224_GetParam(CRYPT_SHA2_224_Ctx *ctx, BSL_Param *param)
 {
-    if (dst == NULL || src == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return CRYPT_NULL_INPUT;
-    }
-
-    (void)memcpy_s(dst, sizeof(CRYPT_SHA2_224_Ctx), src, sizeof(CRYPT_SHA2_224_Ctx));
-    return CRYPT_SUCCESS;
+    (void)ctx;
+    return CRYPT_MdCommonGetParam(CRYPT_SHA2_224_DIGESTSIZE, CRYPT_SHA2_224_BLOCKSIZE, param);
 }
+#endif
 
-CRYPT_SHA2_224_Ctx *CRYPT_SHA2_224_DupCtx(const CRYPT_SHA2_224_Ctx *src)
-{
-    if (src == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return NULL;
-    }
-    CRYPT_SHA2_224_Ctx *newCtx = CRYPT_SHA2_224_NewCtx();
-    if (newCtx == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-        return NULL;
-    }
-    (void)memcpy_s(newCtx, sizeof(CRYPT_SHA2_224_Ctx), src, sizeof(CRYPT_SHA2_224_Ctx));
-    return newCtx;
-}
-
-int32_t CRYPT_SHA2_224_Update(CRYPT_SHA2_224_Ctx *ctx, const uint8_t *data, uint32_t nbytes)
-{
-    return CRYPT_SHA2_256_Update((CRYPT_SHA2_256_Ctx *)ctx, data, nbytes);
-}
-
-int32_t CRYPT_SHA2_224_Final(CRYPT_SHA2_224_Ctx *ctx, uint8_t *digest, uint32_t *len)
-{
-    return CRYPT_SHA2_256_Final((CRYPT_SHA2_256_Ctx *)ctx, digest, len);
-}
 #endif // HITLS_CRYPTO_SHA224
 
 #endif // HITLS_CRYPTO_SHA256

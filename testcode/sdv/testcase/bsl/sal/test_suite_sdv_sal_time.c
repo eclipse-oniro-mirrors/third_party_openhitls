@@ -58,47 +58,6 @@ EXIT:
 /* END_HEADER */
 
 /**
- * @test SDV_BSL_TIME_FUNC_GET_DATETIME_TC001
- * @title Function test of obtaining the date as a character string.
- * @precon
- * @brief    1.The input parameter dateTime, timeStr, or len is invalid (less than the storage length).
- *           2.Invalid time.
- *           3.The time is legal.
- * @expect   1.Fail, return BSL_ERR
- *           2.Fail, return BSL_ERR
- *           3.Success, return BSL_SUCCESS
- */
-/* BEGIN_CASE */
-void SDV_BSL_TIME_FUNC_GET_DATETIME_TC001(void)
-{
-    BSL_TIME dateTime = {0};
-    char timeStr[26];
-
-    timeStr[0] = '\0';
-    dateTime.year = BSL_TIME_SYSTEM_EPOCH_YEAR;
-    dateTime.month = 1;
-    dateTime.day = 1;
-    dateTime.hour = 0;
-    dateTime.minute = 0;
-    dateTime.second = 0;
-
-    /* 1.The input parameter dateaTime or timeStr is invalid. */
-    ASSERT_EQ(BSL_DateToStrConvert(NULL, timeStr, 26), (uint32_t)BSL_INTERNAL_EXCEPTION);
-    ASSERT_EQ(BSL_DateToStrConvert(&dateTime, NULL, 26), (uint32_t)BSL_INTERNAL_EXCEPTION);
-
-    /* 2.Invalid time. */
-    dateTime.month = 13;
-    ASSERT_EQ(BSL_DateToStrConvert(&dateTime, timeStr, 26), (uint32_t)BSL_INTERNAL_EXCEPTION);
-    dateTime.month = 1;
-
-    /* 3.The time is legal. */
-    ASSERT_EQ(BSL_DateToStrConvert(&dateTime, timeStr, 26), (uint32_t)BSL_SUCCESS);
-EXIT:
-    return;
-}
-/* END_CASE */
-
-/**
  * @test SDV_BSL_TIME_FUNC_REGISTER_TC001
  * @title Obtaining the current system time
  * @precon
@@ -125,6 +84,7 @@ void SDV_BSL_TIME_FUNC_REGISTER_TC001(void)
     BSL_SysTimeFuncUnReg();
 
     ASSERT_NE(BSL_SAL_CurrentSysTimeGet(), 1);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }
@@ -257,7 +217,7 @@ void SDV_BSL_TIME_SYSTIME_API_TC001(void)
     BSL_SAL_SysTimeFuncReg(TestBslSysTimeFunc1);
 
     ret = BSL_SAL_SysTimeGet(NULL);
-    ASSERT_EQ(ret, BSL_SAL_ERR_BAD_PARAM);
+    ASSERT_EQ(ret, BSL_SAL_TIME_BAD_PARAM);
 
     ret = BSL_SAL_SysTimeGet(&systime);
     ASSERT_TRUE(ret == BSL_SUCCESS);
@@ -298,6 +258,7 @@ void SDV_BSL_TIME_CONVERT_TIME_FUNC_TC001(void)
 
     /* 2.Failed to convert the time. */
     ASSERT_TRUE(BSL_SAL_DateToUtcTimeConvert(&dateTime, &utcTime) != BSL_SUCCESS);
+    TestErrClear();
 
     /* 3.Time conversion succeeded. */
     dateTime.year = BSL_TIME_SYSTEM_EPOCH_YEAR;
@@ -307,6 +268,7 @@ void SDV_BSL_TIME_CONVERT_TIME_FUNC_TC001(void)
     dateTime.minute = 0;
     dateTime.second = 0;
     ASSERT_TRUE(BSL_SAL_DateToUtcTimeConvert(&dateTime, &utcTime) == (uint32_t)BSL_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }
@@ -367,6 +329,7 @@ void SDV_BSL_SAL_CONVERT_TIME_API_TC001(void)
     ASSERT_TRUE(BSL_SAL_UtcTimeToDateConvert(utcTime, &dateTime) == BSL_SUCCESS);
     ASSERT_TRUE(gmtime_r((const time_t *)&utcTime, &tempTime) != NULL);
     TestBslSysTimeAndTmCompare(&dateTime, &tempTime);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }
@@ -400,6 +363,7 @@ void SDV_BSL_TIME_DATETIME_CHECK_FUNC_TC001(void)
     dateTime.year = 1970;
     ret = BSL_DateTimeCheck(&dateTime);
     ASSERT_EQ(ret, true);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }
@@ -556,7 +520,6 @@ EXIT:
  *    6. second is legal ( == 59). Expected result 6 is obtained.
  *    7. millisecond is illegal ( > 999). Expected result 7 is obtained.
  *    8. millisecond is legal ( == 999). Expected result 8 is obtained.
- *    9. call BSL_DateToStrConvert to convert legal time. Expected result 9 is obtained.
  * @expect
  *    1. Return false
  *    2. Return true
@@ -566,7 +529,6 @@ EXIT:
  *    6. Return true
  *    7. Return false
  *    8. Return true
- *    9. Return BSL_SUCCESS
  */
 /* BEGIN_CASE */
 void SDV_BSL_TIME_DATETIME_CHECK_FUNC_TC004(void)
@@ -615,8 +577,7 @@ void SDV_BSL_TIME_DATETIME_CHECK_FUNC_TC004(void)
     dateTime.millSec = 59;
     ret = BSL_DateTimeCheck(&dateTime);
     ASSERT_EQ(ret, true);
-    char buf[256] = {0};
-    ASSERT_EQ(BSL_DateToStrConvert(&dateTime, buf, 256), BSL_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }
@@ -689,6 +650,111 @@ void SDV_BSL_TIME_ADD_TIME_TC001(void)
 
     /* Exceptions */
     ASSERT_TRUE(BSL_DateTimeAddUs(&dateA, NULL, 0) == BSL_INTERNAL_EXCEPTION);
+EXIT:
+    return;
+}
+/* END_CASE */
+
+/**
+ * @test SDV_BSL_TIME_ADD_DAY_SECOND_TC001
+ * @title   Test of BSL_DateTimeAddDaySecond.
+ * @precon
+ * @brief    1.Add day/second with positive offsets succeeds.
+ *           2.Add day/second with negative offsets succeeds even when dateR == dateA.
+ *           3.Overflow parameters trigger error handling.
+ *           4.Invalid input pointer fails.
+ * @expect   1.Succeed, return BSL_SUCCESS and keep sub-second fields.
+ *           2.Succeed, return BSL_SUCCESS and keep sub-second fields.
+ *           3.Fail, return BSL_INTERNAL_EXCEPTION.
+ *           4.Fail, return BSL_INTERNAL_EXCEPTION.
+ */
+/* BEGIN_CASE */
+void SDV_BSL_TIME_ADD_DAY_SECOND_TC001(void)
+{
+#if defined(HITLS_BSL_SAL_LINUX)
+    BSL_TIME base = {0};
+    BSL_TIME result = {0};
+    BSL_TIME inPlace;
+
+    base.year = 2020;
+    base.month = 1;
+    base.day = 15;
+    base.hour = 10;
+    base.minute = 20;
+    base.second = 30;
+    base.millSec = 123;
+    base.microSec = 456;
+
+    inPlace = base;
+
+    /* 1.Add positive offsets. */
+    ASSERT_EQ(BSL_DateTimeAddDaySecond(&result, &base, 2000, 30), BSL_SUCCESS);
+    ASSERT_EQ(result.year, 2025);
+    ASSERT_EQ(result.month, 7);
+    ASSERT_EQ(result.day, 7);
+    ASSERT_EQ(result.hour, 10);
+    ASSERT_EQ(result.minute, 21);
+    ASSERT_EQ(result.second, 0);
+    ASSERT_EQ(result.millSec, base.millSec);
+    ASSERT_EQ(result.microSec, base.microSec);
+
+    /* 2.Add negative offsets and operate in-place. */
+    ASSERT_EQ(BSL_DateTimeAddDaySecond(&inPlace, &inPlace, -730, -90), BSL_SUCCESS);
+    ASSERT_EQ(inPlace.year, 2018);
+    ASSERT_EQ(inPlace.month, 1);
+    ASSERT_EQ(inPlace.day, 15);
+    ASSERT_EQ(inPlace.hour, 10);
+    ASSERT_EQ(inPlace.minute, 19);
+    ASSERT_EQ(inPlace.second, 0);
+    ASSERT_EQ(inPlace.millSec, base.millSec);
+    ASSERT_EQ(inPlace.microSec, base.microSec);
+
+    /* 3.Overflow guard */
+    ASSERT_EQ(BSL_DateTimeAddDaySecond(&result, &base, 1, INT64_MAX), BSL_INTERNAL_EXCEPTION);
+    ASSERT_EQ(BSL_DateTimeAddDaySecond(&result, &base, -1, INT64_MIN), BSL_INTERNAL_EXCEPTION);
+    int64_t utcBase = 0;
+    ASSERT_EQ(BSL_SAL_DateToUtcTimeConvert(&base, &utcBase), BSL_SUCCESS);
+    int64_t overflowSecond = INT64_MAX - utcBase;
+    overflowSecond += 1;
+    ASSERT_TRUE(overflowSecond > 0);
+    ASSERT_EQ(BSL_DateTimeAddDaySecond(&result, &base, 0, overflowSecond), BSL_INTERNAL_EXCEPTION);
+    /* Negative utcTime overflow branch cannot be hit because utcTime >= 0 for valid inputs. */
+
+    /* 4.Invalid parameter */
+    ASSERT_EQ(BSL_DateTimeAddDaySecond(NULL, &base, 0, 0), BSL_INTERNAL_EXCEPTION);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    return;
+#else
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+static uint64_t TestTimeGetNSec(void)
+{
+    return 0x1122334455667788;
+}
+
+/**
+ * @test   SDV_BSL_TIME_GET_NSEC_FUNC_TC001
+ * @title  Test of BSL_SAL_TIME_GetNSec.
+ * @precon nan
+ */
+/* BEGIN_CASE */
+void SDV_BSL_TIME_GET_NSEC_FUNC_TC001(void)
+{
+#if defined(HITLS_BSL_SAL_LINUX) || defined(HITLS_BSL_SAL_DARWIN)
+    ASSERT_TRUE(BSL_SAL_TIME_GetNSec() > 0);
+#else
+    ASSERT_EQ(BSL_SAL_TIME_GetNSec(), 0);
+#endif
+
+    ASSERT_EQ(BSL_SAL_CallBack_Ctrl(BSL_SAL_TIME_GET_TIME_IN_NS, TestTimeGetNSec), BSL_SUCCESS);
+    ASSERT_EQ(BSL_SAL_TIME_GetNSec(), TestTimeGetNSec());
+    ASSERT_EQ(BSL_SAL_CallBack_Ctrl(BSL_SAL_TIME_GET_TIME_IN_NS, NULL), BSL_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }

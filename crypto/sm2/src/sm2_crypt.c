@@ -21,6 +21,7 @@
 #include "crypt_types.h"
 #include "crypt_utils.h"
 #include "bsl_sal.h"
+#include "bsl_bytes.h"
 #include "bsl_err_internal.h"
 #include "crypt_bn.h"
 #include "crypt_ecc.h"
@@ -28,17 +29,19 @@
 #include "crypt_local_types.h"
 #include "sm2_local.h"
 #include "crypt_sm2.h"
-#include "crypt_encode_internal.h"
+#include "crypt_encode.h"
 
 #define SM2_POINT_SINGLE_COORDINATE_LEN 32
 #define SM2_POINT_COORDINATE_LEN 65
 
-static void EncryptMemFree(ECC_Point *c1, ECC_Point *tmp, BN_BigNum *k,
+static void EncryptMemFree(ECC_Point *c1, ECC_Point *tmp, BN_BigNum *k, bool isInternal,
     BN_BigNum *order, uint8_t *c2)
 {
     ECC_FreePoint(c1);
     ECC_FreePoint(tmp);
-    BN_Destroy(k);
+    if (isInternal) {
+        BN_Destroy(k);
+    }
     BN_Destroy(order);
     BSL_SAL_FREE(c2);
 }
@@ -58,7 +61,7 @@ static int32_t Sm3Hash(const EAL_MdMethod *hashMethod, const uint8_t *pbBuf, con
     uint8_t *c3Buf, uint32_t *c3BufLen)
 {
     int32_t ret;
-    void *mdCtx = hashMethod->newCtx();
+    void *mdCtx = hashMethod->newCtx(NULL, hashMethod->id);
     if (mdCtx == NULL) {
         ret = CRYPT_MEM_ALLOC_FAIL;
         BSL_ERR_PUSH_ERROR(ret);
@@ -109,6 +112,40 @@ static void XorCalculate(uint8_t *c2, const uint8_t *data, uint32_t datalen)
     return;
 }
 
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+int32_t CRYPT_SM2_SetK(CRYPT_SM2_Ctx *ctx, uint8_t *val, uint32_t len)
+{
+    if (ctx == NULL || val == NULL || len <= 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
+    if (ctx->paraEx.k != NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_SM2_K_REPEAT_SET_ERROR);
+        return CRYPT_SM2_K_REPEAT_SET_ERROR;
+    }
+    BN_BigNum *k = BN_Create(CRYPT_SM2_GetBits(ctx));
+    if (k == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    int32_t ret = BN_Bin2Bn(k, val, len);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        goto EXIT;
+    }
+    if (BN_IsZero(k)) {
+        BSL_ERR_PUSH_ERROR(BSL_INVALID_ARG);
+        ret = BSL_INVALID_ARG;
+        goto EXIT;
+    }
+    ctx->paraEx.k = k;
+    return CRYPT_SUCCESS;
+EXIT:
+    BN_Destroy(k);
+    return ret;
+}
+#endif
+
 static int32_t EncryptInputCheck(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t datalen,
     const uint8_t *out, const uint32_t *outlen)
 {
@@ -146,7 +183,15 @@ int32_t CRYPT_SM2_Encrypt(CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t data
         return ret;
     }
     uint32_t i;
-    BN_BigNum *k = BN_Create(CRYPT_SM2_GetBits(ctx));
+    BN_BigNum *k = NULL;
+    bool isInternal = false;
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+    k = ctx->paraEx.k;
+#endif
+    if (k == NULL) {
+        k = BN_Create(CRYPT_SM2_GetBits(ctx));
+        isInternal = true;
+    }
     BN_BigNum *order = ECC_GetParaN(ctx->pkey->para);
     ECC_Point *c1 = ECC_NewPoint(ctx->pkey->para);
     ECC_Point *tmp = ECC_NewPoint(ctx->pkey->para);
@@ -165,10 +210,16 @@ int32_t CRYPT_SM2_Encrypt(CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t data
     };
     GOTO_ERR_IF(MemAllocCheck(k, order, c1, tmp, c2), ret);
     for (i = 0; i < CRYPT_ECC_TRY_MAX_CNT; i++) {
-        GOTO_ERR_IF(BN_RandRangeEx(ctx->pkey->libCtx, k, order), ret);
-        if (BN_IsZero(k)) {
-            continue;
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+        if (isInternal) {
+#endif
+            GOTO_ERR_IF(BN_RandRangeEx(ctx->pkey->libCtx, k, order), ret);
+            if (BN_IsZero(k)) {
+                continue;
+            }
+#ifdef HITLS_CRYPTO_ACVP_TESTS
         }
+#endif
         // c1 = k * G
         GOTO_ERR_IF(ECC_PointMul(ctx->pkey->para, c1, k, NULL), ret);
         // Convert the point format into binary data stream and save the data stream in tmpbuf.
@@ -193,21 +244,8 @@ int32_t CRYPT_SM2_Encrypt(CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t data
 
     GOTO_ERR_IF(CRYPT_EAL_EncodeSm2EncryptData(&encData, out, outlen), ret);
 ERR:
-    EncryptMemFree(c1, tmp, k, order, c2);
+    EncryptMemFree(c1, tmp, k, isInternal, order, c2);
     return ret;
-}
-
-static int32_t IsUEqualToC3(const uint8_t *data, const uint8_t *sm3Buf, uint32_t sm3BufLen)
-{
-    uint8_t check = 0;
-    for (uint32_t i = 0; i < sm3BufLen; i++) {
-        check |= sm3Buf[i] ^ data[i + SM2_POINT_COORDINATE_LEN];
-    }
-    if (check != 0) {
-        BSL_ERR_PUSH_ERROR(CRYPT_SM2_DECRYPT_FAIL);
-        return CRYPT_SM2_DECRYPT_FAIL;
-    }
-    return CRYPT_SUCCESS;
 }
 
 static int32_t DecryptInputCheck(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t datalen,
@@ -217,6 +255,10 @@ static int32_t DecryptInputCheck(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, 
     if (ctx == NULL || data == NULL || datalen == 0 || out == NULL || outlen == NULL || *outlen == 0) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
+    }
+    if (datalen < (SM2_POINT_COORDINATE_LEN + SM3_MD_SIZE)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
     }
     if (ctx->pkey == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_SM2_ERR_EMPTY_KEY);
@@ -318,7 +360,11 @@ int32_t CRYPT_SM2_Decrypt(CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t data
     // Calculate hash（x2 || t || y2)
     GOTO_ERR_IF(Sm3Hash(ctx->hashMethod, tmpBuf, t, cipherLen, sm3Buf, &sm3BufLen), ret);
     // Check whether u is equal to c3.
-    GOTO_ERR_IF(IsUEqualToC3(decode, sm3Buf, sm3BufLen), ret);
+    if (ConstTimeMemcmp(decode + SM2_POINT_COORDINATE_LEN, sm3Buf, sm3BufLen) == 0) {
+        ret = CRYPT_SM2_DECRYPT_FAIL;
+        BSL_ERR_PUSH_ERROR(ret);
+        goto ERR;
+    }
     // The verification is successful. M' is the last plaintext.
     (void)memcpy_s(out, *outlen, t, cipherLen);
     *outlen = cipherLen;

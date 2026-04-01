@@ -17,7 +17,6 @@
 /* INCLUDE_BASE test_suite_tls13_consistency_rfc8446 */
 
 #include <stdio.h>
-#include "stub_replace.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -350,6 +349,9 @@ void UT_TLS13_RFC8446_FFDHE_TC001()
     HLT_RpcTlsClose(remoteProcess, serverSslId);
     HLT_RpcCloseFd(remoteProcess, sockFd.peerFd, remoteProcess->connType);
     HLT_CloseFd(sockFd.srcFd, localProcess->connType);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HLT_FreeAllProcess();
 }
@@ -411,6 +413,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_DHE_GROUP_FUNC_TC001(int group)
     ASSERT_TRUE(HITLS_Read(server->ssl, readBuf, MAX_BUF_SIZE, &readLen) == HITLS_SUCCESS);
     ASSERT_TRUE(readLen == strlen("Hello World"));
     ASSERT_TRUE(memcmp("Hello World", readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(c_config);
     HITLS_CFG_FreeConfig(s_config);
@@ -482,6 +487,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_DHE_GROUP_FUNC_TC002(int group)
     ASSERT_TRUE(HITLS_Read(server->ssl, readBuf, MAX_BUF_SIZE, &readLen) == HITLS_SUCCESS);
     ASSERT_TRUE(readLen == strlen("Hello World"));
     ASSERT_TRUE(memcmp("Hello World", readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(c_config);
     HITLS_CFG_FreeConfig(s_config);
@@ -555,6 +563,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_DHE_GROUP_FUNC_TC003(int group)
     ASSERT_TRUE(HITLS_Read(server->ssl, readBuf, MAX_BUF_SIZE, &readLen) == HITLS_SUCCESS);
     ASSERT_TRUE(readLen == strlen("Hello World"));
     ASSERT_TRUE(memcmp("Hello World", readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(c_config);
     HITLS_CFG_FreeConfig(s_config);

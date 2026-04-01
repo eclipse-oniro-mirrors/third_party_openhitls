@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "securec.h"
 #include "crypt_errno.h"
 #include "crypt_bn.h"
 #include "ecp_nistp256.h"
@@ -27,6 +26,7 @@
 #include "ecc_local.h"
 #include "bsl_err_internal.h"
 #include "asm_ecp_nistp256.h"
+#include "securec.h"
 
 #if defined(HITLS_SIXTY_FOUR_BITS)
     // 1 is on the field with Montgomery, 1 * RR * R' mod P = R mod P = R - P
@@ -183,17 +183,17 @@ static int32_t ECP256_GetAffine(ECC_Point *r, const P256_Point *pt)
     ECP256_Mul(&res_y, &(pt->y), &zInv3);       // yMont = y / (z^3)
     ECP256_FromMont(&res_x, &res_x);
     ECP256_FromMont(&res_y, &res_y);
-    ret = BN_Array2BN(r->x, res_x.value, P256_SIZE);
+    ret = BN_Array2BN(&r->x, res_x.value, P256_SIZE);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    ret = BN_Array2BN(r->y, res_y.value, P256_SIZE);
+    ret = BN_Array2BN(&r->y, res_y.value, P256_SIZE);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    ret = BN_SetLimb(r->z, 1);
+    ret = BN_SetLimb(&r->z, 1);
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
     }
@@ -208,16 +208,16 @@ static void ECP256_P256Point2EccPoint(ECC_Point *r, const P256_Point *pt)
     ECP256_FromMont(&xTemp, &(pt->x));
     ECP256_FromMont(&yTemp, &(pt->y));
     ECP256_FromMont(&zTemp, &(pt->z));
-    (void)BN_Array2BN(r->x, xTemp.value, P256_SIZE);
-    (void)BN_Array2BN(r->y, yTemp.value, P256_SIZE);
-    (void)BN_Array2BN(r->z, zTemp.value, P256_SIZE);
+    (void)BN_Array2BN(&r->x, xTemp.value, P256_SIZE);
+    (void)BN_Array2BN(&r->y, yTemp.value, P256_SIZE);
+    (void)BN_Array2BN(&r->z, zTemp.value, P256_SIZE);
 }
 
 static void ECP256_EccPoint2P256Point(P256_Point *r, const ECC_Point *pt)
 {
-    (void)BN_BN2Array(pt->x, r->x.value, P256_SIZE);
-    (void)BN_BN2Array(pt->y, r->y.value, P256_SIZE);
-    (void)BN_BN2Array(pt->z, r->z.value, P256_SIZE);
+    (void)BN_BN2Array(&pt->x, r->x.value, P256_SIZE);
+    (void)BN_BN2Array(&pt->y, r->y.value, P256_SIZE);
+    (void)BN_BN2Array(&pt->z, r->z.value, P256_SIZE);
     ECP256_Mul(&(r->x), &(r->x), &g_rrModP);
     ECP256_Mul(&(r->y), &(r->y), &g_rrModP);
     ECP256_Mul(&(r->z), &(r->z), &g_rrModP);
@@ -312,17 +312,11 @@ static void CRYPT_ECP256_PointDouble5Times(P256_Point *r)
 // Ensure that m is not empty and is in the range (0, n-1)
 static void ECP256_WindowMul(P256_Point *r, const BN_BigNum *k, const ECC_Point *point)
 {
-    uint8_t kOctets[33]; // m big endian byte stream. Apply for 33 bytes and reserve one byte for the following offset.
-    uint32_t mLen = BN_Bytes(k);
-    // Offset during byte stream conversion. Ensure that the valid data of the mOctet is in the upper bits.
-    uint32_t offset = sizeof(kOctets) - mLen;
+    uint8_t kOctets[33] = {0}; // m big endian byte stream. Apply for 33 bytes and reserve one byte for the following offset.
     P256_Point table[16]; // The pre-computation window is 2 ^ (5 - 1) = 16 points
     P256_Point temp; // Apply for temporary space of two points.
     Coord tempY;
-    (void)BN_Bn2Bin(k, kOctets + offset, &mLen);
-    for (uint32_t i = 0; i < offset; i++) {
-        kOctets[i] = 0;
-    }
+    (void)BN_Bn2BinFixZero(k, kOctets, sizeof(kOctets));
 
     ECP256_EccPoint2P256Point(&temp, point);
 
@@ -381,19 +375,13 @@ static void ECP256_WindowMul(P256_Point *r, const BN_BigNum *k, const ECC_Point 
 
 static void ComputeK1G(P256_Point *k1G, const BN_BigNum *k1)
 {
-    uint8_t kOctets[33]; // applies for 33 bytes and reserves one byte for the following offset. 256 bits are 32 bytes.
+    uint8_t kOctets[33] = {0}; // applies for 33 bytes and reserves one byte for the following offset. 256 bits are 32 bytes.
     Coord tempY;
     P256_AffinePoint k1GAffine;
     const ECP256_TableRow *preCompTable = NULL; // precompute window size is 2 ^(7 - 1) = 64
     preCompTable = ECP256_GetPreCompTable();
-
-    uint32_t kLen = BN_Bytes(k1);
     // Offset during byte stream conversion. Ensure that the valid data of the mOctet is in the upper bits.
-    uint32_t offset = sizeof(kOctets) - kLen;
-    (void)BN_Bn2Bin(k1, kOctets + offset, &kLen);
-    for (uint32_t i = 0; i < offset; i++) {
-        kOctets[i] = 0;
-    }
+    (void)BN_Bn2BinFixZero(k1, kOctets, sizeof(kOctets));
 
     uint32_t w = 7; // Window size = 7
     // the recode mask, the window size is 7, thus 8 bits are used (one extra bit is the sign bit).
@@ -445,7 +433,7 @@ static int32_t ECP256_PointMulCheck(ECC_Para *para, ECC_Point *r, const BN_BigNu
             return CRYPT_ECC_POINT_ERR_CURVE_ID;
         }
         // Special processing for the infinite point.
-        if (BN_IsZero(pt->z)) {
+        if (BN_IsZero(&pt->z)) {
             BSL_ERR_PUSH_ERROR(CRYPT_ECC_POINT_AT_INFINITY);
             return CRYPT_ECC_POINT_AT_INFINITY;
         }
@@ -462,7 +450,7 @@ static int32_t ECP256_PointMulCheck(ECC_Para *para, ECC_Point *r, const BN_BigNu
 // if pt == NULL, r = k * G, otherwise r = k * pt
 int32_t ECP256_PointMul(ECC_Para *para, ECC_Point *r, const BN_BigNum *k, const ECC_Point *pt)
 {
-    P256_Point rTemp;
+    P256_Point rTemp = {0};
     int32_t ret = ECP256_PointMulCheck(para, r, k, pt);
     if (ret != CRYPT_SUCCESS) {
         return ret;
@@ -493,7 +481,7 @@ static int32_t ECP256_PointMulAddCheck(
         return CRYPT_ECC_POINT_ERR_CURVE_ID;
     }
     // Special processing of the infinite point.
-    if (BN_IsZero(pt->z)) {
+    if (BN_IsZero(&pt->z)) {
         BSL_ERR_PUSH_ERROR(CRYPT_ECC_POINT_AT_INFINITY);
         return CRYPT_ECC_POINT_AT_INFINITY;
     }
@@ -517,12 +505,10 @@ int32_t ECP256_PointMulAdd(ECC_Para *para, ECC_Point *r, const BN_BigNum *k1, co
     }
 
     P256_Point k2Pt;
-    P256_Point k1G;
+    P256_Point k1G = {0};
 
     ECP256_WindowMul(&k2Pt, k2, pt);
-
     ComputeK1G(&k1G, k1);
-
     ECP256_PointAdd(&k1G, &k1G, &k2Pt);
     ECP256_P256Point2EccPoint(r, &k1G);
     return ret;

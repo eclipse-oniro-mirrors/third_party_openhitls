@@ -178,6 +178,7 @@ void SDV_BSL_SAL_REGMEM_API_TC001(void)
     ASSERT_TRUE(ptr == NULL);
 
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(0, NULL) == BSL_SAL_ERR_BAD_PARAM);
+    TestErrClear();
 
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC, NULL) == BSL_SUCCESS);
 
@@ -189,6 +190,7 @@ void SDV_BSL_SAL_REGMEM_API_TC001(void)
 
     BSL_SAL_FREE(ptr);
     ASSERT_TRUE(ptr == NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 }
@@ -221,6 +223,7 @@ void SDV_BSL_SAL_REG_THREAD_API_TC001(void)
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(0, NULL) == BSL_SAL_ERR_BAD_PARAM);
 
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(0, NULL) == BSL_SAL_ERR_BAD_PARAM);
+    TestErrClear();
 
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(BSL_SAL_THREAD_LOCK_NEW_CB_FUNC, pthreadRWLockNew) == BSL_SUCCESS);
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(BSL_SAL_THREAD_LOCK_FREE_CB_FUNC, pthreadRWLockFree) == BSL_SUCCESS);
@@ -228,6 +231,7 @@ void SDV_BSL_SAL_REG_THREAD_API_TC001(void)
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(BSL_SAL_THREAD_LOCK_WRITE_LOCK_CB_FUNC, pthreadRWLockWriteLock) == BSL_SUCCESS);
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(BSL_SAL_THREAD_LOCK_UNLOCK_CB_FUNC, pthreadRWLockUnlock) == BSL_SUCCESS);
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(BSL_SAL_THREAD_GET_ID_CB_FUNC, pthreadGetId) == BSL_SUCCESS);
+    TestErrClear();
 
     // Cannot create a lock handle because the pointer of the pointer is NULL.
     ASSERT_TRUE(BSL_SAL_ThreadLockNew(NULL) == BSL_SAL_ERR_BAD_PARAM);
@@ -264,10 +268,10 @@ static int32_t MockGetPid(void)
 /* BEGIN_CASE */
     void SDV_BSL_SAL_GETPID_FUNC_TC001(void)
 {
+#ifdef HITLS_BSL_SAL_PID
     int32_t pid;
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(0, NULL) == BSL_SAL_ERR_BAD_PARAM);
 
-#ifdef HITLS_BSL_SAL_PID
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(BSL_SAL_PID_GET_ID_CB_FUNC, NULL) == BSL_SUCCESS);
     pid = BSL_SAL_GetPid();
 #ifdef HITLS_BSL_SAL_LINUX
@@ -287,11 +291,11 @@ static int32_t MockGetPid(void)
     ASSERT_TRUE(BSL_SAL_CallBack_Ctrl(BSL_SAL_PID_GET_ID_CB_FUNC, MockGetPid) == BSL_SUCCESS);
     pid = BSL_SAL_GetPid();
     ASSERT_EQ(pid, -1);
-#else
-    pid = BSL_SAL_GetPid();
-    ASSERT_EQ(pid, 0);
-#endif
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
+#else
+    SKIP_TEST();
+#endif
     return;
 }
 /* END_CASE */
@@ -320,6 +324,7 @@ void SDV_BSL_SAL_MEM_API_TC001(void)
     memset_s(obj, 100, 0x1, 100);
 
     BSL_SAL_ClearFree(obj, 100);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 #endif
@@ -394,6 +399,7 @@ void SDV_BSL_SAL_DUMP_API_TC001(void)
     ASSERT_TRUE(testPtr != NULL);
 
     ASSERT_TRUE(memcmp(testPtr, srcPtr, memLen) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     BSL_SAL_FREE(srcPtr);
     BSL_SAL_FREE(testPtr);
@@ -478,6 +484,7 @@ void SDV_BSL_SAL_THREAD_CREATE_FUNC_TC001(void)
     BSL_SAL_ThreadClose(thread);
     BSL_SAL_ThreadClose(NULL);
     BSL_SAL_ThreadLockFree(lock);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 #endif
@@ -502,7 +509,7 @@ static void TestRunOnce(void)
 /* BEGIN_CASE */
 void SDV_BSL_SAL_THREAD_API_TC001(void)
 {
-    uint32_t isErrInit = 0;
+    BSL_SAL_OnceControl isErrInit = BSL_SAL_ONCE_INIT;
     ASSERT_EQ(BSL_SAL_ThreadRunOnce(NULL, TestRunOnce), BSL_SAL_ERR_BAD_PARAM);
     ASSERT_EQ(BSL_SAL_ThreadRunOnce(&isErrInit, NULL), BSL_SAL_ERR_BAD_PARAM);
     ASSERT_EQ(BSL_SAL_ThreadRunOnce(&isErrInit, TestRunOnce), BSL_SUCCESS);
@@ -656,6 +663,7 @@ void SDV_BSL_SAL_CONDVAR_WAIT_FUNC_TC001(void)
     ret = BSL_SAL_DeleteCondVar(g_condVar);
     ASSERT_TRUE(ret == BSL_SUCCESS);
     pthread_mutex_destroy(&g_lock);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 #endif
@@ -743,6 +751,7 @@ void SDV_BSL_SAL_STR_FUNC_TC001(void)
     ASSERT_TRUE(BSL_SAL_Strnlen(str1, strlen(str1)) == 7);
     ASSERT_TRUE(BSL_SAL_Strnlen(str1, 100) == 7);
     ASSERT_TRUE(BSL_SAL_Strnlen(str1, 3) == 3);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     return;
 #endif
@@ -854,6 +863,7 @@ void SDV_BSL_SAL_CALLBACK_CTRL_FUNC_TC001(void)
 #endif
 #ifdef HITLS_BSL_SAL_NET
     ASSERT_EQ(BSL_SAL_CallBack_Ctrl(BSL_SAL_NET_WRITE_CB_FUNC, NULL), BSL_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ASSERT_EQ(BSL_SAL_Ioctlsocket(0, 0, NULL), BSL_SAL_ERR_NET_IOCTL);
 #endif
 EXIT:

@@ -59,14 +59,13 @@ CERT_MgrCtx *SAL_CERT_MgrCtxProviderNew(HITLS_Lib_Ctx *libCtx, const char *attrN
         return NULL;
     }
 
-    newCtx->verifyParam.verifyDepth = TLS_DEFAULT_VERIFY_DEPTH;
 #ifndef HITLS_TLS_FEATURE_PROVIDER
     HITLS_CERT_MgrMethod *method = SAL_CERT_GetMgrMethod();
     (void)memcpy_s(&newCtx->method, sizeof(HITLS_CERT_MgrMethod), method, sizeof(HITLS_CERT_MgrMethod));
 #endif
     newCtx->certStore = SAL_CERT_StoreNew(newCtx);
     if (newCtx->certStore == NULL) {
-        BSL_HASH_Destory(newCtx->certPairs);
+        BSL_HASH_Destroy(newCtx->certPairs);
         BSL_SAL_FREE(newCtx);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15016, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "new cert manager context error: new store failed.", 0, 0, 0, 0);
@@ -108,7 +107,6 @@ int32_t StoreDup(CERT_MgrCtx *destMgrCtx, CERT_MgrCtx *srcMgrCtx)
 
 CERT_MgrCtx *SAL_CERT_MgrCtxDup(CERT_MgrCtx *mgrCtx)
 {
-    int32_t ret;
     if (mgrCtx == NULL) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16282, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "mgrCtx null", 0, 0, 0, 0);
         return NULL;
@@ -124,7 +122,7 @@ CERT_MgrCtx *SAL_CERT_MgrCtxDup(CERT_MgrCtx *mgrCtx)
 #ifndef HITLS_TLS_FEATURE_PROVIDER
     (void)memcpy_s(&newCtx->method, sizeof(HITLS_CERT_MgrMethod), &mgrCtx->method, sizeof(HITLS_CERT_MgrMethod));
 #endif
-    ret = SAL_CERT_HashDup(newCtx, mgrCtx);
+    int32_t ret = SAL_CERT_HashDup(newCtx, mgrCtx);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16283, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "SAL_CERT_HashDup fail, ret %d", ret, 0, 0, 0);
@@ -132,18 +130,13 @@ CERT_MgrCtx *SAL_CERT_MgrCtxDup(CERT_MgrCtx *mgrCtx)
         return NULL;
     }
 
-    if (mgrCtx->extraChain != NULL) {
-        newCtx->extraChain = SAL_CERT_ChainDup(mgrCtx, mgrCtx->extraChain);
-        if (newCtx->extraChain == NULL) {
-            BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16284, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-                "ChainDup fail", 0, 0, 0, 0);
-            SAL_CERT_MgrCtxFree(newCtx);
-            return NULL;
-        }
+    if (mgrCtx->extraChain != NULL && (newCtx->extraChain = SAL_CERT_ChainDup(mgrCtx, mgrCtx->extraChain)) == NULL) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16284, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "ChainDup fail", 0, 0, 0, 0);
+        SAL_CERT_MgrCtxFree(newCtx);
+        return NULL;
     }
 
-    ret = StoreDup(newCtx, mgrCtx);
-    if (ret != HITLS_SUCCESS) {
+    if ((ret = StoreDup(newCtx, mgrCtx)) != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16285, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "StoreDup fail, ret %d", ret, 0, 0, 0);
         SAL_CERT_MgrCtxFree(newCtx);
@@ -151,14 +144,18 @@ CERT_MgrCtx *SAL_CERT_MgrCtxDup(CERT_MgrCtx *mgrCtx)
     }
 
     newCtx->currentCertKeyType = mgrCtx->currentCertKeyType;
-    (void)memcpy_s(&newCtx->verifyParam, sizeof(HITLS_CertVerifyParam),
-        &mgrCtx->verifyParam, sizeof(HITLS_CertVerifyParam));
     newCtx->defaultPasswdCb = mgrCtx->defaultPasswdCb;
     newCtx->defaultPasswdCbUserData = mgrCtx->defaultPasswdCbUserData;
+#ifdef HITLS_TLS_CONFIG_CERT_CALLBACK
     newCtx->verifyCb = mgrCtx->verifyCb;
+#endif /* HITLS_TLS_CONFIG_CERT_CALLBACK */
 
-    newCtx->libCtx = LIBCTX_FROM_CERT_MGR_CTX(mgrCtx);
-    newCtx->attrName = ATTRIBUTE_FROM_CERT_MGR_CTX(mgrCtx);
+    newCtx->libCtx = mgrCtx->libCtx;
+    newCtx->attrName = mgrCtx->attrName;
+#ifdef HITLS_TLS_FEATURE_CERT_CB
+    newCtx->certCb = mgrCtx->certCb;
+    newCtx->certCbArg = mgrCtx->certCbArg;
+#endif /* HITLS_TLS_FEATURE_CERT_CB */
     return newCtx;
 }
 
@@ -176,7 +173,7 @@ void SAL_CERT_MgrCtxFree(CERT_MgrCtx *mgrCtx)
     mgrCtx->chainStore = NULL;
     SAL_CERT_StoreFree(mgrCtx, mgrCtx->certStore);
     mgrCtx->certStore = NULL;
-    BSL_HASH_Destory(mgrCtx->certPairs);
+    BSL_HASH_Destroy(mgrCtx->certPairs);
     mgrCtx->certPairs = NULL;
     BSL_SAL_FREE(mgrCtx);
     return;

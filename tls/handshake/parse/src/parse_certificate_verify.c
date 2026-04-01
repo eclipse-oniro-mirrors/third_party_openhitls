@@ -13,14 +13,13 @@
  * See the Mulan PSL v2 for more details.
  */
 #include "hitls_build.h"
-#if defined(HITLS_TLS_HOST_SERVER) || defined(HITLS_TLS_PROTO_TLS13)
+#if (defined(HITLS_TLS_HOST_SERVER) && defined(HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY)) || \
+    defined(HITLS_TLS_PROTO_TLS13)
 #include "tls_binlog_id.h"
 #include "bsl_log.h"
 #include "bsl_log_internal.h"
 #include "bsl_err_internal.h"
 #include "bsl_sal.h"
-#include "bsl_bytes.h"
-#include "crypt_algid.h"
 #include "hitls_error.h"
 #include "cert_method.h"
 #include "hs_msg.h"
@@ -28,7 +27,9 @@
 #include "hs_verify.h"
 #include "parse_msg.h"
 #include "parse_common.h"
+#include "hs_common.h"
 #include "config_type.h"
+#include "crypt_algid.h"
 
 static int32_t CheckSignHashAlg(TLS_Ctx *ctx, uint16_t signHashAlg)
 {
@@ -97,7 +98,7 @@ static int32_t KeyMatchSignAlg(TLS_Ctx *ctx, HITLS_SignHashAlgo signScheme, HITL
     HITLS_CERT_Key *key)
 {
     (void)key;
-    HITLS_CERT_KeyType certKeyType = SAL_CERT_SignScheme2CertKeyType(ctx, signScheme);
+    HITLS_CERT_KeyType certKeyType = HS_SignScheme2CertKeyType(ctx, signScheme);
     if (certKeyType != keyType) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16197, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "signScheme not matche key, signScheme is 0x%X, certKeyType is %u, keyType is %u", signScheme, certKeyType,
@@ -136,7 +137,7 @@ static int VerifySignData(TLS_Ctx *ctx, uint16_t signHashAlg, const uint8_t *sig
             BINGLOG_STR("no peer certificate"), ALERT_CERTIFICATE_REQUIRED);
     }
 
-    HITLS_CERT_X509 *cert = SAL_CERT_PairGetX509(ctx->hsCtx->peerCert);
+    HITLS_CERT_X509 *cert = SAL_CERT_PAIR_GET_X509(ctx->hsCtx->peerCert);
     HITLS_CERT_Key *pubkey = NULL;
     int32_t ret = SAL_CERT_X509Ctrl(&ctx->config.tlsConfig, cert, CERT_CTRL_GET_PUB_KEY, NULL, (void *)&pubkey);
     if (ret != HITLS_SUCCESS) {
@@ -229,7 +230,5 @@ void CleanCertificateVerify(CertificateVerifyMsg *msg)
     }
 
     BSL_SAL_FREE(msg->sign);
-
-    return;
 }
-#endif /* HITLS_TLS_HOST_CLIENT || HITLS_TLS_PROTO_TLS13 */
+#endif /* (HITLS_TLS_HOST_SERVER && HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY) || HITLS_TLS_PROTO_TLS13 */

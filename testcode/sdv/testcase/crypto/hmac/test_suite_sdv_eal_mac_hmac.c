@@ -338,6 +338,7 @@ void SDV_CRYPT_EAL_HMAC_FUN_TC001(int algId, Hex *key, Hex *data, Hex *vecMac)
     ASSERT_EQ(CRYPT_EAL_MacUpdate(ctx, data->x, data->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_MacFinal(ctx, mac, &macLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("mac1 result cmp", mac, macLen, vecMac->x, vecMac->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MacFreeCtx(ctx);
     free(mac);
@@ -378,6 +379,7 @@ void SDV_CRYPT_EAL_HMAC_FUN_TC002(int algId, Hex *key, Hex *data1, Hex *data2, H
     ASSERT_EQ(CRYPT_EAL_MacFinal(ctx, mac, &macLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("mac1 result cmp", mac, macLen, vecMac->x, vecMac->len);
     CRYPT_EAL_MacDeinit(ctx);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MacFreeCtx(ctx);
     free(mac);
@@ -455,6 +457,7 @@ void SDV_CRYPT_HMAC_DEFAULT_PROVIDER_FUNC_TC001(int algId, Hex *key, Hex *data, 
     CRYPT_EAL_MacDeinit(ctx);
     ASSERT_EQ(CRYPT_EAL_MacInit(ctx, key->x, key->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_MacReinit(ctx), CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MacFreeCtx(ctx);
     BSL_SAL_FREE(mac);
@@ -482,8 +485,7 @@ void SDV_CRYPTO_HMAC_COPY_CTX_API_TC001(int algId, int isProvider)
 
     // A directly created context can also be used as the destination for copying.
     ASSERT_EQ(CRYPT_EAL_MacCopyCtx(&ctxC, ctxA), CRYPT_SUCCESS);
-    ctxC.macMeth->freeCtx(ctxC.ctx);
-    BSL_SAL_Free(ctxC.macMeth);
+    ctxC.macMeth.freeCtx(ctxC.ctx);
 EXIT:
     CRYPT_EAL_MacFreeCtx(ctxA);
     CRYPT_EAL_MacFreeCtx(ctxB);
@@ -614,9 +616,7 @@ void SDV_CRYPTO_HMAC_COPY_CTX_STUB_TC001(int algId, Hex *key, int isProvider)
 {
     TestMemInit();
     uint32_t totalMallocCount = 0;
-    STUB_Init();
-    FuncStubInfo tmpRpInfo = {0};
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
 
     STUB_EnableMallocFail(false);
     STUB_ResetMallocCount();
@@ -631,6 +631,6 @@ void SDV_CRYPTO_HMAC_COPY_CTX_STUB_TC001(int algId, Hex *key, int isProvider)
     }
 
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */

@@ -19,7 +19,7 @@
 #include <string.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <linux/limits.h>
+#include <limits.h>
 #include <unistd.h>
 #include <stdbool.h>
 
@@ -40,7 +40,6 @@
 #include "session.h"
 #include "bsl_sal.h"
 #include "alert.h"
-#include "stub_replace.h"
 #include "cert_callback.h"
 #include "crypt_eal_rand.h"
 #include "hitls_crypt_reg.h"
@@ -390,6 +389,9 @@ void SDV_TLS_CERT_LoadAndDelCert_FUNC_TC001(int delWay)
     ASSERT_TRUE(clientRes != NULL);
     ASSERT_EQ(HLT_GetTlsAcceptResultFromId(tlsAcceptId), 0);
     ASSERT_EQ(Dtls_DataTransfer(serverCtx, remoteProcess, clientRes), SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
     HLT_FreeAllProcess();
     return;

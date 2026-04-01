@@ -34,7 +34,6 @@
 #include "transcript_hash.h"
 #include "conn_init.h"
 #include "recv_process.h"
-#include "stub_replace.h"
 #include "simulate_io.h"
 #include "parser_frame_msg.h"
 #include "pack_frame_msg.h"
@@ -314,6 +313,7 @@ void UT_TLS_SNI_RESUME_SERVERNAME_FUNC_TC001(int version, int type)
     ASSERT_TRUE(testInfo.clientSession != NULL);
 
     ASSERT_TRUE(CreateLink(&testInfo) == HITLS_SUCCESS);
+    // Error stack exists
     ASSERT_TRUE(
         FRAME_CreateConnection(testInfo.client, testInfo.server, false, TRY_RECV_CLIENT_HELLO) == HITLS_SUCCESS);
     ASSERT_TRUE(testInfo.server->ssl->hsCtx->state == TRY_RECV_CLIENT_HELLO);
@@ -340,7 +340,7 @@ void UT_TLS_SNI_RESUME_SERVERNAME_FUNC_TC001(int version, int type)
     CONN_Init(testInfo.server->ssl);
 
     if (testInfo.type == BSL_UIO_TCP) {
-        ASSERT_TRUE(Tls12ServerRecvClientHelloProcess(testInfo.server->ssl, &frameMsg.body.handshakeMsg) ==
+        ASSERT_TRUE(Tls12ServerRecvClientHelloProcess(testInfo.server->ssl, &frameMsg.body.handshakeMsg, true) ==
                     HITLS_SUCCESS);
     } else {
         ASSERT_TRUE(DtlsServerRecvClientHelloProcess(testInfo.server->ssl, &frameMsg.body.handshakeMsg) ==
@@ -348,6 +348,8 @@ void UT_TLS_SNI_RESUME_SERVERNAME_FUNC_TC001(int version, int type)
     }
     frameMsg.body.handshakeMsg.body.clientHello.extension.content.serverName = serverName;
     frameMsg.body.handshakeMsg.body.clientHello.extension.content.serverNameSize = serverNameSize;
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     BSL_SAL_FREE(g_sessionId);
@@ -453,5 +455,40 @@ EXIT:
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);
     HITLS_SESS_Free(Session);
+}
+/* END_CASE */
+
+// make sure server can get serverName after handshake
+/* BEGIN_CASE */
+void UT_TLS_SNI_RESUME_SERVERNAME_FUNC_TC003()
+{
+    FRAME_Init();
+
+    HITLS_Config *clientconfig = HITLS_CFG_NewTLS13Config();
+    HITLS_Config *serverconfig = HITLS_CFG_NewTLS13Config();
+    ASSERT_TRUE(serverconfig != NULL);
+    ASSERT_TRUE(clientconfig != NULL);
+    HITLS_CFG_SetServerNameCb(serverconfig, ExampleServerNameCb1);
+    HITLS_CFG_SetServerNameArg(serverconfig, ExampleServerNameArg1);
+
+    HITLS_CFG_SetServerName(clientconfig, (uint8_t *)g_serverName, strlen(g_serverName));
+
+    FRAME_LinkObj *client = FRAME_CreateLink(clientconfig, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    FRAME_LinkObj *server = FRAME_CreateLink(serverconfig, BSL_UIO_TCP);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    const char *hostName = HITLS_GetServerName(server->ssl, HITLS_SNI_HOSTNAME_TYPE);
+    ASSERT_TRUE(*hostName == *g_serverName);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
+EXIT:
+    HITLS_CFG_FreeConfig(clientconfig);
+    HITLS_CFG_FreeConfig(serverconfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
 }
 /* END_CASE */

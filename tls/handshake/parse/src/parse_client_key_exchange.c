@@ -19,7 +19,6 @@
 #include "tls_binlog_id.h"
 #include "bsl_log_internal.h"
 #include "bsl_log.h"
-#include "bsl_bytes.h"
 #include "bsl_sal.h"
 #include "bsl_err_internal.h"
 #include "hitls_error.h"
@@ -46,7 +45,7 @@ static int32_t ParseClientKxMsgEcdhe(ParsePacket *pkt, ClientKeyExchangeMsg *msg
 {
     const char *logStr = BINGLOG_STR("clientKeyEx length error.");
 
-    /* Compatible with OpenSSL, add 3 bytes to the client key exchange */
+    /* Considering compatibility, add 3 bytes to the client key exchange */
 #ifdef HITLS_TLS_PROTO_TLCP11
     if (pkt->ctx->negotiatedInfo.version == HITLS_VERSION_TLCP_DTLCP11) {
         // Curve type + Curve ID + Public key length
@@ -240,7 +239,6 @@ void CleanClientKeyExchange(ClientKeyExchangeMsg *msg)
     BSL_SAL_FREE(msg->pskIdentity);
 #endif /* HITLS_TLS_FEATURE_PSK */
     BSL_SAL_FREE(msg->data);
-    return;
 }
 #endif /* HITLS_TLS_PROTO_TLS_BASIC || HITLS_TLS_PROTO_DTLS12 */
 #endif /* HITLS_TLS_HOST_SERVER */

@@ -35,6 +35,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_FINISH_TC001(void)
     HandshakeTestInfo testInfo = {0};
     testInfo.isClient = false;
     testInfo.state = TRY_SEND_CHANGE_CIPHER_SPEC;
+    // Error stack exists
     ASSERT_TRUE(DefaultCfgStatusPark(&testInfo, BSL_UIO_UDP) == HITLS_SUCCESS);
     uint8_t data[MAX_RECORD_LENTH] = {0};
     uint32_t len = MAX_RECORD_LENTH;
@@ -44,6 +45,8 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_FINISH_TC001(void)
     ASSERT_TRUE(FRAME_TransportRecMsg(testInfo.client->io, data, len) == HITLS_SUCCESS);
     (void)HITLS_Connect(testInfo.client->ssl);
     ASSERT_EQ(testInfo.client->ssl->state, CM_STATE_TRANSPORTING);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
@@ -75,6 +78,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_FINISH_TC002(void)
     HandshakeTestInfo testInfo = {0};
     testInfo.isClient = true;
     testInfo.state = TRY_SEND_CLIENT_KEY_EXCHANGE;
+    // Error stack exists
     ASSERT_TRUE(DefaultCfgStatusPark(&testInfo, BSL_UIO_UDP) == HITLS_SUCCESS);
     uint8_t data[MAX_RECORD_LENTH] = {0};
     uint32_t len = MAX_RECORD_LENTH;
@@ -84,7 +88,9 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_FINISH_TC002(void)
     ASSERT_TRUE(FRAME_TransportRecMsg(testInfo.server->io, data, len) == HITLS_SUCCESS);
     (void)HITLS_Accept(testInfo.server->ssl);
     ASSERT_EQ(testInfo.server->ssl->state, CM_STATE_HANDSHAKING);
-    ASSERT_EQ(testInfo.server->ssl->hsCtx->state, TRY_SEND_CHANGE_CIPHER_SPEC);
+    ASSERT_EQ(testInfo.server->ssl->hsCtx->state, TRY_SEND_FINISH);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
@@ -113,6 +119,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_FINISH_TC003(void)
     HandshakeTestInfo testInfo = {0};
     testInfo.isClient = false;
     testInfo.state = TRY_SEND_CHANGE_CIPHER_SPEC;
+    // Error stack exists
     ASSERT_TRUE(DefaultCfgStatusPark(&testInfo, BSL_UIO_UDP) == HITLS_SUCCESS);
     uint8_t data[MAX_RECORD_LENTH] = {0};
     uint32_t len = MAX_RECORD_LENTH;
@@ -123,6 +130,8 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_FINISH_TC003(void)
     (void)HITLS_Connect(testInfo.client->ssl);
     ASSERT_TRUE(testInfo.client->ssl->state == CM_STATE_TRANSPORTING);
     ASSERT_TRUE(HITLS_Read(testInfo.client->ssl, data, MAX_RECORD_LENTH, &len) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
@@ -154,6 +163,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_DISORDER_TC001(void)
     HandshakeTestInfo testInfo = {0};
     testInfo.isClient = true;
     testInfo.state = HS_STATE_BUTT;
+    // Error stack exists
     ASSERT_EQ(DefaultCfgStatusPark1(&testInfo), HITLS_SUCCESS);
     uint8_t data[MAX_RECORD_LENTH] = {0};
     uint32_t len = MAX_RECORD_LENTH;
@@ -169,6 +179,8 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_DISORDER_TC001(void)
     ASSERT_TRUE(HITLS_Read(testInfo.server->ssl, app2Data, MAX_RECORD_LENTH, &app2Len) == HITLS_SUCCESS);
     ASSERT_EQ(app1Len, app2Len);
     ASSERT_EQ(memcmp(app1Data, app2Data, app2Len), 0);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
     FRAME_FreeLink(testInfo.client);
@@ -199,6 +211,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_DISORDER_TC002(void)
     HandshakeTestInfo testInfo = {0};
     testInfo.isClient = false;
     testInfo.state = HS_STATE_BUTT;
+    // Error stack exists
     ASSERT_EQ(DefaultCfgStatusPark1(&testInfo), HITLS_SUCCESS);
     uint8_t data[MAX_RECORD_LENTH] = {0};
     uint32_t len = MAX_RECORD_LENTH;
@@ -214,6 +227,9 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_DISORDER_TC002(void)
     ASSERT_TRUE(HITLS_Read(testInfo.client->ssl, app2Data, MAX_RECORD_LENTH, &app2Len) == HITLS_SUCCESS);
     ASSERT_EQ(app1Len, app2Len);
     ASSERT_EQ(memcmp(app1Data, app2Data, app1Len), 0);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
     FRAME_FreeLink(testInfo.client);
@@ -246,6 +262,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_APPDATA_TC001(void)
     HandshakeTestInfo testInfo = {0};
     testInfo.isClient = true;
     testInfo.state = HS_STATE_BUTT;
+    // Error stack exists
     ASSERT_EQ(DefaultCfgStatusPark1(&testInfo), HITLS_SUCCESS);
     uint8_t data[MAX_RECORD_LENTH] = {0};
     uint32_t len = MAX_RECORD_LENTH;
@@ -268,6 +285,8 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_APPDATA_TC001(void)
     ASSERT_EQ(HITLS_Read(testInfo.client->ssl, readData, MAX_RECORD_LENTH, &readLen), HITLS_SUCCESS);
     ASSERT_EQ(readLen, writeLen);
     ASSERT_EQ(memcmp(writeData, readData, readLen), 0);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
     FRAME_FreeLink(testInfo.client);
@@ -300,6 +319,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_APPDATA_TC002(void)
     HandshakeTestInfo testInfo = {0};
     testInfo.isClient = false;
     testInfo.state = HS_STATE_BUTT;
+    // Error stack exists
     ASSERT_EQ(DefaultCfgStatusPark1(&testInfo), HITLS_SUCCESS);
     uint8_t data[MAX_RECORD_LENTH] = {0};
     uint32_t len = MAX_RECORD_LENTH;
@@ -322,6 +342,9 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_APPDATA_TC002(void)
     ASSERT_EQ(HITLS_Read(testInfo.client->ssl, readData, MAX_RECORD_LENTH, &readLen), HITLS_SUCCESS);
     ASSERT_EQ(readLen, writeLen);
     ASSERT_EQ(memcmp(writeData, readData, readLen), 0);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
     FRAME_FreeLink(testInfo.client);
@@ -354,6 +377,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_CLIENT_HELLO_TC001(void)
     FRAME_Type frameType = {0};
     testInfo.isClient = true;
     testInfo.state = HS_STATE_BUTT;
+    // Error stack exists
     ASSERT_EQ(DefaultCfgStatusPark1(&testInfo), HITLS_SUCCESS);
     frameType.versionType = HITLS_VERSION_TLCP_DTLCP11;
     frameType.recordType = REC_TYPE_HANDSHAKE;
@@ -384,6 +408,9 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_CLIENT_HELLO_TC001(void)
     ASSERT_EQ(HITLS_Read(testInfo.server->ssl, readData, MAX_RECORD_LENTH, &readLen), HITLS_SUCCESS);
     ASSERT_EQ(readLen, writeLen);
     ASSERT_EQ(memcmp(writeData, readData, readLen), 0);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
     FRAME_CleanMsg(&frameType, &frameMsg);
@@ -411,7 +438,7 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC8422_ECPOINT_TC001(void)
 {
     HandshakeTestInfo testInfo = {0};
     testInfo.state = TRY_RECV_SERVER_HELLO;
-    testInfo.isSupportExtendedMasterSecret = true;
+    testInfo.emsMode = HITLS_EMS_MODE_FORCE;
     testInfo.isClient = true;
     ASSERT_TRUE(DefaultCfgStatusPark(&testInfo, BSL_UIO_UDP) == HITLS_SUCCESS);
     FrameUioUserData *ioUserData = BSL_UIO_GetUserData(testInfo.client->io);
@@ -482,8 +509,9 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC8422_EXTENSION_MISS_TC001(void)
 {
     HandshakeTestInfo testInfo = {0};
     testInfo.state = TRY_RECV_CLIENT_HELLO;
-    testInfo.isSupportExtendedMasterSecret = true;
+    testInfo.emsMode = HITLS_EMS_MODE_FORCE;
     testInfo.isClient = false;
+    // Error stack exists
     ASSERT_TRUE(DefaultCfgStatusPark(&testInfo, BSL_UIO_UDP) == HITLS_SUCCESS);
     FrameUioUserData *ioUserData = BSL_UIO_GetUserData(testInfo.server->io);
     uint8_t *recvBuf = ioUserData->recMsg.msg;
@@ -523,6 +551,8 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC8422_EXTENSION_MISS_TC001(void)
     FRAME_ServerHelloMsg *serverMsg = &frameMsg.body.hsMsg.body.serverHello;
     ASSERT_EQ(serverMsg->cipherSuite.data, HITLS_ECDHE_SM4_CBC_SM3);
 
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     FRAME_CleanMsg(&frameType, &frameMsg);
     HITLS_CFG_FreeConfig(testInfo.config);
@@ -545,6 +575,10 @@ void UT_DTLCP_RFC6347_RECV_ALERT_AFTER_CCS_TC001()
     server->needStopBeforeRecvCCS = true;
     ASSERT_TRUE(client != NULL);
     ASSERT_TRUE(server != NULL);
+
+    HITLS_SetMtu(client->ssl, 16384);
+    HITLS_SetMtu(server->ssl, 16384);
+
     HITLS_Ctx *clientTlsCtx = FRAME_GetTlsCtx(client);
     HITLS_Ctx *serverTlsCtx = FRAME_GetTlsCtx(server);
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, TRY_RECV_FINISH) == HITLS_SUCCESS);
@@ -596,9 +630,14 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_TC001()
     tlsConfig->isSupportRenegotiation = true;
     ASSERT_TRUE(tlsConfig != NULL);
     FRAME_LinkObj *client = FRAME_CreateTLCPLink(tlsConfig, BSL_UIO_UDP, true);
+    // Error stack exists
     FRAME_LinkObj *server = FRAME_CreateTLCPLink(tlsConfig, BSL_UIO_UDP, false);
     ASSERT_TRUE(client != NULL);
     ASSERT_TRUE(server != NULL);
+
+    HITLS_SetMtu(client->ssl, 16384);
+    HITLS_SetMtu(server->ssl, 16384);
+
     HITLS_Ctx *clientTlsCtx = FRAME_GetTlsCtx(client);
     HITLS_Ctx *serverTlsCtx = FRAME_GetTlsCtx(server);
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
@@ -610,6 +649,9 @@ void UT_TLS_DTLCP_CONSISTENCY_RFC6347_TC001()
     uint8_t readData[MAX_RECORD_LENTH] = {0};
     uint32_t readLen = MAX_RECORD_LENTH;
     ASSERT_EQ(HITLS_Read(clientTlsCtx, readData, MAX_RECORD_LENTH, &readLen), HITLS_REC_NORMAL_RECV_BUF_EMPTY);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+    
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
     FRAME_FreeLink(client);

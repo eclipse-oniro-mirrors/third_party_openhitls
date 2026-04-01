@@ -18,7 +18,7 @@
 
 #include "hitls_build.h"
 #if defined(HITLS_CRYPTO_DRBG) || defined(HITLS_CRYPTO_CURVE25519) || \
-    defined(HITLS_CRYPTO_RSA) || defined(HITLS_CRYPTO_BN_RAND)
+    defined(HITLS_CRYPTO_RSA) || defined(HITLS_CRYPTO_BN_RAND) || defined(HITLS_CRYPTO_SM9)
 
 #include <stdint.h>
 #include "crypt_eal_rand.h"
@@ -32,6 +32,13 @@ extern "C" {
  * @param   func [IN] Interface for obtaining random numbers
  */
 void CRYPT_RandRegist(CRYPT_EAL_RandFunc func);
+
+/**
+ * @brief   Get the registered random number function
+ *
+ * @return  The registered random number function
+ */
+CRYPT_EAL_RandFunc CRYPT_RandRegistGet(void);
 
 /**
  * @brief   Generate a random number
@@ -52,6 +59,12 @@ int32_t CRYPT_Rand(uint8_t *rand, uint32_t randLen);
  */
 void CRYPT_RandRegistEx(CRYPT_EAL_RandFuncEx func);
 
+/**
+ * @brief   Get the registered random number function
+ *
+ * @return  The registered random number function
+ */
+CRYPT_EAL_RandFuncEx CRYPT_RandRegistExGet(void);
 
 /**
  * @brief   Generate a random number

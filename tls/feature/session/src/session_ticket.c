@@ -53,10 +53,10 @@ static void SetCipherInfo(const TLS_SessionMgr *sessMgr, Ticket *ticket, HITLS_C
     cipher->ivLen = HITLS_TICKET_IV_SIZE;
     cipher->aad = ticket->iv;
     cipher->aadLen = HITLS_TICKET_IV_SIZE;
-    return;
 }
 
-static int32_t GetSessEncryptInfo(TLS_Ctx *ctx, const TLS_SessionMgr *sessMgr, Ticket *ticket, HITLS_CipherParameters *cipher)
+static int32_t GetSessEncryptInfo(TLS_Ctx *ctx, const TLS_SessionMgr *sessMgr,
+    Ticket *ticket, HITLS_CipherParameters *cipher)
 {
     int32_t ret;
 #ifdef HITLS_TLS_FEATURE_SESSION
@@ -163,8 +163,7 @@ static int32_t PackEncryptTicket(HITLS_Lib_Ctx *libCtx, const char *attrName,
     }
 #endif
     uint32_t offset = 0;
-    /* reserved length field */
-    offset += sizeof(uint32_t);
+    offset += sizeof(uint32_t); /* reserved length field */
     /* Encrypt and fill the ticket. */
     uint32_t encryptLen = len - offset;
     ret = SAL_CRYPT_Encrypt(libCtx, attrName, cipher, plaintext, plaintextLen, &data[offset], &encryptLen);
@@ -175,8 +174,7 @@ static int32_t PackEncryptTicket(HITLS_Lib_Ctx *libCtx, const char *attrName,
             "SAL_CRYPT_Encrypt fail when encrypt session ticket.", 0, 0, 0, 0);
         return ret;
     }
-    /* padding length */
-    BSL_Uint32ToByte(encryptLen, &data[offset - sizeof(uint32_t)]);
+    BSL_Uint32ToByte(encryptLen, &data[offset - sizeof(uint32_t)]); /* padding length */
     offset += encryptLen;
 
     *usedLen = offset;
@@ -188,7 +186,7 @@ static int32_t PackTicketHmac(HITLS_Lib_Ctx *libCtx, const char *attrName,
     HITLS_CipherParameters *cipher, uint8_t *data, uint32_t len, uint32_t offset,
     uint32_t *usedLen)
 {
-    /* The HMAC field is filled only in CBC mode. In other modes, the HMAC field is returned. */
+/* The HMAC field is filled only in CBC mode. In other modes, the HMAC field is returned. */
     if (cipher->type != HITLS_CBC_CIPHER) {
         *usedLen = 0;
         return HITLS_SUCCESS;
@@ -250,8 +248,7 @@ int32_t SESSMGR_EncryptSessionTicket(TLS_Ctx *ctx,
     const TLS_SessionMgr *sessMgr, const HITLS_Session *sess, uint8_t **ticketBuf, uint32_t *ticketBufSize)
 {
     if (sessMgr == NULL || sess == NULL || ticketBuf == NULL) {
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16713, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "input null", 0, 0, 0, 0);
-        return HITLS_INTERNAL_EXCEPTION;
+        return RETURN_ERROR_NUMBER_PROCESS(HITLS_INTERNAL_EXCEPTION, BINLOG_ID16713, "input null");
     }
 
     Ticket ticket = {0};
@@ -259,9 +256,8 @@ int32_t SESSMGR_EncryptSessionTicket(TLS_Ctx *ctx,
     int32_t retVal = GetSessEncryptInfo(ctx, sessMgr, &ticket, &cipher);
     if (retVal < 0) {
         BSL_ERR_PUSH_ERROR(HITLS_SESS_ERR_SESSION_TICKET_KEY_FAIL);
-        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16030, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
-            "GetSessEncryptInfo fail when encrypt session ticket.", 0, 0, 0, 0);
-        return HITLS_SESS_ERR_SESSION_TICKET_KEY_FAIL;
+        return RETURN_ERROR_NUMBER_PROCESS(HITLS_SESS_ERR_SESSION_TICKET_KEY_FAIL, BINLOG_ID16030,
+            "GetSessEncryptInfo fail");
     }
     if (retVal == HITLS_TICKET_KEY_RET_FAIL) {
         /* Failed to obtain the encryption information. An empty ticket is returned. */
@@ -275,10 +271,9 @@ int32_t SESSMGR_EncryptSessionTicket(TLS_Ctx *ctx,
         return HITLS_MEMALLOC_FAIL;
     }
     /* Fill in the key name and iv. */
-    int32_t ret;
     uint32_t packLen = 0;
     uint32_t offset = 0;
-    ret = PackKeyNameAndIv(&ticket, &data[0], dataLen, &packLen);
+    int32_t ret = PackKeyNameAndIv(&ticket, &data[0], dataLen, &packLen);
     if (ret != HITLS_SUCCESS) {
         BSL_SAL_FREE(data);
         return ret;
@@ -311,7 +306,6 @@ static int32_t ParseSessionTicket(Ticket *ticket, const uint8_t *ticketBuf, uint
 {
     uint32_t offset = 0;
     if (ticketBufSize < HITLS_TICKET_KEY_NAME_SIZE + HITLS_TICKET_IV_SIZE + sizeof(uint32_t)) {
-        BSL_ERR_PUSH_ERROR(HITLS_SESS_ERR_SESSION_TICKET_SIZE_INCORRECT);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16044, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "ticketBufSize is incorrect when parse session ticket.", 0, 0, 0, 0);
         return HITLS_SESS_ERR_SESSION_TICKET_SIZE_INCORRECT;
@@ -327,7 +321,6 @@ static int32_t ParseSessionTicket(Ticket *ticket, const uint8_t *ticketBuf, uint
     offset += sizeof(uint32_t);
 
     if ((ticketBufSize - offset) < ticket->encryptedStateSize) {
-        BSL_ERR_PUSH_ERROR(HITLS_SESS_ERR_SESSION_TICKET_SIZE_INCORRECT);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16032, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "ticketBufSize is incorrect when parse session ticket encryptedStateSize.", 0, 0, 0, 0);
         return HITLS_SESS_ERR_SESSION_TICKET_SIZE_INCORRECT;
@@ -338,7 +331,6 @@ static int32_t ParseSessionTicket(Ticket *ticket, const uint8_t *ticketBuf, uint
 
     if (ticketBufSize != offset) {
         if ((ticketBufSize - offset) != HITLS_TICKET_KEY_SIZE) {
-            BSL_ERR_PUSH_ERROR(HITLS_SESS_ERR_SESSION_TICKET_SIZE_INCORRECT);
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16033, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "ticketBufSize is incorrect when parse session ticket hmac.", 0, 0, 0, 0);
             return HITLS_SESS_ERR_SESSION_TICKET_SIZE_INCORRECT;
@@ -387,7 +379,7 @@ static int32_t CheckTicketHmac(HITLS_Lib_Ctx *libCtx, const char *attrName,
         return ret;
     }
 
-    if (memcmp(ticket->mac, mac, macLen) != 0) {
+    if (ConstTimeMemcmp(ticket->mac, mac, macLen) == 0) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16036, BSL_LOG_LEVEL_INFO, BSL_LOG_BINLOG_TYPE_RUN,
             "compare mac fail when decrypt session ticket.", 0, 0, 0, 0);
         /* The HMAC check fails, but the complete link establishment can be continued. Therefore, HITLS_SUCCESS is
@@ -410,8 +402,7 @@ static int32_t GenerateSessFromTicket(HITLS_Lib_Ctx *libCtx, const char *attrNam
         BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
         return RETURN_ERROR_NUMBER_PROCESS(HITLS_MEMALLOC_FAIL, BINLOG_ID16037, "plaintext malloc fail");
     }
-    int32_t ret;
-    ret = SAL_CRYPT_Decrypt(libCtx, attrName,
+    int32_t ret = SAL_CRYPT_Decrypt(libCtx, attrName,
         cipher, ticket->encryptedState, ticket->encryptedStateSize, plaintext, &plaintextLen);
     if (ret != HITLS_SUCCESS) {
         BSL_SAL_CleanseData(plaintext, plaintextLen);
@@ -424,16 +415,22 @@ static int32_t GenerateSessFromTicket(HITLS_Lib_Ctx *libCtx, const char *attrNam
     }
 
 #ifdef HITLS_TLS_SUITE_CIPHER_CBC
-    /* Padding needs to be verified in CBC mode. */
+    /* Constant-time padding verification in CBC mode. */
     if (cipher->type == HITLS_CBC_CIPHER) {
         /* The last byte is the padding length field, and the padding content is the length value. */
         uint8_t paddingLen = plaintext[plaintextLen - 1];
-        for (uint32_t i = 1; i <= paddingLen; i++) {
-            if (plaintext[plaintextLen - 1 - i] != paddingLen) {
-                BSL_SAL_CleanseData(plaintext, plaintextLen);
-                BSL_SAL_FREE(plaintext);
-                return HITLS_SUCCESS;
-            }
+        uint32_t good = Uint32ConstTimeGe(plaintextLen, (uint32_t)paddingLen + 1);
+
+        /* Always iterate 255 times to ensure constant-time behavior. */
+        for (uint32_t i = 1; i <= 255; i++) {
+            uint32_t mask = good & Uint32ConstTimeLe(i, paddingLen);
+            good &= Uint32ConstTimeEqual(plaintext[plaintextLen - 1 - (i & mask)], paddingLen);
+        }
+
+        if (good == 0) {
+            BSL_SAL_CleanseData(plaintext, plaintextLen);
+            BSL_SAL_FREE(plaintext);
+            return HITLS_SUCCESS;
         }
         plaintextLen -= paddingLen + sizeof(uint8_t);
     }

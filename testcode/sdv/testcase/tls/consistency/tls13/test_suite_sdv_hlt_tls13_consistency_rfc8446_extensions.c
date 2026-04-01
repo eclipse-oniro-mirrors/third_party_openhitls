@@ -17,7 +17,6 @@
 /* INCLUDE_BASE test_suite_tls13_consistency_rfc8446 */
 
 #include <stdio.h>
-#include "stub_replace.h"
 #include "hitls.h"
 #include "hitls_config.h"
 #include "hitls_error.h"
@@ -367,6 +366,8 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_KEYSHAREGROUP_FUNC_TC002(int version, int
     ASSERT_TRUE(readLen == strlen(writeBuf));
     ASSERT_TRUE(memcmp(writeBuf, readBuf, readLen) == 0);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
     HLT_FreeAllProcess();
@@ -435,6 +436,8 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_KEYSHAREGROUP_FUNC_TC003(int version, int
     ASSERT_TRUE(HLT_TlsRead(serverRes->ssl, readBuf, BUF_SIZE_DTO_TEST, &readLen) == 0);
     ASSERT_TRUE(readLen == strlen(writeBuf));
     ASSERT_TRUE(memcmp(writeBuf, readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     ClearWrapper();
@@ -955,7 +958,7 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_MASTEREXTKEY_FUNC_TC001()
     HLT_SetVersion(serverCtxConfig, HITLS_VERSION_TLS12, HITLS_VERSION_TLS13);
     HLT_SetCipherSuites(serverCtxConfig, "HITLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384");
 
-    serverRes = HLT_ProcessTlsAccept(localProcess, TLS1_3, serverCtxConfig, NULL);
+    serverRes = HLT_ProcessTlsAccept(localProcess, TLS_ALL, serverCtxConfig, NULL);
     ASSERT_TRUE(serverRes != NULL);
 
     HLT_Ctx_Config *clientCtxConfig = HLT_NewCtxConfig(NULL,"CLIENT");
@@ -973,6 +976,9 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_MASTEREXTKEY_FUNC_TC001()
     ASSERT_TRUE(HLT_TlsRead(serverRes->ssl, readBuf, BUF_SIZE_DTO_TEST, &readLen) == 0);
     ASSERT_TRUE(readLen == strlen(writeBuf));
     ASSERT_TRUE(memcmp(writeBuf, readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     ClearWrapper();
     HLT_FreeAllProcess();
@@ -1120,6 +1126,8 @@ void SDV_TLS_TLS13_RFC8446_CONSISTENCY_PSKTICKET_FUNC_TC001(int version, int con
         ASSERT_TRUE(session != NULL);
         cnt++;
     } while (cnt < 2);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     ClearWrapper();

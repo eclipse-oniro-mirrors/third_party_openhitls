@@ -34,6 +34,19 @@
     #define HITLS_BSL_ERR
 #endif
 
+#if defined(HITLS_BSL_UI) && !defined(HITLS_BSL_SAL_FILE)
+    #define HITLS_BSL_SAL_FILE
+#endif
+
+#ifdef HITLS_BSL_CONF
+    #ifndef HITLS_BSL_LIST
+        #define HITLS_BSL_LIST
+    #endif
+    #ifndef HITLS_BSL_UIO_FILE
+        #define HITLS_BSL_UIO_FILE
+    #endif
+#endif
+
 /* BSL_UIO */
 /* Derive the child-features of uio. */
 #ifdef HITLS_BSL_UIO
@@ -55,6 +68,13 @@
     #ifndef HITLS_BSL_UIO_MEM
         #define HITLS_BSL_UIO_MEM
     #endif
+    #ifndef HITLS_BSL_UIO_FILE
+        #define HITLS_BSL_UIO_FILE
+    #endif
+#endif
+
+#if defined(HITLS_BSL_UIO_FILE) && !defined(HITLS_BSL_SAL_FILE)
+    #define HITLS_BSL_SAL_FILE
 #endif
 
 /* Derive the child-features of uio mem. */
@@ -76,22 +96,40 @@
 
 /* Derive parent feature from child features. */
 #if defined(HITLS_BSL_UIO_BUFFER) || defined(HITLS_BSL_UIO_SCTP) || defined(HITLS_BSL_UIO_TCP) || \
-    defined(HITLS_BSL_UIO_MEM)
+    defined(HITLS_BSL_UIO_MEM) || defined(HITLS_BSL_UIO_FILE)
     #ifndef HITLS_BSL_UIO_PLT
         #define HITLS_BSL_UIO_PLT
     #endif
 #endif
 
-#ifdef HITLS_BSL_PEM
-    #ifndef HITLS_BSL_BASE64
-        #define HITLS_BSL_BASE64
+#ifdef HITLS_BSL_OBJ
+    #ifndef HITLS_BSL_OBJ_DEFAULT
+        #define HITLS_BSL_OBJ_DEFAULT
+    #endif
+    #ifndef HITLS_BSL_OBJ_CUSTOM
+        #define HITLS_BSL_OBJ_CUSTOM
     #endif
 #endif
 
-#ifdef HITLS_BSL_ASN1
-    #ifndef HITLS_BSL_SAL_TIME
-        #define HITLS_BSL_SAL_TIME
+#ifdef HITLS_BSL_OBJ_CUSTOM
+    #ifndef HITLS_BSL_OBJ_DEFAULT
+        #define HITLS_BSL_OBJ_DEFAULT
     #endif
+    #ifndef HITLS_BSL_HASH
+        #define HITLS_BSL_HASH
+    #endif
+#endif
+
+#if (defined(HITLS_BSL_OBJ_DEFAULT) || defined(HITLS_BSL_OBJ_CUSTOM)) && !defined(HITLS_BSL_OBJ)
+    #define HITLS_BSL_OBJ
+#endif
+
+#if defined(HITLS_BSL_PEM) && !defined(HITLS_BSL_BASE64)
+    #define HITLS_BSL_BASE64
+#endif
+
+#if defined(HITLS_BSL_ASN1) && !defined(HITLS_BSL_SAL_TIME)
+    #define HITLS_BSL_SAL_TIME
 #endif
 
 #endif /* HITLS_CONFIG_LAYER_BSL_H */

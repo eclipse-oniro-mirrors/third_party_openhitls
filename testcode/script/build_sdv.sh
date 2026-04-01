@@ -33,18 +33,24 @@ usage()
     printf "%-50s %-30s\n" "* gcov         : Enable the coverage capability."  "bash ${BASH_SOURCE[0]} gcov"
     printf "%-50s %-30s\n" "* asan         : Enabling the ASAN capability."    "bash ${BASH_SOURCE[0]} asan"
     printf "%-50s %-30s\n" "* big-endian   : Specify the platform endianness." "bash ${BASH_SOURCE[0]} big-endian"
+    printf "%-50s %-30s\n" "* include-path : Specify the config file path."    "bash ${BASH_SOURCE[0]} include-path=-Ixxx"
     printf "%-50s %-30s\n\n" "* run-tests  : Creating a custom test suite."    "bash ${BASH_SOURCE[0]} run-tests=xxx1|xxx2|xxx3"
+    printf "%-50s %-30s\n" "* apps         : Create apps testcase."            "bash ${BASH_SOURCE[0]} apps"
 }
 
 export_env()
 {
-    HITLS_ROOT_DIR=${HITLS_ROOT_DIR:=$(cd $(dirname ${BASH_SOURCE[0]})/../..;pwd)}
+    # Force recalculate HITLS_ROOT_DIR to avoid CI environment variable pollution
+    # Unset any pre-existing value to ensure clean path resolution
+    unset HITLS_ROOT_DIR
+    HITLS_ROOT_DIR=$(cd $(dirname ${BASH_SOURCE[0]})/../.. && pwd)
     LOCAL_ARCH=${LOCAL_ARCH:=`arch`}
     ENABLE_GCOV=${ENABLE_GCOV:=OFF}
     ENABLE_ASAN=${ENABLE_ASAN:=OFF}
     ENABLE_PRINT=${ENABLE_PRINT:=ON}
     ENABLE_FAIL_REPEAT=${ENABLE_FAIL_REPEAT:=OFF}
     CUSTOM_CFLAGS=${CUSTOM_CFLAGS:=''}
+    ENABLE_APP=${ENABLE_APP:=OFF}
     ENABLE_TLS=${ENABLE_TLS:=ON}
     BIG_ENDIAN=${BIG_ENDIAN:=OFF}
     ENABLE_CRYPTO=${ENABLE_CRYPTO:=ON}
@@ -57,12 +63,41 @@ export_env()
     ENABLE_VERBOSE=${ENABLE_VERBOSE:=''}
     RUN_TESTS=${RUN_TESTS:=''}
     DEBUG=${DEBUG:=ON}
+
     if [ -f ${HITLS_ROOT_DIR}/build/macro.txt ];then
         CUSTOM_CFLAGS=$(cat ${HITLS_ROOT_DIR}/build/macro.txt)
         CUSTOM_CFLAGS="$CUSTOM_CFLAGS -D__FILENAME__=__FILE__"
+        # Add PKI macro if PKI library exists (needed for test framework linking)
+        if ls ${HITLS_ROOT_DIR}/build/libhitls_pki.* 1> /dev/null 2>&1; then
+            CUSTOM_CFLAGS="$CUSTOM_CFLAGS -DHITLS_PKI"
+        fi
+        # Add UDP/TCP/SCTP only if main library has them (check macro.txt)
+        # This ensures test framework matches the main library's UIO capabilities
+        if grep -q "HITLS_BSL_UIO_UDP" ${HITLS_ROOT_DIR}/build/macro.txt 2>/dev/null; then
+            CUSTOM_CFLAGS="$CUSTOM_CFLAGS -DHITLS_BSL_UIO_UDP"
+        fi
+        if grep -q "HITLS_BSL_UIO_TCP" ${HITLS_ROOT_DIR}/build/macro.txt 2>/dev/null; then
+            CUSTOM_CFLAGS="$CUSTOM_CFLAGS -DHITLS_BSL_UIO_TCP"
+        fi
+        if grep -q "HITLS_BSL_UIO_SCTP" ${HITLS_ROOT_DIR}/build/macro.txt 2>/dev/null; then
+            CUSTOM_CFLAGS="$CUSTOM_CFLAGS -DHITLS_BSL_UIO_SCTP"
+        fi
+    fi
+
+    # Add macOS-specific flags for AppleClang (must come AFTER macro.txt)
+    if [[ "$(uname)" == "Darwin" ]]; then
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-unused-command-line-argument -Wno-error=unused-command-line-argument"
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-sometimes-uninitialized -Wno-error=sometimes-uninitialized"
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-gnu-folding-constant -Wno-error=gnu-folding-constant"
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-non-literal-null-conversion -Wno-error=non-literal-null-conversion"
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-sizeof-array-div -Wno-error=sizeof-array-div"
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-format -Wno-error=format"
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-enum-conversion -Wno-error=enum-conversion"
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-int-conversion -Wno-error=int-conversion"
+        CUSTOM_CFLAGS="$CUSTOM_CFLAGS -Wno-unused-function -Wno-error=unused-function"
     fi
     if [[ ! -e "${HITLS_ROOT_DIR}/testcode/output/log" ]]; then
-        mkdir ${HITLS_ROOT_DIR}/testcode/output/log
+        mkdir -p ${HITLS_ROOT_DIR}/testcode/output/log
     fi
 }
 
@@ -96,6 +131,10 @@ find_test_suite()
         cmvp_testsuite=$(find ${HITLS_ROOT_DIR}/testcode/sdv/testcase/cmvp -name "*.data" | sed -e "s/.data//" | tr -s "\n" " ")
     fi
     RUN_TEST_SUITES="${crypto_testsuite}${bsl_testsuite}${pki_testsuite}${proto_testsuite}${auth_testsuite}${cmvp_testsuite}"
+    if [[ ${ENABLE_APP} == "ON" ]]; then
+        apps_testsuite=$(find ${HITLS_ROOT_DIR}/testcode/sdv/testcase/apps -name "*.data" | sed -e "s/.data//" | tr -s "\n" " ")
+        RUN_TEST_SUITES="${apps_testsuite}"
+    fi
 }
 
 build_test_suite()
@@ -104,22 +143,91 @@ build_test_suite()
 
     [[ -n ${CASES} ]] && RUN_TEST_SUITES=${CASES}
     cd ${HITLS_ROOT_DIR}/testcode && rm -rf ./build && mkdir build && cd build
-    cmake -DENABLE_GCOV=${ENABLE_GCOV} -DENABLE_ASAN=${ENABLE_ASAN} \
-          -DCUSTOM_CFLAGS="${CUSTOM_CFLAGS}" -DDEBUG=${DEBUG} -DENABLE_UIO_SCTP=${ENABLE_UIO_SCTP} \
-          -DGEN_TEST_FILES="${RUN_TEST_SUITES}" -DENABLE_TLS=${ENABLE_TLS} \
-          -DENABLE_CRYPTO=${ENABLE_CRYPTO} -DENABLE_PKI=${ENABLE_PKI} -DENABLE_AUTH=${ENABLE_AUTH} \
-          -DTLS_DEBUG=${TLS_DEBUG} -DOS_BIG_ENDIAN=${BIG_ENDIAN} -DPRINT_TO_TERMINAL=${ENABLE_PRINT} \
-          -DENABLE_FAIL_REPEAT=${ENABLE_FAIL_REPEAT} ..
+
+    # macOS-specific flags for STUB test mechanism compatibility
+    # On macOS, use flat namespace to allow test STUB wrappers to intercept library internal calls
+    # This matches Linux symbol resolution behavior and is ONLY needed for test builds
+    # Production builds (via top-level CMakeLists.txt) use the default two-level namespace
+    if [[ "$(uname)" = "Darwin" ]]; then
+        cmake -DENABLE_GCOV=${ENABLE_GCOV} -DENABLE_ASAN=${ENABLE_ASAN} \
+              -DCUSTOM_CFLAGS="${CUSTOM_CFLAGS}" -DDEBUG=${DEBUG} -DENABLE_UIO_SCTP=${ENABLE_UIO_SCTP} \
+              -DGEN_TEST_FILES="${RUN_TEST_SUITES}" -DENABLE_TLS=${ENABLE_TLS} \
+              -DENABLE_CRYPTO=${ENABLE_CRYPTO} -DENABLE_PKI=${ENABLE_PKI} -DENABLE_AUTH=${ENABLE_AUTH} \
+              -DTLS_DEBUG=${TLS_DEBUG} -DOS_BIG_ENDIAN=${BIG_ENDIAN} -DPRINT_TO_TERMINAL=${ENABLE_PRINT} \
+              -DENABLE_FAIL_REPEAT=${ENABLE_FAIL_REPEAT} -DAPPS=${ENABLE_APP} \
+              -DCMAKE_SHARED_LINKER_FLAGS="-flat_namespace -undefined dynamic_lookup" \
+              -DCMAKE_EXE_LINKER_FLAGS="-flat_namespace -undefined dynamic_lookup" ..
+    else
+        cmake -DENABLE_GCOV=${ENABLE_GCOV} -DENABLE_ASAN=${ENABLE_ASAN} \
+              -DCUSTOM_CFLAGS="${CUSTOM_CFLAGS}" -DDEBUG=${DEBUG} -DENABLE_UIO_SCTP=${ENABLE_UIO_SCTP} \
+              -DGEN_TEST_FILES="${RUN_TEST_SUITES}" -DENABLE_TLS=${ENABLE_TLS} \
+              -DENABLE_CRYPTO=${ENABLE_CRYPTO} -DENABLE_PKI=${ENABLE_PKI} -DENABLE_AUTH=${ENABLE_AUTH} \
+              -DTLS_DEBUG=${TLS_DEBUG} -DOS_BIG_ENDIAN=${BIG_ENDIAN} -DPRINT_TO_TERMINAL=${ENABLE_PRINT} \
+              -DENABLE_FAIL_REPEAT=${ENABLE_FAIL_REPEAT} -DAPPS=${ENABLE_APP} ..
+    fi
     make -j
 }
 
 # Function: Compile provider .so file
 build_provider_so()
 {
-    cd ${HITLS_ROOT_DIR}/testcode/testdata/provider
-    mkdir -p build && cd build
-    cmake ..
-    make -j
+    # Only build if provider support is enabled
+    if [ -f ${HITLS_ROOT_DIR}/build/macro.txt ]; then
+        if ! grep -q "HITLS_CRYPTO_PROVIDER" ${HITLS_ROOT_DIR}/build/macro.txt 2>/dev/null; then
+            echo "[INFO] Provider support not enabled, skipping provider library build"
+            return 0
+        fi
+    else
+        echo "[WARNING] macro.txt not found, skipping provider library build"
+        return 0
+    fi
+
+    echo "======================================================================"
+    echo "Building provider test libraries..."
+    echo "======================================================================"
+
+    local provider_dir="${HITLS_ROOT_DIR}/testcode/testdata/provider"
+    if [ ! -d "$provider_dir" ]; then
+        echo "[ERROR] Provider directory not found: $provider_dir"
+        return 1
+    fi
+
+    cd "$provider_dir"
+    if [ $? -ne 0 ]; then
+        echo "[ERROR] Failed to change directory to provider path: $provider_dir"
+        return 1
+    fi
+    rm -rf build
+    mkdir build
+    cd build
+
+    echo "[INFO] Running cmake for provider libraries..."
+    if ! cmake -DENABLE_GCOV=${ENABLE_GCOV} ..; then
+        echo "[ERROR] CMake configuration failed for provider libraries"
+        return 1
+    fi
+
+    echo "[INFO] Building provider libraries..."
+    if ! make -j; then
+        echo "[ERROR] Provider library build failed"
+        return 1
+    fi
+
+    echo "[SUCCESS] Provider libraries built successfully"
+    echo "[INFO] Provider library location:"
+    if [ -d "${HITLS_ROOT_DIR}/testcode/output/provider_test_data" ]; then
+        ls -lh "${HITLS_ROOT_DIR}/testcode/output/provider_test_data/path1/" 2>/dev/null | head -5 || true
+        echo "..."
+        ls -lh "${HITLS_ROOT_DIR}/testcode/output/provider_test_data/path2/" 2>/dev/null | head -5 || true
+        local path1_count=$(ls "${HITLS_ROOT_DIR}/testcode/output/provider_test_data/path1/" 2>/dev/null | wc -l)
+        local path2_count=$(ls "${HITLS_ROOT_DIR}/testcode/output/provider_test_data/path2/" 2>/dev/null | wc -l)
+        echo "[INFO] Built $path1_count provider libraries in path1/ and $path2_count in path2/"
+    else
+        echo "[ERROR] Provider output directory not found!"
+        return 1
+    fi
+
+    return 0
 }
 
 process_custom_cases()
@@ -166,7 +274,7 @@ clean()
     rm -rf ${HITLS_ROOT_DIR}/testcode/testdata/provider/build
     rm -rf ${HITLS_ROOT_DIR}/testcode/testdata/provider/path1
     rm -rf ${HITLS_ROOT_DIR}/testcode/testdata/provider/path2
-    mkdir ${HITLS_ROOT_DIR}/testcode/output/log
+    mkdir -p ${HITLS_ROOT_DIR}/testcode/output/log
 }
 
 options()
@@ -229,6 +337,12 @@ options()
                 ;;
             big-endian)
                 BIG_ENDIAN=ON
+                ;;
+            include-path)
+                CUSTOM_CFLAGS="${CUSTOM_CFLAGS} ${value}"
+                ;;
+            apps)
+                ENABLE_APP=ON
                 ;;
             --help|-h)
                 usage

@@ -28,10 +28,6 @@
 #include "hs.h"
 #include "parse.h"
 
-#define DTLS_OVER_UDP_DEFAULT_SIZE 2048u
-#if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
-#define EXTRA_DATA_SIZE 128u
-#endif
 #ifdef HITLS_TLS_FEATURE_FLIGHT
 static int32_t UIO_Init(TLS_Ctx *ctx)
 {
@@ -86,23 +82,6 @@ static int32_t UIO_Deinit(TLS_Ctx *ctx)
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_FEATURE_FLIGHT */
-static uint32_t GetMsgSize(const TLS_Ctx *ctx)
-{
-    (void)ctx;
-    uint32_t msgSize = DTLS_OVER_UDP_DEFAULT_SIZE;
-#if defined(HITLS_BSL_UIO_UDP)
-    /* check whether DTLS over udp */
-    if (IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask) &&
-        BSL_UIO_GetUioChainTransportType(ctx->uio, BSL_UIO_UDP)) {
-        /* Before calling this function, the user has set pmtu or pmtu to the default value 1500. */
-        msgSize = (msgSize > ctx->config.pmtu) ? msgSize : (ctx->config.pmtu + EXTRA_DATA_SIZE);
-    } else
-#endif /* HITLS_BSL_UIO_UDP */
-    {
-        msgSize = REC_MAX_PLAIN_DECRYPTO_MAX_LENGTH;
-    }
-    return msgSize;
-}
 
 static int32_t HsInitChangeState(TLS_Ctx *ctx)
 {
@@ -166,18 +145,18 @@ int32_t HS_Init(TLS_Ctx *ctx)
     ctx->hsCtx = hsCtx;
     hsCtx->clientRandom = ctx->negotiatedInfo.clientRandom;
     hsCtx->serverRandom = ctx->negotiatedInfo.serverRandom;
-    hsCtx->bufferLen = GetMsgSize(ctx);
+    hsCtx->bufferLen = HITLS_HS_INIT_BUFFER_SIZE;
     hsCtx->msgBuf = BSL_SAL_Malloc(hsCtx->bufferLen);
     if (hsCtx->msgBuf == NULL) {
         (void)RETURN_ERROR_NUMBER_PROCESS(HITLS_MEMALLOC_FAIL, BINLOG_ID17177, "Malloc fail");
-        goto ERR;
+        goto exit;
     }
     ret = NewHsCtxConfig(ctx, hsCtx);
     if (ret != HITLS_SUCCESS) {
-        goto ERR;
+        goto exit;
     }
     return HsInitChangeState(ctx);
-ERR:
+exit:
     HS_DeInit(ctx);
     BSL_ERR_PUSH_ERROR(HITLS_MEMALLOC_FAIL);
     return HITLS_MEMALLOC_FAIL;
@@ -189,14 +168,12 @@ void HS_DeInit(TLS_Ctx *ctx)
         return;
     }
     HS_Ctx *hsCtx = ctx->hsCtx;
-
+    HS_CleanMsg(ctx->hsCtx->hsMsg);
+    BSL_SAL_FREE(ctx->hsCtx->hsMsg);
     BSL_SAL_FREE(hsCtx->msgBuf);
 #if defined(HITLS_TLS_FEATURE_SESSION) || defined(HITLS_TLS_PROTO_TLS13)
     BSL_SAL_FREE(hsCtx->sessionId);
 #endif /* HITLS_TLS_FEATURE_SESSION || HITLS_TLS_PROTO_TLS13 */
-#ifdef HITLS_TLS_FEATURE_SNI
-    BSL_SAL_FREE(hsCtx->serverName);
-#endif /* HITLS_TLS_FEATURE_SNI */
 #ifdef HITLS_TLS_FEATURE_SESSION_TICKET
     BSL_SAL_FREE(hsCtx->ticket);
 #endif /* HITLS_TLS_FEATURE_SESSION_TICKET */

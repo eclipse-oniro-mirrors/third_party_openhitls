@@ -63,6 +63,15 @@ typedef struct {
 /**
  * @ingroup crypt_types
  *
+ * @brief Pkcsv15 padding mode, when RSA is used for signature.
+ */
+typedef struct {
+    CRYPT_MD_AlgId mdId; /**< ID of the hash algorithm during pkcsv15 padding */
+} CRYPT_RSA_PkcsV15Para;
+
+/**
+ * @ingroup crypt_types
+ *
  * RSA salt length type, when rsa pss mode is used for signature and verify
  */
 typedef enum {
@@ -86,11 +95,22 @@ typedef struct {
     CRYPT_MD_AlgId mgfId; /**< mgfid when pss padding. */
 } CRYPT_RSA_PssPara;
 
+typedef struct {
+    CRYPT_MD_AlgId mdId;  /**< mdid when oaep padding */
+    CRYPT_MD_AlgId mgfId; /**< mgfid when oaep padding */
+} CRYPT_RSA_OaepPara;
+
 typedef enum {
     CRYPT_RSA_BLINDING = 0x00000001, /**< Enable the RSA blinding function for signature. */
     CRYPT_RSA_BSSA = 0x00000002, /**< The signature process is rsa blind signature. */
     CRYPT_RSA_MAXFLAG
 } CRYPT_RSA_Flag;
+
+typedef enum {
+    CRYPT_DH_NO_PADZERO = 0x00000001, /**< Follow the standard RFC 5246, remove the prefix-0 when cal the
+                                           shared key. It takes effect only after local settings are made. */
+    CRYPT_DH_MAXFLAG
+} CRYPT_DH_Flag;
 
 /**
  * @ingroup crypt_types
@@ -98,15 +118,10 @@ typedef enum {
  * ECC flag bits for encode behaviors
  */
 typedef enum {
+    CRYPT_ECC_CACHE_PUBKEY = 0x00000001,
     CRYPT_ECC_PRIKEY_NO_PUBKEY = 0x00000002, /**< ECPrivateKey omit publicKey[1] */
     CRYPT_ECC_MAXFLAG
 } CRYPT_ECC_Flag;
-
-typedef enum {
-    CRYPT_DH_NO_PADZERO = 0x00000001, /**< Follow the standard RFC 5246, remove the prefix-0 when cal the
-                                           shared key. It takes effect only after local settings are made. */
-    CRYPT_DH_MAXFLAG
-} CRYPT_DH_Flag;
 
 /**
  * @ingroup crypt_types
@@ -352,6 +367,21 @@ typedef struct {
     uint8_t *prf; // To generate randomization value
     CRYPT_SlhDsaPub pub; // pubkey
 } CRYPT_SlhDsaPrv;
+
+/**
+ * @brief XMSS public key structure
+ */
+typedef CRYPT_SlhDsaPub CRYPT_XmssPub;
+
+/**
+ * @brief XMSS private key structure
+ */
+typedef struct {
+    uint8_t *seed; // Seed for generating keys
+    uint8_t *prf; // To generate randomization value
+    uint64_t index; // ots key index
+    CRYPT_XmssPub pub; // pubkey
+} CRYPT_XmssPrv;
 
 /**
  * @ingroup crypt_types
@@ -600,7 +630,6 @@ typedef enum {
     CRYPT_CTRL_SET_PARA_BY_ID,           /* Asymmetric cipher set para by id. */
     CRYPT_CTRL_SET_NO_PADDING,           /**< RSA Set the padding mode to NO_PADDING. */
 
-    CRYPT_CTRL_GET_PARA,                 /* Asymmetric cipher get para. */
     CRYPT_CTRL_GET_PARAID,               /* Asymmetric cipher get id of para. */
     CRYPT_CTRL_GET_BITS,                 /* Asymmetric cipher get bits . */
     CRYPT_CTRL_GET_SIGNLEN,              /* Asymmetric cipher get signlen . */
@@ -612,7 +641,12 @@ typedef enum {
     CRYPT_CTRL_SET_DETERMINISTIC_FLAG,   /**< Whether to use deterministic signatures */
     CRYPT_CTRL_SET_CTX_INFO,             /**< Set the context string. */
     CRYPT_CTRL_SET_PREHASH_FLAG,         /**< Change the SLH-DSA or ML-DSA mode to prehash version or pure version. */
-
+    CRYPT_CTRL_GEN_PARA,                 /**< Asymmetric cipher generate para. */
+    CRYPT_CTRL_SET_GEN_FLAG,             /**< Set SP800-56Ar3 generate private key flag. */
+    CRYPT_CTRL_GET_PUB_KEY_BITS,         /**< Get the number of key bits. */
+    CRYPT_CTRL_SET_SIGN_MD,
+    CRYPT_CTRL_GET_ECC_POINT_FORMAT,     /**< ECC PKEY get the point format. */
+    CRYPT_CTRL_CLEAN_PUB_KEY,            /**< Clean the pubkey. */
     // dh
     CRYPT_CTRL_SET_DH_FLAG = 150,          /**< Set the dh flag.*/
 
@@ -648,16 +682,15 @@ typedef enum {
     CRYPT_CTRL_SET_SM2_R,               /* SM2 set the R value. */
     CRYPT_CTRL_SET_SM2_RANDOM,          /* SM2 set the r value. */
     CRYPT_CTRL_SET_SM2_PKG,             /* SM2 uses the PKG process. */
+    CRYPT_CTRL_SET_SM2_K,               /* SM2 set the K value. */
 
     CRYPT_CTRL_SET_ECC_POINT_FORMAT,      /**< ECC PKEY set the point format. For the point format,
                                              see CRYPT_PKEY_PointFormat. */
     CRYPT_CTRL_SET_ECC_USE_COFACTOR_MODE, /**< Indicates whether to use the cofactor mode to prevent
                                                man-in-the-middle from tampering with the public key.
                                                Set this parameter to 1 when used or 0 when not used. */
-    CRYPT_CTRL_SET_ECC_FLAG,              /**< Set ECC pkey flags (OR with existing). */
-    CRYPT_CTRL_CLR_ECC_FLAG,              /**< Clear ECC pkey flags (AND NOT). */
 
-    CRYPT_CTRL_GET_SM2_SEND_CHECK,      /* SM2 obtain the check value sent from the local end to the peer end. */
+    CRYPT_CTRL_SM2_GET_SEND_CHECK,      /* SM2 obtain the check value sent from the local end to the peer end. */
     CRYPT_CTRL_GENE_SM2_R,              /* SM2 obtain the R value. */
 
     CRYPT_CTRL_SM2_DO_CHECK,            /* SM2 check the shared key. */
@@ -667,14 +700,29 @@ typedef enum {
     CRYPT_CTRL_GET_ECC_ORDER_BITS,      /**< Get the number of bits in the group order. */
     CRYPT_CTRL_GET_ECC_NAME,            /**< Obtain the name of the ECC curve. */
     CRYPT_CTRL_GEN_X25519_PUBLICKEY,    /**< Use prikey genarate x25519 pubkey. */
-    CRYPT_CTRL_GET_ECC_FLAG,            /**< Get ECC pkey flags. */
+    CRYPT_CTRL_GET_SM2_RANDOM,          /**< SM2 get the r value. */
+    CRYPT_CTRL_GET_FLAG,                /**< Get ECC pkey flags. */
+    CRYPT_CTRL_SET_FLAG,                /**< Set ECC pkey flags (OR with existing). */
+    CRYPT_CTRL_CLR_FLAG,                /**< Clear ECC pkey flags (AND NOT). */
 
     // slh-dsa
     CRYPT_CTRL_GET_SLH_DSA_KEY_LEN = 600,     /**< Get the SLH-DSA key length. */
     CRYPT_CTRL_SET_SLH_DSA_ADDRAND, /**< Set the SLH-DSA additional random bytes. */
-
+    // mldsa
 	CRYPT_CTRL_SET_MLDSA_ENCODE_FLAG = 700,  /**< Set the flag for encode messages. */
     CRYPT_CTRL_SET_MLDSA_MUMSG_FLAG,         /**< Whether to calculate message representative */
+    CRYPT_CTRL_GET_MLDSA_SEED,               /**< Get MLDSA private key seed */
+    CRYPT_CTRL_SET_MLDSA_PRVKEY_FORMAT,      /**< Set MLDSA private key encode format */
+    CRYPT_CTRL_GET_MLDSA_PRVKEY_FORMAT,      /**< Get MLDSA private key encode format*/
+
+    // mlkem
+    CRYPT_CTRL_GET_MLKEM_SEED = 750,         /**< Get MLKEM private key seed (d||z) */
+    CRYPT_CTRL_SET_MLKEM_DK_FORMAT,          /**< Set MLKEM decapsulation key encode format */
+    CRYPT_CTRL_GET_MLKEM_DK_FORMAT,          /**< Get MLKEM decapsulation key encode format */
+
+    // xmss
+    CRYPT_CTRL_GET_XMSS_XDR_ALG_TYPE = 800,     /**< Get the XMSS xdr algId. */
+    CRYPT_CTRL_SET_XMSS_XDR_ALG_TYPE = 801,     /**< Set the XMSS xdr algId. */
 } CRYPT_PkeyCtrl;
 
 
@@ -682,6 +730,10 @@ typedef enum {
     CRYPT_CTRL_SET_GM_LEVEL,    /**<  Set the authentication level of gm drbg */
     CRYPT_CTRL_SET_RESEED_INTERVAL,
     CRYPT_CTRL_SET_RESEED_TIME,
+    CRYPT_CTRL_GET_RESEED_INTERVAL,
+    CRYPT_CTRL_GET_RESEED_TIME,
+    CRYPT_CTRL_SET_PREDICTION_RESISTANCE,
+    CRYPT_CTRL_GET_WORKING_STATUS,
     CRYPT_CTRL_RAND_MAX = 0xff,
 } CRYPT_RandCtrl;
 
@@ -718,6 +770,8 @@ typedef enum {
                                                obtained each time is the output length of the adjustment function.
                                                The caller can use this interface to implement the automatic collection
                                                function of the entropy pool. */
+    CRYPT_ENTROPY_SET_LOG_CALLBACK,       /**< Set the entropy log callback. This callback is used to log the noise
+                                               source collection result. */
     CRYPT_ENTROPY_MAX
 } CRYPT_ENTROPY_TYPE;
 
@@ -763,7 +817,6 @@ typedef enum {
     CRYPT_EVENT_MAC,          /**< MAC. */
     CRYPT_EVENT_KDF,          /**< KDF. */
     CRYPT_EVENT_KEYAGGREMENT, /**< Key negotiation. */
-    CRYPT_EVENT_KEYDERIVE,    /**< Derived key. */
     CRYPT_EVENT_RANDGEN,      /**< Generating a random number. */
     CRYPT_EVENT_ZERO,         /**< sensitive information to zero. */
     CRYPT_EVENT_ERR,          /**< An error occurred. */
@@ -773,6 +826,12 @@ typedef enum {
     CRYPT_EVENT_DECAPS,       /**< Key decapsulation. */
     CRYPT_EVENT_BLIND,        /**< Message blinding. */
     CRYPT_EVENT_UNBLIND,      /**< Signature unblinding. */
+    CRYPT_EVENT_PARAM_CHECK,  /**< Parameter check. */
+    CRYPT_EVENT_PCT_TEST,     /**< PCT test. */
+    CRYPT_EVENT_KAT_TEST,     /**< KAT test. */
+    CRYPT_EVENT_ES_HEALTH_TEST, /**< Entropy source health test. */
+    CRYPT_EVENT_INTEGRITY_TEST, /**< Integrity test. */
+    CRYPT_EVENT_GET_VERSION,    /**< Get the version of the provider. */
     CRYPT_EVENT_MAX
 } CRYPT_EVENT_TYPE;
 
@@ -789,6 +848,22 @@ typedef enum {
     CRYPT_ALGO_KDF,
     CRYPT_ALGO_RAND
 } CRYPT_ALGO_TYPE;
+
+typedef enum {
+    CRYPT_ALGO_MLDSA_PRIV_FORMAT_NOT_SET = 0,
+    CRYPT_ALGO_MLDSA_PRIV_FORMAT_BOTH,
+    CRYPT_ALGO_MLDSA_PRIV_FORMAT_PRIV_ONLY,
+    CRYPT_ALGO_MLDSA_PRIV_FORMAT_SEED_ONLY,
+    CRYPT_ALGO_MLDSA_PRIV_FORMAT_END,
+} CRYPT_ALGO_MLDSA_PRIV_KEY_FORMAT_TYPE;
+
+typedef enum {
+    CRYPT_ALGO_MLKEM_DK_FORMAT_NOT_SET = 0,
+    CRYPT_ALGO_MLKEM_DK_FORMAT_BOTH,
+    CRYPT_ALGO_MLKEM_DK_FORMAT_DK_ONLY,
+    CRYPT_ALGO_MLKEM_DK_FORMAT_SEED_ONLY,
+    CRYPT_ALGO_MLKEM_DK_FORMAT_END,
+} CRYPT_ALGO_MLKEM_DK_FORMAT_TYPE;
 
 /**
  * @ingroup crypt_types
@@ -846,7 +921,7 @@ typedef enum {
     CRYPT_PRIKEY_ECC,
     CRYPT_PUBKEY_SUBKEY,
     CRYPT_PUBKEY_RSA,
-    CRYPT_PUBKEY_SUBKEY_WITHOUT_SEQ
+    CRYPT_PUBKEY_SUBKEY_WITHOUT_SEQ,
 } CRYPT_ENCDEC_TYPE;
 
 typedef enum {
@@ -870,6 +945,18 @@ typedef struct {
 } CRYPT_Pbkdf2Param;
 
 typedef struct EAL_LibCtx CRYPT_EAL_LibCtx;
+
+/* The hitls framework generates context for each provider */
+typedef struct EAL_ProviderMgrCtx CRYPT_EAL_ProvMgrCtx;
+
+typedef struct {
+    int32_t id;
+    void *func;
+} CRYPT_EAL_Func;
+
+typedef enum {
+    CRYPT_CMVP_PROVIDER_SELFTEST = 0x01, /**< Self-test. */
+} CRYPT_CMVP_SELFTEST_AlgId;
 
 #ifdef __cplusplus
 }

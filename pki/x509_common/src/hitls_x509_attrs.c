@@ -14,7 +14,7 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_PKI_X509_CSR) || defined(HITLS_PKI_PKCS12)
+#if (defined(HITLS_PKI_X509_CSR) && defined(HITLS_PKI_X509_CSR_ATTR)) || defined(HITLS_PKI_PKCS12)
 #include <stdint.h>
 #include "securec.h"
 #include "hitls_x509_local.h"
@@ -27,7 +27,7 @@
 #include "hitls_pki_errno.h"
 #include "hitls_pki_utils.h"
 
-#if defined(HITLS_PKI_X509_CSR_PARSE) || defined(HITLS_PKI_PKCS12_PARSE)
+#if defined(HITLS_PKI_X509_CSR_PARSE) || defined(HITLS_PKI_PKCS12_PARSE) || defined(HITLS_PKI_CMS_SIGNEDDATA)
 /**
  * RFC 2985: section-5.4.2
  *  extensionRequest ATTRIBUTE ::= {
@@ -92,7 +92,7 @@ void HITLS_X509_AttrsFree(HITLS_X509_Attrs *attrs, HITLS_X509_FreeAttrItemCb fre
     BSL_SAL_Free(attrs);
 }
 
-#if defined(HITLS_PKI_X509_CSR_GEN) || defined(HITLS_PKI_PKCS12_GEN)
+#if defined(HITLS_PKI_X509_CSR_GEN) || defined(HITLS_PKI_PKCS12_GEN) || defined(HITLS_PKI_CMS_SIGNEDDATA)
 int32_t HITLS_X509_EncodeObjIdentity(BslCid cid, BSL_ASN1_Buffer *asnBuff)
 {
     BslOidString *oidStr = BSL_OBJ_GetOID(cid);
@@ -144,11 +144,11 @@ void HITLS_X509_AttrEntryFree(HITLS_X509_AttrEntry *attr)
     if (attr == NULL) {
         return;
     }
-    BSL_SAL_Free(attr->attrValue.buff);
+    BSL_SAL_FREE(attr->attrValue.buff);
     BSL_SAL_Free(attr);
 }
 
-#if defined(HITLS_PKI_X509_CSR_PARSE) || defined(HITLS_PKI_PKCS12_PARSE)
+#if defined(HITLS_PKI_X509_CSR_PARSE) || defined(HITLS_PKI_PKCS12_PARSE) || defined(HITLS_PKI_CMS_SIGNEDDATA)
 int32_t HITLS_X509_ParseAttr(BSL_ASN1_Buffer *attrItem, HITLS_X509_AttrEntry *attrEntry)
 {
     uint8_t *temp = attrItem->buff;
@@ -164,12 +164,9 @@ int32_t HITLS_X509_ParseAttr(BSL_ASN1_Buffer *attrItem, HITLS_X509_AttrEntry *at
         return ret;
     }
     /* parse attribute id */
-    BslOidString oid = {asnArr[HITLS_X509_ATTR_OID_IDX].len, (char *)asnArr[HITLS_X509_ATTR_OID_IDX].buff, 0};
-    attrEntry->cid = BSL_OBJ_GetCID(&oid);
-    if (attrEntry->cid == BSL_CID_UNKNOWN) {
-        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_PARSE_OBJ_ID);
-        return HITLS_X509_ERR_PARSE_OBJ_ID;
-    }
+    attrEntry->cid = BSL_OBJ_GetCidFromOidBuff(asnArr[HITLS_X509_ATTR_OID_IDX].buff,
+        asnArr[HITLS_X509_ATTR_OID_IDX].len);
+    /* Unknown OID is allowed, retain the original data for further processing */
     /* set id and value asn1 buffer */
     attrEntry->attrId = asnArr[HITLS_X509_ATTR_OID_IDX];
     attrEntry->attrValue = asnArr[HITLS_X509_ATTR_SET_IDX];
@@ -255,11 +252,6 @@ static int32_t EncodeReqExtAttr(HITLS_X509_Attrs *attributes, void *val, uint32_
 
 static int32_t SetAttr(HITLS_X509_Attrs *attributes, BslCid cid, void *val, uint32_t valLen, EncodeAttrCb encodeAttrCb)
 {
-    if (val == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
-        return HITLS_X509_ERR_INVALID_PARAM;
-    }
-
     /* Check if the attribute already exists. */
     if (BSL_LIST_Search(attributes->list, &cid, CmpAttrEntryByCid, NULL) != NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_SET_ATTR_REPEAT);
@@ -322,11 +314,6 @@ static int32_t DecodeReqExtAttr(HITLS_X509_Attrs *attributes, HITLS_X509_AttrEnt
 
 static int32_t GetAttr(HITLS_X509_Attrs *attributes, BslCid cid, void *val, uint32_t valLen, DecodeAttrCb decodeAttrCb)
 {
-    if (val == NULL) {
-        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
-        return HITLS_X509_ERR_INVALID_PARAM;
-    }
-
     HITLS_X509_AttrEntry *attrEntry = BSL_LIST_Search(attributes->list, &cid, CmpAttrEntryByCid, NULL);
     if (attrEntry == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_ATTR_NOT_FOUND);
@@ -355,7 +342,7 @@ int32_t HITLS_X509_AttrCtrl(HITLS_X509_Attrs *attributes, HITLS_X509_AttrCmd cmd
     }
 }
 
-#if defined(HITLS_PKI_X509_CSR_GEN) || defined(HITLS_PKI_PKCS12_GEN)
+#if defined(HITLS_PKI_X509_CSR_GEN) || defined(HITLS_PKI_PKCS12_GEN) || defined(HITLS_PKI_CMS_SIGNEDDATA)
 
 #define X509_CSR_ATTR_ELEM_NUMBER 2
 static BSL_ASN1_TemplateItem g_x509AttrEntryTempl[] = {
@@ -370,7 +357,7 @@ int32_t HITLS_X509_EncodeAttrEntry(HITLS_X509_AttrEntry *node, BSL_ASN1_Buffer *
     asnBuf[1] = node->attrValue;
     BSL_ASN1_Template templ = {g_x509AttrEntryTempl, sizeof(g_x509AttrEntryTempl) / sizeof(g_x509AttrEntryTempl[0])};
     int32_t ret = BSL_ASN1_EncodeTemplate(&templ, asnBuf, X509_CSR_ATTR_ELEM_NUMBER, &attrBuff->buff, &attrBuff->len);
-    if (ret != HITLS_PKI_SUCCESS) {
+    if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
@@ -378,7 +365,7 @@ int32_t HITLS_X509_EncodeAttrEntry(HITLS_X509_AttrEntry *node, BSL_ASN1_Buffer *
     return ret;
 }
 
-void FreeAsnAttrsBuff(BSL_ASN1_Buffer *asnBuf, uint32_t count)
+static void FreeAsnAttrsBuff(BSL_ASN1_Buffer *asnBuf, uint32_t count)
 {
     for (uint32_t i = 0; i < count; i++) {
         BSL_SAL_FREE(asnBuf[i].buff);
@@ -406,7 +393,7 @@ int32_t HITLS_X509_EncodeAttrList(uint8_t tag, HITLS_X509_Attrs *attrs, HITLS_X5
     int32_t ret;
     void *node = NULL;
     for (node = BSL_LIST_GET_FIRST(attrs->list); node != NULL; node = BSL_LIST_GET_NEXT(attrs->list), iter++) {
-        HITLS_X509_AttrEntry attrEntry = {};
+        HITLS_X509_AttrEntry attrEntry = {0};
         if (encodeCb != NULL) {
             ret = encodeCb(node, &attrEntry);
             if (ret != HITLS_PKI_SUCCESS) {
@@ -429,7 +416,7 @@ int32_t HITLS_X509_EncodeAttrList(uint8_t tag, HITLS_X509_Attrs *attrs, HITLS_X5
     BSL_ASN1_Template templ = {&attrSeqTempl, 1};
     ret = BSL_ASN1_EncodeListItem(BSL_ASN1_TAG_SEQUENCE, count, &templ, asnBuf, iter, attrAsn1);
     FreeAsnAttrsBuff(asnBuf, count);
-    if (ret != HITLS_PKI_SUCCESS) {
+    if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
@@ -437,6 +424,6 @@ int32_t HITLS_X509_EncodeAttrList(uint8_t tag, HITLS_X509_Attrs *attrs, HITLS_X5
     attrAsn1->tag = tag;
     return ret;
 }
-#endif // HITLS_PKI_X509_CSR_GEN || HITLS_PKI_PKCS12_GEN
+#endif // HITLS_PKI_X509_CSR_GEN || HITLS_PKI_PKCS12_GEN || HITLS_PKI_CMS_SIGNEDDATA
 
-#endif // HITLS_PKI_X509_CSR || HITLS_PKI_PKCS12
+#endif // (HITLS_PKI_X509_CSR && HITLS_PKI_X509_CSR_ATTR) || HITLS_PKI_PKCS12

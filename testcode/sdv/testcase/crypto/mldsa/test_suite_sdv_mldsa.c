@@ -66,14 +66,14 @@ void SDV_CRYPTO_MLDSA_API_TC001(int type, int setBits)
     CRYPT_EAL_PkeyCtx *ctx1 = NULL;
     CRYPT_EAL_PkeyCtx *ctx2 = NULL;
     CRYPT_EAL_PkeyCtx *ctx3 = NULL;
- 
+
 #ifdef HITLS_CRYPTO_PROVIDER
     ctx1 = CRYPT_EAL_ProviderPkeyNewCtx(NULL, CRYPT_PKEY_ML_DSA, CRYPT_EAL_PKEY_SIGN_OPERATE, "provider=default");
 #else
     ctx1 = CRYPT_EAL_PkeyNewCtx(CRYPT_PKEY_ML_DSA);
 #endif
     ASSERT_TRUE(ctx1 != NULL);
-    uint32_t val = (uint32_t)type;
+    int32_t val = (int32_t)type;
     int32_t ret = CRYPT_EAL_PkeyCtrl(ctx1, CRYPT_CTRL_SET_PARA_BY_ID, &val, sizeof(val));
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ret = CRYPT_EAL_PkeyGen(ctx1);
@@ -85,7 +85,7 @@ void SDV_CRYPTO_MLDSA_API_TC001(int type, int setBits)
     ctx2 = CRYPT_EAL_PkeyNewCtx(CRYPT_PKEY_ML_DSA);
 #endif
     ASSERT_TRUE(ctx2 != NULL);
-    val = (uint32_t)type;
+    val = (int32_t)type;
     ret = CRYPT_EAL_PkeyCtrl(ctx2, CRYPT_CTRL_SET_PARA_BY_ID, &val, sizeof(val));
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ret = CRYPT_EAL_PkeyGen(ctx2);
@@ -132,7 +132,7 @@ void SDV_CRYPTO_MLDSA_FUNC_KEYGEN_TC001(int type, Hex *d, Hex *testPubkey, Hex *
     memcpy_s(gMlDsaRandBuf[0], 32, d->x, d->len);
     CRYPT_RandRegist(TEST_MLDSARandom);
     CRYPT_RandRegistEx(TEST_MLDSARandomEx);
- 
+
     CRYPT_EAL_PkeyPub pubKey = { 0 };
     pubKey.id = CRYPT_PKEY_ML_DSA;
     pubKey.key.mldsaPub.len = testPubkey->len;
@@ -370,6 +370,7 @@ void SDV_CRYPTO_MLDSA_FUNC_SIGNDATA_TC002(int type, Hex *seed, Hex *testPrvKey, 
     ret = CRYPT_EAL_PkeySign(ctx, CRYPT_MD_MAX, msg->x, msg->len, out, &outLen);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ASSERT_COMPARE("compare sign", out, outLen, sign->x, sign->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(ctx);
     BSL_SAL_FREE(out);
@@ -424,6 +425,7 @@ void SDV_CRYPTO_MLDSA_FUNC_VERIFYDATA_TC002(int type, Hex *testPubKey, Hex *msg,
     ret = CRYPT_EAL_PkeyVerify(ctx, CRYPT_MD_MAX, msg->x, msg->len, sign->x, sign->len);
     if (res == 0) {
         ASSERT_EQ(ret, CRYPT_SUCCESS);
+        ASSERT_TRUE(TestIsErrStackEmpty());
     } else {
         ASSERT_NE(ret, CRYPT_SUCCESS);
     }
@@ -497,6 +499,7 @@ void SDV_CRYPTO_MLDSA_FUNC_SIGN_TC001(int type, int hashId, Hex *seed, Hex *test
     ret = CRYPT_EAL_PkeySign(ctx, hashId, msg->x, msg->len, out, &outLen);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ASSERT_COMPARE("compare sign", out, outLen, sign->x, sign->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(ctx);
     BSL_SAL_FREE(out);
@@ -554,6 +557,7 @@ void SDV_CRYPTO_MLDSA_FUNC_VERIFY_TC001(int type, int hashId, Hex *testPubKey, H
     ret = CRYPT_EAL_PkeyVerify(ctx, hashId, msg->x, msg->len, sign->x, sign->len);
     if (res == 0) {
         ASSERT_EQ(ret, CRYPT_SUCCESS);
+        ASSERT_TRUE(TestIsErrStackEmpty());
     } else {
         ASSERT_NE(ret, CRYPT_SUCCESS);
     }
@@ -577,7 +581,7 @@ EXIT:
 void SDV_CRYPTO_MLDSA_FUNC_PROVIDER_TC001(int type, Hex *testPubKey, Hex *testPrvKey, Hex *msg, Hex *context, Hex *sign)
 {
     TestMemInit();
-    TestRandInit();
+    TestRandInitSelfCheck();
     uint8_t *out = NULL;
     CRYPT_EAL_PkeyCtx *ctx = NULL;
 #ifdef HITLS_CRYPTO_PROVIDER
@@ -651,8 +655,10 @@ void SDV_CRYPTO_MLDSA_FUNC_PROVIDER_TC001(int type, Hex *testPubKey, Hex *testPr
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ret = CRYPT_EAL_PkeyVerify(ctx2, CRYPT_MD_SHA256, msg->x, msg->len, out, outLen);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
     ret = CRYPT_EAL_PkeyCmp(ctx, ctx2);
     ASSERT_NE(ret, CRYPT_SUCCESS);
+    (void)TestErrClear();
 
     CRYPT_EAL_PkeyCtx *ctx3 = CRYPT_EAL_PkeyDupCtx(ctx);
     ASSERT_TRUE(ctx3 != NULL);
@@ -663,6 +669,7 @@ void SDV_CRYPTO_MLDSA_FUNC_PROVIDER_TC001(int type, Hex *testPubKey, Hex *testPr
     ASSERT_EQ(ret, CRYPT_SUCCESS);
     ret = CRYPT_EAL_PkeyVerify(ctx3, CRYPT_MD_SHA256, msg->x, msg->len, out, outLen);
     ASSERT_EQ(ret, CRYPT_SUCCESS);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(ctx);
     CRYPT_EAL_PkeyFreeCtx(ctx2);

@@ -57,11 +57,31 @@ typedef struct {
     BN_Mont *mont;
 } CRYPT_RSA_PubKey;
 
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+typedef struct {
+    BN_BigNum *xp;  // main seed for prime p
+    BN_BigNum *xp1; // auxiliary seed1 for prime p
+    BN_BigNum *xp2; // auxiliary seed2 for prime p
+    BN_BigNum *xq;  // main seed for prime q
+    BN_BigNum *xq1; // auxiliary seed1 for prime q
+    BN_BigNum *xq2; // auxiliary seed2 for prime q
+} RSA_FIPS_AUX_PRIME_SEEDS;
+
+typedef struct {
+    union {
+        RSA_FIPS_AUX_PRIME_SEEDS fipsPrimeSeeds;
+    } primeSeed;
+} RSA_ACVP_TESTS;
+#endif
+
 struct RSA_Para {
     BN_BigNum *e;  // Exponent Value -converted.Not in char
     uint32_t bits;   // length in bits of modulus
     BN_BigNum *p;     // prime factor p
     BN_BigNum *q;     // prime factor q
+#ifdef HITLS_CRYPTO_ACVP_TESTS
+    RSA_ACVP_TESTS acvpTests;
+#endif
 };
 
 #ifdef HITLS_CRYPTO_RSA_BSSA
@@ -128,17 +148,20 @@ struct RSA_Ctx {
     RSA_BlindParam *blindParam;
 #endif
     void *libCtx;
+    char *mdAttr;
 };
+
+#define LIBCTX_FROM_RSA_CTX(ctx) ((ctx) == NULL ? NULL : (ctx)->libCtx)
+#define MDATTR_FROM_RSA_CTX(ctx) ((ctx) == NULL ? NULL : (ctx)->mdAttr)
 
 CRYPT_RSA_PrvKey *RSA_NewPrvKey(uint32_t bits);
 CRYPT_RSA_PubKey *RSA_NewPubKey(uint32_t bits);
 void RSA_FreePrvKey(CRYPT_RSA_PrvKey *prvKey);
 void RSA_FreePubKey(CRYPT_RSA_PubKey *pubKey);
 int32_t RSA_CalcPrvKey(const CRYPT_RSA_Para *para, CRYPT_RSA_Ctx *ctx, BN_Optimizer *optimizer);
-int32_t GenPssSalt(void *libCtx, CRYPT_Data *salt, const EAL_MdMethod *mdMethod, int32_t saltLen, uint32_t padBuffLen);
 void ShallowCopyCtx(CRYPT_RSA_Ctx *ctx, CRYPT_RSA_Ctx *newCtx);
 CRYPT_RSA_Para *CRYPT_RSA_DupPara(const CRYPT_RSA_Para *para);
-#ifdef HITLS_CRYPTO_RSA_EMSA_PKCSV15
+#if defined(HITLS_CRYPTO_RSA_EMSA_PKCSV15) || defined(HITLS_CRYPTO_RSA_RECOVER)
 int32_t CRYPT_RSA_UnPackPkcsV15Type1(uint8_t *data, uint32_t dataLen, uint8_t *out, uint32_t *outLen);
 #endif
 

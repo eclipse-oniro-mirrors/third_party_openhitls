@@ -79,6 +79,10 @@ int32_t CipherMacUpdate(Cipher_MAC_Common_Ctx *ctx, const uint8_t *in, uint32_t 
     const EAL_SymMethod *method = ctx->method;
     int32_t ret;
     uint32_t blockSize = method->blockSize;
+    if (blockSize == 0 || blockSize > CIPHER_MAC_MAXBLOCKSIZE) {
+        BSL_ERR_PUSH_ERROR(CRYPT_ERR_ALGID);
+        return CRYPT_ERR_ALGID;
+    }
     const uint8_t *inTmp = in;
     uint32_t lenTmp = len;
     if (ctx->len > 0) {
@@ -87,8 +91,11 @@ int32_t CipherMacUpdate(Cipher_MAC_Common_Ctx *ctx, const uint8_t *in, uint32_t 
             return CRYPT_CMAC_INPUT_OVERFLOW;
         }
         uint32_t end = (ctx->len + lenTmp) > (blockSize) ? (blockSize) : (ctx->len + lenTmp);
-        for (uint32_t i = ctx->len; i < end; i++) {
-            ctx->left[i] = (*inTmp);
+        uint8_t *left = ctx->left + ctx->len;
+        uint8_t *leftEnd = ctx->left + end;
+        while (left < leftEnd) {
+            *left = *inTmp;
+            left++;
             inTmp++;
         }
         lenTmp -= (end - ctx->len);
@@ -113,29 +120,33 @@ int32_t CipherMacUpdate(Cipher_MAC_Common_Ctx *ctx, const uint8_t *in, uint32_t 
         lenTmp -= blockSize;
         inTmp += blockSize;
     }
-    for (uint32_t i = 0; i < lenTmp; i++) {
-        ctx->left[i] = inTmp[i];
+    uint8_t *left = ctx->left;
+    const uint8_t *leftSrcEnd = inTmp + lenTmp;
+    while (inTmp < leftSrcEnd) {
+        *left = *inTmp;
+        left++;
+        inTmp++;
     }
     ctx->len = lenTmp;
     return CRYPT_SUCCESS;
 }
 
-void CipherMacReinit(Cipher_MAC_Common_Ctx *ctx)
+int32_t CipherMacReinit(Cipher_MAC_Common_Ctx *ctx)
 {
     if (ctx == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return;
+        return CRYPT_NULL_INPUT;
     }
 
     (void)memset_s(ctx->data, CIPHER_MAC_MAXBLOCKSIZE, 0, CIPHER_MAC_MAXBLOCKSIZE);
     ctx->len = 0;
+    return CRYPT_SUCCESS;
 }
 
-void CipherMacDeinit(Cipher_MAC_Common_Ctx *ctx)
+int32_t CipherMacDeinit(Cipher_MAC_Common_Ctx *ctx)
 {
     if (ctx == NULL || ctx->method == NULL) {
-        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
-        return;
+        return CRYPT_NULL_INPUT;
     }
 
     const uint32_t ctxSize = ctx->method->ctxSize;
@@ -143,6 +154,7 @@ void CipherMacDeinit(Cipher_MAC_Common_Ctx *ctx)
     (void)memset_s(ctx->data, CIPHER_MAC_MAXBLOCKSIZE, 0, CIPHER_MAC_MAXBLOCKSIZE);
     (void)memset_s(ctx->left, CIPHER_MAC_MAXBLOCKSIZE, 0, CIPHER_MAC_MAXBLOCKSIZE);
     ctx->len = 0;
+    return CRYPT_SUCCESS;
 }
 
 int32_t CipherMacGetMacLen(const Cipher_MAC_Common_Ctx *ctx, void *val, uint32_t len)

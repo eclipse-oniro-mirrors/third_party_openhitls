@@ -56,7 +56,7 @@ static void FreeDecoderNode(CRYPT_DECODER_Node *decoderNode)
 }
 
 CRYPT_DECODER_PoolCtx *CRYPT_DECODE_PoolNewCtx(CRYPT_EAL_LibCtx *libCtx, const char *attrName,
-    int32_t keyType, const char *format, const char *type)
+    int32_t pkeyAlgId, const char *format, const char *type)
 {
     CRYPT_DECODER_PoolCtx *poolCtx = BSL_SAL_Calloc(1, sizeof(CRYPT_DECODER_PoolCtx));
     if (poolCtx == NULL) {
@@ -80,7 +80,7 @@ CRYPT_DECODER_PoolCtx *CRYPT_DECODE_PoolNewCtx(CRYPT_EAL_LibCtx *libCtx, const c
     }
     poolCtx->inputFormat = format;
     poolCtx->inputType = type;
-    poolCtx->inputKeyType = keyType;
+    poolCtx->inputPkeyAlgId = pkeyAlgId;
     poolCtx->targetFormat = NULL;
     poolCtx->targetType = NULL;
     return poolCtx;
@@ -221,8 +221,9 @@ static CRYPT_DECODER_Ctx* GetUsableDecoderFromPool(CRYPT_DECODER_PoolCtx *poolCt
     if (node != NULL) {
         decoderCtx = node;
         decoderCtx->decoderState = CRYPT_DECODER_STATE_TRING;
+        return decoderCtx;
     }
-    return node != NULL ? decoderCtx : NULL;
+    return NULL;
 }
 
 static int32_t UpdateDecoderPath(CRYPT_DECODER_PoolCtx *poolCtx, CRYPT_DECODER_Node *currNode)
@@ -246,6 +247,7 @@ static int32_t UpdateDecoderPath(CRYPT_DECODER_PoolCtx *poolCtx, CRYPT_DECODER_N
 static int32_t TryDecodeWithDecoder(CRYPT_DECODER_PoolCtx *poolCtx, CRYPT_DECODER_Node *currNode)
 {
     /* Convert password buffer to parameter if provided */
+    BSL_ERR_SET_MARK();
     BSL_Param *decoderParam = NULL;
     int32_t ret = CRYPT_DECODE_Decode(currNode->decoderCtx, currNode->inData.data, &decoderParam);
     if (ret == CRYPT_SUCCESS) {
@@ -276,6 +278,7 @@ static int32_t TryDecodeWithDecoder(CRYPT_DECODER_PoolCtx *poolCtx, CRYPT_DECODE
 
         return CRYPT_SUCCESS;
     } else {
+        BSL_ERR_POP_TO_MARK();
         /* Mark the node as tried */
         currNode->decoderCtx->decoderState = CRYPT_DECODER_STATE_TRIED;
         return CRYPT_DECODE_RETRY;

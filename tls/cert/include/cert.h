@@ -21,10 +21,13 @@
 #include "hitls_cert_type.h"
 #include "cipher_suite.h"
 #include "cert_mgr.h"
+#include "tls.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define TLS_DEFAULT_VERIFY_DEPTH 20u
 
 #define MAX_PASS_LEN 256
 
@@ -37,19 +40,6 @@ typedef struct CertItem {
     uint8_t *data;          /* Data content */
     struct CertItem *next;
 } CERT_Item;
-
-/* Information used to describe the expected certificate */
-typedef struct {
-    /* The server must select the certificate matching the cipher suite. The client has no such restriction. */
-    CERT_Type certType;
-    uint16_t *signSchemeList;       /* certificate signature algorithm list */
-    uint32_t signSchemeNum;         /* number of certificate signature algorithms */
-    uint16_t *ellipticCurveList;    /* EC curve ID list */
-    uint32_t ellipticCurveNum;      /* number of EC curve IDs */
-    uint8_t *ecPointFormatList;     /* EC point format list */
-    uint32_t ecPointFormatNum;      /* number of EC point formats */
-    HITLS_TrustedCAList *caList;    /* trusted CA list */
-} CERT_ExpectInfo;
 
 /**
  * @ingroup hitls_cert_type
@@ -65,45 +55,28 @@ typedef struct {
 } CERT_SignParam;
 
 /**
- * @brief Check the certificate information.
+ * @brief Check if signature algorithm is allowed by protocol version and security policy
+ *
+ * This function performs comprehensive checks on signature algorithms:
+ * - Check if algorithm is in the allowed list (basic intersection)
+ * - Security policy compliance (via SECURITY_SslCheck)
+ * - TLS 1.3 restrictions (no RSA PKCS#1 v1.5, DSA, SHA1, SHA224)
+ * - SM-TLS13 restrictions (only SM2-SM3 allowed)
  *
  * @param ctx [IN] TLS context
- * @param expectCertInfo [IN] Expected certificate information
- * @param cert [IN] Certificate
- * @param isNegotiateSignAlgo [IN] Indicates whether to select the signature algorithm used in handshake messages.
- * @param signCheck [IN] Indicates whether to check the certificate signature information.
- *
- * @retval HITLS_SUCCESS                            succeeded.
- * @retval HITLS_UNREGISTERED_CALLBACK              No callback is set.
- * @retval HITLS_CERT_CTRL_ERR_GET_PUB_KEY          Failed to obtain the public key.
- * @retval HITLS_CERT_KEY_CTRL_ERR_GET_TYPE         Failed to obtain the public key type.
- * @retval HITLS_CERT_ERR_UNSUPPORT_CERT_TYPE       The certificate type does not match.
- * @retval HITLS_CERT_ERR_NO_SIGN_SCHEME_MATCH      signature algorithm mismatch
- * @retval HITLS_CERT_ERR_NO_CURVE_MATCH            elliptic curve mismatch
- * @retval HITLS_CERT_ERR_NO_POINT_FORMAT_MATCH     Point format mismatch
+ * @param signScheme [IN] Signature scheme to check
+ * @param allowList [IN] Allowed signature algorithm list (can be NULL to skip list check)
+ * @param allowListSize [IN] Size of the allowed list
+ * @return true if the algorithm is allowed, false otherwise
  */
-int32_t SAL_CERT_CheckCertInfo(HITLS_Ctx *ctx, const CERT_ExpectInfo *expectCertInfo, HITLS_CERT_X509 *cert,
-    bool isNegotiateSignAlgo, bool signCheck);
-
-/**
- * @brief Select the certificate chain to be sent to the peer end.
- *
- * @param ctx  [IN] tls Context
- * @param info [IN] Expected certificate information
- *
- * @retval HITLS_SUCCESS                            succeeded.
- * @retval HITLS_UNREGISTERED_CALLBACK              No callback is set.
- * @retval HITLS_CERT_ERR_SELECT_CERTIFICATE        Failed to select the certificate.
- */
-int32_t SAL_CERT_SelectCertByInfo(HITLS_Ctx *ctx, CERT_ExpectInfo *info);
+bool SAL_CERT_IsSignAlgorithmAllowed(const TLS_Ctx *ctx, uint16_t signScheme,
+    const uint16_t *allowList, uint32_t allowListSize);
 
 /**
  * @brief Encode the certificate chain in ASN.1 DER format.
  *
  * @param ctx     [IN] tls Context
- * @param buf     [OUT] Certificate encoding data
- * @param bufLen  [OUT] Maximum length of data padding.
- * @param usedLen [OUT] Data length
+ * @param pkt     [IN/OUT] Context for packing
  *
  * @retval HITLS_SUCCESS                            succeeded.
  * @retval HITLS_UNREGISTERED_CALLBACK              No callback is set.
@@ -111,7 +84,7 @@ int32_t SAL_CERT_SelectCertByInfo(HITLS_Ctx *ctx, CERT_ExpectInfo *info);
  * @retval HITLS_CERT_CTRL_ERR_GET_ENCODE_LEN       Failed to obtain the encoding length.
  * @retval HITLS_CERT_ERR_ENCODE_CERT               Certificate encoding failed.
  */
-int32_t SAL_CERT_EncodeCertChain(HITLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen);
+int32_t SAL_CERT_EncodeCertChain(HITLS_Ctx *ctx, PackPacket *pkt);
 
 /**
  * @brief Decode the certificate in ASN.1 DER format.
@@ -253,17 +226,20 @@ uint8_t *SAL_CERT_ClntGmEncodeEncCert(HITLS_Ctx *ctx, CERT_Pair *peerCert, uint3
  *
  * @retval true indicates that is the encryption certificate.
  */
-
 bool SAL_CERT_CheckCertKeyUsage(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, HITLS_CERT_CtrlCmd keyusage);
 
 /**
- * @brief   get cert key type based on signScheme
+ * @ingroup hitls_cert_reg
+ * @brief Check the secbits of key
  *
- * @param   signScheme [IN] signature algorithm
+ * @param ctx [IN] tls Context
+ * @param cert [IN] Certificate
+ * @param key [IN] key
  *
- * @retval  cert key type
+ * @retval HITLS_SUCCESS succeeded.
+ * @retval For other error codes, see hitls_error.h.
  */
-HITLS_CERT_KeyType SAL_CERT_SignScheme2CertKeyType(const HITLS_Ctx *ctx, HITLS_SignHashAlgo signScheme);
+int32_t SAL_CERT_CheckKeySecbits(HITLS_Ctx *ctx, HITLS_CERT_X509 *cert, HITLS_CERT_Key *key);
 
 #ifdef __cplusplus
 }

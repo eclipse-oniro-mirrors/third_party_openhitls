@@ -44,7 +44,10 @@ struct DSA_Ctx {
     BN_BigNum *y; // public key
     CRYPT_DSA_Para *para; // key parameter
     BSL_SAL_RefCount references;
+    CRYPT_MD_AlgId signMdId;
+    uint8_t flag;
     void *libCtx;
+    char *mdAttr;
 };
 
 #ifdef __cplusplus

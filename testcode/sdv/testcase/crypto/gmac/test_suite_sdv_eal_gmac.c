@@ -17,16 +17,16 @@
 #include <limits.h>
 #include <pthread.h>
 #include "securec.h"
-#include "stub_replace.h"
 #include "crypt_algid.h"
 #include "crypt_errno.h"
 #include "crypt_eal_mac.h"
 #include "bsl_sal.h"
 #include "eal_mac_local.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 
 /* END_HEADER */
 #define GMAC_DEFAULT_TAGLEN 16
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 
 /* BEGIN_CASE */
 void SDV_CRYPTO_EAL_GMAC_FUNC_TC001(int id, Hex *key, Hex *iv, Hex *msg, Hex *mac)
@@ -46,6 +46,7 @@ void SDV_CRYPTO_EAL_GMAC_FUNC_TC001(int id, Hex *key, Hex *iv, Hex *msg, Hex *ma
     ASSERT_TRUE(CRYPT_EAL_MacUpdate(gmacCtx, msg->x, msg->len) == CRYPT_SUCCESS);
     ASSERT_TRUE(CRYPT_EAL_MacFinal(gmacCtx, output, &outLen) == CRYPT_SUCCESS);
     ASSERT_TRUE(memcmp(output, mac->x, outLen) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     free(output);
@@ -210,6 +211,7 @@ void SDV_CRYPT_EAL_GMAC_SAMEADDR_FUNC_TC001(int algId, Hex *key, Hex *iv, Hex *d
     ASSERT_EQ(CRYPT_EAL_MacUpdate(ctx, out, data->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_MacFinal(ctx, out, &tagLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("gmac result cmp", out, tagLen, mac->x, mac->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     free(out);
@@ -258,6 +260,7 @@ void SDV_CRYPT_EAL_GMAC_ADDR_NOT_ALIGN_FUNC_TC001(int algId, Hex *key, Hex *iv, 
     ASSERT_EQ(CRYPT_EAL_MacUpdate(ctx, pData, data->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_MacFinal(ctx, out, &tagLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("mac result cmp", out, tagLen, mac->x, mac->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     free(out);
@@ -289,8 +292,7 @@ void SDV_CRYPTO_GMAC_COPY_CTX_API_TC001(int algId, int isProvider)
 
     // A directly created context can also be used as the destination for copying.
     ASSERT_EQ(CRYPT_EAL_MacCopyCtx(&ctxC, ctxA), CRYPT_SUCCESS);
-    ctxC.macMeth->freeCtx(ctxC.ctx);
-    BSL_SAL_Free(ctxC.macMeth);
+    ctxC.macMeth.freeCtx(ctxC.ctx);
 EXIT:
     CRYPT_EAL_MacFreeCtx(ctxA);
     CRYPT_EAL_MacFreeCtx(ctxB);
@@ -395,9 +397,7 @@ void SDV_CRYPTO_GMAC_COPY_CTX_STUB_TC001(int algId, Hex *key, Hex *iv, Hex *vecM
 {
     TestMemInit();
     uint32_t totalMallocCount = 0;
-    STUB_Init();
-    FuncStubInfo tmpRpInfo = {0};
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
 
     STUB_EnableMallocFail(false);
     STUB_ResetMallocCount();
@@ -412,6 +412,6 @@ void SDV_CRYPTO_GMAC_COPY_CTX_STUB_TC001(int algId, Hex *key, Hex *iv, Hex *vecM
     }
 
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */

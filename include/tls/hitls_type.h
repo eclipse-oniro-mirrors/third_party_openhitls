@@ -15,7 +15,7 @@
 
 /**
  * @defgroup hitls_type
- * @ingroup hitls
+ * @ingroup tls
  * @brief TLS type definition, provides the TLS type required by the user
  */
 
@@ -48,9 +48,9 @@ typedef struct TlsCipherSuiteInfo HITLS_Cipher;
 
 typedef struct TlsSessCtx HITLS_Session;
 
-typedef struct CertVerifyParamInner HITLS_CertVerifyParam;
 /**
 * @ingroup hitls_type
+*
 * @brief   DTLS SCTP authkey length, which is specified in the protocol and can be used to determine the length
 * when the auth key is set.
 */
@@ -58,21 +58,46 @@ typedef struct CertVerifyParamInner HITLS_CertVerifyParam;
 
 /**
 * @ingroup hitls_type
+*
 * @brief   TLS1.3 key exchange mode: Only PSKs are used for key negotiation.
 */
 #define TLS13_KE_MODE_PSK_ONLY 1u
 
 /**
 * @ingroup hitls_type
+*
 * @brief   TLS1.3 key exchange mode: Both PSK and (EC)DHE are used for key negotiation.
 */
 #define TLS13_KE_MODE_PSK_WITH_DHE 2u
 /**
 * @ingroup hitls_type
+*
 * @brief   TLS1.3 certificate authentication: The certificate authentication is used and
 * the (EC)DHE negotiation key is required.
 */
 #define TLS13_CERT_AUTH_WITH_DHE 4u
+
+/**
+ * @ingroup hitls_config
+ *
+ * @brief   Extended Master Secret (EMS) mode - Forbidden
+ *          The EMS extension is not supported.
+ */
+#define HITLS_EMS_MODE_FORBID (-1)
+/**
+ * @ingroup hitls_config
+ *
+ * @brief   Extended Master Secret (EMS) mode - Prefer
+ *          Send EMS extension and allow non-EMS connections.
+ */
+#define HITLS_EMS_MODE_PREFER (0)
+/**
+ * @ingroup hitls_config
+ *
+ * @brief   Extended Master Secret (EMS) mode - Force
+ *          Require EMS negotiation, otherwise fail the handshake.
+ */
+#define HITLS_EMS_MODE_FORCE  (1)
 
 /* Sets the number of digits in the version number. */
 #define SSLV2_VERSION_BIT 0x00000001U
@@ -100,17 +125,23 @@ typedef struct CertVerifyParamInner HITLS_CertVerifyParam;
 
 /**
  * @ingroup hitls_type
+ *
  * @brief   HITLS_SESS_CACHE_MODE: mode for storing hitls sessions.
  */
 typedef enum {
-    HITLS_SESS_CACHE_NO,
-    HITLS_SESS_CACHE_CLIENT,
-    HITLS_SESS_CACHE_SERVER,
-    HITLS_SESS_CACHE_BOTH,
+    HITLS_SESS_CACHE_NO = 0x00000000U,
+    HITLS_SESS_CACHE_CLIENT = 0x00000001U,
+    HITLS_SESS_CACHE_SERVER = 0x00000002U,
+    HITLS_SESS_CACHE_BOTH = 0x00000003U,
+    HITLS_SESS_DISABLE_INTERNAL_STORE = 0x00000004U,
+    HITLS_SESS_DISABLE_INTERNAL_LOOKUP = 0x00000008U,
+    HITLS_SESS_DISABLE_AUTO_CLEANUP = 0x00000010U,
+    HITLS_SESS_ENABLE_TIME_UPDATE = 0x00000020U,
 } HITLS_SESS_CACHE_MODE;
 
 /**
  * @ingroup hitls_type
+ *
  * @brief   key update message type
  */
 typedef enum {
@@ -140,7 +171,8 @@ typedef enum {
 #define HITLS_READING              3u
 #define HITLS_ASYNC_PAUSED         4u
 #define HITLS_ASYNC_NO_JOBS        5u
-
+#define HITLS_CLIENT_HELLO_CB      6u
+#define HITLS_X509_LOOKUP          7u
 #define HITLS_CC_READ  0x001u       /* Read state */
 #define HITLS_CC_WRITE 0x002u       /* Write status */
 

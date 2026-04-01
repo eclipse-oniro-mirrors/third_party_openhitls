@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include "crypt_types.h"
 #include "crypt_ecc.h"
+#include "bsl_params.h"
+#include "crypt_params_key.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,13 +45,13 @@ CRYPT_SM2_Ctx *CRYPT_SM2_NewCtx(void);
 /**
  * @ingroup sm2
  * @brief sm2 Allocate the context memory space.
- * 
+ *
  * @param libCtx [IN] Library context
  *
  * @retval (CRYPT_SM2_Ctx *) Pointer to the memory space of the allocated context
  * @retval NULL              Invalid null pointer.
  */
-CRYPT_SM2_Ctx *CRYPT_SM2_NewCtxEx(void *libCtx);  
+CRYPT_SM2_Ctx *CRYPT_SM2_NewCtxEx(void *libCtx);
 
 /**
  * @ingroup sm2
@@ -201,6 +203,63 @@ int32_t CRYPT_SM2_VerifyData(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint
  * @brief SM2 Set the private key data.
  *
  * @param ctx [OUT] sm2 context structure
+ * @param prv [IN] External private key data
+ *
+ * @retval CRYPT_NULL_INPUT     Error null pointer input
+ * @retval CRYPT_MEM_ALLOC_FAIL Memory allocation failure
+ * @retval ECC error.           An error occurred in the internal ECC calculation.
+ * @retval CRYPT_SUCCESS        set successfully.
+ */
+int32_t CRYPT_SM2_SetPrvKey(CRYPT_SM2_Ctx *ctx, const CRYPT_Sm2Prv *prv);
+
+/**
+ * @ingroup sm2
+ * @brief SM2 Set the public key data.
+ *
+ * @param ctx [OUT] sm2 context structure
+ * @param pub [IN] External public key data
+ *
+ * @retval CRYPT_NULL_INPUT     Invalid null pointer input
+ * @retval CRYPT_MEM_ALLOC_FAIL Memory allocation failure
+ * @retval ECC error.           An error occurred in the internal ECC calculation.
+ * @retval CRYPT_SUCCESS        set successfully.
+ */
+int32_t CRYPT_SM2_SetPubKey(CRYPT_SM2_Ctx *ctx, const CRYPT_Sm2Pub *pub);
+
+/**
+ * @ingroup sm2
+ * @brief SM2 Obtain the private key data.
+ *
+ * @param ctx [IN] sm2 context structure
+ * @param prv [OUT] External private key data
+ *
+ * @retval CRYPT_NULL_INPUT             Error null pointer input
+ * @retval CRYPT_ECC_PKEY_ERR_EMPTY_KEY The key is empty.
+ * @retval ECC error.                   An error occurred in the internal ECC calculation.
+ * @retval CRYPT_SUCCESS                obtained successfully.
+ */
+int32_t CRYPT_SM2_GetPrvKey(const CRYPT_SM2_Ctx *ctx, CRYPT_Sm2Prv *prv);
+
+/**
+ * @ingroup sm2
+ * @brief SM2 Obtain the public key data.
+ *
+ * @param ctx [IN] sm2 context structure
+ * @param pub [OUT] External public key data
+ *
+ * @retval CRYPT_NULL_INPUT             Invalid null pointer input
+ * @retval CRYPT_ECC_PKEY_ERR_EMPTY_KEY The key is empty.
+ * @retval ECC error.                   An error occurred in the internal ECC calculation.
+ * @retval CRYPT_SUCCESS                Obtained successfully.
+ */
+int32_t CRYPT_SM2_GetPubKey(const CRYPT_SM2_Ctx *ctx, CRYPT_Sm2Pub *pub);
+
+#ifdef HITLS_BSL_PARAMS
+/**
+ * @ingroup sm2
+ * @brief SM2 Set the private key data.
+ *
+ * @param ctx [OUT] sm2 context structure
  * @param para [IN] External private key data
  *
  * @retval CRYPT_NULL_INPUT     Error null pointer input
@@ -208,7 +267,7 @@ int32_t CRYPT_SM2_VerifyData(const CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint
  * @retval ECC error.           An error occurred in the internal ECC calculation.
  * @retval CRYPT_SUCCESS        set successfully.
  */
-int32_t CRYPT_SM2_SetPrvKey(CRYPT_SM2_Ctx *ctx, const BSL_Param *para);
+int32_t CRYPT_SM2_SetPrvKeyEx(CRYPT_SM2_Ctx *ctx, const BSL_Param *para);
 
 /**
  * @ingroup sm2
@@ -222,7 +281,7 @@ int32_t CRYPT_SM2_SetPrvKey(CRYPT_SM2_Ctx *ctx, const BSL_Param *para);
  * @retval ECC error.           An error occurred in the internal ECC calculation.
  * @retval CRYPT_SUCCESS        set successfully.
  */
-int32_t CRYPT_SM2_SetPubKey(CRYPT_SM2_Ctx *ctx, const BSL_Param *para);
+int32_t CRYPT_SM2_SetPubKeyEx(CRYPT_SM2_Ctx *ctx, const BSL_Param *para);
 
 /**
  * @ingroup sm2
@@ -236,7 +295,7 @@ int32_t CRYPT_SM2_SetPubKey(CRYPT_SM2_Ctx *ctx, const BSL_Param *para);
  * @retval ECC error.                   An error occurred in the internal ECC calculation.
  * @retval CRYPT_SUCCESS                obtained successfully.
  */
-int32_t CRYPT_SM2_GetPrvKey(const CRYPT_SM2_Ctx *ctx, BSL_Param *para);
+int32_t CRYPT_SM2_GetPrvKeyEx(const CRYPT_SM2_Ctx *ctx, BSL_Param *para);
 
 /**
  * @ingroup sm2
@@ -250,7 +309,8 @@ int32_t CRYPT_SM2_GetPrvKey(const CRYPT_SM2_Ctx *ctx, BSL_Param *para);
  * @retval ECC error.                   An error occurred in the internal ECC calculation.
  * @retval CRYPT_SUCCESS                Obtained successfully.
  */
-int32_t CRYPT_SM2_GetPubKey(const CRYPT_SM2_Ctx *ctx, BSL_Param *para);
+int32_t CRYPT_SM2_GetPubKeyEx(const CRYPT_SM2_Ctx *ctx, BSL_Param *para);
+#endif
 
 /**
  * @ingroup sm2
@@ -316,6 +376,8 @@ int32_t CRYPT_SM2_Encrypt(CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t data
  */
 int32_t CRYPT_SM2_Decrypt(CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t datalen, uint8_t *out, uint32_t *outlen);
 #endif
+
+#ifdef HITLS_CRYPTO_SM2_CMP
 /**
  * @ingroup sm2
  * @brief sm2 Compare the public key and parameters.
@@ -327,6 +389,9 @@ int32_t CRYPT_SM2_Decrypt(CRYPT_SM2_Ctx *ctx, const uint8_t *data, uint32_t data
  * For other error codes, see crypt_errno.h.
  */
 int32_t CRYPT_SM2_Cmp(const CRYPT_SM2_Ctx *a, const CRYPT_SM2_Ctx *b);
+#else
+#define CRYPT_SM2_Cmp NULL
+#endif
 
 /**
  * @ingroup sm2
@@ -338,7 +403,7 @@ int32_t CRYPT_SM2_Cmp(const CRYPT_SM2_Ctx *a, const CRYPT_SM2_Ctx *b);
  */
 int32_t CRYPT_SM2_GetSecBits(const CRYPT_SM2_Ctx *ctx);
 
-#ifdef HITLS_CRYPTO_PROVIDER
+#ifdef HITLS_CRYPTO_KEY_DECODE_CHAIN
 /**
  * @ingroup sm2
  * @brief sm2 import key
@@ -357,6 +422,22 @@ int32_t CRYPT_SM2_Import(CRYPT_SM2_Ctx *ctx, const BSL_Param *params);
  */
 int32_t CRYPT_SM2_Export(const CRYPT_SM2_Ctx *ctx, BSL_Param *params);
 #endif
+
+#ifdef HITLS_CRYPTO_SM2_CHECK
+/**
+ * @ingroup sm2
+ * @brief sm2 check public key
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] sm2 context structure
+ * @param pkey2 [IN] sm2 context structure
+ *
+ * @retval CRYPT_SUCCESS    is the same
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_SM2_Check(uint32_t checkType, const CRYPT_SM2_Ctx *pkey1, const CRYPT_SM2_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_SM2_CHECK
 
 #ifdef __cplusplus
 }

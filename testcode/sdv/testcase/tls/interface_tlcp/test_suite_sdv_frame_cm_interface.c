@@ -33,7 +33,7 @@
 #include "tls.h"
 #include "conn_init.h"
 #include "crypt_errno.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "frame_tls.h"
 #include "frame_link.h"
 #include "rec_wrapper.h"
@@ -53,6 +53,22 @@
 #define MIN_CERT_LIST 0
 #define DEFAULT_SECURITYLEVEL 0
 /* END_HEADER */
+
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+// HS_ChangeState stub is defined in frame_connect.c (part of libtls_frame.a)
+// Declare extern to use it
+typedef int32_t (*real_HS_ChangeState_func_t)(TLS_Ctx *, uint32_t);
+typedef struct HS_ChangeState_Stub {
+    void *stub_handle;
+    const char *stub_target_symbol;
+    int32_t (*stub_impl)(TLS_Ctx *, uint32_t);
+    real_HS_ChangeState_func_t stub_real_impl;
+} HS_ChangeState_Stub;
+extern HS_ChangeState_Stub HS_ChangeState_stub;
+extern void HS_ChangeState_restore(void);
+
 
 static HITLS_Config *GetHitlsConfigViaVersion(int ver)
 {
@@ -91,7 +107,7 @@ typedef struct {
     FRAME_LinkObj *server;
     HITLS_HandshakeState state;
     bool isClient;
-    bool isSupportExtendedMasterSecret;
+    int32_t emsMode;
     bool isSupportClientVerify;
     bool isSupportNoClientCert;
     bool isSupportRenegotiation;
@@ -244,7 +260,10 @@ void UT_TLS_CM_SET_ENDPOINT_FUNC_TC001(int version)
 
     uint32_t ret = HITLS_SetEndPoint(server->ssl, true);
     ASSERT_EQ(ret, HITLS_SUCCESS);
-    ASSERT_EQ(server->ssl->state, CM_STATE_HANDSHAKING);
+    ASSERT_EQ(server->ssl->state, CM_STATE_IDLE);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -313,6 +332,9 @@ void UT_TLS_CM_GET_MAXWRITESIZE_FUNC_TC001(int version)
     ret = HITLS_GetMaxWriteSize(client->ssl, &len);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_EQ(len, REC_MAX_PLAIN_LENGTH);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -375,6 +397,58 @@ EXIT:
 }
 /* END_CASE */
 
+
+/* @
+* @test  UT_TLS_CM_SET_GET_USR_DATA_TC001
+* @title  test HITLS_SESS_SetUserData, HITLS_SESS_GetUserData interfaces
+* @precon  nan
+* @brief   HITLS_SESS_GetUserData
+*          1. Input an empty connection context and a non-empty userData. Expected result 1 is obtained
+*          2. Input an empty connection context and an empty userData. Expected result 1 is obtained
+*          3. Input a non-empty connection context and an empty userData. Expected result 2 is obtained
+*          4. Input a non-empty connection context and a non-empty userData. Expected result 2 is obtained
+*          HITLS_SESS_GetUserData
+*          1. Input an empty connection context. Expected result 4 is obtained
+*          2. Input a non-empty connection context. Expected result 3 is obtained
+* @expect  1. Return HITLS_NULL_INPUT
+*          2. Return HITLS_SUCCESS
+*          3. Return userData
+*          4. Return a null pointer
+@*/
+/* BEGIN_CASE */
+void UT_TLS_CM_SESSION_SET_GET_USR_DATA_API_TC001(void)
+{
+    HitlsInit();
+    HITLS_Session *session = HITLS_SESS_New();
+    int32_t ret;
+    uint8_t userData[5] = {0};
+
+    void *ret2 = HITLS_SESS_GetUserData(NULL);
+    ASSERT_TRUE(ret2 == NULL);
+
+    ret = HITLS_SESS_SetUserData(NULL, &userData);
+    ASSERT_TRUE(ret == HITLS_NULL_INPUT);
+
+    ret = HITLS_SESS_SetUserData(NULL, NULL);
+    ASSERT_TRUE(ret == HITLS_NULL_INPUT);
+
+    ret = HITLS_SESS_SetUserData(session, NULL);
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+
+    ret = HITLS_SESS_SetUserData(session, &userData);
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+
+    ret = HITLS_SESS_SetUserData(session, "userdata");
+    ASSERT_TRUE(ret == HITLS_SUCCESS);
+
+    ret2 = HITLS_SESS_GetUserData(session);
+    ASSERT_TRUE(strcmp(ret2, "userdata") == 0);
+EXIT:
+    HITLS_SESS_Free(session);
+}
+/* END_CASE */
+
+
 /* @
 * @test  HITLS_SetShutdownState Set HITLS_SENT_SHUTDOWN to 1 and do not send the close_notify message.
 * @title  UT_TLS_CM_SET_SHUTDOWN_FUNC_TC001
@@ -404,6 +478,8 @@ void UT_TLS_CM_SET_SHUTDOWN_FUNC_TC001(int version)
     FrameUioUserData *ioUserData = BSL_UIO_GetUserData(server->io);
     uint32_t readLen = ioUserData->recMsg.len;
     ASSERT_TRUE(readLen == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -490,11 +566,15 @@ void UT_TLS_CM_GET_NEGOTIATED_VERSION_FUNC_TC001(int version)
     ret = HITLS_GetNegotiatedVersion(client->ssl, &negoVersion);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_EQ(negoVersion, 0);
+    // Error stack exists
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
 
     ret = HITLS_GetNegotiatedVersion(client->ssl, &negoVersion);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_EQ(negoVersion, version);
+    
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -640,6 +720,7 @@ void UT_TLS_CM_IS_AEAD_FUNC_TC001(int version, int ciphersuite)
     server = FRAME_CreateLink(config_s, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
 
+    // Error stack exists
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
 
     ret = HITLS_IsAead(client->ssl, &isAEAD);
@@ -742,6 +823,8 @@ void UT_TLS_CM_IS_HSDONE_FUNC_TC002(int version)
     ASSERT_TRUE(ret == HITLS_SUCCESS);
     ASSERT_TRUE(isDone == 1);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -787,6 +870,9 @@ void UT_TLS_CM_IS_SERVER_FUNC_TC001(int version)
     ret = HITLS_IsServer(server->ssl, &isServer);
     ASSERT_TRUE(ret == HITLS_SUCCESS);
     ASSERT_TRUE(isServer == true);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -835,6 +921,8 @@ void UT_TLS_CM_READHASPENDING_FUNC_TC001(int version)
     ASSERT_TRUE(HITLS_ReadHasPending(server->ssl, &isPending) == HITLS_SUCCESS);
     ASSERT_EQ(isPending, 1);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -881,6 +969,8 @@ void UT_TLS_CM_GET_READPENDING_FUNC_TC001(void)
     ASSERT_TRUE(HITLS_Connect(client->ssl) == HITLS_REC_NORMAL_IO_BUSY);
     client->ssl->state = CM_STATE_ALERTING;
     ASSERT_TRUE(HITLS_GetReadPendingBytes(client->ssl) == sizeof("Hello World"));
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -919,6 +1009,9 @@ void UT_TLS_CM_GET_PEER_SIGN_SCHEME_FUNC_TC001(int version)
     uint32_t ret = HITLS_GetPeerSignScheme(server->ssl, &peerSignScheme);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_EQ(peerSignScheme, 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -968,6 +1061,9 @@ void UT_TLS_CM_GET_PEER_SIGN_SCHEME_FUNC_TC002(int version)
     ret = HITLS_GetPeerSignScheme(client->ssl, &peerSignScheme);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_NE(peerSignScheme, 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -1007,11 +1103,15 @@ void UT_TLS_CM_GET_PEER_SIGN_SCHEME_FUNC_TC003(int version)
     uint32_t ret = HITLS_GetPeerSignScheme(server->ssl, &peerSignScheme);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_EQ(peerSignScheme, 0);
+    // Error stack exists
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
     peerSignScheme = CERT_SIG_SCHEME_UNKNOWN;
     ret = HITLS_GetPeerSignScheme(client->ssl, &peerSignScheme);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_EQ(peerSignScheme, CERT_SIG_SCHEME_ECDSA_SECP256R1_SHA256);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -1056,6 +1156,9 @@ void UT_TLS_CM_GET_PEER_SIGN_SCHEME_FUNC_TC004(int version)
     ret = HITLS_GetPeerSignScheme(server->ssl, &peerSignScheme);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_NE(peerSignScheme, 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -1103,6 +1206,7 @@ void UT_TLS_CM_GET_LOCAL_SIGN_SCHEME_FUNC_TC001(int version)
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_EQ(localSignScheme, 0);
 
+    // Error stack exists
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, TRY_RECV_SERVER_HELLO) == HITLS_SUCCESS);
     ret = HITLS_GetLocalSignScheme(server->ssl, &localSignScheme);
     ASSERT_EQ(ret, HITLS_SUCCESS);
@@ -1117,6 +1221,9 @@ void UT_TLS_CM_GET_LOCAL_SIGN_SCHEME_FUNC_TC001(int version)
             config = NULL;
             break;
     }
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -1244,6 +1351,7 @@ void UT_TLS_CM_SET_EC_POINT_FUNC_TC001(int version)
     const uint8_t pointFormats2[] = {HITLS_POINT_FORMAT_BUTT};
     uint32_t pointFormatsSize2 = sizeof(pointFormats2) / sizeof(uint8_t);
     ASSERT_TRUE(HITLS_CFG_SetEcPointFormats(Config, pointFormats2, pointFormatsSize2) == HITLS_SUCCESS);
+    // Error stack exists
     ctx = HITLS_New(Config);
     if(version == TLS1_2){
         ASSERT_TRUE(ctx == NULL);
@@ -1258,6 +1366,7 @@ void UT_TLS_CM_SET_EC_POINT_FUNC_TC001(int version)
     server = FRAME_CreateLink(Config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
 EXIT:
     HITLS_CFG_FreeConfig(Config);
     HITLS_Free(ctx);
@@ -1298,6 +1407,8 @@ void UT_TLS_CM_GET_CONFIG_FUNC_TC001(int version)
     ASSERT_EQ(cfgFromCtx->signAlgorithmsSize, sizeof(signAlgs) / sizeof(uint16_t));
     ASSERT_TRUE(memcmp(cfgFromCtx->signAlgorithms, signAlgs, cfgFromCtx->signAlgorithmsSize) == 0);
     ASSERT_EQ(cfgFromCtx->isSupportRenegotiation, true);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -1375,6 +1486,9 @@ void UT_TLS_CM_GET_RANDOM_FUNC_TC001(void)
     ASSERT_TRUE(HITLS_GetHsRandom(testInfo.client->ssl, serverRandom, &randomSize, false) == HITLS_SUCCESS);
     ASSERT_TRUE(randomSize == RANDOM_SIZE);
     ASSERT_TRUE(memcmp(g_serverRandom, serverRandom, RANDOM_SIZE) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(testInfo.config);
     FRAME_FreeLink(testInfo.client);
@@ -1415,6 +1529,7 @@ void UT_TLS_CM_GET_HANDSHAKE_STATE_FUNC_TC001(int version)
     ASSERT_TRUE(client != NULL);
     server = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
+    // Error stack exists
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
     client->ssl->method.sendAlert(client->ssl, ALERT_LEVEL_WARNING, ALERT_NO_CERTIFICATE_RESERVED);
     ret = ALERT_Flush(client->ssl);
@@ -1423,6 +1538,9 @@ void UT_TLS_CM_GET_HANDSHAKE_STATE_FUNC_TC001(int version)
     ret = HITLS_GetHandShakeState(client->ssl, &state);
     ASSERT_EQ(ret, HITLS_SUCCESS);
     ASSERT_EQ(state, TLS_CONNECTED);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -1445,9 +1563,9 @@ void UT_TLS_CM_GET_STATE_STRING_FUNC_TC001()
         "connected",
         "send hello request",
         "send client hello",
+        "send hello verify request",
         "send hello retry request",
         "send server hello",
-        "send hello verify request",
         "send encrypted extensions",
         "send certificate",
         "send server key exchange",
@@ -1461,8 +1579,8 @@ void UT_TLS_CM_GET_STATE_STRING_FUNC_TC001()
         "send finished",
         "send keyupdate",
         "recv client hello",
-        "recv server hello",
         "recv hello verify request",
+        "recv server hello",
         "recv encrypted extensions",
         "recv certificate",
         "recv server key exchange",
@@ -1552,6 +1670,9 @@ void UT_TLS_CM_IS_HANDSHAKING_FUNC_TC001(int version)
         ASSERT_TRUE(HITLS_IsHandShaking(clientTlsCtx, &isHandShaking) == HITLS_SUCCESS);
         ASSERT_TRUE(isHandShaking == false);
     }
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(tlsConfig);
     FRAME_FreeLink(client);
@@ -1609,6 +1730,8 @@ void UT_TLS_CM_HITLS_IsBeforeHandShake_FUNC_TC001(int version)
     ASSERT_TRUE(client->ssl->state == CM_STATE_TRANSPORTING);
     ASSERT_TRUE(isBefore == false);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config_c);
     HITLS_CFG_FreeConfig(config_s);
@@ -1655,6 +1778,8 @@ void UT_TLS_CM_HITLS_GetClientVersion_FUNC_TC001(int version)
     ASSERT_EQ(clientVersion, 0);
     ASSERT_EQ(serverVersion, 0);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -1690,6 +1815,9 @@ void UT_TLS_CM_HITLS_IsClient_FUNC_TC001(int tlsVersion)
 
     ASSERT_TRUE(HITLS_IsClient(ctx, NULL) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_IsClient(ctx, &isClient) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     HITLS_Free(ctx);
@@ -1750,6 +1878,8 @@ void UT_TLS_CM_HITLS_GetSharedGroup_FUNC_TC001(int version)
     ret = HITLS_GetSharedGroup(server->ssl, 0, &groupId);
     ASSERT_TRUE(ret == HITLS_SUCCESS);
     ASSERT_TRUE(groupId == HITLS_EC_GROUP_SECP256R1);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config_c);
@@ -1874,6 +2004,8 @@ void UT_TLS_CM_HITLS_GetSharedGroup_FUNC_TC003(int version)
     ret = HITLS_GetSharedGroup(server->ssl, 1, &groupId);
     ASSERT_TRUE(ret == HITLS_SUCCESS);
     ASSERT_TRUE(groupId == HITLS_EC_GROUP_SECP384R1);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config_c);
@@ -2009,6 +2141,9 @@ void UT_TLS_CM_HITLS_GetSharedGroup_FUNC_TC005(int version)
     ret = HITLS_GetSharedGroup(server->ssl, -1, &groupId);
     ASSERT_TRUE(ret == HITLS_SUCCESS);
     ASSERT_TRUE(groupId == 2);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config_c);
     HITLS_CFG_FreeConfig(config_s);
@@ -2038,7 +2173,7 @@ EXIT:
  */
 
 /* BEGIN_CASE */
-void UT_TLS_CM_HITLS_SetVersionSupport_HITLS_GetVersionSupport_API_TC001(int tlsVersion)
+void UT_TLS_CM_HITLS_SetVersionSupport_HITLS_GetVersionSupport_API_TC001()
 {
     FRAME_Init();
     HITLS_Config *config = NULL;
@@ -2047,7 +2182,7 @@ void UT_TLS_CM_HITLS_SetVersionSupport_HITLS_GetVersionSupport_API_TC001(int tls
 
     ASSERT_TRUE(HITLS_SetVersionSupport(ctx, version) == HITLS_NULL_INPUT);
     ASSERT_TRUE(HITLS_GetVersionSupport(ctx, &version) == HITLS_NULL_INPUT);
-    config = GetHitlsConfigViaVersion(tlsVersion);
+    config = HITLS_CFG_NewTLSConfig();
     ASSERT_TRUE(config != NULL);
     ctx = HITLS_New(config);
     ASSERT_TRUE(ctx != NULL);
@@ -2271,6 +2406,9 @@ void UT_TLS_CM_HITLS_GetPeerFinishVerifyData_FUNC_TC001(int version)
     ASSERT_EQ(verifyDataNewSize, verifyDataOldSize);
     ASSERT_TRUE(memcmp(verifyDataNew, verifyDataOld, verifyDataOldSize) != 0);
     ASSERT_TRUE(memcpy_s(verifyDataOld, sizeof(verifyDataOld), verifyDataNew, verifyDataNewSize) == EOK);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -2361,12 +2499,15 @@ void UT_TLS_CM_HITLS_GetFinishVerifyData_FUNC_TC002(int version)
     server = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
 
+    // Error stack exists
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
     uint8_t verifyDataNew[MAX_DIGEST_SIZE] = {0};
     uint32_t verifyDataNewSize = 0;
     ASSERT_TRUE(HITLS_GetFinishVerifyData(server->ssl, verifyDataNew, sizeof(verifyDataNew), &verifyDataNewSize) ==
         HITLS_SUCCESS);
     ASSERT_NE(verifyDataNewSize, 0);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -2417,6 +2558,7 @@ void UT_TLS_CM_HITLS_GetFinishVerifyData_FUNC_TC003(int version)
     server = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
 
+    // Error stack exists
     ASSERT_TRUE(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT) == HITLS_SUCCESS);
     uint8_t verifyDataNew[MAX_DIGEST_SIZE] = {0};
     uint32_t verifyDataNewSize = 0;
@@ -2441,6 +2583,8 @@ void UT_TLS_CM_HITLS_GetFinishVerifyData_FUNC_TC003(int version)
     ASSERT_TRUE(verifyDataNewSize == verifyDataOldSize);
     ASSERT_TRUE(memcmp(verifyDataNew, verifyDataOld, verifyDataOldSize) != 0);
     ASSERT_TRUE(memcpy_s(verifyDataOld, sizeof(verifyDataOld), verifyDataNew, verifyDataNewSize) == EOK);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -2498,7 +2642,7 @@ void UT_TLS_CM_HITLS_GetRenegotiationState_FUNC_TC001(void)
 
     client = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(client != NULL);
-
+    client->ssl->config.tlsConfig.endpoint = HITLS_ENDPOINT_CLIENT;
     server = FRAME_CreateLink(config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
     HITLS_SetRenegotiationSupport(client->ssl, true);
@@ -2515,7 +2659,7 @@ void UT_TLS_CM_HITLS_GetRenegotiationState_FUNC_TC001(void)
 
     ASSERT_TRUE(SendHelloReq(server->ssl) == HITLS_SUCCESS);
     ASSERT_TRUE(FRAME_TrasferMsgBetweenLink(server, client) == HITLS_SUCCESS);
-    ASSERT_EQ(HITLS_Connect(client->ssl), HITLS_REC_NORMAL_RECV_BUF_EMPTY);
+    ASSERT_EQ(HITLS_Accept(client->ssl), HITLS_REC_NORMAL_RECV_BUF_EMPTY);
     ASSERT_TRUE(HITLS_GetRenegotiationState(server->ssl, &isRenegotiation) == HITLS_SUCCESS);
     ASSERT_TRUE(isRenegotiation == true);
 
@@ -2531,6 +2675,8 @@ void UT_TLS_CM_HITLS_GetRenegotiationState_FUNC_TC001(void)
     ASSERT_TRUE(HITLS_Renegotiate(server->ssl) == HITLS_SUCCESS);
     ASSERT_TRUE(HITLS_GetRenegotiationState(server->ssl, &isRenegotiation) == HITLS_SUCCESS);
     ASSERT_TRUE(isRenegotiation == true);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -2960,6 +3106,9 @@ void UT_HITLS_CM_HITLS_ClearRenegotiationNum_FUNC_TC001(int version)
     ASSERT_EQ(renegotiationNum, 1);
     ASSERT_TRUE(HITLS_ClearRenegotiationNum(serverTlsCtx, &renegotiationNum) == HITLS_SUCCESS);
     ASSERT_EQ(renegotiationNum, 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -3017,6 +3166,8 @@ void UT_HITLS_CM_HITLS_GetNegotiateGroup_FUNC_TC001(int version)
     ASSERT_TRUE(ret == HITLS_SUCCESS);
     ASSERT_EQ(groupId, expectedGroupId);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config_c);
     HITLS_CFG_FreeConfig(config_s);
@@ -3060,12 +3211,15 @@ void UT_HITLS_CM_HITLS_GetNegotiateGroup_FUNC_TC002(int version)
     ASSERT_TRUE(client != NULL);
     ASSERT_TRUE(server != NULL);
 
+    // Error stack exists
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
     uint16_t groupId;
     uint16_t expectedGroupId = (version == HITLS_VERSION_TLS12) ? 0 : HITLS_EC_GROUP_CURVE25519;
     ret = HITLS_GetNegotiateGroup(server->ssl, &groupId);
     ASSERT_TRUE(ret == HITLS_SUCCESS);
     ASSERT_EQ(groupId, expectedGroupId);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config_c);
@@ -3911,6 +4065,7 @@ static int32_t STUB_ChangeState(TLS_Ctx *ctx, uint32_t nextState)
     int32_t ret = HITLS_SUCCESS;
     if (HS_STATE_BUTT == nextState) {
         if (true == ctx->isClient) {
+            ctx->hsCtx->hsMsg = NULL;
             ret = HITLS_REC_NORMAL_RECV_BUF_EMPTY;
         }
     }
@@ -3955,10 +4110,7 @@ void UT_TLS_CM_HITLS_DOHANDSHAKE_API_TC001()
     int32_t serverRet;
     int32_t ret;
     uint32_t count = 0;
-
-    FuncStubInfo tmpRpInfo = { 0 };
-    STUB_Init();
-    STUB_Replace(&tmpRpInfo, HS_ChangeState, STUB_ChangeState);
+    STUB_REPLACE(HS_ChangeState, STUB_ChangeState);;
     HITLS_SetEndPoint(client->ssl, true);
     do {
         if (StateCompare(client, HS_STATE_BUTT)) {
@@ -4000,8 +4152,11 @@ void UT_TLS_CM_HITLS_DOHANDSHAKE_API_TC001()
         ret = HITLS_INTERNAL_EXCEPTION;
     } while (count < 40);
     ASSERT_EQ(ret, HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(HS_ChangeState);
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);
@@ -4505,8 +4660,8 @@ EXIT:
 }
 /* END_CASE */
 
-static void test_msg_callback(int32_t writePoint, int32_t tlsVersion, int32_t contentType, const void *msg,
-    uint32_t msgLen, HITLS_Ctx *ctx, void *arg)
+static void test_msg_callback(int32_t writePoint, int32_t tlsVersion, int32_t contentType,
+                              const void *msg, uint32_t msgLen, HITLS_Ctx *ctx, void *arg)
 {
     (void)writePoint;
     (void)contentType;
@@ -4571,6 +4726,9 @@ void UT_TLS_CM_SetMsgCb_FUNC_TC001(void)
 
     /* Establish connection to trigger callback */
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+    
 EXIT:
     HITLS_CFG_FreeConfig(clientConfig);
     HITLS_CFG_FreeConfig(serverConfig);

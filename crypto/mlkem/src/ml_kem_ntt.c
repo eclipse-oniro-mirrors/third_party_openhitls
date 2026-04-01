@@ -17,55 +17,64 @@
 #ifdef HITLS_CRYPTO_MLKEM
 #include "ml_kem_local.h"
 
-void MLKEM_ComputNTT(int16_t *a, const int16_t *psi, uint32_t pruLength)
+void MLKEM_ComputNTT(int16_t *a, const int32_t *psi)
 {
-    uint32_t t = MLKEM_N;
-    for (uint32_t m = 1; m < pruLength; m <<= 1) {
-        t >>= 1;
-        for (uint32_t i = 0; i < m; i++) {
-            uint32_t j1 = (i << 1) * t;
-            int16_t s = psi[m + i];
-            int16_t *x = a + j1;
-            int16_t *y = x + (int16_t)t;
-            for (uint32_t j = j1; j < j1 + t; j++) {
-                int32_t ys = (*y) * s;
-                *y = (*x - ys) % MLKEM_Q;
-                *x = (*x + ys) % MLKEM_Q;
-                MlKemAddModQ(y);
-                MlKemAddModQ(x);
-                y++;
-                x++;
+    uint32_t start = 0;
+    uint32_t j = 0;
+    uint32_t k = 1;
+    int32_t zeta;
+    for (uint32_t len = MLKEM_N_HALF; len >= 2; len >>= 1) {
+        for (start = 0; start < MLKEM_N; start = j + len) {
+            zeta = psi[k++];
+            for (j = start; j < start + len; ++j) {
+                int16_t t = PlantardReduction((uint32_t)a[j + len] * (uint32_t)zeta);
+                a[j + len] = a[j] - t;
+                a[j] += t;
             }
         }
     }
 }
 
-void MLKEM_ComputINTT(int16_t *a, const int16_t *psiInv, uint32_t pruLength)
-{
-    uint32_t t = MLKEM_N / pruLength;
-    for (uint32_t m = pruLength; m > 1; m >>= 1) {
-        uint32_t j1 = 0;
-        uint32_t h = m >> 1;
-        for (uint32_t i = 0; i < h; i++) {
-            int16_t s = psiInv[h + i];
-            for (uint32_t j = j1; j < j1 + t; j++) {
-                int16_t u = a[j];
-                int16_t v = a[j + t];
-                a[j] = (u + v) % MLKEM_Q;
-                // Both u and v are smaller than MLKEM_Q, temp not overflow.
-                int16_t temp = u - v;
-                MlKemAddModQ(&a[j]);
-                MlKemAddModQ(&temp);
-                a[j + t] = ((int32_t)temp * s) % MLKEM_Q;
-            }
-            j1 += (t << 1);
-        }
-        t <<= 1;
+#define MLKEM_INTT_LOOP(len, k, a, psi) \
+    for (uint32_t start = 0; start < 256; start += 2 * (len)) {       \
+        int32_t zeta = (psi)[(k)--];                                  \
+        for (uint32_t j = start; j < start + (len); j++) {            \
+            int16_t t = (a)[j];                                       \
+            (a)[j] = t + (a)[j + (len)];                              \
+            (a)[j + (len)] = (a)[j + (len)] - t;                      \
+            (a)[j + (len)] = PlantardReduction((uint32_t)zeta * (uint32_t)(a)[j + (len)]);    \
+        }                                                             \
     }
-    for (uint32_t n = 0; n < MLKEM_N; n++) {
-        a[n] = (a[n] * MLKEM_INVN) % MLKEM_Q;
-        MlKemAddModQ(&a[n]);
+
+void MLKEM_ComputINTT(int16_t *a, const int32_t *psi)
+{
+    uint32_t k = MLKEM_N_HALF - 1;
+    MLKEM_INTT_LOOP(2, k, a, psi);
+    MLKEM_INTT_LOOP(4, k, a, psi);
+    MLKEM_INTT_LOOP(8, k, a, psi);
+    for (int32_t i = 0; i < MLKEM_N; ++i) {
+        a[i] = BarrettReduction(a[i]);
+    }
+    MLKEM_INTT_LOOP(16, k, a, psi);
+    MLKEM_INTT_LOOP(32, k, a, psi);
+    MLKEM_INTT_LOOP(64, k, a, psi);
+
+    for (int32_t i = 0; i < MLKEM_N; ++i) {
+        a[i] = BarrettReduction(a[i]);
+    }
+
+    int32_t len = 128;
+    for (uint32_t start = 0; start < MLKEM_N; start += 2 * len) {
+        for (uint32_t j = start; j < start + len; j++) {
+            int16_t t = a[j];
+            a[j] = (int16_t)(t + a[j + len]);
+            a[j + len] = a[j + len] - t;
+            a[j + len] = PlantardReduction((uint32_t)MLKEM_LAST_ROUND_ZETA * (uint32_t)a[j + len]);
+        }
+    }
+
+    for (uint32_t j = 0; j < MLKEM_N / 2; j++) {
+        a[j] = PlantardReduction((uint32_t)a[j] * (uint32_t)MLKEM_HALF_DEGREE_INVERSE_MOD_Q);
     }
 }
-
 #endif

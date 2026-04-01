@@ -89,7 +89,7 @@ int32_t GenClientHelloExtensionCtx(TLS_Ctx *tlsCtx, FRAME_Msg *msg)
 {
     ClientHelloMsg *clientHello = &msg->body.handshakeMsg.body.clientHello;
     TLS_Config *tlsConfig = &tlsCtx->config.tlsConfig;
-    tlsConfig->isSupportExtendedMasterSecret = clientHello->extension.flag.haveExtendedMasterSecret;
+    tlsConfig->emsMode = clientHello->extension.flag.haveExtendedMasterSecret;
     tlsConfig->signAlgorithmsSize = clientHello->extension.content.signatureAlgorithmsSize;
     if (tlsConfig->signAlgorithmsSize > 0) {
         uint32_t signAlgorithmsLen = tlsConfig->signAlgorithmsSize * sizeof(uint16_t);
@@ -139,12 +139,11 @@ int32_t PackClientHelloMsg(FRAME_Msg *msg)
         goto EXIT;
     }
 
-    uint32_t usedLen = 0;
-    ret = HS_PackMsg(tlsCtx, CLIENT_HELLO, &msg->buffer[msg->len], REC_MAX_PLAIN_LENGTH, &usedLen);
-    if (ret == HITLS_SUCCESS) {
-        msg->len += usedLen;
+    ret = HS_PackMsg(tlsCtx, CLIENT_HELLO);
+    if (memcpy_s(&msg->buffer[msg->len], REC_MAX_PLAIN_LENGTH, tlsCtx->hsCtx->msgBuf, tlsCtx->hsCtx->msgLen) != EOK) {
+        return HITLS_MEMCPY_FAIL;
     }
-
+    msg->len += tlsCtx->hsCtx->msgLen;
 EXIT:
     HITLS_Free(tlsCtx);
     return ret;
@@ -180,11 +179,11 @@ int32_t PackServerHelloMsg(FRAME_Msg *msg)
     tlsCtx->negotiatedInfo.cipherSuiteInfo.cipherSuite = serverHello->cipherSuite;
     tlsCtx->negotiatedInfo.isExtendedMasterSecret = serverHello->haveExtendedMasterSecret;
 
-    uint32_t usedLen = 0;
-    ret = HS_PackMsg(tlsCtx, SERVER_HELLO, &msg->buffer[msg->len], REC_MAX_PLAIN_LENGTH, &usedLen);
-    if (ret == HITLS_SUCCESS) {
-        msg->len += usedLen;
+    ret = HS_PackMsg(tlsCtx, SERVER_HELLO);
+    if (memcpy_s(&msg->buffer[msg->len], REC_MAX_PLAIN_LENGTH, tlsCtx->hsCtx->msgBuf, tlsCtx->hsCtx->msgLen) != EOK) {
+        return HITLS_MEMCPY_FAIL;
     }
+    msg->len += tlsCtx->hsCtx->msgLen;
 
 EXIT:
     HITLS_Free(tlsCtx);
@@ -324,11 +323,11 @@ int32_t PackFinishMsg(FRAME_Msg *msg)
         goto EXIT;
     }
 
-    uint32_t usedLen = 0;
-    ret = HS_PackMsg(tlsCtx, FINISHED, &msg->buffer[msg->len], REC_MAX_PLAIN_LENGTH, &usedLen);
-    if (ret == HITLS_SUCCESS) {
-        msg->len += usedLen;
+    ret = HS_PackMsg(tlsCtx, FINISHED);
+    if (memcpy_s(&msg->buffer[msg->len], REC_MAX_PLAIN_LENGTH, tlsCtx->hsCtx->msgBuf, tlsCtx->hsCtx->msgLen) != EOK) {
+        return HITLS_MEMCPY_FAIL;
     }
+    msg->len += tlsCtx->hsCtx->msgLen;
 
 EXIT:
     HITLS_Free(tlsCtx);

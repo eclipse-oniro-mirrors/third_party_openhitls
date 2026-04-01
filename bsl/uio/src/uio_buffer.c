@@ -21,6 +21,7 @@
 #include "bsl_errno.h"
 #include "bsl_err_internal.h"
 #include "bsl_uio.h"
+#include "uio_base.h"
 #include "uio_abstraction.h"
 
 // The write behavior must be the same.
@@ -57,7 +58,7 @@ static int32_t BufferCreate(BSL_UIO *uio)
         return BSL_MALLOC_FAIL;
     }
     BSL_UIO_SetCtx(uio, ctx);
-    uio->init = 1;
+    uio->init = true;
     return BSL_SUCCESS;
 }
 
@@ -74,7 +75,7 @@ static int32_t BufferDestroy(BSL_UIO *uio)
         BSL_UIO_SetCtx(uio, NULL);
     }
     uio->flags = 0;
-    uio->init = 0;
+    uio->init = false;
     return BSL_SUCCESS;
 }
 
@@ -93,7 +94,6 @@ static int32_t BufferFlushInternal(BSL_UIO *uio)
             return ret;
         }
         if (tmpWriteLen == 0) {
-            BSL_ERR_PUSH_ERROR(BSL_UIO_IO_BUSY);
             return BSL_UIO_IO_BUSY;
         }
         ctx->outOff += tmpWriteLen;
@@ -118,7 +118,9 @@ static int32_t BufferFlush(BSL_UIO *uio, int32_t larg, void *parg)
     (void)BSL_UIO_ClearFlags(uio, (BSL_UIO_FLAGS_RWS | BSL_UIO_FLAGS_SHOULD_RETRY));
     int32_t ret = BufferFlushInternal(uio);
     if (ret != BSL_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
+        if (ret != BSL_UIO_IO_BUSY) {
+            BSL_ERR_PUSH_ERROR(ret);
+        }
         return ret;
     }
     return BSL_UIO_Ctrl(uio->next, BSL_UIO_FLUSH, larg, parg);
@@ -159,9 +161,12 @@ static int32_t BufferSetBufferSize(BSL_UIO *uio, int32_t larg, void *parg)
         BSL_ERR_PUSH_ERROR(BSL_MALLOC_FAIL);
         return BSL_MALLOC_FAIL;
     }
+    ctx->outLen = 0;
+    ctx->outOff = 0;
     ctx->outSize = len;
     return BSL_SUCCESS;
 }
+
 
 static int32_t BufferCtrl(BSL_UIO *uio, int32_t cmd, int32_t larg, void *parg)
 {
@@ -224,6 +229,10 @@ static int32_t BufferWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t
         // else: space is insufficient
         if (ctx->outLen > 0) {  // buffer already has data, need to send the existing data first.
             int32_t ret = BufferFlushInternal(uio);
+            // If next uio return busy, return success, upper layer will return busy
+            if (ret == BSL_UIO_IO_BUSY) {
+                return BSL_SUCCESS;
+            }
             if (ret != BSL_SUCCESS) {
                 return ret;
             }
@@ -232,7 +241,7 @@ static int32_t BufferWrite(BSL_UIO *uio, const void *buf, uint32_t len, uint32_t
         while (remain >= ctx->outSize) {
             uint32_t tmpWriteLen = 0;
             int32_t ret = BSL_UIO_Write(uio->next, in, remain, &tmpWriteLen);
-            if (ret != BSL_SUCCESS) {
+            if (ret != BSL_SUCCESS || tmpWriteLen == 0) {
                 uio->flags = uio->next->flags;
                 return ret;
             }

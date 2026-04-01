@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include "crypt_local_types.h"
 #include "bsl_params.h"
+#include "crypt_params_key.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,13 +55,13 @@ CRYPT_RSA_Ctx *CRYPT_RSA_NewCtx(void); // create key structure
 /**
  * @ingroup rsa
  * @brief Allocate rsa context memory space.
- * 
+ *
  * @param libCtx [IN] Library context
  *
  * @retval (CRYPT_RSA_Ctx *) Pointer to the memory space of the allocated context
  * @retval NULL              Invalid null pointer.
  */
-CRYPT_RSA_Ctx *CRYPT_RSA_NewCtxEx(void *libCtx); 
+CRYPT_RSA_Ctx *CRYPT_RSA_NewCtxEx(void *libCtx);
 
 /**
  * @ingroup rsa
@@ -82,7 +83,7 @@ CRYPT_RSA_Ctx *CRYPT_RSA_DupCtx(CRYPT_RSA_Ctx *keyCtx);
  * @retval (CRYPT_RSA_Para *) Pointer to the allocated memory space of the structure
  * @retval NULL               Invalid null pointer.
  */
-CRYPT_RSA_Para *CRYPT_RSA_NewPara(const BSL_Param *para);
+CRYPT_RSA_Para *CRYPT_RSA_NewPara(const CRYPT_RsaPara *para);
 
 /**
  * @ingroup rsa
@@ -104,7 +105,7 @@ void CRYPT_RSA_FreeCtx(CRYPT_RSA_Ctx *ctx);
  * @ingroup rsa
  * @brief Set the data of the key parameter structure to the key structure.
  *
- * @param ctx [OUT] RSA context structure for which related parameters need to be set
+ * @param ctx [OUT] Key structure for which related parameters need to be set
  * @param para [IN] Key parameter structure
  *
  * @retval CRYPT_NULL_INPUT         Invalid null pointer input.
@@ -113,7 +114,7 @@ void CRYPT_RSA_FreeCtx(CRYPT_RSA_Ctx *ctx);
  * @retval CRYPT_MEM_ALLOC_FAIL     internal memory allocation error
  * @retval CRYPT_SUCCESS            set successfully.
  */
-int32_t CRYPT_RSA_SetPara(CRYPT_RSA_Ctx *ctx, const BSL_Param *para);
+int32_t CRYPT_RSA_SetPara(CRYPT_RSA_Ctx *ctx, const CRYPT_RsaPara *para);
 
 /**
  * @ingroup rsa
@@ -194,6 +195,65 @@ int32_t CRYPT_RSA_PrvDec(const CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32_
  * @brief RSA Set the private key information.
  *
  * @param ctx [OUT] rsa context structure
+ * @param prv [IN] Private key data
+ *
+ * @retval CRYPT_NULL_INPUT             Error null pointer input
+ * @retval CRYPT_RSA_ERR_KEY_BITS       The key length does not meet the requirements.
+ * @retval CRYPT_RSA_NO_KEY_INFO        does not contain the key information.
+ * @retval CRYPT_RSA_ERR_INPUT_VALUE    The entered value does not meet the calculation conditions.
+ * @retval CRYPT_MEM_ALLOC_FAIL         Memory allocation failure
+ * @retval BN error.                    An error occurs in the internal BigNum operation.
+ * @retval CRYPT_SUCCESS                The private key is successfully set.
+ */
+int32_t CRYPT_RSA_SetPrvKey(CRYPT_RSA_Ctx *ctx, const CRYPT_RsaPrv *prv);
+
+/**
+ * @ingroup rsa
+ * @brief RSA Set the public key information.
+ *
+ * @param ctx [OUT] RSA context structure
+ * @param pub [IN] Public key data
+ *
+ * @retval CRYPT_NULL_INPUT          Error null pointer input
+ * @retval CRYPT_RSA_ERR_KEY_BITS    The key length does not meet the requirements.
+ * @retval CRYPT_RSA_ERR_INPUT_VALUE The entered value does not meet the calculation conditions.
+ * @retval CRYPT_MEM_ALLOC_FAIL      Memory allocation failure
+ * @retval BN error.                 An error occurs in the internal BigNum operation.
+ * @retval CRYPT_SUCCESS             The public key is successfully set.
+ */
+int32_t CRYPT_RSA_SetPubKey(CRYPT_RSA_Ctx *ctx, const CRYPT_RsaPub *pub);
+
+/**
+ * @ingroup rsa
+ * @brief RSA Obtain the private key information.
+ *
+ * @param ctx [IN] RSA context structure
+ * @param prv [OUT] Private key data
+ *
+ * @retval CRYPT_NULL_INPUT Invalid null pointer input
+ * @retval BN error.        An error occurs in the internal BigNum operation.
+ * @retval CRYPT_SUCCESS    The private key is obtained successfully.
+ */
+int32_t CRYPT_RSA_GetPrvKey(const CRYPT_RSA_Ctx *ctx, CRYPT_RsaPrv *prv);
+
+/**
+ * @ingroup rsa
+ * @brief RSA Obtain the public key information.
+ *
+ * @param ctx [IN] RSA context structure
+ * @param pub [OUT] Public key data
+ *
+ * @retval CRYPT_NULL_INPUT Invalid null pointer input
+ * @retval BN error.        An error occurs in the internal BigNum operation.
+ * @retval CRYPT_SUCCESS    The public key is obtained successfully.
+ */
+int32_t CRYPT_RSA_GetPubKey(const CRYPT_RSA_Ctx *ctx, CRYPT_RsaPub *pub);
+
+/**
+ * @ingroup rsa
+ * @brief RSA Set the private key information.
+ *
+ * @param ctx [OUT] rsa context structure
  * @param para [IN] Private key data
  *
  * @retval CRYPT_NULL_INPUT             Error null pointer input
@@ -201,10 +261,10 @@ int32_t CRYPT_RSA_PrvDec(const CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32_
  * @retval CRYPT_RSA_NO_KEY_INFO        does not contain the key information.
  * @retval CRYPT_RSA_ERR_INPUT_VALUE    The entered value does not meet the calculation conditions.
  * @retval CRYPT_MEM_ALLOC_FAIL         Memory allocation failure
- * @retval BN error                     An error occurs in the internal BigNum operation.
+ * @retval BN error.                    An error occurs in the internal BigNum operation.
  * @retval CRYPT_SUCCESS                The private key is successfully set.
  */
-int32_t CRYPT_RSA_SetPrvKey(CRYPT_RSA_Ctx *ctx, const BSL_Param *para);
+int32_t CRYPT_RSA_SetPrvKeyEx(CRYPT_RSA_Ctx *ctx, const BSL_Param *para);
 
 /**
  * @ingroup rsa
@@ -217,10 +277,10 @@ int32_t CRYPT_RSA_SetPrvKey(CRYPT_RSA_Ctx *ctx, const BSL_Param *para);
  * @retval CRYPT_RSA_ERR_KEY_BITS    The key length does not meet the requirements.
  * @retval CRYPT_RSA_ERR_INPUT_VALUE The entered value does not meet the calculation conditions.
  * @retval CRYPT_MEM_ALLOC_FAIL      Memory allocation failure
- * @retval BN error                  An error occurs in the internal BigNum operation.
+ * @retval BN error.                 An error occurs in the internal BigNum operation.
  * @retval CRYPT_SUCCESS             The public key is successfully set.
  */
-int32_t CRYPT_RSA_SetPubKey(CRYPT_RSA_Ctx *ctx, const BSL_Param *para);
+int32_t CRYPT_RSA_SetPubKeyEx(CRYPT_RSA_Ctx *ctx, const BSL_Param *para);
 
 /**
  * @ingroup rsa
@@ -230,10 +290,10 @@ int32_t CRYPT_RSA_SetPubKey(CRYPT_RSA_Ctx *ctx, const BSL_Param *para);
  * @param para [OUT] Private key data
  *
  * @retval CRYPT_NULL_INPUT Invalid null pointer input
- * @retval BN error         An error occurs in the internal BigNum operation.
+ * @retval BN error.        An error occurs in the internal BigNum operation.
  * @retval CRYPT_SUCCESS    The private key is obtained successfully.
  */
-int32_t CRYPT_RSA_GetPrvKey(const CRYPT_RSA_Ctx *ctx, BSL_Param *para);
+int32_t CRYPT_RSA_GetPrvKeyEx(const CRYPT_RSA_Ctx *ctx, BSL_Param *para);
 
 /**
  * @ingroup rsa
@@ -243,10 +303,25 @@ int32_t CRYPT_RSA_GetPrvKey(const CRYPT_RSA_Ctx *ctx, BSL_Param *para);
  * @param para [OUT] Public key data
  *
  * @retval CRYPT_NULL_INPUT Invalid null pointer input
- * @retval BN error         An error occurs in the internal BigNum operation.
+ * @retval BN error.        An error occurs in the internal BigNum operation.
  * @retval CRYPT_SUCCESS    The public key is obtained successfully.
  */
-int32_t CRYPT_RSA_GetPubKey(const CRYPT_RSA_Ctx *ctx, BSL_Param *para);
+int32_t CRYPT_RSA_GetPubKeyEx(const CRYPT_RSA_Ctx *ctx, BSL_Param *para);
+
+/**
+ * @ingroup rsa
+ * @brief Set the data of the key parameter structure to the key structure.
+ *
+ * @param ctx [OUT] Key structure for which related parameters need to be set
+ * @param para [IN] Key parameter structure
+ *
+ * @retval CRYPT_NULL_INPUT         Invalid null pointer input.
+ * @retval CRYPT_RSA_ERR_KEY_BITS   The expected key length does not meet the requirements.
+ * @retval CRYPT_RSA_ERR_E_VALUE    The expected value of e does not meet the requirements.
+ * @retval CRYPT_MEM_ALLOC_FAIL     internal memory allocation error
+ * @retval CRYPT_SUCCESS            set successfully.
+ */
+int32_t CRYPT_RSA_SetParaEx(CRYPT_RSA_Ctx *ctx, const BSL_Param *para);
 
 int32_t CRYPT_RSA_Ctrl(CRYPT_RSA_Ctx *ctx, int32_t opt, void *val, uint32_t len);
 
@@ -297,10 +372,9 @@ int32_t CRYPT_RSA_UnBlind(const CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32
  * @ingroup rsa
  * @brief Set the PSS for the original data.
  *
+ * @param ctx [IN] CRYPT_RSA_Ctx
  * @param hashMethod [IN] pss Required Hash Method
  * @param mgfMethod [IN] pss Internal hash method required by the mgf.
- * @param keyBits [IN] pss Key length
- * @param salt [IN] Input salt value
  * @param saltLen [IN] Length of the input salt.
  * @param data [IN] Original data
  * @param dataLen [IN] Length of the original data
@@ -315,8 +389,8 @@ int32_t CRYPT_RSA_UnBlind(const CRYPT_RSA_Ctx *ctx, const uint8_t *input, uint32
  * @retval CRYPT_MEM_ALLOC_FAIL             Memory allocation failure
  * @retval CRYPT_SUCCESS                    Succeeded in setting the PSS.
  */
-int32_t CRYPT_RSA_SetPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod, uint32_t keyBits,
-    const uint8_t *salt, uint32_t saltLen, const uint8_t *data, uint32_t dataLen, uint8_t *pad, uint32_t padLen);
+int32_t CRYPT_RSA_SetPss(CRYPT_RSA_Ctx *ctx, const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod,
+    uint32_t saltLen, const uint8_t *data, uint32_t dataLen, uint8_t *pad, uint32_t padLen);
 #endif // HITLS_CRYPTO_RSA_SIGN || HITLS_CRYPTO_RSA_BSSA
 
 #ifdef HITLS_CRYPTO_RSA_VERIFY
@@ -324,9 +398,9 @@ int32_t CRYPT_RSA_SetPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgf
  * @ingroup rsa
  * @brief Compare the original data from the PSS.
  *
+ * @param ctx [IN] CRYPT_RSA_Ctx
  * @param hashMethod [IN] pss Required the hash method
  * @param mgfMethod [IN] pss Internal hash method required by the mgf.
- * @param keyBits [IN] pss Key length
  * @param saltLen [IN] Salt value length
  * @param data [IN] Original data
  * @param dataLen [IN] Length of the original data
@@ -340,7 +414,7 @@ int32_t CRYPT_RSA_SetPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgf
  * @retval CRYPT_MEM_ALLOC_FAIL             Memory allocation failure
  * @retval CRYPT_SUCCESS                    pss comparison succeeded.
  */
-int32_t CRYPT_RSA_VerifyPss(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod, uint32_t keyBits,
+int32_t CRYPT_RSA_VerifyPss(CRYPT_RSA_Ctx *ctx, const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod,
     uint32_t saltLen, const uint8_t *data, uint32_t dataLen, const uint8_t *pad, uint32_t padLen);
 #endif // HITLS_CRYPTO_RSA_VERIFY
 #endif // HITLS_CRYPTO_RSA_EMSA_PSS
@@ -468,7 +542,7 @@ int32_t CRYPT_RSA_Decrypt(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t data
     uint8_t *out, uint32_t *outLen);
 #endif
 
-#ifdef HITLS_CRYPTO_RSA_VERIFY
+#ifdef HITLS_CRYPTO_RSA_RECOVER
 /**
  * @ingroup rsa
  * @brief RSA public key decryption
@@ -490,8 +564,11 @@ int32_t CRYPT_RSA_Decrypt(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t data
  * @retval CRYPT_SUCCESS                    Decrypted Successfully
  */
 int32_t CRYPT_RSA_Recover(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t dataLen, uint8_t *out, uint32_t *outLen);
+#else
+#define CRYPT_RSA_Recover NULL
 #endif
 
+#ifdef HITLS_CRYPTO_RSA_CMP
 /**
  * @ingroup rsa
  * @brief RSA compare the public key
@@ -505,6 +582,9 @@ int32_t CRYPT_RSA_Recover(CRYPT_RSA_Ctx *ctx, const uint8_t *data, uint32_t data
  * @retval CRYPT_RSA_PUBKEY_NOT_EQUAL   Public Keys are not equal
  */
 int32_t CRYPT_RSA_Cmp(const CRYPT_RSA_Ctx *a, const CRYPT_RSA_Ctx *b);
+#else
+#define CRYPT_RSA_Cmp NULL
+#endif
 
 #ifdef HITLS_CRYPTO_RSAES_OAEP
 #ifdef HITLS_CRYPTO_RSA_ENCRYPT
@@ -535,8 +615,7 @@ int32_t CRYPT_RSA_SetPkcs1Oaep(CRYPT_RSA_Ctx *ctx, const uint8_t *in, uint32_t i
  * @ingroup rsa
  * @brief Verify the oaep padding.
  *
- * @param hashMethod [IN] Hash method, which supports sha1, sha244, sha256, sha384, and sha512.
- * @param mgfMethod [IN] Hash method required by mgf
+ * @param pad [IN] oaep parameter, which can be null
  * @param in [IN] Data after padding
  * @param inLen [IN] Data length after padding
  * @param param [IN] oaep parameter, which can be null
@@ -550,8 +629,8 @@ int32_t CRYPT_RSA_SetPkcs1Oaep(CRYPT_RSA_Ctx *ctx, const uint8_t *in, uint32_t i
  * @retval CRYPT_SECUREC_FAIL           A security function error occurs.
  * @retval CRYPT_MEM_ALLOC_FAIL         Memory allocation failure
  * */
-int32_t CRYPT_RSA_VerifyPkcs1Oaep(const EAL_MdMethod *hashMethod, const EAL_MdMethod *mgfMethod, const uint8_t *in,
-    uint32_t inLen, const uint8_t *param, uint32_t paramLen, uint8_t *msg, uint32_t *msgLen);
+int32_t CRYPT_RSA_VerifyPkcs1Oaep(RSA_PadingPara *pad, const uint8_t *in, uint32_t inLen, const uint8_t *param,
+    uint32_t paramLen, uint8_t *msg, uint32_t *msgLen);
 #endif // HITLS_CRYPTO_RSA_DECRYPT
 #endif // HITLS_CRYPTO_RSAES_OAEP
 
@@ -581,7 +660,24 @@ int32_t CRYPT_RSA_VerifyPkcsV15Type2TLS(const uint8_t *in, uint32_t inLen, uint8
  */
 int32_t CRYPT_RSA_GetSecBits(const CRYPT_RSA_Ctx *ctx);
 
-#ifdef HITLS_CRYPTO_PROVIDER
+#ifdef HITLS_CRYPTO_RSA_CHECK
+
+/**
+ * @ingroup rsa
+ * @brief check the key pair consistency
+ *
+ * @param checkType [IN] check type
+ * @param pkey1 [IN] rsa key context structure
+ * @param pkey2 [IN] rsa key context structure
+ *
+ * @retval CRYPT_SUCCESS    check success.
+ * Others. For details, see error code in errno.
+ */
+int32_t CRYPT_RSA_Check(uint32_t checkType, const CRYPT_RSA_Ctx *pkey1, const CRYPT_RSA_Ctx *pkey2);
+
+#endif // HITLS_CRYPTO_RSA_CHECK
+
+#ifdef HITLS_CRYPTO_KEY_DECODE_CHAIN
 /**
  * @ingroup RSA
  * @brief RSA import key
@@ -599,7 +695,7 @@ int32_t CRYPT_RSA_Import(CRYPT_RSA_Ctx *ctx, const BSL_Param *params);
  * @param params [IN/OUT] key parameters
  */
 int32_t CRYPT_RSA_Export(const CRYPT_RSA_Ctx *ctx, BSL_Param *params);
-#endif // HITLS_CRYPTO_PROVIDER
+#endif // HITLS_CRYPTO_KEY_DECODE_CHAIN
 
 #ifdef __cplusplus
 }

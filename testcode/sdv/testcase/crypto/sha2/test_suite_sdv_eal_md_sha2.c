@@ -39,7 +39,7 @@ void Sha2MultiThreadTest(void *arg)
     ThreadParameter *threadParameter = (ThreadParameter *)arg;
     uint32_t outLen = SHA2_OUTPUT_MAXSIZE;
     uint8_t out[SHA2_OUTPUT_MAXSIZE];
-    CRYPT_EAL_MdCTX *ctx = NULL;
+    CRYPT_EAL_MdCtx *ctx = NULL;
     ctx = CRYPT_EAL_MdNewCtx(threadParameter->id);
     ASSERT_TRUE(ctx != NULL);
     for (uint32_t i = 0; i < 10; i++) { // Repeat 10 times
@@ -68,7 +68,7 @@ EXIT:
 void SDV_CRYPT_EAL_SHA2_API_TC001(void)
 {
     TestMemInit();
-    CRYPT_EAL_MdCTX *ctx = NULL;
+    CRYPT_EAL_MdCtx *ctx = NULL;
 
     ctx = CRYPT_EAL_MdNewCtx(-1);
     ASSERT_TRUE(ctx == NULL);
@@ -146,7 +146,7 @@ EXIT:
 void SDV_CRYPT_EAL_SHA2_API_TC003(int id)
 {
     TestMemInit();
-    CRYPT_EAL_MdCTX *ctx = NULL;
+    CRYPT_EAL_MdCtx *ctx = NULL;
 
     ASSERT_EQ(CRYPT_EAL_MdDeinit(ctx), CRYPT_NULL_INPUT);
 
@@ -208,8 +208,8 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC001(int id)
         SKIP_TEST();
     }
     TestMemInit();
-    CRYPT_EAL_MdCTX *ctx1 = NULL;
-    CRYPT_EAL_MdCTX *ctx2 = NULL;
+    CRYPT_EAL_MdCtx *ctx1 = NULL;
+    CRYPT_EAL_MdCtx *ctx2 = NULL;
 
     ctx1 = CRYPT_EAL_MdNewCtx(id);
     ASSERT_TRUE(ctx1 != NULL);
@@ -241,6 +241,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC001(int id)
     outLen = CRYPT_EAL_MdGetDigestSize(id);
 
    ASSERT_COMPARE("sha2", out1, outLen, out2, outLen);
+   ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx1);
@@ -265,7 +266,7 @@ EXIT:
 void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC002(int id, Hex *digest)
 {
     TestMemInit();
-    CRYPT_EAL_MdCTX *ctx = NULL;
+    CRYPT_EAL_MdCtx *ctx = NULL;
     ctx = CRYPT_EAL_MdNewCtx(id);
     ASSERT_TRUE(ctx != NULL);
 
@@ -276,6 +277,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC002(int id, Hex *digest)
     ASSERT_EQ(CRYPT_EAL_MdFinal(ctx, out, &outLen), CRYPT_SUCCESS);
 
     ASSERT_COMPARE("sha2", out, outLen, digest->x, digest->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
 }
@@ -299,7 +301,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC003(int algId, Hex *in, Hex *digest)
         SKIP_TEST();
     }
     TestMemInit();
-    CRYPT_EAL_MdCTX *ctx = NULL;
+    CRYPT_EAL_MdCtx *ctx = NULL;
 
     uint8_t out[SHA2_OUTPUT_MAXSIZE];
     uint32_t outLen = CRYPT_EAL_MdGetDigestSize(algId);
@@ -314,6 +316,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC003(int algId, Hex *in, Hex *digest)
   
     ASSERT_EQ(CRYPT_EAL_Md(algId, in->x, in->len, out, &outLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("sha2", out, outLen, digest->x, digest->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
 }
@@ -344,7 +347,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC004(int algId, Hex *plain_text1, Hex *plain_te
     uint32_t outLen = SHA2_OUTPUT_MAXSIZE;
 
     TestMemInit();
-    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_MdNewCtx(algId);
+    CRYPT_EAL_MdCtx *ctx = CRYPT_EAL_MdNewCtx(algId);
     ASSERT_TRUE(ctx != NULL);
     ASSERT_EQ(CRYPT_EAL_MdInit(ctx), CRYPT_SUCCESS);
 
@@ -354,6 +357,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC004(int algId, Hex *plain_text1, Hex *plain_te
     ASSERT_EQ(CRYPT_EAL_MdFinal(ctx, output, &outLen), CRYPT_SUCCESS);
 
     ASSERT_COMPARE("sha2", output, outLen, hash->x, hash->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
 }
@@ -388,6 +392,7 @@ void SDV_CRYPT_EAL_MD_SHA2_FUNC_TC005(int algId, Hex *data, Hex *hash)
     for (uint32_t i = 0; i < threadNum; i++) {
         pthread_join(thrd[i], NULL);
     }
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     return;
@@ -420,9 +425,9 @@ void SDV_CRYPTO_SHA2_COPY_CTX_FUNC_TC001(int id, Hex *msg, Hex *hash)
         SKIP_TEST();
     }
     TestMemInit();
-    CRYPT_EAL_MdCTX *cpyCtx = NULL;
-    CRYPT_EAL_MdCTX *dupCtx = NULL;
-    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_MdNewCtx(id);
+    CRYPT_EAL_MdCtx *cpyCtx = NULL;
+    CRYPT_EAL_MdCtx *dupCtx = NULL;
+    CRYPT_EAL_MdCtx *ctx = CRYPT_EAL_MdNewCtx(id);
     ASSERT_TRUE(ctx != NULL);
     uint8_t output[SHA2_OUTPUT_MAXSIZE];
     uint32_t outLen = SHA2_OUTPUT_MAXSIZE;
@@ -471,7 +476,7 @@ EXIT:
 void SDV_CRYPTO_SHA2_DEFAULT_PROVIDER_FUNC_TC001(int id, Hex *msg, Hex *hash)
 {
     TestMemInit();
-    CRYPT_EAL_MdCTX *ctx = NULL;
+    CRYPT_EAL_MdCtx *ctx = NULL;
 #ifdef HITLS_CRYPTO_PROVIDER
     ctx = CRYPT_EAL_ProviderMdNewCtx(NULL, id, "provider=default");
 #else
@@ -485,6 +490,7 @@ void SDV_CRYPTO_SHA2_DEFAULT_PROVIDER_FUNC_TC001(int id, Hex *msg, Hex *hash)
     ASSERT_EQ(CRYPT_EAL_MdUpdate(ctx, msg->x, msg->len), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_MdFinal(ctx, output, &outLen), CRYPT_SUCCESS);
     ASSERT_EQ(memcmp(output, hash->x, hash->len), 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_MdFreeCtx(ctx);
@@ -666,8 +672,8 @@ void SDV_CRYPTO_SHA256_MB_FUNC_TC004(int msgLen)
     TestMemInit();
     uint8_t *data1 = NULL;
     uint8_t *data2 = NULL;
-    CRYPT_EAL_MdCTX *seqCtx1 = NULL;
-    CRYPT_EAL_MdCTX *seqCtx2 = NULL;
+    CRYPT_EAL_MdCtx *seqCtx1 = NULL;
+    CRYPT_EAL_MdCtx *seqCtx2 = NULL;
 
     /* Allocate and fill test data */
     data1 = (uint8_t *)malloc(msgLen);
@@ -780,8 +786,8 @@ void SDV_CRYPTO_SHA256_MB_FUNC_TC003(void)
     
     AARCH64_CHECK_CANARY();
     /* Sequential computation for verification */
-    CRYPT_EAL_MdCTX *seqCtx1 = CRYPT_EAL_MdNewCtx(CRYPT_MD_SHA256);
-    CRYPT_EAL_MdCTX *seqCtx2 = CRYPT_EAL_MdNewCtx(CRYPT_MD_SHA256);
+    CRYPT_EAL_MdCtx *seqCtx1 = CRYPT_EAL_MdNewCtx(CRYPT_MD_SHA256);
+    CRYPT_EAL_MdCtx *seqCtx2 = CRYPT_EAL_MdNewCtx(CRYPT_MD_SHA256);
     ASSERT_TRUE(seqCtx1 != NULL && seqCtx2 != NULL);
     
     uint8_t seqDgst1[CRYPT_SHA2_256_DIGESTSIZE];
@@ -875,7 +881,7 @@ void SDV_CRYPT_EAL_SHA256_MB_API_TC002(void)
 #else
     TestMemInit();
 
-    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_MdMBNewCtx(NULL, CRYPT_MD_SHA256_MB, 2);
+    CRYPT_EAL_MdCtx *ctx = CRYPT_EAL_MdMBNewCtx(NULL, CRYPT_MD_SHA256_MB, 2);
     ASSERT_TRUE(ctx != NULL);
     ASSERT_EQ(CRYPT_EAL_MdMBInit(ctx), CRYPT_SUCCESS);
 
@@ -931,7 +937,7 @@ void SDV_CRYPT_EAL_SHA256_MB_FUNC_TC001(Hex *msg, Hex *digest)
 #else
     TestMemInit();
 
-    CRYPT_EAL_MdCTX *ctx = CRYPT_EAL_MdMBNewCtx(NULL, CRYPT_MD_SHA256_MB, 2);
+    CRYPT_EAL_MdCtx *ctx = CRYPT_EAL_MdMBNewCtx(NULL, CRYPT_MD_SHA256_MB, 2);
     ASSERT_TRUE(ctx != NULL);
 
     const uint8_t *dataArr[2] = {msg->x, msg->x};
@@ -983,9 +989,9 @@ void SDV_CRYPT_EAL_SHA256_MB_FUNC_TC002(int msgLen)
 
     uint8_t *data1 = NULL;
     uint8_t *data2 = NULL;
-    CRYPT_EAL_MdCTX *mbCtx = NULL;
-    CRYPT_EAL_MdCTX *seqCtx1 = NULL;
-    CRYPT_EAL_MdCTX *seqCtx2 = NULL;
+    CRYPT_EAL_MdCtx *mbCtx = NULL;
+    CRYPT_EAL_MdCtx *seqCtx1 = NULL;
+    CRYPT_EAL_MdCtx *seqCtx2 = NULL;
 
     uint32_t allocLen = (msgLen == 0) ? 1u : (uint32_t)msgLen;
     data1 = (uint8_t *)malloc(allocLen);

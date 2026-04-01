@@ -20,7 +20,6 @@
 #include "bsl_log_internal.h"
 #include "bsl_log.h"
 #include "bsl_err_internal.h"
-#include "bsl_bytes.h"
 #include "cert.h"
 #include "hitls_error.h"
 #include "tls.h"
@@ -30,61 +29,53 @@
 #include "pack_common.h"
 
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
-int32_t PackCertificate(TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+int32_t PackCertificate(TLS_Ctx *ctx, PackPacket *pkt)
 {
-    int32_t ret = HITLS_SUCCESS;
-
-    if (bufLen < CERT_LEN_TAG_SIZE) {
-        return PackBufLenError(BINLOG_ID15808, BINGLOG_STR("cert"));
+    /* Start packing certificate list length */
+    uint32_t certListLenPosition = 0u;
+    int32_t ret = PackStartLengthField(pkt, CERT_LEN_TAG_SIZE, &certListLenPosition);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
 
     /* Certificate content */
-    ret = SAL_CERT_EncodeCertChain(ctx, &buf[CERT_LEN_TAG_SIZE], bufLen - CERT_LEN_TAG_SIZE, usedLen);
+    ret = SAL_CERT_EncodeCertChain(ctx, pkt);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15809, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "encode cert list fail.", 0, 0, 0, 0);
         return ret;
     }
 
-    /* Certificate length */
-    BSL_Uint24ToByte(*usedLen, buf);
-    *usedLen += CERT_LEN_TAG_SIZE;
+    /* Close certificate list length field */
+    PackCloseUint24Field(pkt, certListLenPosition);
     return HITLS_SUCCESS;
 }
 #endif /* HITLS_TLS_PROTO_TLS_BASIC || HITLS_TLS_PROTO_DTLS12 */
 #ifdef HITLS_TLS_PROTO_TLS13
-int32_t Tls13PackCertificate(TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+int32_t Tls13PackCertificate(TLS_Ctx *ctx, PackPacket *pkt)
 {
-    int32_t ret = HITLS_SUCCESS;
-    uint32_t offset = 0;
-
-    if (bufLen < (CERT_LEN_TAG_SIZE + ctx->certificateReqCtxSize + sizeof(uint16_t))) {
-        return PackBufLenError(BINLOG_ID15810, BINGLOG_STR("cert"));
-    }
-    /* Pack the length of certificate_request_context */
-    buf[offset] = (uint8_t)ctx->certificateReqCtxSize;
-    offset++;
-
-    /* Pack the content of certificate_request_context */
-    if (ctx->certificateReqCtxSize > 0) {
-        (void)memcpy_s(&buf[offset], bufLen - offset, ctx->certificateReqCtx, ctx->certificateReqCtxSize);
-        offset += ctx->certificateReqCtxSize;
+    int32_t ret = PackCertificateReqCtx(ctx, pkt);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
 
-    uint32_t certLenFieldOffset = offset;
-    offset += CERT_LEN_TAG_SIZE;
+    /* Start packing certificate list length */
+    uint32_t certListLenPosition = 0u;
+    ret = PackStartLengthField(pkt, CERT_LEN_TAG_SIZE, &certListLenPosition);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
 
-    /* Certificate content */
-    ret = SAL_CERT_EncodeCertChain(ctx, &buf[offset], bufLen - offset, usedLen);
+    /* Certificate content using callback */
+    ret = SAL_CERT_EncodeCertChain(ctx, pkt);
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15811, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "encode cert list fail when pack certificate msg.", 0, 0, 0, 0);
         return ret;
     }
 
-    /* Certificate length */
-    BSL_Uint24ToByte(*usedLen, &buf[certLenFieldOffset]);
-    *usedLen += offset;
+    /* Close certificate list length field */
+    PackCloseUint24Field(pkt, certListLenPosition);
     return HITLS_SUCCESS;
 }
 #endif

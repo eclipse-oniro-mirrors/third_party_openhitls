@@ -56,7 +56,7 @@ bool SkipTlsTest(int connType, int version)
         case DTLCP1_1:
             break;
 #endif
-#ifdef HITLS_TLS_PROTO_ALL
+#if defined(HITLS_TLS_CONFIG_VERSION) && (defined(HITLS_TLS_PROTO_TLS12) || defined(HITLS_TLS_PROTO_TLS13))
         case TLS_ALL:
             break;
 #endif
@@ -122,6 +122,8 @@ void SDV_TLS_BASE_CONNECT_TC01(int connType, int version)
     ASSERT_TRUE(HLT_ProcessTlsRead(remoteProcess, clientRes, readBuf, READ_BUF_LEN_18K, &readLen) == 0);
     ASSERT_TRUE(readLen == strlen("Hello World"));
     ASSERT_TRUE(memcmp("Hello World", readBuf, readLen) == 0);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HLT_FreeAllProcess();

@@ -25,7 +25,6 @@
 #include "crypt_util_rand.h"
 #include "crypt_bn.h"
 #include "eal_pkey_local.h"
-#include "stub_replace.h"
 #include "test.h"
 /* END_HEADER */
 
@@ -64,6 +63,9 @@ void SDV_CRYPTO_SLH_DSA_VERIFY_KAT_TC001(int id, Hex *key, Hex *addrand, Hex *ms
         ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_CTX_INFO, context->x, context->len), CRYPT_SUCCESS);
     }
     ASSERT_EQ(CRYPT_EAL_PkeyVerify(pkey, CRYPT_MD_SHA256, msg->x, msg->len, sig->x, sig->len), result);
+    if (result == CRYPT_SUCCESS) {
+        ASSERT_TRUE(TestIsErrStackEmpty());
+    }
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
     return;
@@ -108,6 +110,9 @@ void SDV_CRYPTO_SLH_DSA_VERIFY_PREHASHED_KAT_TC001(int id, Hex *key, Hex *addran
         ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_SET_CTX_INFO, context->x, context->len), CRYPT_SUCCESS);
     }
     ASSERT_EQ(CRYPT_EAL_PkeyVerify(pkey, hashId, msg->x, msg->len, sig->x, sig->len), result);
+    if (result == CRYPT_SUCCESS) {
+        ASSERT_TRUE(TestIsErrStackEmpty());
+    }
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
     return;

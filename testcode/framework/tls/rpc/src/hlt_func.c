@@ -35,6 +35,7 @@
 #include "cert_callback.h"
 #include "sctp_channel.h"
 #include "frame_tls.h"
+#include "rec_wrapper.h"
 
 #define DOMAIN_PATH_LEN (128)
 #define CMD_MAX_LEN 1024
@@ -151,16 +152,16 @@ int HLT_TlsSetSsl(void *ssl, HLT_Ssl_Config *sslConfig)
 }
 
 // listen non-blocking interface
-unsigned long int HLT_TlsListen(void *ssl)
+pthread_t HLT_TlsListen(void *ssl)
 {
     (void)ssl;
     Process *process = GetProcess();
     switch (process->tlsType) {
         case HITLS : {
-            return ERROR; // Hitls does not support the listen function.
+            return 0; // Hitls does not support the listen function.
         }
         default:
-            return ERROR;
+            return 0;
     }
 }
 
@@ -177,10 +178,10 @@ int HLT_TlsListenBlock(void* ssl)
 }
 
 // Non-blocking interface
-unsigned long int HLT_TlsAccept(void *ssl)
+pthread_t HLT_TlsAccept(void *ssl)
 {
     (void)ssl;
-    unsigned long int ret = ERROR;
+    int ret;
     Process *process = GetProcess();
     pthread_t t_id;
     switch (process->tlsType) {
@@ -188,11 +189,11 @@ unsigned long int HLT_TlsAccept(void *ssl)
             ret = pthread_create(&t_id, NULL, (void*)HitlsAccept, (void*)ssl);
             break;
         default:
-            break;
+            return 0;
     }
 
     if (ret != 0) {
-        return ret;
+        return 0;
     }
     return t_id;
 }
@@ -209,7 +210,7 @@ int HLT_TlsAcceptBlock(void *ssl)
     }
 }
 
-int HLT_GetTlsAcceptResultFromId(unsigned long int threadId)
+int HLT_GetTlsAcceptResultFromId(pthread_t threadId)
 {
     pthread_join(threadId, NULL);
     return SUCCESS;
@@ -217,14 +218,15 @@ int HLT_GetTlsAcceptResultFromId(unsigned long int threadId)
 
 int HLT_GetTlsAcceptResult(HLT_Tls_Res* tlsRes)
 {
-    int ret;
-    if (tlsRes->acceptId <= 0) {
+    static int ret;
+    if (tlsRes->acceptId == 0) {
         LOG_ERROR("This Res Has Not acceptId");
         return ERROR;
     }
     if (tlsRes->ctx == NULL) {
         // Indicates that the remote process accepts the request.
-        ret = HLT_RpcGetTlsAcceptResult(tlsRes->acceptId);
+        // acceptId stores RPC command ID (int) cast to pthread_t, cast it back
+        ret = HLT_RpcGetTlsAcceptResult((int)(uintptr_t)tlsRes->acceptId);
     } else {
         // Indicates that the local process accepts the request.
         int *tmp = NULL;
@@ -244,6 +246,17 @@ int HLT_TlsConnect(void *ssl)
 {
     Process *process;
     process = GetProcess();
+
+    // For local connections, register connection for wrapper tracking
+    if (process->remoteFlag == 0) {
+        RegisterConnection((TLS_Ctx *)ssl);
+
+        // If wrapper already enabled, apply it now
+        if (IsWrapperEnabled()) {
+            ApplyWrapperToConnectionEarly((TLS_Ctx *)ssl);
+        }
+    }
+
     switch (process->tlsType) {
         case HITLS:
             return HitlsConnect(ssl);
@@ -262,6 +275,55 @@ int HLT_TlsWrite(void *ssl, uint8_t *data, uint32_t dataLen)
             return HitlsWrite(ssl, data, dataLen);
         }
         default:
+            return ERROR;
+    }
+}
+
+int HLT_TLSWriteExportMaterial(void* ssl, ExportMaterialParam *param)
+{
+    int ret = 0;
+    Process *process = GetProcess();
+    uint32_t dataLen = param->outLen;
+    uint8_t *data = calloc(dataLen, 1);
+    if (data == NULL) {
+        return ERROR;
+    }
+    uint8_t nullData[MAX_EXPORT_MATERIAL_BUF] = {0};
+    const char *label = param->label;
+    if (memcmp(label, nullData, MAX_EXPORT_MATERIAL_BUF) == 0) {
+        label = NULL;
+    }
+    size_t labelLen = param->labelLen;
+    const uint8_t *context = (const uint8_t *)param->context;
+    if (memcmp(context, nullData, MAX_EXPORT_MATERIAL_BUF) == 0) {
+        context = NULL;
+    }
+    size_t contextLen = param->contextLen;
+    int32_t useContext = param->useContext;
+    switch (process->tlsType) {
+        case HITLS : {
+#ifdef HITLS_TLS_FEATURE_EXPORT_KEY_MATERIAL
+            ret = HITLS_ExportKeyingMaterial(ssl, data, dataLen, label, labelLen, context, contextLen, useContext);
+            if (ret != 0) {
+                free(data);
+                return ret;
+            }
+            LOG_DEBUG("Hitls Write Ing...");
+            ret = HitlsWrite(ssl, data, dataLen);
+            free(data);
+            return ret;
+#else
+            (void)useContext;
+            (void)contextLen;
+            (void)labelLen;
+            (void)ret;
+            (void)ssl;
+            free(data);
+            return -1;
+#endif
+        }
+        default:
+            free(data);
             return ERROR;
     }
 }
@@ -441,7 +503,7 @@ int RunDataChannelAccept(void *param)
 #endif
 #ifdef HITLS_BSL_UIO_UDP
         case UDP:
-            sockFd = UdpAccept(channelParam->ip, channelParam->bindFd, channelParam->isBlock, false);
+            sockFd = UdpAccept(channelParam->bindFd, (struct sockaddr *)&channelParam->sockAddr);
 #endif
             break;
         default:
@@ -492,7 +554,7 @@ HLT_FD HLT_CreateDataChannel(HLT_Process *process1, HLT_Process *process2, DataC
 {
     int acceptId;
     int bindFd;
-    unsigned long int pthreadId;
+    pthread_t pthreadId;
     HLT_FD sockFd;
     char *userPort = getenv("FIXED_PORT");
     if (userPort == NULL) {
@@ -571,9 +633,9 @@ HLT_Ctx_Config* HLT_NewCtxConfigTLCP(char *setFile, const char *key, bool isClie
     ctxConfig->allowLegacyRenegotiate = false;
     ctxConfig->isSupportClientVerify = false;
     ctxConfig->isSupportNoClientCert = false;
-    ctxConfig->isSupportExtendedMasterSecret = false;
+    ctxConfig->emsMode = HITLS_EMS_MODE_PREFER;
     ctxConfig->isClient = isClient;
-    ctxConfig->setSessionCache = 2;
+    ctxConfig->setSessionCache = HITLS_SESS_CACHE_SERVER;
     HLT_SetGroups(ctxConfig, "NULL");
     HLT_SetCipherSuites(ctxConfig, "NULL");
     HLT_SetTls13CipherSuites(ctxConfig, "NULL");
@@ -621,10 +683,11 @@ HLT_Ctx_Config* HLT_NewCtxConfig(char *setFile, const char *key)
     ctxConfig->isSupportNoClientCert = false;
     ctxConfig->isSupportVerifyNone = false;
     ctxConfig->isSupportPostHandshakeAuth = false;
-    ctxConfig->isSupportExtendedMasterSecret = true;
+    ctxConfig->emsMode = HITLS_EMS_MODE_FORCE;
     ctxConfig->isSupportSessionTicket = false;
     ctxConfig->isSupportDhAuto = true;
 	ctxConfig->isEncryptThenMac = true;
+    ctxConfig->isMiddleBoxCompat = true;
     ctxConfig->keyExchMode = TLS13_KE_MODE_PSK_WITH_DHE;
     ctxConfig->setSessionCache = HITLS_SESS_CACHE_SERVER;
     ctxConfig->mtu = 0;
@@ -727,7 +790,8 @@ void HLT_FreeAllProcess(void)
     // Clearing HLT_Tls_Res and Threads
     for (int i = 0; i < localProcess->hltTlsResNum; i++) {
         tlsRes = localProcess->hltTlsResArray[i];
-        if ((tlsRes->acceptId > 0) && (tlsRes->ctx != NULL)) {
+        alarm(60); // Avoid long waits
+        if ((tlsRes->acceptId != 0) && (tlsRes->ctx != NULL)) {
             pthread_join(tlsRes->acceptId, NULL);
         }
         free(tlsRes);
@@ -749,6 +813,8 @@ void HLT_FreeAllProcess(void)
     if (localProcess->connFd > 0) {
         close(localProcess->connFd);
     }
+    // Clear wrapper state BEFORE freeing SSL objects to prevent use-after-free
+    ClearWrapper();
     // Clear the TlsRes linked list.
     FreeTlsResList();
     // Clear CTX SSL configuration resources.
@@ -761,6 +827,8 @@ void HLT_FreeAllProcess(void)
     FreeControlChannelRes();
     // Clear local processes.
     FreeProcess();
+    // Clear connection tracking list to prevent state leakage between tests
+    ClearConnectionList();
     return;
 }
 
@@ -812,6 +880,10 @@ static int LocalProcessTlsInit(HLT_Process *process, TLS_VERSION tlsVersion,
     tlsRes->ssl = ssl;
     tlsRes->ctxId = -1; // -1 indicates that the field is discarded.
     tlsRes->sslId = -1; // -1 indicates that the field is discarded.
+
+    // Register connection for wrapper tracking
+    RegisterConnection((TLS_Ctx *)ssl);
+
     return SUCCESS;
 }
 
@@ -931,8 +1003,6 @@ int HLT_TlsGetErrorCode(void *ssl)
 HLT_Tls_Res* HLT_ProcessTlsAccept(HLT_Process *process, TLS_VERSION tlsVersion,
                                   HLT_Ctx_Config *ctxConfig, HLT_Ssl_Config *sslConfig)
 {
-    unsigned long int acceptId;
-
     HLT_Tls_Res *tlsRes = NULL;
 
     tlsRes = HLT_ProcessTlsInit(process, tlsVersion, ctxConfig, sslConfig);
@@ -942,19 +1012,21 @@ HLT_Tls_Res* HLT_ProcessTlsAccept(HLT_Process *process, TLS_VERSION tlsVersion,
     }
     // Check whether the call is invoked by the local process or by the RPC.
     if (process->remoteFlag == 0) {
-        acceptId = HLT_TlsAccept(tlsRes->ssl);
-        if (acceptId == (unsigned long int)ERROR) {
+        pthread_t acceptId = HLT_TlsAccept(tlsRes->ssl);
+        if (acceptId == 0) {
             LOG_ERROR("HLT_TlsAccept ERROR");
             return NULL;
         }
+        tlsRes->acceptId = acceptId;
     } else {
-        acceptId = HLT_RpcTlsAccept(process, tlsRes->sslId);
-        if (acceptId == (unsigned long int)ERROR) {
+        int rpcAcceptId = HLT_RpcTlsAccept(process, tlsRes->sslId);
+        if (rpcAcceptId == ERROR) {
             LOG_ERROR("HLT_TlsAccept ERROR");
             return NULL;
         }
+        // Store RPC command ID in acceptId (safe to cast int to pthread_t for storage)
+        tlsRes->acceptId = (pthread_t)(uintptr_t)rpcAcceptId;
     }
-    tlsRes->acceptId = acceptId;
     return tlsRes;
 }
 
@@ -1078,9 +1150,31 @@ int HLT_SetEmptyRecordsNum(HLT_Ctx_Config *ctxConfig, uint32_t emptyNum)
     return SUCCESS;
 }
 
+int HLT_SetKeyLogCb(HLT_Ctx_Config *ctxConfig, char *SetKeyLogCb)
+{
+    (void)memset_s(ctxConfig->keyLogCb, KEY_LOG_CB_LEN, 0, KEY_LOG_CB_LEN);
+    if (strcpy_s(ctxConfig->keyLogCb, KEY_LOG_CB_LEN, SetKeyLogCb) != EOK) {
+        LOG_ERROR("HLT_SetKeyLogCb failed.");
+        return -1;
+    }
+    return SUCCESS;
+}
+
 int HLT_SetEncryptThenMac(HLT_Ctx_Config *ctxConfig, int support)
 {
     ctxConfig->isEncryptThenMac = support;
+    return SUCCESS;
+}
+
+int HLT_SetRecordSizeLimit(HLT_Ctx_Config *ctxConfig, uint16_t recordSize)
+{
+    ctxConfig->recordSizeLimit = recordSize;
+    return SUCCESS;
+}
+
+int HLT_SetMiddleBoxCompat(HLT_Ctx_Config *ctxConfig, int support)
+{
+    ctxConfig->isMiddleBoxCompat = support;
     return SUCCESS;
 }
 
@@ -1102,6 +1196,12 @@ int HLT_SetPostHandshakeAuth(HLT_Ctx_Config *ctxConfig, bool support)
     return SUCCESS;
 }
 
+int HLT_SetPostHandshakeAuthSupport(HLT_Ctx_Config *ctxConfig, bool support)
+{
+    ctxConfig->isSupportPostHandshakeAuth = support;
+    return SUCCESS;
+}
+
 int HLT_SetNoClientCertSupport(HLT_Ctx_Config *ctxConfig, bool support)
 {
     ctxConfig->isSupportNoClientCert = support;
@@ -1110,7 +1210,7 @@ int HLT_SetNoClientCertSupport(HLT_Ctx_Config *ctxConfig, bool support)
 
 int HLT_SetExtendedMasterSecretSupport(HLT_Ctx_Config *ctxConfig, bool support)
 {
-    ctxConfig->isSupportExtendedMasterSecret = support;
+    ctxConfig->emsMode = support;
     return SUCCESS;
 }
 
@@ -1376,6 +1476,27 @@ int HLT_SetAlpnProtosSelectCb(HLT_Ctx_Config *ctxConfig, char *callback, char *u
     return SUCCESS;
 }
 
+
+int HLT_SetClientHelloCb(HLT_Ctx_Config *ctxConfig, HITLS_ClientHelloCb callback, void *arg)
+{
+    ctxConfig->clientHelloCb = callback;
+    ctxConfig->clientHelloArg = arg;
+    return SUCCESS;
+}
+
+int HLT_SetCertCb(HLT_Ctx_Config *ctxConfig, HITLS_CertCb certCb, void *arg)
+{
+    ctxConfig->certCb = certCb;
+    ctxConfig->certArg = arg;
+    return SUCCESS;
+}
+
+int HLT_SetCAList(HLT_Ctx_Config *ctxConfig, HITLS_TrustedCAList *caList)
+{
+    ctxConfig->caList = caList;
+    return SUCCESS;
+}
+
 int HLT_SetDtlsCookieExchangeSupport(HLT_Ctx_Config *ctxConfig, bool isSupport)
 {
     ctxConfig->isSupportDtlsCookieExchange = isSupport;
@@ -1395,4 +1516,14 @@ void HLT_CleanFrameHandle(void)
 bool IsEnableSctpAuth(void)
 {
     return false;
+}
+
+void HLT_ConfigTimeOut(const char* timeout)
+{
+    setenv("SSL_TIMEOUT", timeout, 1);
+}
+
+void HLT_UnsetTimeOut()
+{
+    unsetenv("SSL_TIMEOUT");
 }

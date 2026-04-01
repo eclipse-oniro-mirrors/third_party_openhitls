@@ -53,7 +53,7 @@ int32_t Tls13ServerSendEncryptedExtensionsProcess(TLS_Ctx *ctx)
             return ret;
         }
 
-        ret = HS_PackMsg(ctx, ENCRYPTED_EXTENSIONS, hsCtx->msgBuf, hsCtx->bufferLen, &hsCtx->msgLen);
+        ret = HS_PackMsg(ctx, ENCRYPTED_EXTENSIONS);
         if (ret != HITLS_SUCCESS) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15875, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "pack tls1.3 encrypted extensions fail.", 0, 0, 0, 0);
@@ -72,14 +72,16 @@ int32_t Tls13ServerSendEncryptedExtensionsProcess(TLS_Ctx *ctx)
     if (ctx->hsCtx->kxCtx->pskInfo13.psk != NULL) {
         return HS_ChangeState(ctx, TRY_SEND_FINISH);
     }
+#ifdef HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY
     /* The server sends a CertificateRequest message only when the VerifyPeer mode is enabled */
     if (ctx->config.tlsConfig.isSupportClientVerify
 #ifdef HITLS_TLS_FEATURE_PHA
-        && ctx->phaState != PHA_EXTENSION
+        && (ctx->phaState != PHA_EXTENSION || !ctx->config.tlsConfig.isSupportPostHandshakeAuth)
 #endif /* HITLS_TLS_FEATURE_PHA */
         ) {
         return HS_ChangeState(ctx, TRY_SEND_CERTIFICATE_REQUEST);
     }
+#endif /* HITLS_TLS_FEATURE_CERT_MODE_CLIENT_VERIFY */
     return HS_ChangeState(ctx, TRY_SEND_CERTIFICATE);
 }
 #endif /* HITLS_TLS_PROTO_TLS13 && HITLS_TLS_HOST_SERVER */

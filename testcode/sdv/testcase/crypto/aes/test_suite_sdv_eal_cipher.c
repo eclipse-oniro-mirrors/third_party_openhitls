@@ -26,7 +26,7 @@
 #include "crypt_aes.h"
 #include "crypt_eal_cipher.h"
 #include "eal_cipher_local.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 
 #define DATA_LEN 16
 #define DATA_MAX_LEN 1024
@@ -34,6 +34,7 @@
 
 /* END_HEADER */
 
+STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 
 /**
  * @test  SDV_CRYPTO_AES_MULTI_UPDATE_FUNC_TC001
@@ -89,6 +90,7 @@ void SDV_CRYPTO_AES_MULTI_UPDATE_FUNC_TC001(int algId, Hex *key, Hex *iv, Hex *a
     ASSERT_COMPARE("dec result1", (uint8_t *)result, pt1->len, pt1->x, pt1->len);
     ASSERT_COMPARE("dec result2", (uint8_t *)result + pt1->len, pt2->len, pt2->x, pt2->len);
     ASSERT_COMPARE("dec tagResult", (uint8_t *)tagResult, tag->len, tag->x, tag->len);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
 }
@@ -160,6 +162,7 @@ void SDV_CRYPTO_AES_MULTI_UPDATE_FUNC_TC002(int isProvider, int algId, Hex *key,
     ASSERT_TRUE(memcmp(result + pt1->len, pt2->x, pt2->len) == 0);
     ASSERT_TRUE(memcmp(result + pt1->len + pt2->len, pt3->x, pt3->len) == 0);
     ASSERT_TRUE(memcmp(tagResult, tag->x,  tag->len) == 0);
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctx);
@@ -280,6 +283,7 @@ void SDV_CRYPTO_EAL_CIPHER_FUNC_TC001(int padding, int algId, Hex *key, Hex *iv,
         ret = CRYPT_EAL_CipherFinal(ctx, decData + totalLen, &tmplen);
         ASSERT_EQ(ret, CRYPT_SUCCESS);
         ASSERT_TRUE(memcmp(testData, decData, sizeof(testData)) == 0);
+        ASSERT_TRUE(TestIsErrStackEmpty());
     }
 EXIT:
     CRYPT_EAL_CipherDeinit(ctx);
@@ -313,8 +317,7 @@ void SDV_CRYPTO_CIPHER_COPY_CTX_API_TC001(int algId, int isProvider)
 
     // A directly created context can also be used as the destination for copying.
     ASSERT_EQ(CRYPT_EAL_CipherCopyCtx(&ctxC, ctxA), CRYPT_SUCCESS);
-    ctxC.method->freeCtx(ctxC.ctx);
-    BSL_SAL_Free(ctxC.method);
+    ctxC.method.freeCtx(ctxC.ctx);
 EXIT:
     CRYPT_EAL_CipherFreeCtx(ctxA);
     CRYPT_EAL_CipherFreeCtx(ctxB);
@@ -337,7 +340,7 @@ static int32_t TestCipherUpdate(CRYPT_EAL_CipherCtx *ctx, uint8_t *in, uint32_t 
     if (ctx->id != CRYPT_CIPHER_AES128_CCM && ctx->id != CRYPT_CIPHER_AES192_CCM &&
         ctx->id != CRYPT_CIPHER_AES256_CCM && ctx->id != CRYPT_CIPHER_AES128_GCM &&
         ctx->id != CRYPT_CIPHER_AES192_GCM && ctx->id != CRYPT_CIPHER_AES256_GCM &&
-        ctx->id != CRYPT_CIPHER_SM4_GCM &&
+        ctx->id != CRYPT_CIPHER_SM4_CCM && ctx->id != CRYPT_CIPHER_SM4_GCM &&
         ctx->id != CRYPT_CIPHER_CHACHA20_POLY1305) {
         tmpLen = *outLen - totalLen;
         ret = CRYPT_EAL_CipherFinal(ctx, out + totalLen, &tmpLen);
@@ -358,7 +361,8 @@ static int32_t TestCipherSetParam(CRYPT_EAL_CipherCtx *ctx, Hex *msg, Hex *tag, 
         ret = CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_TAGLEN, &tagLen, sizeof(tagLen));
         ASSERT_EQ(ret, CRYPT_SUCCESS);
     }
-    if (algId == CRYPT_CIPHER_AES128_CCM || algId == CRYPT_CIPHER_AES192_CCM || algId == CRYPT_CIPHER_AES256_CCM) {
+    if (algId == CRYPT_CIPHER_AES128_CCM || algId == CRYPT_CIPHER_AES192_CCM || algId == CRYPT_CIPHER_AES256_CCM ||
+        algId == CRYPT_CIPHER_SM4_CCM) {
         uint64_t inLen = msg->len;
         ret = CRYPT_EAL_CipherCtrl(ctx, CRYPT_CTRL_SET_MSGLEN, &inLen, sizeof(inLen));
         ASSERT_EQ(ret, CRYPT_SUCCESS);
@@ -424,8 +428,7 @@ static void TestForCopyCtx(int32_t algId, int isProvider)
     ASSERT_COMPARE("compare:", dupEncTmp, dupEncLen, encTmp, encLen);
 
 EXIT:
-    ctxA.method->freeCtx(ctxA.ctx);
-    BSL_SAL_Free(ctxA.method);
+    ctxA.method.freeCtx(ctxA.ctx);
     CRYPT_EAL_CipherFreeCtx(ctxB);
     CRYPT_EAL_CipherFreeCtx(ctxC);
     CRYPT_EAL_CipherFreeCtx(srcCtx);
@@ -445,7 +448,8 @@ static const int32_t g_algidList[] = {
     CRYPT_CIPHER_AES128_WRAP_PAD, CRYPT_CIPHER_AES192_WRAP_PAD, CRYPT_CIPHER_AES256_WRAP_PAD,
 
     CRYPT_CIPHER_SM4_XTS, CRYPT_CIPHER_SM4_CBC, CRYPT_CIPHER_SM4_ECB, CRYPT_CIPHER_SM4_CTR,
-    CRYPT_CIPHER_SM4_GCM, CRYPT_CIPHER_SM4_CFB, CRYPT_CIPHER_SM4_OFB,
+    CRYPT_CIPHER_SM4_HCTR, CRYPT_CIPHER_SM4_GCM, CRYPT_CIPHER_SM4_CFB, CRYPT_CIPHER_SM4_OFB,
+    CRYPT_CIPHER_SM4_CCM,
 
     CRYPT_CIPHER_CHACHA20_POLY1305
 };
@@ -589,9 +593,7 @@ void SDV_CRYPTO_CIPHER_COPY_CTX_STUB_TC001(int isProvider)
 {
     TestMemInit();
     uint32_t totalMallocCount = 0;
-    STUB_Init();
-    FuncStubInfo tmpRpInfo = {0};
-    ASSERT_TRUE(STUB_Replace(&tmpRpInfo, BSL_SAL_Malloc, STUB_BSL_SAL_Malloc) == 0);
+    STUB_REPLACE(BSL_SAL_Malloc, STUB_BSL_SAL_Malloc);
     for (uint32_t i = 0; i < sizeof(g_algidList) / g_algidList[0]; i++) {
         STUB_EnableMallocFail(false);
         STUB_ResetMallocCount();
@@ -607,6 +609,6 @@ void SDV_CRYPTO_CIPHER_COPY_CTX_STUB_TC001(int isProvider)
         }
     }
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(BSL_SAL_Malloc);
 }
 /* END_CASE */

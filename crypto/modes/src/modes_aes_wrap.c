@@ -355,6 +355,18 @@ MODES_WRAP_Ctx *MODES_WRAP_NoPadNewCtx(int32_t algId)
     return MODES_WRAP_NewCtx(algId, false);
 }
 
+MODES_WRAP_Ctx *MODES_WRAP_PadNewCtxEx(void *libCtx, int32_t algId)
+{
+    (void)libCtx;
+    return MODES_WRAP_NewCtx(algId, true);
+}
+
+MODES_WRAP_Ctx *MODES_WRAP_NoPadNewCtxEx(void *libCtx, int32_t algId)
+{
+    (void)libCtx;
+    return MODES_WRAP_NewCtx(algId, false);
+}
+
 int32_t MODES_WRAP_InitCtx(MODES_WRAP_Ctx *modeCtx, const uint8_t *key, uint32_t keyLen, const uint8_t *iv,
     uint32_t ivLen, void *param, bool enc)
 {
@@ -396,8 +408,8 @@ int32_t MODES_WRAP_Final(MODES_WRAP_Ctx *modeCtx, uint8_t *out, uint32_t *outLen
         BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
         return CRYPT_NULL_INPUT;
     }
-    (void) modeCtx;
-    (void) out;
+    (void)modeCtx;
+    (void)out;
     *outLen = 0;
     return CRYPT_SUCCESS;
 }

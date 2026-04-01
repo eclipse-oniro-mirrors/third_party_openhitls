@@ -22,7 +22,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "crypt_types.h"
+
+#ifdef HITLS_CRYPTO_PROVIDER
 #include "bsl_params.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,16 +34,36 @@ extern "C" {
 #define CRYPT_SM3_BLOCKSIZE 64
 #define CRYPT_SM3_DIGESTSIZE 32
 
-typedef struct CryptSm3Ctx CRYPT_SM3_Ctx;
+typedef struct {
+    uint32_t h[CRYPT_SM3_DIGESTSIZE / sizeof(uint32_t)];  /* store the intermediate data of the hash value */
+    uint32_t hNum, lNum;                                  /* input data counter, maximum value 2 ^ 64 bits */
+    uint8_t block[CRYPT_SM3_BLOCKSIZE];                   /* store the remaining data which less than one block */
+    /* Number of remaining bytes in 'block' arrary that are stored less than one block */
+    uint32_t num;
+} CRYPT_SM3_Ctx;
+
+#define CRYPT_SM3_Squeeze NULL
 
 /**
  * @ingroup SM3
  * @brief Generate md context.
  *
- * @retval Success: cipher ctx.
+ * @retval Success: sm3 ctx.
  *         Fails: NULL.
  */
 CRYPT_SM3_Ctx *CRYPT_SM3_NewCtx(void);
+
+/**
+ * @ingroup SM3
+ * @brief Generate md context.
+ *
+ * @param libCtx [IN] library context
+ * @param algId [IN] algorithm id
+ *
+ * @retval Success: sm3 ctx.
+ *         Fails: NULL.
+ */
+CRYPT_SM3_Ctx *CRYPT_SM3_NewCtxEx(void *libCtx, int32_t algId);
 
 /**
  * @ingroup SM3
@@ -54,13 +77,24 @@ void CRYPT_SM3_FreeCtx(CRYPT_SM3_Ctx *ctx);
  * @ingroup SM3
  * @brief This API is used to initialize the SM3 context.
  *
- * @param ctx [in,out] SM3 context pointer.
- * @param *param [in] Pointer to the parameter.
+ * @param ctx [in,out] SM3 context pointer.\
  *
  * @retval #CRYPT_SUCCESS    initialization succeeded.
  * @retval #CRYPT_NULL_INPUT Pointer ctx is NULL
  */
-int32_t CRYPT_SM3_Init(CRYPT_SM3_Ctx *ctx, BSL_Param *param);
+int32_t CRYPT_SM3_Init(CRYPT_SM3_Ctx *ctx);
+
+/**
+ * @ingroup SM3
+ * @brief This API is used to initialize the SM3 context.
+ *
+ * @param ctx [in,out] SM3 context pointer.
+ * @param param [in,out] SM3 param pointer.
+ *
+ * @retval #CRYPT_SUCCESS    initialization succeeded.
+ * @retval #CRYPT_NULL_INPUT Pointer ctx is NULL
+ */
+int32_t CRYPT_SM3_InitEx(CRYPT_SM3_Ctx *ctx, void *param);
 
 /**
  * @ingroup SM3
@@ -94,14 +128,20 @@ int32_t CRYPT_SM3_Final(CRYPT_SM3_Ctx *ctx, uint8_t *out, uint32_t *outLen);
  * @ingroup SM3
  * @brief SM3 Deinitialization API
  * @param ctx [in,out]   SM3 context pointer.
+ *
+ * @retval #CRYPT_SUCCESS    Deinitialization succeeded.
+ * @retval #CRYPT_NULL_INPUT Pointer ctx is NULL
  */
-void CRYPT_SM3_Deinit(CRYPT_SM3_Ctx *ctx);
+int32_t CRYPT_SM3_Deinit(CRYPT_SM3_Ctx *ctx);
 
 /**
  * @ingroup SM3
  * @brief Copy SM3 CTX function
  * @param dst [out]   SM3 context pointer.
  * @param src [in]   Pointer to the original SM3 context.
+ *
+ * @retval #CRYPT_SUCCESS    Copy succeeded.
+ * @retval #CRYPT_NULL_INPUT Pointer src is NULL
  */
 int32_t CRYPT_SM3_CopyCtx(CRYPT_SM3_Ctx *dst, const CRYPT_SM3_Ctx *src);
 
@@ -109,8 +149,27 @@ int32_t CRYPT_SM3_CopyCtx(CRYPT_SM3_Ctx *dst, const CRYPT_SM3_Ctx *src);
  * @ingroup SM3
  * @brief Dup SM3 CTX function
  * @param src [in]   Pointer to the original SM3 context.
+ *
+ * @retval Success: sm3 ctx.
+ *         Fails: NULL.
  */
 CRYPT_SM3_Ctx *CRYPT_SM3_DupCtx(const CRYPT_SM3_Ctx *src);
+
+#ifdef HITLS_CRYPTO_PROVIDER
+/**
+ * @ingroup SM3
+ * @brief SM3 get param function
+ * @param ctx [in]   Pointer to the SM3 context.
+ * @param param [in]   Pointer to the parameter.
+ *
+ * @retval #CRYPT_SUCCESS       initialization succeeded.
+ * @retval #CRYPT_NULL_INPUT    Pointer ctx is NULL
+ * @retval #CRYPT_INVALID_ARG   Pointer param is invalid
+ */
+int32_t CRYPT_SM3_GetParam(CRYPT_SM3_Ctx *ctx, BSL_Param *param);
+#else
+#define CRYPT_SM3_GetParam NULL
+#endif // HITLS_CRYPTO_PROVIDER
 
 #ifdef __cplusplus
 }

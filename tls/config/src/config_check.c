@@ -21,7 +21,6 @@
 #include "bsl_log_internal.h"
 #include "bsl_log.h"
 #include "hitls_crypt_type.h"
-#include "hitls_cert_type.h"
 #include "hitls_error.h"
 #include "hitls_config.h"
 #include "tls.h"
@@ -29,6 +28,7 @@
 #include "cipher_suite.h"
 #include "config_type.h"
 
+#ifdef HITLS_TLS_CONFIG_VERSION
 static bool CFG_IsValidVersion(uint16_t version)
 {
     switch (version) {
@@ -42,8 +42,10 @@ static bool CFG_IsValidVersion(uint16_t version)
     }
     return false;
 }
+#endif /* HITLS_TLS_CONFIG_VERSION */
 
-static bool  HaveMatchSignAlg(const TLS_Config *config, HITLS_AuthAlgo authAlg, const uint16_t *signatureAlgorithms,
+#ifdef HITLS_TLS_PROTO_DFX_CHECK
+static bool HaveMatchSignAlg(const TLS_Config *config, HITLS_AuthAlgo authAlg, const uint16_t *signatureAlgorithms,
     uint32_t signatureAlgorithmsSize)
 {
     HITLS_SignAlgo signAlg = HITLS_SIGN_BUTT;
@@ -97,12 +99,9 @@ static int32_t CheckPointFormats(const TLS_Config *config)
 
 static bool IsCipherSuiteValid(const TLS_Config *config, uint16_t cipherSuite)
 {
-    if ((CFG_CheckCipherSuiteSupported(cipherSuite) != true) ||
-        (CFG_CheckCipherSuiteVersion(cipherSuite, config->minVersion, config->maxVersion) != true)) {
-        /* The cipher suite must match the configured version */
-        return false;
-    }
-    return true;
+    /* The cipher suite must match the configured version */
+    return CFG_CheckCipherSuiteSupported(cipherSuite) == true &&
+           CFG_CheckCipherSuiteVersion(cipherSuite, config->minVersion, config->maxVersion) == true;
 }
 
 static int32_t CheckSign(const TLS_Config *config)
@@ -174,10 +173,9 @@ static bool IsHaveEccCipherSuite(const TLS_Config *config)
         (void)CFG_GetCipherSuiteInfo(config->cipherSuites[i], &info);
 
         /* The ECC cipher suite exists */
-        if ((info.authAlg == HITLS_AUTH_ECDSA) ||
-            (info.kxAlg == HITLS_KEY_EXCH_ECDHE) ||
-            (info.kxAlg == HITLS_KEY_EXCH_ECDH) ||
-            (info.kxAlg == HITLS_KEY_EXCH_ECDHE_PSK)) {
+        bool hasEcc = (info.authAlg == HITLS_AUTH_ECDSA) || (info.kxAlg == HITLS_KEY_EXCH_ECDHE) ||
+                      (info.kxAlg == HITLS_KEY_EXCH_ECDH) || (info.kxAlg == HITLS_KEY_EXCH_ECDHE_PSK);
+        if (hasEcc == true) {
             return true;
         }
     }
@@ -196,7 +194,9 @@ static int32_t CheckGroup(const TLS_Config *config)
 
     return HITLS_SUCCESS;
 }
+#endif /* HITLS_TLS_PROTO_DFX_CHECK */
 
+#ifdef HITLS_TLS_CONFIG_VERSION
 int32_t CheckVersion(uint16_t minVersion, uint16_t maxVersion)
 {
     if ((CFG_IsValidVersion(minVersion) == false) || (CFG_IsValidVersion(maxVersion) == false) ||
@@ -232,14 +232,17 @@ int32_t CheckVersion(uint16_t minVersion, uint16_t maxVersion)
 #endif
     return HITLS_SUCCESS;
 }
+#endif /* HITLS_TLS_CONFIG_VERSION */
 
+#ifdef HITLS_TLS_PROTO_DFX_CHECK
 #if defined(HITLS_TLS_PROTO_DTLS12) && defined(HITLS_BSL_UIO_UDP)
 static int32_t CheckCallbackFunc(const TLS_Config *config)
 {
     /* Check the cookie callback. The user must register the cookie callback at the same time or
         not register the cookie callback */
-    if ((config->appGenCookieCb != NULL && config->appVerifyCookieCb == NULL) ||
-        (config->appGenCookieCb == NULL && config->appVerifyCookieCb != NULL)) {
+    bool invalidSet = (config->appGenCookieCb != NULL && config->appVerifyCookieCb == NULL) ||
+                      (config->appGenCookieCb == NULL && config->appVerifyCookieCb != NULL);
+    if (invalidSet == true) {
         BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_SET);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15784, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "cannot register only one cookie callback, either appGenCookieCb or appVerifyCookieCb is NULL.",
@@ -266,7 +269,12 @@ int32_t CheckConfig(const TLS_Config *config)
         BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_SET);
         return HITLS_CONFIG_INVALID_SET;
     }
-
+    if (config->minVersion == 0 || config->maxVersion == 0) {
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17374, BSL_LOG_LEVEL_INFO, BSL_LOG_BINLOG_TYPE_RUN,
+            "minVersion or maxVersion is 0", 0, 0, 0, 0);
+        BSL_ERR_PUSH_ERROR(HITLS_CONFIG_INVALID_VERSION);
+        return HITLS_CONFIG_INVALID_VERSION;
+    }
     /* The checkpoint format and group are required only when the ecdhe cipher suite is available */
     if (IsHaveEccCipherSuite(config)) {
         ret = CheckPointFormats(config);
@@ -288,3 +296,4 @@ int32_t CheckConfig(const TLS_Config *config)
 #endif
     return ret;
 }
+#endif /* HITLS_TLS_PROTO_DFX_CHECK */

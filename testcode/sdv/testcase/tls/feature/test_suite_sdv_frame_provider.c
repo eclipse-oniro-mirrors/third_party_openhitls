@@ -27,6 +27,7 @@
 #include "cert_callback.h"
 #include "test.h"
 #include "crypt_eal_rand.h"
+#include "bsl_obj_internal.h"
 /* END_HEADER */
 
 
@@ -71,6 +72,8 @@ void UT_TLS13_LOADPROVIDER_GROUP_TC001(char *path, char *get_cap_test1, int cmd)
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -78,6 +81,7 @@ EXIT:
     if (libCtx != NULL) {
         CRYPT_EAL_LibCtxFree(libCtx);
     }
+    BSL_OBJ_FreeHashTable();
 #endif
 }
 /* END_CASE */
@@ -130,6 +134,8 @@ void UT_TLS13_LOADPROVIDER_SIGNSCHEME_TC001(char *path, char *get_cap_test1, int
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
 
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -137,6 +143,7 @@ EXIT:
     if (libCtx != NULL) {
         CRYPT_EAL_LibCtxFree(libCtx);
     }
+    BSL_OBJ_FreeHashTable();
 #endif
 }
 /* END_CASE */
@@ -189,6 +196,8 @@ void UT_TLS13_LOADPROVIDER_NEWKEYTYPE_TC001(char *path, char *provider_new_alg_t
     ASSERT_TRUE(server != NULL);
 
     ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);

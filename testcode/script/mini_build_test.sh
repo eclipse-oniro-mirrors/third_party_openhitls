@@ -40,7 +40,11 @@ DEL_OPTIONS=""
 SYSTEM=""
 BITS=64
 ENDIAN="little"
+ASAN_OPTIONS=""
+TLS_FLAG=""
 FEATURE_CONFIG_FILE=""
+COMPILE_CONFIG_FILE=""
+INCLUDE_PATH=""
 
 print_usage() {
     printf "Usage: $0\n"
@@ -60,6 +64,7 @@ print_usage() {
     printf "  %-25s %s\n" "no-crypto"               "TEST: Do not link hitls_crypto related libraries."
     printf "  %-25s %s\n" "no-mpa"                  "TEST: Do not link hitls_mpa related libraries."
     printf "  %-25s %s\n" "no-exe-test"             "TEST: Do not exe tests."
+    printf "  %-25s %s\n" "tls-debug"               "TEST: HiTLS tls module debug log."
     printf "\nexample:\n"
     printf "  %-50s %-30s\n" "bash mini_build_test.sh enable=sha1,sha2,sha3 test=sha1,sha3" "Build sha1, sha2 and sha3, test sha1 and sha2."
     printf "  %-50s %-30s\n" "bash mini_build_test.sh enable=sha1,sm3 armv8" "Build sha1 and sm3 and enable armv8 assembly."
@@ -101,9 +106,6 @@ parse_option()
                 ;;
             "enable")
                 FEATURES=(${value//,/ })
-                if [[ $value == *entropy* || $value == *hitls_crypto* ]]; then
-                    ADD_OPTIONS="$ADD_OPTIONS -DHITLS_SEED_DRBG_INIT_RAND_ALG=CRYPT_RAND_SHA256 -DHITLS_CRYPTO_ENTROPY_DEVRANDOM"
-                fi
                 ;;
             "debug")
                 ADD_OPTIONS="$ADD_OPTIONS -O0 -g3 -gdwarf-2"
@@ -112,6 +114,7 @@ parse_option()
             "asan")
                 ADD_OPTIONS="$ADD_OPTIONS -fsanitize=address -fsanitize-address-use-after-scope -O0 -g3 -fno-stack-protector -fno-omit-frame-pointer -fgnu89-inline"
                 DEL_OPTIONS="$DEL_OPTIONS -fstack-protector-strong -fomit-frame-pointer -O2 -D_FORTIFY_SOURCE=2"
+                ASAN_OPTIONS="asan"
                 ;;
             "feature-config")
                 # First try to find file with ASM_TYPE suffix
@@ -124,6 +127,18 @@ parse_option()
                 fi
                 if [ -z "$FEATURE_CONFIG_FILE" ]; then
                     echo "Error: Cannot find feature config file '${value}.json' or '${value}.json' under $HITLS_ROOT_DIR"
+                    exit 1
+                fi
+                ;;
+            "compile-config")
+                if [ -n "$ASM_TYPE" ]; then
+                    COMPILE_CONFIG_FILE=$(find $HITLS_ROOT_DIR -name "${value}_${ASM_TYPE}.json" -type f | head -n 1)
+                fi
+                if [ -z "$COMPILE_CONFIG_FILE" ]; then
+                    COMPILE_CONFIG_FILE=$(find $HITLS_ROOT_DIR -name "${value}.json" -type f | head -n 1)
+                fi
+                if [ -z "$COMPILE_CONFIG_FILE" ]; then
+                    echo "Error: Cannot find compile config file '${value}.json' or '${value}.json' under $HITLS_ROOT_DIR"
                     exit 1
                 fi
                 ;;
@@ -145,6 +160,16 @@ parse_option()
                 ;;
             "no-mpa")
                 NO_LIB="$NO_LIB no-mpa"
+                ;;
+            "add-options")
+                ADD_OPTIONS="$ADD_OPTIONS $value"
+                ;;
+            "include-path")
+                INCLUDE_PATH="$value $INCLUDE_PATH "
+                ADD_OPTIONS="$ADD_OPTIONS $value"
+                ;;
+            "tls-debug")
+                TLS_FLAG=$value
                 ;;
             *)
                 echo "Wrong parameter: $key" 
@@ -233,6 +258,10 @@ mini_config()
     if [ "$FEATURE_CONFIG_FILE" != "" ]; then
         MODIFIED_CONFIG_FILE=$(process_feature_config "$FEATURE_CONFIG_FILE" "$ENDIAN" "$BITS" "$ASM_TYPE" "$HITLS_ROOT_DIR/build/")
         enables="--feature_config $MODIFIED_CONFIG_FILE"
+    fi
+
+    if [ "$COMPILE_CONFIG_FILE" != "" ]; then
+        enables="$enables --compile_config $COMPILE_CONFIG_FILE"
     fi
 
     echo "python3 configure.py --lib_type $LIB_TYPE $enables --endian=$ENDIAN --bits=$BITS"
@@ -344,7 +373,6 @@ exe_file_testcases()
 test_feature()
 {
     features=$1
-
     cd $HITLS_ROOT_DIR/testcode/script
     files=`get_testfiles_by_features $features`
     echo "files: $files"
@@ -353,7 +381,12 @@ test_feature()
         return
     fi
 
-    bash build_sdv.sh run-tests="$files" $NO_LIB no-demos no-sctp
+    params=""
+    if [ "$INCLUDE_PATH" != "" ]; then
+        params="${params} include-path=$INCLUDE_PATH"
+    fi
+
+    bash build_sdv.sh run-tests="$files" $NO_LIB no-demos no-sctp $ASAN_OPTIONS $params $TLS_FLAG
 
     if [ $EXE_TEST == "on" ]; then
         # exe test

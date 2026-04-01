@@ -168,6 +168,7 @@ void UT_TLS_TLCP_CONSISTENCY_RESUME_TC005()
     FRAME_FreeLink(server);
 
     client = FRAME_CreateTLCPLink(config, BSL_UIO_TCP, true);
+    // Error stack exists
     server = FRAME_CreateTLCPLink(config, BSL_UIO_TCP, false);
     HITLS_SetSession(client->ssl, clientSession);
     ASSERT_EQ(FRAME_CreateConnection(client, server, false, TRY_SEND_FINISH), HITLS_SUCCESS);
@@ -184,6 +185,8 @@ void UT_TLS_TLCP_CONSISTENCY_RESUME_TC005()
     ASSERT_EQ(isReused, false);
     ASSERT_EQ(HITLS_IsSessionReused(client->ssl, &isReused), HITLS_SUCCESS);
     ASSERT_EQ(isReused, true);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
 
 EXIT:
     HITLS_CFG_FreeConfig(config);
@@ -217,6 +220,7 @@ void UT_TLS_TLCP_CONSISTENCY_RESUME_TC006()
     const uint64_t timeout = 5u;
     HITLS_CFG_SetSessionTimeout(config, timeout);
     client = FRAME_CreateTLCPLink(config, BSL_UIO_TCP, true);
+    // Error stack exists
     server = FRAME_CreateTLCPLink(config, BSL_UIO_TCP, false);
     ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
     HITLS_Session *clientSession = HITLS_GetDupSession(client->ssl);
@@ -230,6 +234,9 @@ void UT_TLS_TLCP_CONSISTENCY_RESUME_TC006()
     bool isReused = false;
     ASSERT_EQ(HITLS_IsSessionReused(client->ssl, &isReused), HITLS_SUCCESS);
     ASSERT_EQ(isReused, false);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -258,6 +265,7 @@ void UT_TLS_TLCP_CONSISTENCY_RESUME_TC007()
     FRAME_LinkObj *server = NULL;
     config = HITLS_CFG_NewTLCPConfig();
     client = FRAME_CreateTLCPLink(config, BSL_UIO_TCP, true);
+    // Error stack exists
     server = FRAME_CreateTLCPLink(config, BSL_UIO_TCP, false);
     ASSERT_EQ(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
     HITLS_Session *clientSession = HITLS_GetDupSession(client->ssl);
@@ -272,6 +280,9 @@ void UT_TLS_TLCP_CONSISTENCY_RESUME_TC007()
     bool isReused = false;
     ASSERT_EQ(HITLS_IsSessionReused(client->ssl, &isReused), HITLS_SUCCESS);
     ASSERT_EQ(isReused, false);
+
+    ASSERT_TRUE(TestIsErrStackNotEmpty());
+
 EXIT:
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
@@ -280,6 +291,8 @@ EXIT:
     HITLS_SESS_Free(clientSession);
 }
 /* END_CASE */
+
+STUB_DEFINE_RET5(int32_t, HITLS_X509_CheckSignature, void *, uint8_t *, uint32_t , const void *, const void *);
 
 static int32_t STUB_HITLS_X509_CheckSignature_Fail(void *pubKey, uint8_t *rawData,
     uint32_t rawDataLen, const void *alg, const void *signature)
@@ -316,14 +329,16 @@ void UT_TLS_TLCP_CERT_VERIFY_FAIL_TC001()
     ASSERT_EQ(FRAME_CreateConnection(client, server, false, TRY_SEND_CERTIFICATE), HITLS_SUCCESS);
 
     /* Stub the certificate signature verification function to return failure */
-    FuncStubInfo tmpRpInfo = {0};
-    STUB_Init();
-    STUB_Replace(&tmpRpInfo, HITLS_X509_CheckSignature, STUB_HITLS_X509_CheckSignature_Fail);
+    STUB_REPLACE(HITLS_X509_CheckSignature, STUB_HITLS_X509_CheckSignature_Fail);
 
     /* Continue handshake, should fail due to certificate verification failure */
     ASSERT_NE(FRAME_CreateConnection(client, server, false, HS_STATE_BUTT), HITLS_SUCCESS);
+
+    /* Restore the stub */
+    STUB_RESTORE(HITLS_X509_CheckSignature);
+
 EXIT:
-    STUB_Reset(&tmpRpInfo);
+    STUB_RESTORE(HITLS_X509_CheckSignature);
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);

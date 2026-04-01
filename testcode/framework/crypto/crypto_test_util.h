@@ -27,8 +27,14 @@ extern "C" {
 void TestMemInit(void);
 
 int TestRandInit(void);
+int TestRandInitEx(void *libCtx);
 
 void TestRandDeInit(void);
+
+int TestRandInitSelfCheck(void);
+#ifndef AEAD_MAX_TAG_LEN
+#define AEAD_MAX_TAG_LEN 16
+#endif
 
 bool IsMdAlgDisabled(int id);
 
@@ -56,8 +62,13 @@ bool IsCurveDisabled(int eccId);
 
 bool IsCurve25519AlgDisabled(int id);
 
+void TestErrClear(void);
+bool TestIsErrStackEmpty(void);
+bool TestIsErrStackNotEmpty(void);
+
 int32_t TestSimpleRand(uint8_t *buff, uint32_t len);
 int32_t TestSimpleRandEx(void *libCtx, uint8_t *buff, uint32_t len);
+int32_t TestSimpleRandExSelfCheck(void *libCtx, uint8_t *buff, uint32_t len);
 
 #if defined(HITLS_CRYPTO_EAL) && defined(HITLS_CRYPTO_MAC)
 uint32_t TestGetMacLen(int algId);

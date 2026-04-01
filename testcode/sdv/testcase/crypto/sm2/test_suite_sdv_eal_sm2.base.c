@@ -19,12 +19,17 @@
 #include "crypt_types.h"
 #include "crypt_eal_pkey.h"
 #include "crypt_errno.h"
-#include "stub_replace.h"
+#include "stub_utils.h"
 #include "crypt_eal_rand.h"
 #include "securec.h"
 #include "crypt_util_rand.h"
-#include "crypt_encode_internal.h"
+#include "crypt_encode.h"
 #include "crypt_dsa.h"
+
+/* ============================================================================
+ * Stub Definitions
+ * ============================================================================ */
+STUB_DEFINE_RET3(int32_t, BN_RandRangeEx, void *, BN_BigNum *, const BN_BigNum *);
 
 #define ERR_BAD_RAND 1
 #define RAND_BUF_LEN 2048
@@ -45,6 +50,18 @@ int32_t RandFunc(uint8_t *randNum, uint32_t randLen)
 int32_t RandFuncEx(void *libCtx, uint8_t *randNum, uint32_t randLen)
 {
     (void)libCtx;
+    for (uint32_t i = 0; i < randLen; i++) {
+        randNum[i] = (uint8_t)(rand() % UINT8_MAX_NUM);
+    }
+
+    return 0;
+}
+
+int32_t RandFuncExSelfCheck(void *libCtx, uint8_t *randNum, uint32_t randLen)
+{
+    if (libCtx == NULL) {
+        return CRYPT_PROVIDER_INVALID_LIB_CTX;
+    }
     for (uint32_t i = 0; i < randLen; i++) {
         randNum[i] = (uint8_t)(rand() % UINT8_MAX_NUM);
     }

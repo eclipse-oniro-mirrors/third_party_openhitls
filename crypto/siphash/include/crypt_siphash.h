@@ -38,12 +38,33 @@ extern "C" {
 
 typedef struct SIPHASH_Ctx CRYPT_SIPHASH_Ctx;
 
+#define CRYPT_SIPHASH_SetParam NULL
+
 /**
  * @brief Create a new siphash context.
  * @param id [IN] MAC algorithm id
  * @retval Pointer to the created siphash context.
  */
 CRYPT_SIPHASH_Ctx *CRYPT_SIPHASH_NewCtx(CRYPT_MAC_AlgId id);
+
+/**
+ * @brief Create a new siphash context with external library context.
+ * @param libCtx [in] External library context
+ * @param id [in] siphash algorithm ID
+ * @return Pointer to the siphash context
+ */
+CRYPT_SIPHASH_Ctx *CRYPT_SIPHASH_NewCtxEx(void *libCtx, CRYPT_MAC_AlgId id);
+
+/**
+ * @brief Initialize the siphash context by using the key passed by the user.
+ * @param ctx [IN] siphash context
+ * @param key [IN] MAC symmetric key
+ * @param len [IN] Key length. The length of the siphash key is fixed to 128 bits.
+ * @retval #CRYPT_SUCCESS       Succeeded.
+ * @retval #CRYPT_NULL_INPUT    The input parameter is NULL.
+ *         #CRYPT_INVALID_ARG   invalid input parameter. For example, the input key length is not 128 bits.
+ */
+int32_t CRYPT_SIPHASH_Init(CRYPT_SIPHASH_Ctx *ctx, const uint8_t *key, uint32_t keyLen);
 
 /**
  * @brief Initialize the siphash context by using the key passed by the user.
@@ -55,7 +76,7 @@ CRYPT_SIPHASH_Ctx *CRYPT_SIPHASH_NewCtx(CRYPT_MAC_AlgId id);
  * @retval #CRYPT_NULL_INPUT    The input parameter is NULL.
  *         #CRYPT_INVALID_ARG   invalid input parameter. For example, the input key length is not 128 bits.
  */
-int32_t CRYPT_SIPHASH_Init(CRYPT_SIPHASH_Ctx *ctx, const uint8_t *key, uint32_t keyLen, void *param);
+int32_t CRYPT_SIPHASH_InitEx(CRYPT_SIPHASH_Ctx *ctx, const uint8_t *key, uint32_t keyLen, void *param);
 
 /**
  * @brief siphash update, supporting streaming update
@@ -81,14 +102,18 @@ int32_t CRYPT_SIPHASH_Final(CRYPT_SIPHASH_Ctx *ctx, uint8_t *out, uint32_t *outl
 /**
  * @brief Re-initialize the siphash context
  * @param ctx [IN]  siphash context
+ * @retval #CRYPT_SUCCESS       Succeeded.
+ * @retval #CRYPT_NULL_INPUT    The input parameter is NULL.
  */
-void CRYPT_SIPHASH_Reinit(CRYPT_SIPHASH_Ctx *ctx);
+int32_t CRYPT_SIPHASH_Reinit(CRYPT_SIPHASH_Ctx *ctx);
 
 /**
  * @brief   siphash de-initialization
  * @param ctx [IN]  siphash context
+ * @retval #CRYPT_SUCCESS       Succeeded.
+ * @retval #CRYPT_NULL_INPUT    The input parameter is NULL.
  */
-void CRYPT_SIPHASH_Deinit(CRYPT_SIPHASH_Ctx *ctx);
+int32_t CRYPT_SIPHASH_Deinit(CRYPT_SIPHASH_Ctx *ctx);
 
 /**
  * @brief   siphash control

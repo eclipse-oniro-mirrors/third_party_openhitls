@@ -21,10 +21,55 @@ paramList=$@
 paramNum=$#
 is_concurrent=1
 need_run_all=1
-threadsNum=$(grep -c ^processor /proc/cpuinfo)
+# Cross-platform CPU count detection
+if [[ "$(uname)" == "Darwin" ]]; then
+    threadsNum=$(sysctl -n hw.ncpu)
+else
+    threadsNum=$(grep -c ^processor /proc/cpuinfo)
+fi
 testsuite_array=()
 testcase_array=()
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(realpath ${HITLS_ROOT_DIR}/build):$(realpath ${HITLS_ROOT_DIR}/platform/Secure_C/lib)
+
+# Build library path with all necessary library paths (cross-platform)
+# Start with build directory (no leading colon)
+LIB_PATHS="$(realpath ${HITLS_ROOT_DIR}/build)"
+LIB_PATHS="${LIB_PATHS}:$(realpath ${HITLS_ROOT_DIR}/platform/Secure_C/lib)"
+
+# Add CMVP provider library paths (all architectures: C, armv8_le, x86_64, etc.)
+for cmvp_lib_dir in ${HITLS_ROOT_DIR}/output/CMVP/*/lib; do
+    if [ -d "$cmvp_lib_dir" ]; then
+        LIB_PATHS="${LIB_PATHS}:$(realpath $cmvp_lib_dir)"
+        echo "[INFO] Adding CMVP library path: $(realpath $cmvp_lib_dir)"
+    fi
+done
+
+# Also check build/output location (alternative install path)
+if [ -d "${HITLS_ROOT_DIR}/build/output/CMVP" ]; then
+    for cmvp_lib_dir in ${HITLS_ROOT_DIR}/build/output/CMVP/*/lib; do
+        if [ -d "$cmvp_lib_dir" ]; then
+            LIB_PATHS="${LIB_PATHS}:$(realpath $cmvp_lib_dir)"
+            echo "[INFO] Adding CMVP library path (build): $(realpath $cmvp_lib_dir)"
+        fi
+    done
+fi
+
+# Set library path based on platform
+if [[ "$(uname)" == "Darwin" ]]; then
+    # macOS uses DYLD_LIBRARY_PATH
+    if [ -n "${DYLD_LIBRARY_PATH}" ]; then
+        LIB_PATHS="${LIB_PATHS}:${DYLD_LIBRARY_PATH}"
+    fi
+    export DYLD_LIBRARY_PATH="${LIB_PATHS}"
+    export LD_LIBRARY_PATH="${LIB_PATHS}"  # Also set for compatibility
+    echo "[INFO] Final DYLD_LIBRARY_PATH: ${DYLD_LIBRARY_PATH}"
+else
+    # Linux uses LD_LIBRARY_PATH
+    if [ -n "${LD_LIBRARY_PATH}" ]; then
+        LIB_PATHS="${LIB_PATHS}:${LD_LIBRARY_PATH}"
+    fi
+    export LD_LIBRARY_PATH="${LIB_PATHS}"
+    echo "[INFO] Final LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}"
+fi
 
 # Check whether an ASAN alarm is generated.
 generate_asan_log() {
@@ -66,11 +111,11 @@ run_test() {
         for i in ${testsuite_array[@]}
         do
             if [ "${i}" = "test_suite_sdv_eal_provider_load" ]; then
-                # 针对特定测试套件设置 LD_LIBRARY_PATH
+                # Set custom LD_LIBRARY_PATH for provider load test suite
                 echo "Running ${i} with LD_LIBRARY_PATH set to ../testdata/provider/path1"
                 env LD_LIBRARY_PATH="../testdata/provider/path1:${LD_LIBRARY_PATH}" ./${i} NO_DETAIL
             else
-                # 其他测试套件正常运行
+                # Run other test suites normally
                 ./${i} NO_DETAIL
             fi
         done
@@ -186,7 +231,13 @@ run_all() {
     end_time=$(date +%s)
     echo "End: $(date)" >> time.txt
     elapsed=$((end_time - start_time))
-    eval "echo Elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec') >> time.txt"
+    # Cross-platform date formatting
+    if [[ "$(uname)" == "Darwin" ]]; then
+        days=$((elapsed/86400)); hours=$(( (elapsed%86400)/3600 )); minutes=$(( (elapsed%3600)/60 )); seconds=$((elapsed%60))
+        echo "Elapsed time: $days days $(printf "%02d" $hours) hr $(printf "%02d" $minutes) min $(printf "%02d" $seconds) sec" >> time.txt
+    else
+        eval "echo Elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec') >> time.txt"
+    fi
 
     generate_asan_log
 }
@@ -246,7 +297,6 @@ parse_option()
 
 run_demos()
 {
-    exit_code=$?
     pushd ${HITLS_ROOT_DIR}/testcode/demo/build
     executales=$(find ./ -maxdepth 1 -type f -perm -a=x )
     for e in $executales
@@ -254,7 +304,7 @@ run_demos()
         if [[ ! "$e" == *"client"* ]] && [[ ! "$e" == *"server"* ]]; then
             echo "${e} start"
             eval "${e}"
-            if [ $exit_code -ne 0 ]; then
+            if [ $? -ne 0 ]; then
                 echo "Demo ${e} failed"
                 exit 1
             fi
@@ -263,14 +313,38 @@ run_demos()
 
     # run server and client in order.
     ./server &
-    if [ $exit_code -ne 0 ]; then
-        echo "Demo ${e} failed"
-        exit 1
-    fi
+    server_pid=$!
     sleep 1
     ./client
-    if [ $exit_code -ne 0 ]; then
-        echo "Demo ${e} failed"
+    client_rc=$?
+    if [ $client_rc -ne 0 ]; then
+        echo "Demo client failed"
+        exit 1
+    fi
+    # wait server to exit and get exit code
+    wait $server_pid
+    server_rc=$?
+    if [ $server_rc -ne 0 ]; then
+        echo "Demo server failed"
+        exit 1
+    fi
+
+    # run tlcp server and client in order.
+    ./tlcp_server &
+    tlcp_server_pid=$!
+    sleep 1
+    ./tlcp_client
+    tlcp_client_rc=$?
+    echo "tlcp_client_rc: $tlcp_client_rc"
+    if [ $tlcp_client_rc -ne 0 ]; then
+        echo "Demo tlcp client failed"
+        exit 1
+    fi
+    wait $tlcp_server_pid
+    tlcp_server_rc=$?
+    echo "tlcp_server_rc: $tlcp_server_rc"
+    if [ $tlcp_server_rc -ne 0 ]; then
+        echo "Demo tlcp server failed"
         exit 1
     fi
     popd
@@ -288,8 +362,8 @@ clean
 parse_option
 if [ ${need_run_all} -eq 1 ]; then
     run_all
+    run_demos
 else
     run_test
 fi
-run_demos
 gen_test_report

@@ -19,7 +19,6 @@
 #include "bsl_log_internal.h"
 #include "bsl_log.h"
 #include "bsl_err_internal.h"
-#include "bsl_bytes.h"
 #include "hitls_error.h"
 #include "tls.h"
 #include "hs_ctx.h"
@@ -28,43 +27,31 @@
 #include "pack_extensions.h"
 #include "custom_extensions.h"
 
-static int32_t PackEncryptedSupportedGroups(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+static int32_t PackEncryptedSupportedGroups(const TLS_Ctx *ctx, PackPacket *pkt)
 {
-    int32_t ret = HITLS_SUCCESS;
-    uint16_t exMsgHeaderLen;
-    uint16_t exMsgDataLen;
-    uint32_t offset = 0u;
     const TLS_Config *config = &(ctx->config.tlsConfig);
 
-    if (config->groupsSize == 0) {
-        *usedLen = 0;
-        return HITLS_SUCCESS;
-    }
-
-    if (config->groups == NULL) {
+    if (config->groupsSize == 0 || config->groups == NULL) {
         return HITLS_SUCCESS;
     }
 
     /* Calculate the extension length */
-    exMsgHeaderLen = sizeof(uint16_t);
-    exMsgDataLen = sizeof(uint16_t) * (uint16_t)config->groupsSize;
+    uint16_t exMsgHeaderLen = sizeof(uint16_t);
+    uint16_t exMsgDataLen = sizeof(uint16_t) * (uint16_t)config->groupsSize;
 
     /* Pack the extension header */
-    ret = PackExtensionHeader(HS_EX_TYPE_SUPPORTED_GROUPS, exMsgHeaderLen + exMsgDataLen, buf, bufLen);
+    int32_t ret = PackExtensionHeader(HS_EX_TYPE_SUPPORTED_GROUPS, exMsgHeaderLen + exMsgDataLen, pkt);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
-    offset += HS_EX_HEADER_LEN;
 
     /* Pack the extended support group */
-    BSL_Uint16ToByte(exMsgDataLen, &buf[offset]);
-    offset += sizeof(uint16_t);
+    (void)PackAppendUint16ToBuf(pkt, exMsgDataLen);
+
     for (uint32_t index = 0; index < config->groupsSize; index++) {
-        BSL_Uint16ToByte(config->groups[index], &buf[offset]);
-        offset += sizeof(uint16_t);
+        (void)PackAppendUint16ToBuf(pkt, config->groups[index]);
     }
 
-    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 
@@ -72,19 +59,15 @@ static int32_t PackEncryptedSupportedGroups(const TLS_Ctx *ctx, uint8_t *buf, ui
  * @brief Pack the Encrypted_extensions extension.
  *
  * @param ctx [IN] TLS context
- * @param buf [OUT] Return the handshake message buffer.
- * @param bufLen [IN] Maximum buffer size of the handshake message.
- * @param usedLen [OUT] Returned message length
+ * @param pkt [IN/OUT] Context for packing
  *
  * @retval HITLS_SUCCESS succeeded.
  * @retval For other error codes, see hitls_error.h.
  */
-static int32_t PackEncryptedExs(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+static int32_t PackEncryptedExs(const TLS_Ctx *ctx, PackPacket *pkt)
 {
     int32_t ret = HITLS_SUCCESS;
     uint32_t listSize;
-    uint32_t exLen = 0u;
-    uint32_t offset = 0u;
 
     const PackExtInfo extMsgList[] = {
         {.exMsgType = HS_EX_TYPE_SUPPORTED_GROUPS,
@@ -98,21 +81,23 @@ static int32_t PackEncryptedExs(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLe
          .needPack = ctx->negotiatedInfo.isSniStateOK,
          .packFunc = NULL},
 #endif /* HITLS_TLS_FEATURE_SNI */
+#ifdef HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT
+        {.exMsgType = HS_EX_TYPE_RECORD_SIZE_LIMIT,
+         .needPack = (ctx->negotiatedInfo.recordSizeLimit != 0),
+         .packFunc = PackRecordSizeLimit},
+#endif /* HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT */
 #ifdef HITLS_TLS_FEATURE_ALPN
         {.exMsgType = HS_EX_TYPE_APP_LAYER_PROTOCOLS,
          .needPack = (ctx->negotiatedInfo.alpnSelected != NULL),
          .packFunc = PackServerSelectAlpnProto},
 #endif /* HITLS_TLS_FEATURE_ALPN */
     };
-
 #ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
-    exLen = 0u;
     if (IsPackNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), HITLS_EX_TYPE_ENCRYPTED_EXTENSIONS)) {
-        ret = PackCustomExtensions(ctx, &buf[offset], bufLen - offset, &exLen, HITLS_EX_TYPE_ENCRYPTED_EXTENSIONS, NULL, 0);
+        ret = PackCustomExtensions(ctx, pkt, HITLS_EX_TYPE_ENCRYPTED_EXTENSIONS, NULL, 0);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
-        offset += exLen;
     }
 #endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
 
@@ -126,26 +111,20 @@ static int32_t PackEncryptedExs(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLe
         }
         /* Empty extension */
         if (extMsgList[index].packFunc == NULL) {
-            exLen = 0u;
-            ret = PackEmptyExtension(extMsgList[index].exMsgType, extMsgList[index].needPack,
-                &buf[offset], bufLen - offset, &exLen);
+            ret = PackEmptyExtension(extMsgList[index].exMsgType, extMsgList[index].needPack, pkt);
             if (ret != HITLS_SUCCESS) {
                 return ret;
             }
-            offset += exLen;
         }
         /* Non-empty extension */
         if (extMsgList[index].packFunc != NULL) {
-            exLen = 0u;
-            ret = extMsgList[index].packFunc(ctx, &buf[offset], bufLen - offset, &exLen);
+            ret = extMsgList[index].packFunc(ctx, pkt);
             if (ret != HITLS_SUCCESS) {
                 return ret;
             }
-            offset += exLen;
         }
     }
 
-    *usedLen = offset;
     return HITLS_SUCCESS;
 }
 
@@ -153,41 +132,29 @@ static int32_t PackEncryptedExs(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLe
 * @brief Pack the Encrypted_extensions message.
 *
 * @param ctx [IN] TLS context
-* @param buf [OUT] Return the handshake message buffer.
-* @param bufLen [IN] Maximum buffer size of the handshake message.
-* @param len [OUT] Returned message length
+* @param pkt [IN/OUT] Context for packing
 *
 * @retval HITLS_SUCCESS succeeded.
 * @retval HITLS_PACK_NOT_ENOUGH_BUF_LENGTH The message buffer length is insufficient.
  */
-int32_t PackEncryptedExtensions(const TLS_Ctx *ctx, uint8_t *buf, uint32_t bufLen, uint32_t *usedLen)
+int32_t PackEncryptedExtensions(const TLS_Ctx *ctx, PackPacket *pkt)
 {
-    int32_t ret = HITLS_SUCCESS;
-    uint32_t headerLen = 0u;
-    uint32_t exLen = 0u;
-
-    /* Obtain the message header length */
-    headerLen = sizeof(uint16_t);
-    /* If the length of the message structure is smaller than the length of the message header,
-       an error code is returned */
-    if (bufLen < headerLen) {
-        return PackBufLenError(BINLOG_ID15851, BINGLOG_STR("Encrypted Extension"));
-    }
-
-    /* Pack the encrypted_extensions extension */
-    ret = PackEncryptedExs(ctx, &buf[headerLen], bufLen - headerLen, &exLen);
+    uint32_t extensionsLenPosition = 0u;
+    
+    /* Start packing extensions length field */
+    int32_t ret = PackStartLengthField(pkt, sizeof(uint16_t), &extensionsLenPosition);
     if (ret != HITLS_SUCCESS) {
         return ret;
     }
 
-    /* Update the message length */
-    if (exLen > 0u) {
-        BSL_Uint16ToByte((uint16_t)exLen, buf);
-        *usedLen = exLen + headerLen;
-    } else {
-        BSL_Uint16ToByte((uint16_t) 0, buf);
-        *usedLen = 0 + headerLen;
+    /* Pack the encrypted_extensions extension */
+    ret = PackEncryptedExs(ctx, pkt);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
     }
+
+    /* Close extensions length field */
+    PackCloseUint16Field(pkt, extensionsLenPosition);
 
     return HITLS_SUCCESS;
 }
