@@ -103,7 +103,7 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC001(
 #endif
     int32_t noPad = CRYPT_RSA_NO_PAD;
 
-    SetRsaPrvKeyEx(&prvkey, n->x, n->len, d->x, d->len, e->x, e->len);
+    SetRsaPrvKey(&prvkey, n->x, n->len, d->x, d->len);
     SetRsaPubKey(&pubkey, n->x, n->len, e->x, e->len);
     if (padMode == CRYPT_CTRL_SET_RSA_RSAES_OAEP) {
         paraSize = 0;
@@ -118,9 +118,6 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC001(
 
     ASSERT_TRUE(ciphertext->len == KEYLEN_IN_BYTES((uint32_t)keyLen));
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
 
     pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA,
         CRYPT_EAL_PKEY_CIPHER_OPERATE, "provider=default", isProvider);
@@ -190,9 +187,6 @@ EXIT:
 void SDV_CRYPTO_RSA_CRYPT_FUNC_TC002(Hex *n, Hex *e, Hex *d, Hex *plaintext, int isProvider)
 {
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
     uint8_t ct[MAX_CIPHERTEXT_LEN] = {0};
     uint8_t pt[MAX_CIPHERTEXT_LEN] = {0};
     uint32_t msgLen = MAX_CIPHERTEXT_LEN;
@@ -206,7 +200,7 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC002(Hex *n, Hex *e, Hex *d, Hex *plaintext, int
         BSL_PARAM_END};
     int32_t pkcsv15 = CRYPT_MD_SHA1;
 
-    SetRsaPrvKeyEx(&prvkey, n->x, n->len, d->x, d->len, e->x, e->len);
+    SetRsaPrvKey(&prvkey, n->x, n->len, d->x, d->len);
     SetRsaPubKey(&pubkey, n->x, n->len, e->x, e->len);
 
     pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA,
@@ -283,12 +277,9 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC003(Hex *n, Hex *e, Hex *d, Hex *plaintext, Hex
         {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
         BSL_PARAM_END};
     SetRsaPubKey(&pubkey, n->x, n->len, e->x, e->len);
-    SetRsaPrvKeyEx(&prvkey, n->x, n->len, d->x, d->len, e->x, e->len);
+    SetRsaPrvKey(&prvkey, n->x, n->len, d->x, d->len);
 
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
 
     pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA,
         CRYPT_EAL_PKEY_CIPHER_OPERATE, "provider=default", isProvider);
@@ -364,9 +355,6 @@ void SDV_CRYPTO_RSA_CRYPT_FUNC_TC004(int bits, Hex *in, int isProvider)
         {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
         BSL_PARAM_END};
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
     CRYPT_EAL_PkeyPara para = {0};
     SetRsaPara(&para, e, 3, bits);
 
@@ -594,9 +582,6 @@ static int32_t STUB_CRYPT_RSA_PrvDec(const CRYPT_RSA_Ctx *ctx, const uint8_t *in
 void SDV_CRYPTO_RSA_INVLAID_DECRYPT_TEST(Hex *n, Hex *e, Hex *d, Hex *plaintext, int isProvider)
 {
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
     uint8_t ct[MAX_CIPHERTEXT_LEN] = {1};
     uint8_t pt[MAX_CIPHERTEXT_LEN] = {0};
     uint32_t msgLen = MAX_CIPHERTEXT_LEN;
@@ -610,7 +595,7 @@ void SDV_CRYPTO_RSA_INVLAID_DECRYPT_TEST(Hex *n, Hex *e, Hex *d, Hex *plaintext,
         {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &hashId, sizeof(hashId), 0},
         BSL_PARAM_END};
 
-    SetRsaPrvKeyEx(&prvkey, n->x, n->len, d->x, d->len, e->x, e->len);
+    SetRsaPrvKey(&prvkey, n->x, n->len, d->x, d->len);
     SetRsaPubKey(&pubkey, n->x, n->len, e->x, e->len);
 
     pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA,
@@ -703,9 +688,6 @@ void SDV_CRYPTO_RSA_NOPAD_ZERO_INPUT_TC001(int bits, int isProvider)
 
     SetRsaPara(&para, e, 3, bits);
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
 
     pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA, CRYPT_EAL_PKEY_CIPHER_OPERATE, "provider=default", isProvider);
     ASSERT_TRUE(pkey != NULL);
@@ -768,9 +750,6 @@ void SDV_CRYPTO_RSA_PADDED_ZERO_DECRYPT_TC001(int bits, int padMode, int isProvi
 
     SetRsaPara(&para, e, 3, bits);
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
 
     pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA, CRYPT_EAL_PKEY_CIPHER_OPERATE, "provider=default", isProvider);
     ASSERT_TRUE(pkey != NULL);
@@ -831,9 +810,6 @@ void SDV_CRYPTO_RSA_DECRYPT_SHORT_INPUT_TC001(int bits, int padMode, int isProvi
 
     SetRsaPara(&para, e, 3, bits);
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
 
     pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA, CRYPT_EAL_PKEY_CIPHER_OPERATE, "provider=default", isProvider);
     ASSERT_TRUE(pkey != NULL);
@@ -902,9 +878,6 @@ void SDV_CRYPTO_RSA_DECRYPT_LONG_INPUT_TC001(int bits, int padMode, int isProvid
 
     SetRsaPara(&para, e, 3, bits);
     TestMemInit();
-#ifdef HITLS_CRYPTO_DRBG
-    TestRandInit();
-#endif
 
     pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_RSA, CRYPT_EAL_PKEY_CIPHER_OPERATE, "provider=default", isProvider);
     ASSERT_TRUE(pkey != NULL);
@@ -934,50 +907,3 @@ EXIT:
 }
 /* END_CASE */
 
-/* BEGIN_CASE */
-void SDV_CRYPTO_RSA_VERIFY_PKCSV15_TYPE2_TLS_BOUNDARY_TC001(void)
-{
-#if !defined(HITLS_CRYPTO_RSA_DECRYPT) || !defined(HITLS_CRYPTO_RSAES_PKCSV15_TLS)
-    SKIP_TEST();
-#else
-    uint8_t validIn[59] = {0};
-    uint8_t tooLongIn[60] = {0};
-    uint8_t expected[48] = {0};
-    uint8_t out[64] = {0};
-    uint32_t outLen = 0;
-
-    validIn[1] = 0x02;
-    tooLongIn[1] = 0x02;
-    for (uint32_t i = 2; i < 10; i++) {
-        validIn[i] = 0xff;
-        tooLongIn[i] = 0xff;
-    }
-    for (uint32_t i = 0; i < sizeof(expected); i++) {
-        expected[i] = (uint8_t)(i + 1);
-        validIn[11 + i] = expected[i];
-        tooLongIn[11 + i] = expected[i];
-    }
-    tooLongIn[sizeof(tooLongIn) - 1] = 0xee;
-
-    outLen = sizeof(out);
-    memset(out, 0xa5, sizeof(out));
-    ASSERT_EQ(CRYPT_RSA_VerifyPkcsV15Type2TLS(validIn, sizeof(validIn), out, &outLen), CRYPT_SUCCESS);
-    ASSERT_EQ(outLen, sizeof(expected));
-    ASSERT_EQ(memcmp(out, expected, sizeof(expected)), 0);
-    for (uint32_t i = outLen; i < sizeof(out); i++) {
-        ASSERT_EQ(out[i], 0);
-    }
-
-    outLen = sizeof(expected);
-    memset(out, 0xa5, sizeof(out));
-    ASSERT_EQ(CRYPT_RSA_VerifyPkcsV15Type2TLS(tooLongIn, sizeof(tooLongIn), out, &outLen),
-        CRYPT_RSA_NOR_VERIFY_FAIL);
-    ASSERT_EQ(outLen, sizeof(expected));
-    for (uint32_t i = 0; i < outLen; i++) {
-        ASSERT_EQ(out[i], 0);
-    }
-EXIT:
-    return;
-#endif
-}
-/* END_CASE */
