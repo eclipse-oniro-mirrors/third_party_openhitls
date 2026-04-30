@@ -1313,7 +1313,7 @@ int32_t CRYPT_RSA_Export(const CRYPT_RSA_Ctx *ctx, BSL_Param *params)
         InitRsaPubKeyParams(rsaParams, &index, buffer, bytes);
         ret = CRYPT_RSA_GetPubKeyEx(ctx, rsaParams);
         if (ret != CRYPT_SUCCESS) {
-            BSL_SAL_Free(buffer);
+            BSL_SAL_Free(buffer); // No sensitive information is included, so no need for cleaning.
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
         }
@@ -1322,7 +1322,7 @@ int32_t CRYPT_RSA_Export(const CRYPT_RSA_Ctx *ctx, BSL_Param *params)
         InitRsaPrvKeyParams(rsaParams, &index, buffer, bytes);
         ret = CRYPT_RSA_GetPrvKeyEx(ctx, rsaParams);
         if (ret != CRYPT_SUCCESS) {
-            BSL_SAL_Free(buffer);
+            BSL_SAL_Free(buffer); // No sensitive information is included, so no need for cleaning.
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
         }
@@ -1336,7 +1336,7 @@ int32_t CRYPT_RSA_Export(const CRYPT_RSA_Ctx *ctx, BSL_Param *params)
         rsaParams[i].valueLen = rsaParams[i].useLen;
     }
     ret = processCb(rsaParams, args);
-    BSL_SAL_Free(buffer);
+    BSL_SAL_ClearFree(buffer, 8 * bytes); // 8 param
     if (ret != CRYPT_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
     }
