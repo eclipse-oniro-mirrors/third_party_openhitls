@@ -24,6 +24,7 @@
 #include "crypt_eal_pkey.h"
 #include "sal_atomic.h"
 #include "hitls_pki_types.h"
+#include "hitls_pki_utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,8 +60,8 @@ extern "C" {
 typedef struct _HITLS_X509_NameNode {
     BSL_ASN1_Buffer nameType;
     BSL_ASN1_Buffer nameValue;
-    /* UTF-8 normalized content, used for certificate chain verification.
-       Allocate memory during the verification process and release it along with the NameNode. */
+    /* Precomputed UTF-8 normalized content for parsed name nodes.
+       Memory is owned by the NameNode and released with it. */
     BSL_ASN1_Buffer utf8Value;
     uint8_t layer;
 } HITLS_X509_NameNode;
@@ -89,12 +90,12 @@ typedef enum {
     HITLS_X509_EXT_TYPE_CRL,
 } HITLS_X509_ExtInnerType;
 
-typedef struct _HITLS_X509_Ext {
+struct _HITLS_X509_Ext {
     uint32_t flag; // Identifies the status of the current ext, generate or parse
     BslList *extList;
     int32_t type;
     void *extData;
-} HITLS_X509_Ext;
+};
 
 typedef struct _HITLS_X509_AttrEntry {
     BslCid cid;
@@ -109,10 +110,11 @@ typedef int32_t (*HITLS_X509_EncodeAttrItemCb)(void *attrNode, HITLS_X509_AttrEn
 typedef void *(*HITLS_X509_DupAttrItemCb)(const void *item);
 
 typedef void (*HITLS_X509_FreeAttrItemCb)(void *item);
-typedef struct _HITLS_X509_Attrs {
+
+struct _HITLS_X509_Attrs {
     uint8_t flag;
     BslList *list; // The list of HITLS_X509_AttrEntry
-} HITLS_X509_Attrs;
+};
 
 typedef struct _HITLS_X509_ValidTime {
     uint8_t flag;
