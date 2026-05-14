@@ -78,6 +78,7 @@
 #include "app.h"
 #include "record.h"
 #include "rec_conn.h"
+#include "parse_extensions.h"
 #include "session.h"
 #include "frame_msg.h"
 #include "pack_frame_msg.h"
@@ -1059,6 +1060,10 @@ EXIT:
 }
 /* END_CASE */
 int32_t ParseServerCookie(ParsePacket *pkt, ServerHelloMsg *msg);
+#ifdef HITLS_TLS_PROTO_TLS13
+int32_t ParseIdentities(TLS_Ctx *ctx, PreSharedKey *preSharedKey, const uint8_t *buf, uint32_t bufLen);
+void CleanPreShareKey(PreSharedKey *preSharedKey);
+#endif /* HITLS_TLS_PROTO_TLS13 */
 /* @
 * @test test ParseServerCookie and ParseClientCookie
 * @spec -
@@ -1091,6 +1096,113 @@ void UT_TLS_PARSE_Cookie_TC001()
     ASSERT_EQ(ParseClientCookie(&pkt, &cliMsg), HITLS_PARSE_INVALID_MSG_LEN);
     CleanClientHello(&cliMsg);
 EXIT:
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+}
+/* END_CASE */
+
+/* @
+* @test UT_TLS_PARSE_SELECTED_ALPN_EMPTY_TC001
+* @title Reject an empty selected ALPN protocol at parse time
+* @precon nan
+* @brief    1. Initialize a client parse context
+            2. Assemble a server ALPN extension body with a zero-length protocol
+            3. Invoke ParseServerSelectedAlpnProtocol
+* @expect   1. The return value is HITLS_PARSE_INVALID_MSG_LEN
+* @auto TRUE
+@ */
+/* BEGIN_CASE */
+void UT_TLS_PARSE_SELECTED_ALPN_EMPTY_TC001()
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+    FRAME_LinkObj *client = FRAME_CreateLink(config, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    CONN_Init(client->ssl);
+
+    bool haveSelectedAlpn = false;
+    uint8_t *selectedAlpn = NULL;
+    uint16_t selectedAlpnSize = 0;
+    uint8_t alpnExt[] = {0x00, 0x01, 0x00};
+    uint32_t bufOffset = 0;
+    ParsePacket pkt = {.ctx = client->ssl, .buf = alpnExt, .bufLen = sizeof(alpnExt), .bufOffset = &bufOffset};
+
+    ASSERT_EQ(ParseServerSelectedAlpnProtocol(&pkt, &haveSelectedAlpn, &selectedAlpn, &selectedAlpnSize),
+        HITLS_PARSE_INVALID_MSG_LEN);
+    ASSERT_TRUE(haveSelectedAlpn == false);
+
+EXIT:
+    BSL_SAL_FREE(selectedAlpn);
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+}
+/* END_CASE */
+
+/* @
+* @test UT_TLS_PARSE_PSK_IDENTITY_EMPTY_TC001
+* @title Reject a zero-length TLS 1.3 PSK identity at parse time
+* @precon nan
+* @brief    1. Initialize a client parse context
+            2. Assemble a PSK identity vector with identity_size = 0
+            3. Invoke ParseIdentities
+* @expect   1. The return value is HITLS_PARSE_INVALID_MSG_LEN
+* @auto TRUE
+@ */
+/* BEGIN_CASE */
+void UT_TLS_PARSE_PSK_IDENTITY_EMPTY_TC001()
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS13Config();
+    ASSERT_TRUE(config != NULL);
+    FRAME_LinkObj *client = FRAME_CreateLink(config, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    CONN_Init(client->ssl);
+
+    PreSharedKey *preSharedKey = (PreSharedKey *)BSL_SAL_Calloc(1u, sizeof(PreSharedKey));
+    ASSERT_TRUE(preSharedKey != NULL);
+    LIST_INIT(&preSharedKey->pskNode);
+
+    uint8_t identity[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    ASSERT_EQ(ParseIdentities(client->ssl, preSharedKey, identity, sizeof(identity)), HITLS_PARSE_INVALID_MSG_LEN);
+
+EXIT:
+    CleanPreShareKey(preSharedKey);
+    HITLS_CFG_FreeConfig(config);
+    FRAME_FreeLink(client);
+}
+/* END_CASE */
+
+/* @
+* @test UT_TLS_PARSE_RECORD_SIZE_LIMIT_LENGTH_TC001
+* @title Reject a ClientHello record_size_limit extension with an invalid length
+* @precon nan
+* @brief    1. Initialize a client parse context
+            2. Assemble a ClientHello record_size_limit extension with exLen = 1
+            3. Invoke ParseClientExtension
+* @expect   1. The return value is HITLS_PARSE_INVALID_MSG_LEN
+* @auto TRUE
+@ */
+/* BEGIN_CASE */
+void UT_TLS_PARSE_RECORD_SIZE_LIMIT_LENGTH_TC001()
+{
+    FRAME_Init();
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+    FRAME_LinkObj *client = FRAME_CreateLink(config, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    CONN_Init(client->ssl);
+
+    ClientHelloMsg cliMsg = {0};
+    uint8_t ext[] = {
+        (uint8_t)(HS_EX_TYPE_RECORD_SIZE_LIMIT >> 8), (uint8_t)(HS_EX_TYPE_RECORD_SIZE_LIMIT & 0xff),
+        0x00, 0x01, 0x40
+    };
+
+    ASSERT_EQ(ParseClientExtension(client->ssl, ext, sizeof(ext), &cliMsg), HITLS_PARSE_INVALID_MSG_LEN);
+
+EXIT:
+    CleanClientHello(&cliMsg);
     HITLS_CFG_FreeConfig(config);
     FRAME_FreeLink(client);
 }
@@ -3767,6 +3879,58 @@ void SDV_TLS_PSK_LEAK_TC01(void)
 
 EXIT:
     FRAME_FreeLink(client);
-    HITLS_CFG_FreeConfig(config);
+HITLS_CFG_FreeConfig(config);
+}
+/* END_CASE */
+
+/* @
+* @test SDV_HiTLS_HsCtx_Get_PeerCertificate_TC001
+* @spec -
+* @title The test obtains the peer certificate chain during the handshake process, and it is expected to succeed.
+* @precon nan
+* @brief
+* 1. Initialize the TLS12 client and server.
+* 2. Establish a link. Stop the handshake state at the TRY_RECV_SERVER_KEY_EXCHANGE state, the HITLS_GetPeerCertificate
+*    and HITLS_GetPeerCertChain interfaces are invoked to check the peer certificate cached at both ends.
+* @expect
+* 1. Initialization succeeded.
+* 2. The link is successfully established. The certificate cached on the client is the same as the certificate sent by the
+*  server.The peer certificate cached on the server is NULL.
+* @prior Level 1
+* @auto TRUE
+@ */
+/* BEGIN_CASE */
+void SDV_HiTLS_HsCtx_Get_PeerCertificate_TC001(void)
+{
+    FRAME_Init();
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    HITLS_CERT_X509 *client_PeerCert = NULL;
+
+    HITLS_Config *c_config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(c_config != NULL);
+    HITLS_Config *s_config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(s_config != NULL);
+
+    client = FRAME_CreateLink(c_config, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    server = FRAME_CreateLink(s_config, BSL_UIO_TCP);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, true, TRY_RECV_SERVER_KEY_EXCHANGE), HITLS_SUCCESS);
+
+    ASSERT_TRUE(client->ssl->hsCtx->peerCert != NULL);
+    client_PeerCert = HITLS_GetPeerCertificate(client->ssl);
+    ASSERT_TRUE(client->ssl->hsCtx->peerCert->cert == client_PeerCert);
+    ASSERT_TRUE(client->ssl->hsCtx->peerCert->chain == HITLS_GetPeerCertChain(client->ssl));
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HITLS_CFG_FreeCert(c_config, client_PeerCert);
+    HITLS_CFG_FreeConfig(c_config);
+    HITLS_CFG_FreeConfig(s_config);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
 }
 /* END_CASE */
