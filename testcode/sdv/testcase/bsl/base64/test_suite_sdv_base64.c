@@ -249,6 +249,35 @@ EXIT:
 /* END_CASE */
 
 /**
+ * @test SDV_BSL_BASE64_FUNC_TC015
+ * @spec  -
+ * @title  CtxNew initializes flags before SetFlags
+ * @precon  nan
+ * @brief   1. Call BSL_BASE64_CtxNew
+            2. Check ctx->flags
+            3. Call BSL_BASE64_SetFlags
+            4. Check ctx->flags
+ * @expect  1. ctx is not NULL
+            2. ctx->flags is 0
+            3. BSL_SUCCESS
+            4. requested flag is set
+ * @prior  Level 1
+ * @auto  TRUE
+ */
+/* BEGIN_CASE */
+void SDV_BSL_BASE64_FUNC_TC015(void)
+{
+    BSL_Base64Ctx *ctx = BSL_BASE64_CtxNew();
+    ASSERT_TRUE(ctx != NULL);
+    ASSERT_EQ(ctx->flags, 0U);
+    ASSERT_EQ(BSL_BASE64_SetFlags(ctx, BSL_BASE64_FLAGS_NO_NEWLINE), BSL_SUCCESS);
+    ASSERT_TRUE((ctx->flags & BSL_BASE64_FLAGS_NO_NEWLINE) != 0U);
+EXIT:
+    BSL_BASE64_CtxFree(ctx);
+}
+/* END_CASE */
+
+/**
  * @test SDV_BSL_BASE64_FUNC_TC002
  * @spec  -
  * @title  Encoding and decoding test for short input streams without line breaks
@@ -902,5 +931,80 @@ void SDV_BSL_BASE64_FUNC_TC012(char *src, int expectRes)
     ASSERT_EQ(BSL_BASE64_Decode(src, srcBufLen, dst, &dstBufLen), (int32_t)expectRes);
 EXIT:
     BSL_SAL_Free(dst);
+}
+/* END_CASE */
+
+/**
+ * @test SDV_BSL_BASE64_FUNC_TC017
+ * @spec  -
+ * @title  EncodeFinal with exact buffer size for newline and no-newline modes
+ * @precon  nan
+ * @brief   1. Test with newline (default): allocate exact buffer size for EncodeFinal
+            2. Test with NO_NEWLINE flag: allocate exact buffer size (1 byte less)
+            3. Verify encoding succeeds without buffer overflow
+ * @expect  BSL_SUCCESS, no ASan exceptions
+ * @prior  Level 1
+ * @auto  TRUE
+ */
+/* BEGIN_CASE */
+void SDV_BSL_BASE64_FUNC_TC017(void)
+{
+    uint8_t data[47];
+    uint32_t dataLen = sizeof(data);
+    char *buf1 = NULL;
+    char *buf2 = NULL;
+    BSL_Base64Ctx *ctx1 = NULL;
+    BSL_Base64Ctx *ctx2 = NULL;
+
+    /* Case 1: With newline (default) */
+    /* 47 bytes -> 64 bytes base64 + '\n' + '\0' = 66 bytes for EncodeFinal */
+    uint32_t bufLenWithNL = 66;
+    buf1 = BSL_SAL_Malloc(bufLenWithNL);
+    ASSERT_TRUE(buf1 != NULL);
+
+    ctx1 = BSL_BASE64_CtxNew();
+    ASSERT_TRUE(ctx1 != NULL);
+    BSL_BASE64_EncodeInit(ctx1);
+
+    uint32_t updateLen1 = bufLenWithNL;
+    ASSERT_TRUE(BSL_BASE64_EncodeUpdate(ctx1, data, dataLen, buf1, &updateLen1) == BSL_SUCCESS);
+    ASSERT_TRUE(updateLen1 == 0);
+
+    uint32_t finalLen1 = bufLenWithNL - 1; /* Do not add space for the length of '\n'. */
+    ASSERT_TRUE(BSL_BASE64_EncodeFinal(ctx1, buf1, &finalLen1) == BSL_BASE64_BUF_NOT_ENOUGH);
+
+    finalLen1 = bufLenWithNL;
+    ASSERT_TRUE(BSL_BASE64_EncodeFinal(ctx1, buf1, &finalLen1) == BSL_SUCCESS);
+    ASSERT_TRUE(finalLen1 == 65);
+
+    BSL_SAL_Free(buf1);
+    buf1 = NULL;
+    BSL_BASE64_CtxFree(ctx1);
+    ctx1 = NULL;
+
+    /* Case 2: Without newline (NO_NEWLINE flag) */
+    /* 47 bytes -> 64 bytes base64 + '\0' = 65 bytes for EncodeFinal (1 byte less) */
+    uint32_t bufLenNoNL = 65;
+    buf2 = BSL_SAL_Malloc(bufLenNoNL);
+    ASSERT_TRUE(buf2 != NULL);
+
+    ctx2 = BSL_BASE64_CtxNew();
+    ASSERT_TRUE(ctx2 != NULL);
+    BSL_BASE64_EncodeInit(ctx2);
+    BSL_BASE64_SetFlags(ctx2, BSL_BASE64_FLAGS_NO_NEWLINE);
+
+    uint32_t updateLen2 = bufLenNoNL;
+    ASSERT_TRUE(BSL_BASE64_EncodeUpdate(ctx2, data, dataLen, buf2, &updateLen2) == BSL_SUCCESS);
+    ASSERT_TRUE(updateLen2 == 0);
+
+    uint32_t finalLen2 = bufLenNoNL;
+    ASSERT_TRUE(BSL_BASE64_EncodeFinal(ctx2, buf2, &finalLen2) == BSL_SUCCESS);
+    ASSERT_TRUE(finalLen2 == 64);
+
+EXIT:
+    BSL_SAL_Free(buf1);
+    BSL_SAL_Free(buf2);
+    BSL_BASE64_CtxFree(ctx1);
+    BSL_BASE64_CtxFree(ctx2);
 }
 /* END_CASE */

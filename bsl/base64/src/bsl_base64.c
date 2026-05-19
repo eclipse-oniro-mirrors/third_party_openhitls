@@ -25,6 +25,9 @@
 #include "bsl_base64_internal.h"
 #include "bsl_base64.h"
 
+#define BSL_BASE64_ENC_ENOUGH_LEN(len) (((len) + 2) / 3 * 4 + 1)
+#define BSL_BASE64_DEC_ENOUGH_LEN(len) (((len) + 3) / 4 * 3)
+
 /* BASE64 mapping table */
 static const uint8_t BASE64_DECODE_MAP_TABLE[] = {
     67U, 67U, 67U, 67U, 67U, 67U, 67U, 67U, 67U, 67U, 64U, 67U, 67U, 64U, 67U, 67U, 67U, 67U, 67U, 67U, 67U, 67U, 67U,
@@ -43,7 +46,7 @@ static const uint8_t BASE64_DECODE_MAP_TABLE[] = {
 
 BSL_Base64Ctx *BSL_BASE64_CtxNew(void)
 {
-    return BSL_SAL_Malloc(sizeof(BSL_Base64Ctx));
+    return BSL_SAL_Calloc(1, sizeof(BSL_Base64Ctx));
 }
 
 void BSL_BASE64_CtxFree(BSL_Base64Ctx *ctx)
@@ -351,8 +354,9 @@ int32_t BSL_BASE64_Decode(const char *srcBuf, const uint32_t srcBufLen, uint8_t 
         return BSL_NULL_INPUT;
     }
 
+    uint64_t needLen = ((uint64_t)srcBufLen + BASE64_ENCODE_BYTES) / BASE64_DECODE_BYTES * BASE64_ENCODE_BYTES;
     /* The length of dstBuf of the user must be at least (srcBufLen+3)/4*3. */
-    if (*dstBufLen < BSL_BASE64_DEC_ENOUGH_LEN(srcBufLen)) {
+    if (needLen > UINT32_MAX || *dstBufLen < (uint32_t)needLen) {
         BSL_ERR_PUSH_ERROR(BSL_BASE64_BUF_NOT_ENOUGH);
         return BSL_BASE64_BUF_NOT_ENOUGH;
     }
@@ -428,7 +432,11 @@ int32_t BSL_BASE64_EncodeFinal(BSL_Base64Ctx *ctx, char *dstBuf, uint32_t *dstBu
         return BSL_SUCCESS;
     }
 
-    if (*dstBufLen < BSL_BASE64_ENC_ENOUGH_LEN((ctx->num))) {
+    uint32_t needLen = BSL_BASE64_ENC_ENOUGH_LEN(ctx->num);
+    if ((ctx->flags & BSL_BASE64_FLAGS_NO_NEWLINE) == 0) {
+        needLen++;
+    }
+    if (*dstBufLen < needLen) {
         BSL_ERR_PUSH_ERROR(BSL_BASE64_BUF_NOT_ENOUGH);
         return BSL_BASE64_BUF_NOT_ENOUGH;
     }
