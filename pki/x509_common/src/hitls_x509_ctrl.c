@@ -285,7 +285,8 @@ static void FreeNodePack(NameNodePack *node)
     if (node == NULL) {
         return;
     }
-    if (node->encode != NULL) { // the node->node has been pushed in other list.
+    HITLS_X509_FreeNameNode(node->node);
+    if (node->encode != NULL) {
         BSL_SAL_FREE(node->encode->buff);
         BSL_SAL_Free(node->encode);
     }
@@ -299,13 +300,17 @@ int32_t HITLS_X509_SetNameList(BslList **dest, void *val, uint32_t valLen)
         return HITLS_X509_ERR_INVALID_PARAM;
     }
     BslList *src = (BslList *)val;
+    if (src == *dest) {
+        return HITLS_PKI_SUCCESS;
+    }
 
-    BSL_LIST_FREE(*dest, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeNameNode);
-    *dest = BSL_LIST_Copy(src, (BSL_LIST_PFUNC_DUP)DupNameNode, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeNameNode);
-    if (*dest == NULL) {
+    BslList *tmp = BSL_LIST_Copy(src, (BSL_LIST_PFUNC_DUP)DupNameNode, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeNameNode);
+    if (tmp == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_SET_NAME_LIST);
         return HITLS_X509_ERR_SET_NAME_LIST;
     }
+    BSL_LIST_FREE(*dest, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeNameNode);
+    *dest = tmp;
     return HITLS_PKI_SUCCESS;
 }
 
@@ -404,6 +409,7 @@ static int32_t X509AddDnNamesToList(BslList *list, BslList *dnNameList)
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
         }
+        node->node = NULL;
     }
 
     return ret;
@@ -443,11 +449,12 @@ int32_t HITLS_X509_AddDnName(BslList *list, HITLS_X509_DN *dnNames, uint32_t siz
         }
     }
     // sort
-    dnNameList = BSL_LIST_Sort(dnNameList, CmpDnNameByEncode);
-    if (dnNameList == NULL) {
+    BslList *sorted = BSL_LIST_Sort(dnNameList, CmpDnNameByEncode);
+    if (sorted == NULL) {
         ret = HITLS_X509_ERR_SORT_NAME_NODE;
         goto EXIT;
     }
+    dnNameList = sorted;
     // add dnNameList to list
     ret = X509AddDnNamesToList(list, dnNameList);
 EXIT:
@@ -464,11 +471,13 @@ int32_t HITLS_X509_SetSerial(BSL_ASN1_Buffer *serial, const void *val, uint32_t 
         return HITLS_X509_ERR_CERT_INVALID_SERIAL_NUM;
     }
     const uint8_t *src = (const uint8_t *)val;
-    serial->buff = BSL_SAL_Dump(src, valLen);
-    if (serial->buff == NULL) {
+    uint8_t *newBuff = BSL_SAL_Dump(src, valLen);
+    if (newBuff == NULL) {
         BSL_ERR_PUSH_ERROR(BSL_DUMP_FAIL);
         return BSL_DUMP_FAIL;
     }
+    BSL_SAL_FREE(serial->buff);
+    serial->buff = newBuff;
     serial->len = valLen;
     serial->tag = BSL_ASN1_TAG_INTEGER;
     return HITLS_PKI_SUCCESS;

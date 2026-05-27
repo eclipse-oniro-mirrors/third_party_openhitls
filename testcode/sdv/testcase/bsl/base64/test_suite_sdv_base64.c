@@ -23,6 +23,7 @@
 #include "bsl_sal.h"
 #include "bsl_errno.h"
 #include "bsl_base64.h"
+#include "bsl_base64_internal.h"
 #include "bsl_uio.h"
 #include "bsl_base64.h"
 
@@ -309,6 +310,7 @@ EXIT:
 /* BEGIN_CASE */
 void SDV_BSL_BASE64_FUNC_TC002(void)
 {
+    /* The first six cases cover valid final blocks: xxxx, xxx=, and xx==. */
     for (int32_t i = 0; i < 6; i++) {
         const uint8_t *srcBuf = testData[i].src;
         const uint32_t srcLen = testData[i].srcLen;
@@ -931,6 +933,221 @@ void SDV_BSL_BASE64_FUNC_TC012(char *src, int expectRes)
     ASSERT_EQ(BSL_BASE64_Decode(src, srcBufLen, dst, &dstBufLen), (int32_t)expectRes);
 EXIT:
     BSL_SAL_Free(dst);
+}
+/* END_CASE */
+
+/**
+ * @test SDV_BSL_BASE64_FUNC_TC017
+ * @spec  -
+ * @title  EncodeFinal with exact buffer size for newline and no-newline modes
+ * @precon  nan
+ * @brief   1. Test with newline (default): allocate exact buffer size for EncodeFinal
+            2. Test with NO_NEWLINE flag: allocate exact buffer size (1 byte less)
+            3. Verify encoding succeeds without buffer overflow
+ * @expect  BSL_SUCCESS, no ASan exceptions
+ * @prior  Level 1
+ * @auto  TRUE
+ */
+/* BEGIN_CASE */
+void SDV_BSL_BASE64_FUNC_TC017(void)
+{
+    uint8_t data[47];
+    uint32_t dataLen = sizeof(data);
+    char *buf1 = NULL;
+    char *buf2 = NULL;
+    BSL_Base64Ctx *ctx1 = NULL;
+    BSL_Base64Ctx *ctx2 = NULL;
+
+    /* Case 1: With newline (default) */
+    /* 47 bytes -> 64 bytes base64 + '\n' + '\0' = 66 bytes for EncodeFinal */
+    uint32_t bufLenWithNL = 66;
+    buf1 = BSL_SAL_Malloc(bufLenWithNL);
+    ASSERT_TRUE(buf1 != NULL);
+
+    ctx1 = BSL_BASE64_CtxNew();
+    ASSERT_TRUE(ctx1 != NULL);
+    BSL_BASE64_EncodeInit(ctx1);
+
+    uint32_t updateLen1 = bufLenWithNL;
+    ASSERT_TRUE(BSL_BASE64_EncodeUpdate(ctx1, data, dataLen, buf1, &updateLen1) == BSL_SUCCESS);
+    ASSERT_TRUE(updateLen1 == 0);
+
+    uint32_t finalLen1 = bufLenWithNL - 1; /* Do not add space for the length of '\n'. */
+    ASSERT_TRUE(BSL_BASE64_EncodeFinal(ctx1, buf1, &finalLen1) == BSL_BASE64_BUF_NOT_ENOUGH);
+
+    finalLen1 = bufLenWithNL;
+    ASSERT_TRUE(BSL_BASE64_EncodeFinal(ctx1, buf1, &finalLen1) == BSL_SUCCESS);
+    ASSERT_TRUE(finalLen1 == 65);
+
+    BSL_SAL_Free(buf1);
+    buf1 = NULL;
+    BSL_BASE64_CtxFree(ctx1);
+    ctx1 = NULL;
+
+    /* Case 2: Without newline (NO_NEWLINE flag) */
+    /* 47 bytes -> 64 bytes base64 + '\0' = 65 bytes for EncodeFinal (1 byte less) */
+    uint32_t bufLenNoNL = 65;
+    buf2 = BSL_SAL_Malloc(bufLenNoNL);
+    ASSERT_TRUE(buf2 != NULL);
+
+    ctx2 = BSL_BASE64_CtxNew();
+    ASSERT_TRUE(ctx2 != NULL);
+    BSL_BASE64_EncodeInit(ctx2);
+    BSL_BASE64_SetFlags(ctx2, BSL_BASE64_FLAGS_NO_NEWLINE);
+
+    uint32_t updateLen2 = bufLenNoNL;
+    ASSERT_TRUE(BSL_BASE64_EncodeUpdate(ctx2, data, dataLen, buf2, &updateLen2) == BSL_SUCCESS);
+    ASSERT_TRUE(updateLen2 == 0);
+
+    uint32_t finalLen2 = bufLenNoNL;
+    ASSERT_TRUE(BSL_BASE64_EncodeFinal(ctx2, buf2, &finalLen2) == BSL_SUCCESS);
+    ASSERT_TRUE(finalLen2 == 64);
+
+EXIT:
+    BSL_SAL_Free(buf1);
+    BSL_SAL_Free(buf2);
+    BSL_BASE64_CtxFree(ctx1);
+    BSL_BASE64_CtxFree(ctx2);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_BSL_BASE64_FUNC_TC013(void)
+{
+    const uint8_t src = 0;
+    const char invalid[] = "A";
+    char enc[4] = {0};
+    uint8_t dec[4] = {0};
+    uint32_t len = UINT32_MAX;
+    BSL_Base64Ctx *ctx = BSL_BASE64_CtxNew();
+
+    /* Abnormal case: the encoded length of UINT32_MAX input overflows uint32_t. */
+    ASSERT_EQ(BSL_BASE64_Encode(&src, UINT32_MAX, enc, &len), BSL_BASE64_BUF_NOT_ENOUGH);
+    ASSERT_EQ(enc[0], 0);
+    ASSERT_TRUE(ctx != NULL);
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    /* Abnormal case: one remaining base64 character is not a valid final block. */
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, invalid, sizeof(invalid) - 1, dec, &len), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_BASE64_INVALID_ENCODE);
+    ASSERT_EQ(len, 0);
+EXIT:
+    BSL_BASE64_CtxFree(ctx);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_BSL_BASE64_FUNC_TC014(void)
+{
+    BSL_Base64Ctx *ctx = BSL_BASE64_CtxNew();
+    uint8_t dec[4] = {0};
+    uint32_t len = sizeof(dec);
+    ASSERT_TRUE(ctx != NULL);
+
+    /*
+     * Cover DecodeFinal residual-block validation:
+     * DecodeUpdate keeps only non-padding base64 characters in ctx->buf, so ctx->num % 4 is remain.
+     * It records skipped '=' characters in paddingCnt. A valid final block must satisfy both:
+     * paddingCnt <= BASE64_PAD_MAX and (remain + paddingCnt) % BASE64_DECODE_BYTES == 0.
+     */
+
+    /* Valid branch: remain=0, paddingCnt=0. "MTIz" is a complete unpadded final quartet. */
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, "MTIz", 4, dec, &len), BSL_SUCCESS);
+    ASSERT_EQ(len, 0);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_SUCCESS);
+    ASSERT_EQ(len, 3);
+
+    /* Valid branch: remain=3, paddingCnt=1. "TWE=" completes the quartet and decodes to 2 bytes. */
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, "TWE=", 4, dec, &len), BSL_SUCCESS);
+    ASSERT_EQ(len, 0);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_SUCCESS);
+    ASSERT_EQ(len, 2);
+
+    /* Valid branch: remain=2, paddingCnt=2. "TQ==" completes the quartet and decodes to 1 byte. */
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, "TQ==", 4, dec, &len), BSL_SUCCESS);
+    ASSERT_EQ(len, 0);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_SUCCESS);
+    ASSERT_EQ(len, 1);
+
+    /* Invalid branch: remain=1, paddingCnt=0. (remain + paddingCnt) % 4 != 0. */
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, "T", 1, dec, &len), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_BASE64_INVALID_ENCODE);
+    ASSERT_EQ(len, 0);
+
+    /* Invalid branch: remain=2, paddingCnt=0. Missing "==" padding, so the final quartet is incomplete. */
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, "TQ", 2, dec, &len), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_BASE64_INVALID_ENCODE);
+    ASSERT_EQ(len, 0);
+
+    /* Invalid branch: remain=3, paddingCnt=0. Missing "=" padding, so the final quartet is incomplete. */
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, "TWE", 3, dec, &len), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_BASE64_INVALID_ENCODE);
+    ASSERT_EQ(len, 0);
+
+    /* Invalid branch: remain=2, paddingCnt=1. (remain + paddingCnt) % 4 != 0. */
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, "TQ=", 3, dec, &len), BSL_SUCCESS);
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_BASE64_INVALID_ENCODE);
+    ASSERT_EQ(len, 0);
+
+    /* Invalid branch: force paddingCnt > BASE64_PAD_MAX to cover the abnormal context-state guard. */
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    ctx->paddingCnt = BASE64_PAD_MAX + 1U;
+    len = sizeof(dec);
+    ASSERT_EQ(BSL_BASE64_DecodeFinal(ctx, dec, &len), BSL_BASE64_INVALID_ENCODE);
+    ASSERT_EQ(len, 0);
+EXIT:
+    BSL_BASE64_CtxFree(ctx);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_BSL_BASE64_FUNC_TC016(void)
+{
+    const uint8_t src = 0;
+    const char decSrc[] = "A";
+    char enc[1] = {0};
+    uint8_t dec[1] = {0};
+    uint32_t len = UINT32_MAX;
+    BSL_Base64Ctx *ctx = BSL_BASE64_CtxNew();
+    ASSERT_TRUE(ctx != NULL);
+
+    ASSERT_EQ(BSL_BASE64_EncodeInit(ctx), BSL_SUCCESS);
+    ASSERT_EQ(BSL_BASE64_EncodeUpdate(ctx, &src, UINT32_MAX, enc, &len), BSL_BASE64_BUF_NOT_ENOUGH);
+    ASSERT_EQ(enc[0], 0);
+    TestErrClear();
+
+    ASSERT_EQ(BSL_BASE64_DecodeInit(ctx), BSL_SUCCESS);
+    len = 0;
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, decSrc, sizeof(decSrc) - 1, dec, &len), BSL_SUCCESS);
+    ASSERT_EQ(len, 0);
+    len = 0;
+    ASSERT_EQ(BSL_BASE64_DecodeUpdate(ctx, decSrc, UINT32_MAX, dec, &len), BSL_BASE64_BUF_NOT_ENOUGH);
+    ASSERT_EQ(len, 0);
+
+EXIT:
+    BSL_BASE64_CtxFree(ctx);
 }
 /* END_CASE */
 

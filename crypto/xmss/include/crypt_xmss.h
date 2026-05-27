@@ -73,6 +73,16 @@ int32_t CRYPT_XMSS_Gen(CryptXmssCtx *ctx);
  * @param dataLen Length of the data
  * @param sign Pointer to the signature
  * @param signLen Length of the signature
+ * @attention 
+ * 1. Stateful private key:
+ *    XMSS is a stateful signature scheme. The private key is updated after each
+ *    successful signature. The caller MUST retrieve the updated private key via
+ *    CRYPT_XMSS_GetPrvKey and persist it (e.g., to disk or secure storage).
+ *    Failure to do so may result in reuse of one-time keys and compromise security.
+ * 2. No concurrent use:
+ *    The same private key MUST NOT be used concurrently across multiple contexts
+ *    (e.g., threads or processes). Concurrent signing may lead to reuse of the same
+ *    one-time key index, which breaks the security guarantees of XMSS.
  */
 int32_t CRYPT_XMSS_Sign(CryptXmssCtx *ctx, int32_t algId, const uint8_t *data, uint32_t dataLen, uint8_t *sign,
                         uint32_t *signLen);
@@ -132,6 +142,13 @@ int32_t CRYPT_XMSS_SetPubKey(CryptXmssCtx *ctx, const BSL_Param *para);
  */
 int32_t CRYPT_XMSS_SetPrvKey(CryptXmssCtx *ctx, const BSL_Param *para);
 
+/**
+ * @brief Duplicate ctx
+ *
+ * @param ctx Pointer to the XMSS context
+ * @note Since XMSS is not allowed to sign with the same private key and state, the function only duplicates the public
+ * key of ctx to the new ctx, without duplicating private key;
+ */
 CryptXmssCtx *CRYPT_XMSS_DupCtx(CryptXmssCtx *ctx);
 
 #ifdef HITLS_CRYPTO_XMSS_CHECK

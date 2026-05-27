@@ -1990,6 +1990,38 @@ EXIT:
 /* END_CASE */
 
 /**
+ * @test SDV_HITLS_MLKEM_PKCS8_PrivateKey_CheckDep_TC001
+ * @title Regression test for ML-KEM PKCS#8 private key decode through EAL private-key check
+ * @precon Prepare a valid ML-KEM PKCS#8 private key.
+ * @brief
+ *   1. Decode the ML-KEM PKCS#8 private key through CRYPT_EAL_DecodeFileKey.
+ *   2. Verify that the decoded key is an ML-KEM key.
+ * @expect
+ *   1. Decode succeeds. In builds with HITLS_CRYPTO_KEY_EPKI and HITLS_CRYPTO_MLKEM, the build configuration
+ *      must provide the ML-KEM check method required by CRYPT_EAL_PkeyPrvCheck.
+ *   2. The decoded key id is CRYPT_PKEY_ML_KEM.
+ */
+/* BEGIN_CASE */
+void SDV_HITLS_MLKEM_PKCS8_PrivateKey_CheckDep_TC001(int format, int type, char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    TestRandInit();
+    CRYPT_EAL_PkeyCtx *key = NULL;
+
+    ASSERT_EQ(CRYPT_EAL_DecodeFileKey(format, type, path, NULL, 0, &key), CRYPT_SUCCESS);
+    ASSERT_TRUE(key != NULL);
+    ASSERT_EQ(CRYPT_EAL_PkeyGetId(key), CRYPT_PKEY_ML_KEM);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(key);
+    BSL_GLOBAL_DeInit();
+    TestRandDeInit();
+}
+/* END_CASE */
+
+/**
  * @test SDV_HITLS_MLKEM_PrivateKey_ExpandedFormat_TC001
  * @title Test ML-KEM private key decode/encode with expanded-only format
  * @precon Prepare ML-KEM-512/768/1024 private keys in expanded-only format
@@ -2192,9 +2224,8 @@ EXIT:
  *   2. Verify H(ek) check passes (H(ek) is valid)
  *   3. Verify pairwise consistency check detects s_0 corruption
  * @expect
- *   1. If HITLS_CRYPTO_MLKEM_CHECK enabled: decode fails with CRYPT_MLKEM_INVALID_PRVKEY
- *   2. If HITLS_CRYPTO_MLKEM_CHECK disabled: decode succeeds (H(ek) check passes)
- *   3. This demonstrates that H(ek) check alone cannot detect secret key corruption
+ *   1. Decode fails with CRYPT_MLKEM_INVALID_PRVKEY
+ *   2. This demonstrates that H(ek) check alone cannot detect secret key corruption
  */
 /* BEGIN_CASE */
 void SDV_HITLS_MLKEM_PrivateKey_MutatedS0_TC001(int format, int type, char *path)
@@ -2690,6 +2721,60 @@ EXIT:
 #else
     UnusedParam2(algId, format, encode);
     (void)flag;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/**
+ * @test SDV_PKI_VERIFY_HOSTNAME_SAN_ZERO_LEN_TC001
+ * @title Hostname verification with zero-length SAN DNS entry
+ */
+/* BEGIN_CASE */
+void SDV_PKI_VERIFY_HOSTNAME_SAN_ZERO_LEN_TC001(char *certPath)
+{
+#if defined(HITLS_PKI_X509_CRT_PARSE) && defined(HITLS_PKI_X509_VFY_IDENTITY)
+    TestMemInit();
+    HITLS_X509_Cert *cert = NULL;
+    HITLS_X509_ExtSan san = {0};
+    bool hasZeroLenDns = false;
+
+    // Certificate parses successfully (zero-length entry not rejected).
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, certPath, &cert), HITLS_PKI_SUCCESS);
+    ASSERT_NE(cert, NULL);
+
+    // SAN list contains 4 entries including a zero-length DNS entry.
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_GET_SAN, &san, sizeof(HITLS_X509_ExtSan)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(BSL_LIST_COUNT(san.names), 4); // 
+    for (BslListNode *node = BSL_LIST_FirstNode(san.names); node != NULL;
+        node = BSL_LIST_GetNextNode(san.names, node)) {
+        HITLS_X509_GeneralName *gn = (HITLS_X509_GeneralName *)BSL_LIST_GetData(node);
+        if (gn != NULL && gn->type == HITLS_X509_GN_DNS && gn->value.dataLen == 0) {
+            hasZeroLenDns = true;
+        }
+    }
+    ASSERT_TRUE(hasZeroLenDns);
+
+    // "test.example.com" matches via "*.example.com".
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, 0, "test.example.com", strlen("test.example.com")), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD,
+        "test.example.com", strlen("test.example.com")), HITLS_PKI_SUCCESS);
+
+    // "example.com" does NOT match (CN fallback not triggered because SAN has DNS).
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, 0, "example.com", strlen("example.com")),
+        HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    TestErrClear();
+    ASSERT_EQ(HITLS_X509_VerifyHostname(cert, HITLS_X509_FLAG_VFY_WITH_PARTIAL_WILDCARD,
+        "example.com", strlen("example.com")), HITLS_X509_ERR_VFY_HOSTNAME_FAIL);
+    TestErrClear();
+
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HITLS_X509_ClearSubjectAltName(&san);
+    HITLS_X509_CertFree(cert);
+#else
+    (void)certPath;
     SKIP_TEST();
 #endif
 }

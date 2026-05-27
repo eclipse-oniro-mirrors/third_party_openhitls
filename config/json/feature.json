@@ -174,7 +174,6 @@
                         "sm9": {
                             "sm9_crypt": null,
                             "sm9_sign": null,
-                            "sm9_exch": null,
                             "deps": ["sm3"]
                         },
                         "kem": {
@@ -1169,8 +1168,7 @@
                     "crypto/provider/src/default/*.c",
                     "crypto/provider/src/cmvp/cmvp_utils/*.c",
                     "crypto/provider/src/cmvp/iso_prov/*.c",
-                    "crypto/provider/src/cmvp/sm_prov/*.c",
-                    "crypto/provider/src/cmvp/fips_prov/*.c"],
+                    "crypto/provider/src/cmvp/sm_prov/*.c"],
                 ".deps": ["bsl::sal", "bsl::hash", "bsl::err", "bsl::params"],
                 ".include": [
                     "crypto/provider/include",
@@ -1367,7 +1365,7 @@
                 ]
             },
             "sm9": {
-                ".features": ["sm9_crypt", "sm9_sign", "sm9_exch"],
+                ".features": ["sm9_crypt", "sm9_sign"],
                 ".srcs": [
                     "crypto/sm9/src/*.c"
                 ],

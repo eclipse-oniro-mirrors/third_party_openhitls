@@ -29,6 +29,7 @@
 #include "bsl_errno.h"
 #include "bsl_uio.h"
 #include "frame_io.h"
+#include "simulate_io.h"
 #include "uio_abstraction.h"
 #include "tls.h"
 #include "tls_config.h"
@@ -42,9 +43,99 @@
 #include "frame_tls.h"
 #include "alert.h"
 #include "frame_link.h"
+#include "parse_extensions.h"
+#include "parse_msg.h"
+#include "parser_frame_msg.h"
+#include "conn_init.h"
+#include "hs.h"
+#include "recv_process.h"
+
 
 #define CUSTOM_EXTENTIONS_TYPE_1                      0x00001
 #define CUSTOM_EXTENTIONS_TYPE_2                      0x00002
+#define CUSTOM_PARSE_EXT_TYPE_1                       0x1234
+#define CUSTOM_PARSE_EXT_TYPE_2                       0x1235
+#define BULK_EMPTY_CUSTOM_EXT_BASE                    0xFE00
+#define BULK_EMPTY_CUSTOM_EXT_COUNT                   257
+
+static bool g_clientHelloCbCalled = false;
+static bool g_clientHelloGetExtsPresentOk = false;
+static bool g_clientHelloGetCustomExtOk = false;
+
+static void ResetClientHelloCbState(void)
+{
+    g_clientHelloCbCalled = false;
+    g_clientHelloGetExtsPresentOk = false;
+    g_clientHelloGetCustomExtOk = false;
+}
+
+static int32_t BulkCustomExtClientHelloCb(HITLS_Ctx *ctx, int32_t *alert, void *arg)
+{
+    (void)arg;
+    uint16_t *exts = NULL;
+    uint32_t extLen = 0;
+
+    *alert = ALERT_INTERNAL_ERROR;
+    g_clientHelloCbCalled = true;
+
+    if (HITLS_ClientHelloGetExtensionsPresent(ctx, &exts, &extLen) != HITLS_SUCCESS) {
+        return HITLS_CLIENT_HELLO_FAILED;
+    }
+    g_clientHelloGetExtsPresentOk = (exts != NULL && extLen != 0);
+    for (uint32_t i = 0; i < extLen; i++) {
+        if (exts[i] == BULK_EMPTY_CUSTOM_EXT_BASE) {
+            g_clientHelloGetCustomExtOk = true;
+            break;
+        }
+    }
+    BSL_SAL_FREE(exts);
+    return HITLS_CLIENT_HELLO_SUCCESS;
+}
+
+static bool AppendEmptyCustomExtensionsToClientHello(uint8_t *buf, uint32_t *len, uint32_t bufSize)
+{
+    uint32_t appendLen = BULK_EMPTY_CUSTOM_EXT_COUNT * 4;
+    uint32_t offset = 9;
+    uint32_t recLen;
+    uint32_t hsLen;
+    uint32_t extLenPos;
+    uint32_t extLen;
+    uint32_t extEnd;
+
+    if (buf == NULL || len == NULL || *len < 9) {
+        return false;
+    }
+
+    recLen = BSL_ByteToUint16(&buf[3]);
+    hsLen = BSL_ByteToUint24(&buf[6]);
+    offset += 2 + 32;
+    offset += 1 + buf[offset];
+    offset += 2 + BSL_ByteToUint16(&buf[offset]);
+    offset += 1 + buf[offset];
+    extLenPos = offset;
+    extLen = BSL_ByteToUint16(&buf[extLenPos]);
+    extEnd = extLenPos + 2 + extLen;
+
+    if (extEnd != *len || *len + appendLen > bufSize || extLen + appendLen > UINT16_MAX) {
+        return false;
+    }
+
+    for (uint32_t i = 0; i < BULK_EMPTY_CUSTOM_EXT_COUNT; i++) {
+        uint16_t extType = (uint16_t)(BULK_EMPTY_CUSTOM_EXT_BASE + i);
+        BSL_Uint16ToByte(extType, &buf[extEnd + i * 4]);
+        BSL_Uint16ToByte(0, &buf[extEnd + i * 4 + 2]);
+    }
+
+    extLen += appendLen;
+    recLen += appendLen;
+    hsLen += appendLen;
+    *len += appendLen;
+
+    BSL_Uint16ToByte((uint16_t)extLen, &buf[extLenPos]);
+    BSL_Uint16ToByte((uint16_t)recLen, &buf[3]);
+    BSL_Uint24ToByte(hsLen, &buf[6]);
+    return true;
+}
 
 // Simple add_cb function, allocates buffer with 1 byte length and 1 byte data
 int SimpleAddCb(const struct TlsCtx *ctx, uint16_t extType, uint32_t context, uint8_t **out, uint32_t *outLen,
@@ -518,6 +609,111 @@ EXIT:
 }
 /* END_CASE */
 
+/** @
+ * @test  SDV_TLS_PARSE_CLIENT_HELLO_DUP_CUSTOM_EXTENSION_TC001
+ * @title Repeated custom extensions in ClientHello should be rejected
+ * @precon None
+ * @brief
+ * 1. Create a TLS1.3 context and register one custom extension for ClientHello parsing.
+ * 2. Build a ClientHello extension block with the same custom extension type repeated twice.
+ * 3. Parse the extension block and verify duplicate extension is rejected.
+ * @expect
+ * Returns HITLS_PARSE_DUPLICATE_EXTENDED_MSG.
+ @ */
+/* BEGIN_CASE */
+void SDV_TLS_PARSE_CLIENT_HELLO_DUP_CUSTOM_EXTENSION_TC001(void)
+{
+    FRAME_Init();
+    BSL_UIO *uio = NULL;
+    HITLS_Config *tlsConfig = HITLS_CFG_NewTLS13Config();
+    ASSERT_NE(tlsConfig, NULL);
+    ClientHelloMsg msg = {0};
+    uint8_t buf[] = {
+        0x12, 0x34, 0x00, 0x01, 0xAA,
+        0x12, 0x34, 0x00, 0x01, 0xAA
+    };
+    HITLS_CustomExtParams params = {
+        .extType = CUSTOM_PARSE_EXT_TYPE_1,
+        .context = HITLS_EX_TYPE_CLIENT_HELLO,
+        .addCb = NULL,
+        .freeCb = NULL,
+        .addArg = NULL,
+        .parseCb = SimpleParseCb,
+        .parseArg = NULL
+    };
+    
+    ASSERT_EQ(HITLS_CFG_AddCustomExtension(tlsConfig, &params), HITLS_SUCCESS);
+    HITLS_Ctx *ctx = HITLS_New(tlsConfig);
+    ASSERT_NE(ctx, NULL);
+    uio = BSL_UIO_New(BSL_UIO_TcpMethod());
+    HITLS_SetUio(ctx, uio);
+    CONN_Init(ctx);
+    ASSERT_EQ(ParseClientExtension(ctx, buf, sizeof(buf), &msg), HITLS_PARSE_DUPLICATE_EXTENDED_MSG);
+
+EXIT:
+    BSL_UIO_Free(uio);
+    HITLS_Free(ctx);
+    HITLS_CFG_FreeConfig(tlsConfig);
+    return;
+}
+/* END_CASE */
+
+/** @
+ * @test  SDV_TLS_PARSE_NST_DUP_CUSTOM_EXTENSION_TC001
+ * @title Repeated custom extensions in TLS1.3 NewSessionTicket should be rejected
+ * @precon None
+ * @brief
+ * 1. Create a TLS1.3 context and register one custom extension for NewSessionTicket parsing.
+ * 2. Build a NewSessionTicket with the same custom extension repeated twice.
+ * 3. Parse the message and verify duplicate extension is rejected.
+ * @expect
+ * Returns HITLS_PARSE_DUPLICATE_EXTENDED_MSG.
+ @ */
+/* BEGIN_CASE */
+void SDV_TLS_PARSE_NST_DUP_CUSTOM_EXTENSION_TC001(void)
+{
+    FRAME_Init();
+    BSL_UIO *uio = NULL;
+    HITLS_Config *tlsConfig = HITLS_CFG_NewTLS13Config();
+    ASSERT_NE(tlsConfig, NULL);
+    HS_Msg hsMsg = {0};
+    uint8_t buf[] = {
+        0x00, 0x00, 0x00, 0x01,
+        0x00, 0x00, 0x00, 0x01,
+        0x01, 0xAA,
+        0x00, 0x01, 0xBB,
+        0x00, 0x0A,
+        0x12, 0x35, 0x00, 0x01, 0xAA,
+        0x12, 0x35, 0x00, 0x01, 0xAA
+    };
+    HITLS_CustomExtParams params = {
+        .extType = CUSTOM_PARSE_EXT_TYPE_2,
+        .context = HITLS_EX_TYPE_TLS1_3_NEW_SESSION_TICKET,
+        .addCb = NULL,
+        .freeCb = NULL,
+        .addArg = NULL,
+        .parseCb = SimpleParseCb,
+        .parseArg = NULL
+    };
+    
+    ASSERT_EQ(HITLS_CFG_AddCustomExtension(tlsConfig, &params), HITLS_SUCCESS);
+    HITLS_Ctx *ctx = HITLS_New(tlsConfig);
+    ASSERT_NE(ctx, NULL);
+    uio = BSL_UIO_New(BSL_UIO_TcpMethod());
+    HITLS_SetUio(ctx, uio);
+    CONN_Init(ctx);
+    ctx->negotiatedInfo.version = HITLS_VERSION_TLS13;
+    ASSERT_EQ(ParseNewSessionTicket(ctx, buf, sizeof(buf), &hsMsg), HITLS_PARSE_DUPLICATE_EXTENDED_MSG);
+
+EXIT:
+    BSL_UIO_Free(uio);
+    CleanNewSessionTicket(&hsMsg.body.newSessionTicket);
+    HITLS_Free(ctx);
+    HITLS_CFG_FreeConfig(tlsConfig);
+    return;
+}
+/* END_CASE */
+
 typedef struct {
     uint32_t parsedContext[10];
     uint32_t parsedContextCount;
@@ -841,5 +1037,80 @@ EXIT:
     HITLS_CFG_FreeConfig(serverConfig);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/** @
+ * @test  SDV_TLS12_CLIENT_HELLO_GET_EXTENSIONS_PRESENT_MASS_CUSTOM_EXT_TC001
+ * @title TLS1.2 server ClientHello callback gets extension list with 257 empty custom extensions
+ * @precon None
+ * @brief
+ * 1. Create TLS1.2 client and server frame links, and set the server clientHello callback.
+ * 2. Drive the handshake until the server is ready to receive ClientHello.
+ * 3. Append 257 empty custom extensions to the serialized ClientHello.
+ * 4. Let the server process ClientHello and verify the callback successfully calls HITLS_ClientHelloGetExtensionsPresent.
+ * @expect
+ * 1. The callback is invoked successfully.
+ * 2. HITLS_ClientHelloGetExtensionsPresent succeeds.
+ * 3. One appended empty custom extension can be retrieved successfully.
+ * 4. The TLS1.2 handshake succeeds.
+ @ */
+/* BEGIN_CASE */
+void SDV_TLS12_CLIENT_HELLO_GET_EXTENSIONS_PRESENT_MASS_CUSTOM_EXT_TC001(void)
+{
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    HITLS_Config *clientConfig = NULL;
+    HITLS_Config *serverConfig = NULL;
+    FrameUioUserData *ioUserData = NULL;
+    FRAME_Msg frameMsg = {0};
+    uint32_t parseLen = 0;
+
+    FRAME_Init();
+    ResetClientHelloCbState();
+
+    clientConfig = HITLS_CFG_NewTLS12Config();
+    serverConfig = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(clientConfig != NULL);
+    ASSERT_TRUE(serverConfig != NULL);
+    ASSERT_EQ(HITLS_CFG_SetClientHelloCb(serverConfig, BulkCustomExtClientHelloCb, NULL), HITLS_SUCCESS);
+
+    client = FRAME_CreateLink(clientConfig, BSL_UIO_TCP);
+    server = FRAME_CreateLink(serverConfig, BSL_UIO_TCP);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_EQ(FRAME_CreateConnection(client, server, false, TRY_RECV_CLIENT_HELLO), HITLS_SUCCESS);
+    ASSERT_EQ(server->ssl->hsCtx->state, TRY_RECV_CLIENT_HELLO);
+
+    ioUserData = BSL_UIO_GetUserData(server->io);
+    ASSERT_TRUE(ioUserData != NULL);
+    ASSERT_TRUE(ioUserData->recMsg.len != 0);
+    ASSERT_TRUE(AppendEmptyCustomExtensionsToClientHello(ioUserData->recMsg.msg, &ioUserData->recMsg.len,
+        sizeof(ioUserData->recMsg.msg)) == true);
+
+    CONN_Deinit(server->ssl);
+    HS_Init(server->ssl);
+    ASSERT_EQ(ParserTotalRecord(server, &frameMsg, ioUserData->recMsg.msg, ioUserData->recMsg.len, &parseLen), HITLS_SUCCESS);
+    ASSERT_EQ(frameMsg.body.handshakeMsg.type, CLIENT_HELLO);
+    server->ssl->hsCtx->hsMsg = &frameMsg.body.handshakeMsg;
+    CONN_Init(server->ssl);
+    ASSERT_EQ(Tls12ServerRecvClientHelloProcess(server->ssl, &frameMsg.body.handshakeMsg, true), HITLS_SUCCESS);
+
+    ASSERT_TRUE(g_clientHelloCbCalled);
+    ASSERT_TRUE(g_clientHelloGetExtsPresentOk);
+    ASSERT_TRUE(g_clientHelloGetCustomExtOk);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    if (server != NULL && server->ssl != NULL && server->ssl->hsCtx != NULL) {
+        server->ssl->hsCtx->hsMsg = NULL;
+    }
+    CleanRecordBody(&frameMsg);
+    HITLS_CFG_FreeConfig(clientConfig);
+    HITLS_CFG_FreeConfig(serverConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+    ResetClientHelloCbState();
 }
 /* END_CASE */

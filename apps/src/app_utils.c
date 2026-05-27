@@ -315,7 +315,7 @@ int32_t HITLS_APP_ParsePasswd(const char *passArg, char **pass)
     } else if (strncmp(passArg, APP_PASS_FILE_STR, APP_PASS_FILE_STR_LEN) == 0) {
         return GetPasswdByFile(passArg, strlen(passArg), pass);
     } else {
-        AppPrintError("The %s password parameter is not supported.\n", passArg);
+        AppPrintError("Unsupported password source. Use pass:, stdin, or file:.\n");
         return HITLS_APP_PASSWD_FAIL;
     }
     if (*pass == NULL) {
@@ -463,7 +463,7 @@ CRYPT_EAL_PkeyCtx *HITLS_APP_ProviderLoadPrvKey(CRYPT_EAL_LibCtx *libCtx, const 
     uint32_t passLen = 0;
     BSL_UI_ReadPwdParam passParam = { "passwd", inFilePath, false };
     if (isEncrypted && (HITLS_APP_GetPasswd(&passParam, passin, &passLen) != HITLS_APP_SUCCESS)) {
-        BSL_SAL_FREE(data);
+        BSL_SAL_ClearFree(data, dataLen);
         BSL_SAL_FREE(prvkeyName);
         return NULL;
     }
@@ -473,8 +473,8 @@ CRYPT_EAL_PkeyCtx *HITLS_APP_ProviderLoadPrvKey(CRYPT_EAL_LibCtx *libCtx, const 
     if (pkey == NULL) {
         PrintFileOrStdinError(inFilePath, "Failed to read the private key");
     }
-    (void)memset_s(pass, passLen, 0, passLen);
-    BSL_SAL_FREE(data);
+    BSL_SAL_CleanseData(pass, passLen);
+    BSL_SAL_ClearFree(data, dataLen);
     BSL_SAL_FREE(prvkeyName);
     return pkey;
 }
@@ -504,7 +504,7 @@ CRYPT_EAL_PkeyCtx *HITLS_APP_LoadPrvKey(const char *inFilePath, BSL_ParseFormat 
     uint32_t passLen = 0;
     BSL_UI_ReadPwdParam passParam = { "passwd", inFilePath, false };
     if (isEncrypted && (HITLS_APP_GetPasswd(&passParam, passin, &passLen) != HITLS_APP_SUCCESS)) {
-        BSL_SAL_FREE(data);
+        BSL_SAL_ClearFree(data, dataLen);
         BSL_SAL_FREE(prvkeyName);
         return NULL;
     }
@@ -514,8 +514,8 @@ CRYPT_EAL_PkeyCtx *HITLS_APP_LoadPrvKey(const char *inFilePath, BSL_ParseFormat 
     if (pkey == NULL) {
         PrintFileOrStdinError(inFilePath, "Failed to read the private key");
     }
-    (void)memset_s(pass, passLen, 0, passLen);
-    BSL_SAL_FREE(data);
+    BSL_SAL_CleanseData(pass, passLen);
+    BSL_SAL_ClearFree(data, dataLen);
     BSL_SAL_FREE(prvkeyName);
     return pkey;
 }
@@ -621,7 +621,7 @@ int32_t HITLS_APP_PrintPrvKeyByUio(BSL_UIO *uio, CRYPT_EAL_PkeyCtx *pkey, AppKey
         return HITLS_APP_ENCODE_KEY_FAIL;
     }
     ret = HITLS_APP_OptWriteUio(uio, prvKeyBuf.data, prvKeyBuf.dataLen, HITLS_APP_FORMAT_PEM);
-    BSL_SAL_FREE(prvKeyBuf.data);
+    BSL_SAL_ClearFree(prvKeyBuf.data, prvKeyBuf.dataLen);
     return ret;
 }
 
@@ -672,10 +672,9 @@ static int32_t ReadPemByUioSymbol(BSL_UIO *memUio, BSL_UIO *rUio, BSL_PEM_Symbol
         if ((BSL_UIO_Gets(rUio, buf, &lineLen) != BSL_SUCCESS) || (lineLen == 0)) {
             break;
         }
-        ret = BSL_UIO_Ctrl(rUio, BSL_UIO_GET_READ_NUM, sizeof(int64_t), &dataLen);
-        if (ret != BSL_SUCCESS || dataLen > APP_FILE_MAX_SIZE) {
+        int32_t ctrlRet = BSL_UIO_Ctrl(rUio, BSL_UIO_GET_READ_NUM, sizeof(int64_t), &dataLen);
+        if (ctrlRet != BSL_SUCCESS || dataLen > APP_FILE_MAX_SIZE) {
             AppPrintError("The maximum file size is %zukb.\n", APP_FILE_MAX_SIZE_KB);
-            ret = HITLS_APP_UIO_FAIL;
             break;
         }
         if (!hasHead) {
@@ -691,7 +690,7 @@ static int32_t ReadPemByUioSymbol(BSL_UIO *memUio, BSL_UIO *rUio, BSL_PEM_Symbol
         }
         // Check whether it is the tail.
         if (strncmp(buf, symbol->tail, strlen(symbol->tail)) == 0) {
-            if (BSL_UIO_Write(memUio, (const uint8_t *)buf, lineLen + 1, &writeMemLen) != BSL_SUCCESS ||
+            if (BSL_UIO_Write(memUio, (const uint8_t *)buf, lineLen + 1, &writeMemLen) == BSL_SUCCESS &&
                 writeMemLen == lineLen + 1) {
                 ret = HITLS_APP_SUCCESS;
             }
@@ -705,11 +704,12 @@ static int32_t ReadPemByUioSymbol(BSL_UIO *memUio, BSL_UIO *rUio, BSL_PEM_Symbol
     return ret;
 }
 
-static int32_t ReadBlockFromStdin(BSL_UIO *memUio, BSL_UIO *rUio)
+static int32_t ReadBlockFromStdin(BSL_UIO *memUio, BSL_UIO *rUio, uint32_t maxSize)
 {
     int32_t ret = HITLS_APP_UIO_FAIL;
     uint32_t readLen;
     uint32_t writeLen;
+    uint64_t totalLen = 0;
     uint8_t *buf = (uint8_t *)BSL_SAL_Calloc(MAX_DIGEST_SIZE + 1, 1);
     if (buf == NULL) {
         return HITLS_APP_MEM_ALLOC_FAIL;
@@ -725,15 +725,20 @@ static int32_t ReadBlockFromStdin(BSL_UIO *memUio, BSL_UIO *rUio)
             ret = HITLS_APP_SUCCESS;
             break;
         }
+        if (totalLen + readLen > maxSize) {
+            AppPrintError("The maximum file size is %ukb.\n", maxSize / 1024);
+            break;
+        }
         if (BSL_UIO_Write(memUio, buf, readLen, &writeLen) != BSL_SUCCESS || writeLen != readLen) {
             break;
         }
+        totalLen += readLen;
     }
     BSL_SAL_FREE(buf);
     return ret;
 }
 
-static int32_t ReadPemFromStdin(BSL_BufMem **data, BSL_PEM_Symbol *symbol)
+static int32_t ReadPemFromStdin(BSL_BufMem **data, BSL_PEM_Symbol *symbol, uint32_t maxSize)
 {
     int32_t ret = HITLS_APP_UIO_FAIL;
     BSL_UIO *memUio = BSL_UIO_New(BSL_UIO_MemMethod());
@@ -748,7 +753,7 @@ static int32_t ReadPemFromStdin(BSL_BufMem **data, BSL_PEM_Symbol *symbol)
         return ret;
     }
     if (symbol == NULL || symbol->head == NULL || symbol->tail == NULL) {
-        ret = ReadBlockFromStdin(memUio, rUio);
+        ret = ReadBlockFromStdin(memUio, rUio, maxSize);
     } else {
         ret = ReadPemByUioSymbol(memUio, rUio, symbol);
     }
@@ -786,7 +791,7 @@ int32_t HITLS_APP_ReadData(const char *path, BSL_PEM_Symbol *symbol, char *fileN
     }
     if (path == NULL) {
         BSL_BufMem *buf = NULL;
-        if (ReadPemFromStdin(&buf, symbol) != HITLS_APP_SUCCESS) {
+        if (ReadPemFromStdin(&buf, symbol, APP_FILE_MAX_SIZE) != HITLS_APP_SUCCESS) {
             AppPrintError("Failed to read %s from stdin.\n", fileName);
             return HITLS_APP_UIO_FAIL;
         }
@@ -1060,14 +1065,15 @@ int32_t HITLS_APP_ReadFileOrStdin(uint8_t **buf, uint64_t *bufLen, const char *i
 
     // Special handling for stdin
     if (inFile == NULL) {
-        BSL_Buffer data = {0};
-        int32_t ret = HITLS_APP_ReadData(NULL, NULL, "data", &data);
+        BSL_BufMem *data = NULL;
+        int32_t ret = ReadPemFromStdin(&data, NULL, maxSize);
         if (ret != HITLS_APP_SUCCESS) {
             AppPrintError("%s: Failed to read content from stdin\n", module);
             return ret;
         }
-        *buf = data.data;
-        *bufLen = data.dataLen;
+        *buf = (uint8_t *)data->data;
+        *bufLen = data->length;
+        BSL_SAL_Free(data);
         return HITLS_APP_SUCCESS;
     }
 

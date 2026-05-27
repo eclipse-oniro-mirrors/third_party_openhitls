@@ -865,9 +865,8 @@ static int32_t ClientCheckHrrKeyShareExtension(TLS_Ctx *ctx, const ServerHelloMs
     const uint16_t *groups = ctx->config.tlsConfig.groups;
     uint32_t numOfGroups = ctx->config.tlsConfig.groupsSize;
 
-    /* The selected group exist in the key share extension of the original client hello and no cookie exchange requested
-     */
-    if (ctx->negotiatedInfo.cookie == NULL && (selectedGroup == ctx->hsCtx->kxCtx->keyExchParam.share.group ||
+    /* The selected group exist in the key share extension of the original client hello */
+    if ((selectedGroup == ctx->hsCtx->kxCtx->keyExchParam.share.group ||
             selectedGroup == ctx->hsCtx->kxCtx->keyExchParam.share.secondGroup)) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15283, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "the selected group extension is corresponded to a group in client hello key share.", 0, 0, 0, 0);
@@ -899,6 +898,14 @@ static int32_t ClientCheckHrrKeyShareExtension(TLS_Ctx *ctx, const ServerHelloMs
         ctx->hsCtx->kxCtx->keyExchParam.share.group = selectedGroup;
         ctx->hsCtx->kxCtx->keyExchParam.share.secondGroup = HITLS_NAMED_GROUP_BUTT;
     }
+#ifdef HITLS_TLS_FEATURE_SECURITY
+    if (SECURITY_SslCheck(ctx, HITLS_SECURITY_SECOP_CURVE_SUPPORTED, 0, (int32_t)selectedGroup, NULL) !=
+        SECURITY_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP);
+        return RETURN_ALERT_PROCESS(ctx, HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP, BINLOG_ID15284,
+            "selected group failed security check", ALERT_ILLEGAL_PARAMETER);
+    }
+#endif /* HITLS_TLS_FEATURE_SECURITY */
     // Save the selected group
     ctx->negotiatedInfo.negotiatedGroup = selectedGroup;
     return HITLS_SUCCESS;
@@ -1053,7 +1060,6 @@ static int32_t ClientProcessKeyShare(TLS_Ctx *ctx, const ServerHelloMsg *serverH
         return RETURN_ALERT_PROCESS(ctx, HITLS_MSG_HANDLE_ILLEGAL_SELECTED_GROUP, BINLOG_ID15289,
             "the keyshare parameter is illegal", ALERT_ILLEGAL_PARAMETER);
     }
-
     const KeyShare *keyShare = &serverHello->keyShare;
     if (keyShare->group == ctx->hsCtx->kxCtx->keyExchParam.share.secondGroup) {
         SAL_CRYPT_FreeEcdhKey(ctx->hsCtx->kxCtx->key);
@@ -1100,7 +1106,8 @@ static int32_t ClientProcessPreSharedKey(TLS_Ctx *ctx, const ServerHelloMsg *ser
     PskInfo13 *pskInfo = &ctx->hsCtx->kxCtx->pskInfo13;
     HITLS_Session *pskSession = NULL;
     bool isResumePsk = false;
-    BSL_SAL_FREE(pskInfo->psk);
+    BSL_SAL_ClearFree(pskInfo->psk, pskInfo->pskLen);
+    pskInfo->psk = NULL;
 
     if (pskInfo->resumeSession != NULL && serverHello->selectedIdentity == 0) {
         pskSession = pskInfo->resumeSession;

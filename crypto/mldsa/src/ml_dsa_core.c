@@ -375,13 +375,20 @@ static int32_t ExpandS(const CRYPT_ML_DSA_Ctx *ctx, const uint8_t *prvSeed,
     for (uint8_t i = 0; i < l; i++) {
         seed[MLDSA_PRIVATE_SEED_LEN] = i;
         ret = rejBoundedPoly(s1[i], seed);
-        RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
+        if (ret != CRYPT_SUCCESS) {
+            BSL_SAL_CleanseData(seed, MLDSA_PRIVATE_SEED_LEN + 2); // 2 bytes are reserved.
+            return ret;
+        }
     }
     for (uint8_t i = 0; i < k; i++) {
         seed[MLDSA_PRIVATE_SEED_LEN] = l + i;
         ret = rejBoundedPoly(s2[i], seed);
-        RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
+        if (ret != CRYPT_SUCCESS) {
+            BSL_SAL_CleanseData(seed, MLDSA_PRIVATE_SEED_LEN + 2); // 2 bytes are reserved.
+            return ret;
+        }
     }
+    BSL_SAL_CleanseData(seed, MLDSA_PRIVATE_SEED_LEN + 2); // 2 bytes are reserved.
     return CRYPT_SUCCESS;
 }
 
@@ -1160,7 +1167,7 @@ int32_t MLDSA_SignInternal(const CRYPT_ML_DSA_Ctx *ctx, const CRYPT_Data *msg, u
         GOTO_ERR_IF(HashFuncH(uBuf, MLDSA_XOF_MSG_LEN, w1Buf, w1Len, out, cBufLen), ret);
         (void)memset_s(c, sizeof(c), 0, sizeof(c));
         // 𝑐 ∈ 𝑅𝑞 ← SampleInBall(c)
-        SampleInBall(ctx, out, cBufLen, c);
+        GOTO_ERR_IF(SampleInBall(ctx, out, cBufLen, c), ret);
         // 𝑐 ← NTT(𝑐)
         MLDSA_ComputesNTT(c);
 
@@ -1196,6 +1203,7 @@ ERR:
     BSL_SAL_ClearFree(st.bufAddr, st.bufSize);
     BSL_SAL_ClearFree(w1Buf, w1Len);
     BSL_SAL_CleanseData(signSeed, sizeof(signSeed));
+    BSL_SAL_CleanseData(p, sizeof(p));
     return ret;
 }
 
@@ -1244,7 +1252,7 @@ int32_t MLDSA_VerifyInternal(const CRYPT_ML_DSA_Ctx *ctx, const CRYPT_Data *msg,
     }
 
     // 𝑐 ∈ 𝑅𝑞 ← SampleInBall(𝑐)
-    SampleInBall(ctx, sign, cBufLen, c);
+    GOTO_ERR_IF(SampleInBall(ctx, sign, cBufLen, c), ret);
     // w′ ← NTT−1(A ∘ NTT(z) − NTT(𝑐) ∘ NTT(t1 ⋅ 2𝑑))
     ComputesApproxW(ctx, &st, c, st.w);
     // w1′ ← UseHint(h, w′)
@@ -1299,7 +1307,7 @@ int32_t MLDSA_CalPub(const CRYPT_ML_DSA_Ctx *ctx, uint8_t *pub, uint32_t pubLen)
     // (t1, t0) <- Power2Round(t)
     ComputesPower2Round(ctx, t0, t1);
     for (int32_t i = 0; i < ctx->info->k; i++) {
-        if (memcmp(t0[i], st.t0[i], MLDSA_N) != 0) {
+        if (memcmp(t0[i], st.t0[i], MLDSA_N * sizeof(int32_t)) != 0) {
             BSL_ERR_PUSH_ERROR(CRYPT_MLDSA_PAIRWISE_CHECK_FAIL);
             ret = CRYPT_MLDSA_PAIRWISE_CHECK_FAIL;
             goto ERR;

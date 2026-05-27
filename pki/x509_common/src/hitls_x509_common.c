@@ -85,6 +85,17 @@ int32_t HITLS_X509_ParseTbsRawData(uint8_t *encode, uint32_t encodeLen, uint8_t 
     return ret;
 }
 
+static bool X509_SignAlgParamsMustBeOmitted(BslCid cid)
+{
+    if (cid == BSL_CID_ML_DSA_44 || cid == BSL_CID_ML_DSA_65 || cid == BSL_CID_ML_DSA_87) {
+        return true;
+    }
+    if (cid >= BSL_CID_SLH_DSA_SHA2_128S && cid <= BSL_CID_SLH_DSA_SHAKE_256F) {
+        return true;
+    }
+    return false;
+}
+
 int32_t HITLS_X509_ParseSignAlgInfo(BSL_ASN1_Buffer *algId, BSL_ASN1_Buffer *param, HITLS_X509_Asn1AlgId *x509Alg)
 {
     int32_t ret = HITLS_PKI_SUCCESS;
@@ -92,6 +103,10 @@ int32_t HITLS_X509_ParseSignAlgInfo(BSL_ASN1_Buffer *algId, BSL_ASN1_Buffer *par
     if (cid == BSL_CID_UNKNOWN) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_ALG_OID);
         return HITLS_X509_ERR_ALG_OID;
+    }
+    if (X509_SignAlgParamsMustBeOmitted(cid) && param != NULL && param->tag != 0) {
+        BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_SIGN_PARAM);
+        return HITLS_X509_ERR_SIGN_PARAM;
     }
     if (cid == BSL_CID_RSASSAPSS) {
 #ifdef HITLS_CRYPTO_RSA
@@ -789,6 +804,23 @@ int32_t HITLS_X509_CheckAlg(CRYPT_EAL_PkeyCtx *pubkey, const HITLS_X509_Asn1AlgI
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_VFY_SIGNALG_NOT_MATCH);
         return HITLS_X509_ERR_VFY_SIGNALG_NOT_MATCH;
     }
+    return HITLS_PKI_SUCCESS;
+}
+
+int32_t HITLS_X509_CheckSignAlgConsistency(const HITLS_X509_Asn1AlgId *inner, const HITLS_X509_Asn1AlgId *outer)
+{
+    if (inner->algId != outer->algId) {
+        return HITLS_X509_ERR_VFY_SIGNALG_NOT_MATCH;
+    }
+#ifdef HITLS_CRYPTO_RSA
+    if (inner->algId == BSL_CID_RSASSAPSS) {
+        if (inner->rsaPssParam.mdId != outer->rsaPssParam.mdId ||
+            inner->rsaPssParam.mgfId != outer->rsaPssParam.mgfId ||
+            inner->rsaPssParam.saltLen != outer->rsaPssParam.saltLen) {
+            return HITLS_X509_ERR_VFY_SIGNALG_NOT_MATCH;
+        }
+    }
+#endif
     return HITLS_PKI_SUCCESS;
 }
 

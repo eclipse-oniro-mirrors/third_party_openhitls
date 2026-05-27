@@ -207,7 +207,7 @@ int32_t X509_VerifyHostnameWithCn(HITLS_X509_Cert *cert, const char *hostname,
 int32_t HITLS_X509_VerifyIdentity(HITLS_X509_Cert *cert, uint32_t flags, uint32_t type, const char *hostname,
     uint32_t hostnameLen)
 {
-    if (cert == NULL || hostname == NULL || type != HITLS_GEN_DNS) {
+    if (cert == NULL || hostname == NULL || hostnameLen == 0 || type != HITLS_GEN_DNS) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
         return HITLS_X509_ERR_INVALID_PARAM;
     }
@@ -241,7 +241,6 @@ int32_t HITLS_X509_CheckKey(HITLS_X509_Cert *cert, CRYPT_EAL_PkeyCtx *prvKey)
         return HITLS_X509_ERR_INVALID_PARAM;
     }
 
-    // Get public key from certificate
     CRYPT_EAL_PkeyCtx *pubKey = NULL;
     int32_t ret = HITLS_X509_CertCtrl(cert, HITLS_X509_GET_PUBKEY, &pubKey, sizeof(CRYPT_EAL_PkeyCtx *));
     if (ret != HITLS_PKI_SUCCESS || pubKey == NULL) {
@@ -249,7 +248,7 @@ int32_t HITLS_X509_CheckKey(HITLS_X509_Cert *cert, CRYPT_EAL_PkeyCtx *prvKey)
         return ret;
     }
 
-    ret = CRYPT_EAL_PkeyPairCheck(pubKey, prvKey); // cmp cal speed is higher than CheckPair's.
+    ret = CRYPT_EAL_PkeyPairCheck(pubKey, prvKey);
     CRYPT_EAL_PkeyFreeCtx(pubKey);
     if (ret != CRYPT_SUCCESS ) {
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_CERT_NOT_MATCH_KEY);

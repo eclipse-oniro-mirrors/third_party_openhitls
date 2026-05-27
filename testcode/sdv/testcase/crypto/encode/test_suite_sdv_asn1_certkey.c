@@ -307,11 +307,13 @@ void SDV_BSL_ASN1_PARSE_RSA_PRV_TC001(char *path, Hex *version, Hex *n, Hex *e, 
     uint32_t signLen = CRYPT_EAL_PkeyGetSignLen(pkeyCtx);
     signdata = (uint8_t *)BSL_SAL_Malloc(signLen);
     ASSERT_TRUE(signdata != NULL);
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_PkeySign(pkeyCtx, mdId, msg->x, msg->len, signdata, &signLen), CRYPT_SUCCESS);
     ASSERT_COMPARE("CRYPT_EAL_PkeySign Compare", sign->x, sign->len, signdata, signLen);
     ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
+    TestRandDeInit();
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     BSL_SAL_FREE(signdata);
     BSL_SAL_FREE(rawBuff);
@@ -404,6 +406,118 @@ static int32_t DecodeKeyBuff(int isProvider, BSL_Buffer *encode, int format, con
         return CRYPT_EAL_DecodeBuffKey(format, fileType, encode, pwd, pwdLen, pkeyCtx);
     }
 }
+
+/**
+ * @test SDV_BSL_ASN1_PARSE_PRIKEY_NO_NUL_TERMINATOR_TC001
+ * title 1. Test decoding a PEM private-key buffer whose byte after encode.dataLen is nonzero.
+ *       2. Verify DecodeBuffKey uses encode.dataLen as the boundary and does not require a trailing '\0'.
+ *
+ */
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_PARSE_PRIKEY_NO_NUL_TERMINATOR_TC001(char *path, int fileType)
+{
+    uint8_t *fileData = NULL;
+    uint32_t fileLen = 0;
+    uint8_t *noNulData = NULL;
+    BSL_Buffer encode = {0};
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+
+    ASSERT_EQ(BSL_SAL_ReadFile(path, &fileData, &fileLen), BSL_SUCCESS);
+    ASSERT_TRUE(fileData != NULL && fileLen > 0);
+
+    /*
+     * Test point: build a PEM private-key buffer whose byte after encode.dataLen is nonzero.
+     * DecodeBuffKey must parse strictly within encode.dataLen and must not depend on a trailing '\0'.
+     */
+    noNulData = BSL_SAL_Malloc(strlen((const char *)fileData));
+    ASSERT_TRUE(noNulData != NULL);
+    memcpy(noNulData, fileData, strlen((const char *)fileData));
+
+    encode.data = noNulData;
+    encode.dataLen = strlen((const char *)fileData);
+    /* Verify the PEM private key buffer can still be decoded when the out-of-range sentinel is not '\0'. */
+    ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_PEM, fileType, &encode, NULL, 0, &pkeyCtx), CRYPT_SUCCESS);
+    ASSERT_TRUE(pkeyCtx != NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    if (fileData != NULL) {
+        BSL_SAL_CleanseData(fileData, fileLen);
+    }
+    if (noNulData != NULL) {
+        BSL_SAL_CleanseData(noNulData, strlen((const char *)fileData));
+    }
+    BSL_SAL_Free(fileData);
+    BSL_SAL_Free(noNulData);
+}
+/* END_CASE */
+
+/**
+ * @test SDV_BSL_ASN1_PARSE_PRIKEY_UNKNOWN_NO_NUL_TERMINATOR_TC001
+ * title 1. Test decoding PEM and DER private-key buffers with UNKNOWN format and UNKNOWN key type.
+ *       2. Test both DecodeBuffKey and ProviderDecodeBuffKey use encode.dataLen as the parsing boundary.
+ *
+ */
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_PARSE_PRIKEY_UNKNOWN_NO_NUL_TERMINATOR_TC001(int isProvider, char *path)
+{
+#ifndef HITLS_CRYPTO_PROVIDER
+    if (isProvider != 0) {
+        (void)path;
+        SKIP_TEST();
+    }
+#endif
+    uint8_t *fileData = NULL;
+    uint32_t fileLen = 0;
+    uint8_t *noNulData = NULL;
+    BSL_Buffer encode = {0};
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+
+    ASSERT_EQ(BSL_SAL_ReadFile(path, &fileData, &fileLen), BSL_SUCCESS);
+    ASSERT_TRUE(fileData != NULL && fileLen > 0);
+
+    /*
+     * Test point: append a nonzero sentinel after dataLen. UNKNOWN format and UNKNOWN key type must identify
+     * PEM or DER private-key content from encode.dataLen bytes only, without relying on a trailing '\0'.
+     */
+    noNulData = BSL_SAL_Malloc(fileLen + 1);
+    ASSERT_TRUE(noNulData != NULL);
+    memcpy(noNulData, fileData, fileLen);
+    noNulData[fileLen] = 0xA5;
+    ASSERT_TRUE(noNulData[fileLen] != 0);
+    encode.data = noNulData;
+    encode.dataLen = fileLen;
+
+#ifdef HITLS_CRYPTO_PROVIDER
+    if (isProvider != 0) {
+        CRYPT_RandRegist(RandFunc);
+        CRYPT_RandRegistEx(RandFuncEx);
+        /* Test point: provider format NULL and type NULL map to UNKNOWN format and UNKNOWN key type. */
+        ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, NULL, NULL, &encode, NULL, &pkeyCtx),
+            CRYPT_SUCCESS);
+    } else
+#endif
+    {
+        /* Test point: non-provider UNKNOWN format and CRYPT_ENCDEC_UNKNOW auto-detect PEM or DER private keys. */
+        ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_UNKNOWN, CRYPT_ENCDEC_UNKNOW, &encode, NULL, 0, &pkeyCtx),
+            CRYPT_SUCCESS);
+    }
+    ASSERT_TRUE(pkeyCtx != NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    if (fileData != NULL) {
+        BSL_SAL_CleanseData(fileData, fileLen);
+    }
+    if (noNulData != NULL) {
+        BSL_SAL_CleanseData(noNulData, fileLen + 1);
+    }
+    BSL_SAL_Free(fileData);
+    BSL_SAL_Free(noNulData);
+}
+/* END_CASE */
 
 /* sign and optional compare in a reusable subroutine */
 static int32_t PrikeySign(CRYPT_EAL_PkeyCtx *pkeyCtx, int mdId, int fileType, char *fileTypeStr, Hex *msg, Hex *sign)
@@ -1451,6 +1565,58 @@ EXIT:
 }
 /* END_CASE */
 
+#if defined(HITLS_CRYPTO_PROVIDER) && (defined(HITLS_CRYPTO_DSA) || defined(HITLS_CRYPTO_DH))
+static int32_t CompareDsaDhPrvKey(CRYPT_EAL_PkeyCtx *pkey1, CRYPT_EAL_PkeyCtx *pkey2, uint32_t keyLen)
+{
+    uint8_t *prv1 = NULL;
+    uint8_t *prv2 = NULL;
+    CRYPT_EAL_PkeyPrv prvKey1 = {0};
+    CRYPT_EAL_PkeyPrv prvKey2 = {0};
+    int32_t pkeyId;
+    int32_t ret = CRYPT_INVALID_KEY;
+
+    prv1 = BSL_SAL_Malloc(keyLen);
+    prv2 = BSL_SAL_Malloc(keyLen);
+    ASSERT_TRUE(prv1 != NULL);
+    ASSERT_TRUE(prv2 != NULL);
+    ASSERT_EQ(CRYPT_EAL_PkeyGetId(pkey1), CRYPT_EAL_PkeyGetId(pkey2));
+    pkeyId = CRYPT_EAL_PkeyGetId(pkey1);
+    if (pkeyId == CRYPT_PKEY_DSA) {
+        prvKey1.id = CRYPT_PKEY_DSA;
+        prvKey1.key.dsaPrv.data = prv1;
+        prvKey1.key.dsaPrv.len = keyLen;
+        prvKey2.id = CRYPT_PKEY_DSA;
+        prvKey2.key.dsaPrv.data = prv2;
+        prvKey2.key.dsaPrv.len = keyLen;
+        ASSERT_EQ(CRYPT_EAL_PkeyGetPrv(pkey1, &prvKey1), CRYPT_SUCCESS);
+        ASSERT_EQ(CRYPT_EAL_PkeyGetPrv(pkey2, &prvKey2), CRYPT_SUCCESS);
+        ASSERT_EQ(prvKey1.key.dsaPrv.len, prvKey2.key.dsaPrv.len);
+        ASSERT_COMPARE("dsa private key compare.", prvKey1.key.dsaPrv.data, prvKey1.key.dsaPrv.len,
+            prvKey2.key.dsaPrv.data, prvKey2.key.dsaPrv.len);
+    } else if (pkeyId == CRYPT_PKEY_DH) {
+        prvKey1.id = CRYPT_PKEY_DH;
+        prvKey1.key.dhPrv.data = prv1;
+        prvKey1.key.dhPrv.len = keyLen;
+        prvKey2.id = CRYPT_PKEY_DH;
+        prvKey2.key.dhPrv.data = prv2;
+        prvKey2.key.dhPrv.len = keyLen;
+        ASSERT_EQ(CRYPT_EAL_PkeyGetPrv(pkey1, &prvKey1), CRYPT_SUCCESS);
+        ASSERT_EQ(CRYPT_EAL_PkeyGetPrv(pkey2, &prvKey2), CRYPT_SUCCESS);
+        ASSERT_EQ(prvKey1.key.dhPrv.len, prvKey2.key.dhPrv.len);
+        ASSERT_COMPARE("dh private key compare.", prvKey1.key.dhPrv.data, prvKey1.key.dhPrv.len,
+            prvKey2.key.dhPrv.data, prvKey2.key.dhPrv.len);
+    } else {
+        ASSERT_TRUE(false);
+    }
+    ret = CRYPT_SUCCESS;
+
+EXIT:
+    BSL_SAL_FREE(prv1);
+    BSL_SAL_FREE(prv2);
+    return ret;
+}
+#endif
+
 /* BEGIN_CASE */
 void SDV_BSL_ASN1_DECODE_DSAKEY_BUFF_CMP(char *path, int fileType, Hex *asn1)
 {
@@ -1463,7 +1629,11 @@ void SDV_BSL_ASN1_DECODE_DSAKEY_BUFF_CMP(char *path, int fileType, Hex *asn1)
     BSL_Buffer encodeAsn1 = {asn1->x, asn1->len};
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_UNKNOWN, fileType, path, NULL, 0, &pkeyCtx), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_ASN1, fileType, &encodeAsn1, NULL, 0, &pkeyAsn1Ctx), CRYPT_SUCCESS);
-    ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyCtx, pkeyAsn1Ctx), CRYPT_SUCCESS);
+    if (fileType != CRYPT_PRIKEY_PKCS8_UNENCRYPT) {
+        ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyCtx, pkeyAsn1Ctx), CRYPT_SUCCESS);
+    } else {
+        ASSERT_EQ(CompareDsaDhPrvKey(pkeyCtx, pkeyAsn1Ctx, asn1->len), CRYPT_SUCCESS);
+    }
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     CRYPT_EAL_PkeyFreeCtx(pkeyAsn1Ctx);
@@ -1488,7 +1658,11 @@ void SDV_BSL_ASN1_DECODE_DHKEY_BUFF_CMP(char *path, int fileType, Hex *asn1)
     BSL_Buffer encodeAsn1 = {asn1->x, asn1->len};
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_UNKNOWN, fileType, path, NULL, 0, &pkeyCtx), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_ASN1, fileType, &encodeAsn1, NULL, 0, &pkeyAsn1Ctx), CRYPT_SUCCESS);
-    ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyCtx, pkeyAsn1Ctx), CRYPT_SUCCESS);
+    if (fileType != CRYPT_PRIKEY_PKCS8_UNENCRYPT) {
+        ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyCtx, pkeyAsn1Ctx), CRYPT_SUCCESS);
+    } else {
+        ASSERT_EQ(CompareDsaDhPrvKey(pkeyCtx, pkeyAsn1Ctx, asn1->len), CRYPT_SUCCESS);
+    }
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
     CRYPT_EAL_PkeyFreeCtx(pkeyAsn1Ctx);
@@ -1565,13 +1739,10 @@ EXIT:
 @test SDV_PKCS8_ENCODE_DHKEY_DSAKEY_TC001
 @title DH, DSA key encoding
 @step
-1.openHiTLS calls CRYPT_EAL_EncodeBuffKey interface to encode the key in pem format,
-    comparing if the encoding between openssl and openHiTLS is consistent
-2.openHiTLS calls CRYPT_EAL_EncodeBuffKey interface to encode the key in asn1 format,
-    comparing if the encoding between openssl and openHiTLS is consistent
+1.openHiTLS calls CRYPT_EAL_EncodeBuffKey interface to encode the key in pem format
+2.openHiTLS calls CRYPT_EAL_EncodeBuffKey interface to encode the key in asn1 format
 @expect
-1.Encoding succeeds, consistent with openssl
-2.Encoding succeeds, consistent with openssl
+Both success
 */
 /* BEGIN_CASE */
 void SDV_PKCS8_ENCODE_DHKEY_DSAKEY_TC001(char *path, int fileType, Hex *asn1)
@@ -1614,8 +1785,7 @@ EXIT:
 2.openHiTLS calls CRYPT_EAL_DecodeBuffKey interface to decode the key in asn1 format,
     comparing if the decrypted key is consistent with the original key
 @expect
-1.Encoding succeeds, consistent with openssl
-2.Encoding succeeds, consistent with openssl
+Both success
 */
 /* BEGIN_CASE */
 void SDV_PKCS8_DECODE_DHKEY_DSAKEY_TC001(char *path, int fileType,  Hex *asn1)
@@ -1632,8 +1802,12 @@ void SDV_PKCS8_DECODE_DHKEY_DSAKEY_TC001(char *path, int fileType,  Hex *asn1)
     memcpy_s(decodeAsn1.data, asn1->len, asn1->x, asn1->len);
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_UNKNOWN, fileType, path, NULL, 0, &pkeyBypem), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_ASN1, fileType, &decodeAsn1, NULL, 0, &pkeyByAsn1), CRYPT_SUCCESS);
+    if (fileType != CRYPT_PRIKEY_PKCS8_UNENCRYPT) {
+        ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyBypem, pkeyByAsn1), 0);
+    } else {
+        ASSERT_EQ(CompareDsaDhPrvKey(pkeyBypem, pkeyByAsn1, asn1->len), CRYPT_SUCCESS);
+    }
 
-    ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyBypem, pkeyByAsn1), 0);
 EXIT:
     BSL_SAL_FREE(decodeAsn1.data);
     CRYPT_EAL_PkeyFreeCtx(pkeyBypem);
@@ -1686,7 +1860,11 @@ void SDV_PKCS8_ENCDEC_DHKEY_DSAKEY_TC001(char *path, int fileType,  Hex *asn1)
     ASSERT_EQ(CRYPT_EAL_DecodeFileKey(BSL_FORMAT_UNKNOWN, fileType, path, NULL, 0, &pkeyBypem), CRYPT_SUCCESS);
     ASSERT_EQ(CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_ASN1, fileType, &decodeAsn1, NULL, 0, &pkeyByAsn1), CRYPT_SUCCESS);
 
-    ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyBypem, pkeyByAsn1), 0);
+    if (fileType != CRYPT_PRIKEY_PKCS8_UNENCRYPT) {
+        ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyBypem, pkeyByAsn1), 0);
+    } else {
+        ASSERT_EQ(CompareDsaDhPrvKey(pkeyBypem, pkeyByAsn1, asn1->len), CRYPT_SUCCESS);
+    }
 
     ASSERT_EQ(CRYPT_EAL_EncodeBuffKey(pkeyBypem, NULL, BSL_FORMAT_ASN1, fileType, &encodeAsn1), CRYPT_SUCCESS);
     ASSERT_COMPARE("asn1 compare.", encodeAsn1.data, encodeAsn1.dataLen, asn1->x, asn1->len);
@@ -1705,9 +1883,15 @@ void SDV_PKCS8_ENCDEC_DHKEY_DSAKEY_TC001(char *path, int fileType,  Hex *asn1)
     ASSERT_EQ(
         CRYPT_EAL_DecodeBuffKey(BSL_FORMAT_ASN1, fileType, &decodeAsn1_2, NULL, 0, &decpkeyByAsn1), CRYPT_SUCCESS);
 
-    ASSERT_EQ(CRYPT_EAL_PkeyCmp(decpkeyBypem, decpkeyByAsn1), 0);
-    ASSERT_EQ(CRYPT_EAL_PkeyCmp(decpkeyBypem, pkeyBypem), 0);
-    ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyByAsn1, decpkeyByAsn1), 0);
+    if (fileType != CRYPT_PRIKEY_PKCS8_UNENCRYPT) {
+        ASSERT_EQ(CRYPT_EAL_PkeyCmp(decpkeyBypem, decpkeyByAsn1), 0);
+        ASSERT_EQ(CRYPT_EAL_PkeyCmp(decpkeyBypem, pkeyBypem), 0);
+        ASSERT_EQ(CRYPT_EAL_PkeyCmp(pkeyByAsn1, decpkeyByAsn1), 0);
+    } else {
+        ASSERT_EQ(CompareDsaDhPrvKey(decpkeyBypem, decpkeyByAsn1, encodeAsn1.dataLen), CRYPT_SUCCESS);
+        ASSERT_EQ(CompareDsaDhPrvKey(decpkeyBypem, pkeyBypem, encodeAsn1.dataLen), CRYPT_SUCCESS);
+        ASSERT_EQ(CompareDsaDhPrvKey(pkeyByAsn1, decpkeyByAsn1, encodeAsn1.dataLen), CRYPT_SUCCESS);
+    }
 EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkeyBypem);
     CRYPT_EAL_PkeyFreeCtx(pkeyByAsn1);
@@ -1927,6 +2111,119 @@ EXIT:
     (void)fileType;
     (void)asn1;
     SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/*
+@test SDV_CRYPT_DECODE_RSAPSS_MGF1_VALIDATE_TC001
+@title Test CRYPT_EAL_ParseRsaPssAlgParam rejects non-MGF1 mask generation algorithm
+@precon None
+@step
+1. Call CRYPT_EAL_ParseRsaPssAlgParam with valid RSA-PSS params (MGF1 OID), expect success
+2. Call CRYPT_EAL_ParseRsaPssAlgParam with invalid RSA-PSS params (non-MGF1 OID), expect CRYPT_DECODE_ERR_RSSPSS
+@expect
+1. Valid params parse successfully with correct mdId, mgfId, and saltLen
+2. Invalid params return CRYPT_DECODE_ERR_RSSPSS
+*/
+/* BEGIN_CASE */
+void SDV_CRYPT_DECODE_RSAPSS_MGF1_VALIDATE_TC001(void)
+{
+#if defined(HITLS_CRYPTO_RSA) && defined(HITLS_CRYPTO_KEY_DECODE)
+    /* RSA-PSS params: SHA-256 hash, MGF1(SHA-256), salt length 32
+     * Content of the SEQUENCE (without outer SEQUENCE TLV):
+     * [0] { SEQUENCE { OID sha256 } }
+     * [1] { SEQUENCE { OID mgf1, SEQUENCE { OID sha256 } } }
+     * [2] { INTEGER 32 }
+     */
+    uint8_t validPssParams[] = {
+        0xa0, 0x0d, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
+        0xa1, 0x1a, 0x30, 0x18, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x08,
+        0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
+        0xa2, 0x03, 0x02, 0x01, 0x20
+    };
+
+    /* Invalid: replace MGF1 OID (2a864886f70d010108) with RSASSA-PSS OID (2a864886f70d01010a) */
+    uint8_t invalidPssParams[] = {
+        0xa0, 0x0d, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
+        0xa1, 0x1a, 0x30, 0x18, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a,
+        0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
+        0xa2, 0x03, 0x02, 0x01, 0x20
+    };
+
+    BSL_ASN1_Buffer validParam = {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE,
+        sizeof(validPssParams), validPssParams};
+    BSL_ASN1_Buffer invalidParam = {BSL_ASN1_TAG_CONSTRUCTED | BSL_ASN1_TAG_SEQUENCE,
+        sizeof(invalidPssParams), invalidPssParams};
+    CRYPT_RSA_PssPara para = {0};
+
+    ASSERT_EQ(CRYPT_EAL_ParseRsaPssAlgParam(&validParam, &para), CRYPT_SUCCESS);
+    ASSERT_EQ(para.mdId, CRYPT_MD_SHA256);
+    ASSERT_EQ(para.mgfId, CRYPT_MD_SHA256);
+    ASSERT_EQ(para.saltLen, 32);
+
+    memset(&para, 0, sizeof(para));
+    ASSERT_EQ(CRYPT_EAL_ParseRsaPssAlgParam(&invalidParam, &para), CRYPT_DECODE_ERR_RSSPSS);
+
+EXIT:
+    return;
+#else
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
+/**
+ * @test SDV_CRYPT_EAL_PROVIDER_DECODE_BUFF_KEY_ALGID_TC001
+ * @title Test CRYPT_EAL_ProviderDecodeBuffKey with mismatched pkeyAlgId
+ * @precon None
+ * @brief
+ *    1. Read key file into buffer
+ *    2. Decode with mismatched pkeyAlgId, expect CRYPT_EAL_ERR_ALGID
+ *    3. Decode with BSL_CID_UNKNOWN (no alg check), expect success
+ */
+/* BEGIN_CASE */
+void SDV_CRYPT_EAL_PROVIDER_DECODE_BUFF_KEY_ALGID_TC001(char *path, char *formatStr, char *typeStr,
+    int mismatchedAlgId, int correctAlgId)
+{
+#ifndef HITLS_CRYPTO_PROVIDER
+    (void)path;
+    (void)formatStr;
+    (void)typeStr;
+    (void)mismatchedAlgId;
+    (void)correctAlgId;
+    SKIP_TEST();
+#else
+    CRYPT_RandRegist(RandFunc);
+    CRYPT_RandRegistEx(RandFuncEx);
+    CRYPT_EAL_PkeyCtx *pkeyCtx = NULL;
+    uint8_t *data = NULL;
+    uint32_t dataLen = 0;
+
+    ASSERT_EQ(BSL_SAL_ReadFile(path, &data, &dataLen), BSL_SUCCESS);
+    BSL_Buffer encode = {data, dataLen};
+
+    /* Step 1: Decode with mismatched pkeyAlgId, expect CRYPT_EAL_ERR_ALGID */
+    ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, mismatchedAlgId, formatStr, typeStr, &encode,
+        NULL, &pkeyCtx), CRYPT_EAL_ERR_ALGID);
+    ASSERT_TRUE(pkeyCtx == NULL);
+
+    /* Step 2: Decode with BSL_CID_UNKNOWN (no alg check), expect success */
+    ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, BSL_CID_UNKNOWN, formatStr, typeStr, &encode,
+        NULL, &pkeyCtx), CRYPT_SUCCESS);
+    ASSERT_TRUE(pkeyCtx != NULL);
+    ASSERT_EQ(CRYPT_EAL_PkeyGetId(pkeyCtx), correctAlgId);
+
+    /* Step 3: Decode with matching pkeyAlgId, expect success */
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    pkeyCtx = NULL;
+    ASSERT_EQ(CRYPT_EAL_ProviderDecodeBuffKey(NULL, NULL, correctAlgId, formatStr, typeStr, &encode,
+        NULL, &pkeyCtx), CRYPT_SUCCESS);
+    ASSERT_TRUE(pkeyCtx != NULL);
+
+EXIT:
+    CRYPT_EAL_PkeyFreeCtx(pkeyCtx);
+    BSL_SAL_FREE(data);
 #endif
 }
 /* END_CASE */

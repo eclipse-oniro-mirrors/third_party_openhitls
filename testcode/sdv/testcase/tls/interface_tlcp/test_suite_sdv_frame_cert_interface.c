@@ -44,9 +44,9 @@
 
 #define BUF_MAX_SIZE 4096
 int32_t g_uiPort = 18886;
-static int TestHITLS_VerifyCb(int32_t isPreverifyOk, HITLS_CERT_StoreCtx *storeCtx)
+static int TestHITLS_VerifyCb(int32_t errCode, HITLS_CERT_StoreCtx *storeCtx)
 {
-    (void)isPreverifyOk;
+    (void)errCode;
     (void)storeCtx;
     return 0;
 }
@@ -760,7 +760,7 @@ void UT_TLS_CERT_GET_CALIST_FUNC_TC001(int version)
     ret = BSL_LIST_AddElement((BslList *)certChain, cert3, BSL_LIST_POS_END);
     ASSERT_TRUE(ret == 0);
 
-    ret = SESS_SetPeerCert(session, peerCert, false);
+    ret = SESS_SetPeerCert(session, peerCert);
     ASSERT_TRUE(ret == HITLS_SUCCESS);
 
 

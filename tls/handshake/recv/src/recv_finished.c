@@ -147,7 +147,7 @@ static int32_t SessionConfig(TLS_Ctx *ctx)
     }
 #if defined(HITLS_TLS_CONNECTION_INFO_NEGOTIATION) && defined(HITLS_TLS_FEATURE_SESSION)
     if (ctx->config.tlsConfig.isKeepPeerCert) {
-        ret = SESS_SetPeerCert(ctx->session, hsCtx->peerCert, ctx->isClient);
+        ret = SESS_SetPeerCert(ctx->session, hsCtx->peerCert);
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
@@ -169,7 +169,7 @@ int32_t HsSetSessionInfo(TLS_Ctx *ctx)
     if ((mode & HITLS_SESS_DISABLE_AUTO_CLEANUP) == 0) {
         SESSMGR_ClearTimeout(ctx->globalConfig, (uint64_t)BSL_SAL_CurrentSysTimeGet());
     }
-    
+
     /* This parameter is not required for session multiplexing */
     if (ctx->negotiatedInfo.isResume == true) {
         return HITLS_SUCCESS;
@@ -282,23 +282,6 @@ static int32_t RecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
     }
     return HITLS_SUCCESS;
 }
-#ifdef HITLS_TLS_HOST_CLIENT
-#ifdef HITLS_TLS_PROTO_TLS_BASIC
-int32_t Tls12ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
-{
-    int32_t ret = RecvFinishedProcess(ctx, msg);
-    if (ret != HITLS_SUCCESS) {
-        return ret;
-    }
-
-    if (ctx->negotiatedInfo.isResume == true) {
-        ctx->method.ctrlCCS(ctx, CCS_CMD_RECV_EXIT_READY);
-        return HS_ChangeState(ctx, TRY_SEND_CHANGE_CIPHER_SPEC);
-    }
-
-    return HS_ChangeState(ctx, TLS_CONNECTED);
-}
-#endif /* HITLS_TLS_PROTO_TLS_BASIC */
 
 #ifdef HITLS_TLS_PROTO_DTLS12
 int32_t DtlsClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
@@ -329,7 +312,26 @@ int32_t DtlsClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 
     return HS_ChangeState(ctx, TLS_CONNECTED);
 }
-#endif
+#endif /* HITLS_TLS_PROTO_DTLS12 */
+
+#ifdef HITLS_TLS_HOST_CLIENT
+#ifdef HITLS_TLS_PROTO_TLS_BASIC
+int32_t Tls12ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
+{
+    int32_t ret = RecvFinishedProcess(ctx, msg);
+    if (ret != HITLS_SUCCESS) {
+        return ret;
+    }
+
+    if (ctx->negotiatedInfo.isResume == true) {
+        ctx->method.ctrlCCS(ctx, CCS_CMD_RECV_EXIT_READY);
+        return HS_ChangeState(ctx, TRY_SEND_CHANGE_CIPHER_SPEC);
+    }
+
+    return HS_ChangeState(ctx, TLS_CONNECTED);
+}
+#endif /* HITLS_TLS_PROTO_TLS_BASIC */
+
 #ifdef HITLS_TLS_PROTO_TLS13
 int32_t Tls13ClientRecvFinishedProcess(TLS_Ctx *ctx, const HS_Msg *msg)
 {

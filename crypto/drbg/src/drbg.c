@@ -248,9 +248,7 @@ ERR_NONCE:
 
 static inline bool DRBG_IsNeedReseed(DRBG_Ctx *ctx, bool pr)
 {
-    int32_t forkId = BSL_SAL_GetPid();
-    if (ctx->forkId != forkId) {
-        ctx->forkId = forkId;
+    if (ctx->forkId != BSL_SAL_GetPid()) {
         return true;
     }
     if (pr) {
@@ -309,6 +307,7 @@ int32_t DRBG_Reseed(DRBG_Ctx *ctx, const uint8_t *adin, uint32_t adinLen)
     }
 
     ctx->reseedCtr = 1;
+    ctx->forkId = BSL_SAL_GetPid();
 #if defined(HITLS_CRYPTO_DRBG_GM)
     if (ctx->reseedIntervalTime != 0) {
         ctx->lastReseedTime = BSL_SAL_CurrentSysTimeGet();
@@ -431,7 +430,12 @@ static int32_t DRBG_SetReseedInterval(DRBG_Ctx *ctx, const void *val, uint32_t l
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
     }
-    ctx->reseedInterval = *(const uint32_t *)val;
+    uint32_t reseedInterval = *(const uint32_t *)val;
+    if (reseedInterval >= UINT32_MAX) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    ctx->reseedInterval = reseedInterval;
     return CRYPT_SUCCESS;
 }
 

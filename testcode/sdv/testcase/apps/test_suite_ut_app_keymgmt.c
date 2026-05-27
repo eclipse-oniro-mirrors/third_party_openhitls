@@ -21,6 +21,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include "app_enc.h"
 #include "app_keymgmt.h"
 #include "app_dgst.h"
@@ -410,6 +411,9 @@ void UT_HITLS_APP_KEYMGMT_TC001(void)
     STUB_REPLACE(HITLS_APP_SM_RootUserCheck, STUB_HITLS_APP_SM_RootUserCheck);
 
     char *uuid = NULL;
+    char keyPath[1024] = {0};
+    struct stat st = {0};
+    mode_t oldMask = umask(0022);
     char *argv[] = {"keymgmt", "-create", "-algid", "sm4", SM_PARAM, NULL};
 
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
@@ -419,6 +423,9 @@ void UT_HITLS_APP_KEYMGMT_TC001(void)
 
     uuid = GetUuidFromP12(WORK_PATH);
     ASSERT_TRUE(uuid != NULL);
+    ASSERT_TRUE(snprintf_s(keyPath, sizeof(keyPath), sizeof(keyPath) - 1, "%s/%s.p12", WORK_PATH, uuid) > 0);
+    ASSERT_EQ(stat(keyPath, &st), 0);
+    ASSERT_EQ(st.st_mode & 0777, S_IRUSR | S_IWUSR);
 
     ret = EncryptAndDecrypt(uuid, "sm4_cbc");
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
@@ -439,6 +446,7 @@ void UT_HITLS_APP_KEYMGMT_TC001(void)
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
 
 EXIT:
+    (void)umask(oldMask);
     BSL_SAL_FREE(uuid);
     AppTestUninit();
     STUB_RESTORE(BSL_UI_ReadPwdUtil);
@@ -646,6 +654,19 @@ void UT_HITLS_APP_KEYMGMT_TC005(void)
     ret = HITLS_KeyMgmtMain(sizeof(argv7) / sizeof(argv7[0]) - 1, argv7);
     ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
 
+    // Case 8: Reject UUIDs that are not exactly 64 hex characters.
+    char invalidUuid[] = "../../target";
+    char *argv8[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", invalidUuid, NULL};
+    ret = HITLS_KeyMgmtMain(sizeof(argv8) / sizeof(argv8[0]) - 1, argv8);
+    ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
+
+    // Case 9: Reject invalid UUID elements in comma-separated lists.
+    char invalidUuidList[] =
+        "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef,../../target";
+    char *argv9[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", invalidUuidList, NULL};
+    ret = HITLS_KeyMgmtMain(sizeof(argv9) / sizeof(argv9[0]) - 1, argv9);
+    ASSERT_EQ(ret, HITLS_APP_OPT_VALUE_INVALID);
+
 EXIT:
     AppTestUninit();
     STUB_RESTORE(BSL_UI_ReadPwdUtil);
@@ -730,7 +751,7 @@ void UT_HITLS_APP_KEYMGMT_TC007(void)
 
     // Verify the key file exists
     char keyPath[256];
-    snprintf(keyPath, sizeof(keyPath), "%s/%s.p12", WORK_PATH, uuid);
+    ASSERT_TRUE(snprintf_s(keyPath, sizeof(keyPath), sizeof(keyPath) - 1, "%s/%s.p12", WORK_PATH, uuid) > 0);
     FILE *fp = fopen(keyPath, "r");
     ASSERT_TRUE(fp != NULL);
     fclose(fp);
@@ -774,7 +795,7 @@ void UT_HITLS_APP_KEYMGMT_TC008(void)
     ASSERT_EQ(AppTestInit(), HITLS_APP_SUCCESS);
 
     // Test deleting a non-existent key - pass a randomly generated UUID
-    char fakeUuid[] = "1234567890abcdef1234567890abcdef";
+    char fakeUuid[] = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
     char *argv_delete[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", fakeUuid, NULL};
     int ret = HITLS_KeyMgmtMain(sizeof(argv_delete) / sizeof(argv_delete[0]) - 1, argv_delete);
 
@@ -783,7 +804,7 @@ void UT_HITLS_APP_KEYMGMT_TC008(void)
 
     // Verify there is indeed no corresponding key file in the work directory
     char keyPath[256];
-    snprintf(keyPath, sizeof(keyPath), "%s/%s.p12", WORK_PATH, fakeUuid);
+    ASSERT_TRUE(snprintf_s(keyPath, sizeof(keyPath), sizeof(keyPath) - 1, "%s/%s.p12", WORK_PATH, fakeUuid) > 0);
     FILE *fp = fopen(keyPath, "r");
     ASSERT_TRUE(fp == NULL);
 
@@ -846,8 +867,8 @@ void UT_HITLS_APP_KEYMGMT_TC009(void)
 
     // Verify both key files exist
     char keyPath1[256], keyPath2[256];
-    snprintf(keyPath1, sizeof(keyPath1), "%s/%s.p12", WORK_PATH, uuid1);
-    snprintf(keyPath2, sizeof(keyPath2), "%s/%s.p12", WORK_PATH, uuid2);
+    ASSERT_TRUE(snprintf_s(keyPath1, sizeof(keyPath1), sizeof(keyPath1) - 1, "%s/%s.p12", WORK_PATH, uuid1) > 0);
+    ASSERT_TRUE(snprintf_s(keyPath2, sizeof(keyPath2), sizeof(keyPath2) - 1, "%s/%s.p12", WORK_PATH, uuid2) > 0);
 
     FILE *fp1 = fopen(keyPath1, "r");
     ASSERT_TRUE(fp1 != NULL);
@@ -858,7 +879,7 @@ void UT_HITLS_APP_KEYMGMT_TC009(void)
 
     // Test deleting multiple keys - pass multiple UUIDs (comma-separated)
     char uuidList[256];
-    snprintf(uuidList, sizeof(uuidList), "%s,%s", uuid1, uuid2);
+    ASSERT_TRUE(snprintf_s(uuidList, sizeof(uuidList), sizeof(uuidList) - 1, "%s,%s", uuid1, uuid2) > 0);
     char *argv_delete[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", uuidList, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv_delete) / sizeof(argv_delete[0]) - 1, argv_delete);
     ASSERT_EQ(ret, HITLS_APP_SUCCESS);
@@ -914,16 +935,16 @@ void UT_HITLS_APP_KEYMGMT_TC010(void)
 
     // Verify the key file exists
     char keyPath1[256];
-    snprintf(keyPath1, sizeof(keyPath1), "%s/%s.p12", WORK_PATH, uuid1);
+    ASSERT_TRUE(snprintf_s(keyPath1, sizeof(keyPath1), sizeof(keyPath1) - 1, "%s/%s.p12", WORK_PATH, uuid1) > 0);
     FILE *fp1 = fopen(keyPath1, "r");
     ASSERT_TRUE(fp1 != NULL);
     fclose(fp1);
 
     // Construct a list containing existing and non-existing UUIDs
-    char fakeUuid[] = "1234567890abcdef1234567890abcdef";
+    char fakeUuid[] = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
     char uuidList[256];
     // Note: Put the existing UUID first and the non-existing one after, to verify ordered deletion logic
-    snprintf(uuidList, sizeof(uuidList), "%s,%s", uuid1, fakeUuid);
+    ASSERT_TRUE(snprintf_s(uuidList, sizeof(uuidList), sizeof(uuidList) - 1, "%s,%s", uuid1, fakeUuid) > 0);
 
     char *argv_delete[] = {"keymgmt", "-delete", SM_PARAM, "-uuid", uuidList, NULL};
     ret = HITLS_KeyMgmtMain(sizeof(argv_delete) / sizeof(argv_delete[0]) - 1, argv_delete);
@@ -937,7 +958,7 @@ void UT_HITLS_APP_KEYMGMT_TC010(void)
 
     // Verify the non-existent key file indeed does not exist
     char keyPath2[256];
-    snprintf(keyPath2, sizeof(keyPath2), "%s/%s.p12", WORK_PATH, fakeUuid);
+    ASSERT_TRUE(snprintf_s(keyPath2, sizeof(keyPath2), sizeof(keyPath2) - 1, "%s/%s.p12", WORK_PATH, fakeUuid) > 0);
     FILE *fp2 = fopen(keyPath2, "r");
     ASSERT_TRUE(fp2 == NULL);
 

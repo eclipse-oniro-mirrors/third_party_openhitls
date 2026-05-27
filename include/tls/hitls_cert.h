@@ -39,6 +39,10 @@ extern "C" {
 /**
  * @ingroup hitls_cert
  * @brief   Set the verify store used by the TLS configuration, which is used for certificate verification.
+ * @attention This interface needs to obtain ownership of the store.
+ * Therefore, when passing in a reference, it is necessary to set isclone to true, so that an internal copy will be made
+ * When the user passes in ownership of the store through this interface, it is necessary to set isclone to false, so
+ * that no internal copy will be made.
  *
  * @param   config [OUT] TLS link configuration.
  * @param   store   [IN] CA certificate store.
@@ -61,6 +65,10 @@ HITLS_CERT_Store *HITLS_CFG_GetVerifyStore(const HITLS_Config *config);
 /**
  * @ingroup hitls_cert
  * @brief   Set the verify store used by the TLS link for certificate verification.
+ * @attention This interface needs to obtain ownership of the store.
+ * Therefore, when passing in a reference, it is necessary to set isclone to true, so that an internal copy will be made
+ * When the user passes in ownership of the store through this interface, it is necessary to set isclone to false, so
+ * that no internal copy will be made.
  *
  * @param   ctx     [OUT] TLS link object
  * @param   store   [IN] CA certificate store
@@ -82,6 +90,10 @@ HITLS_CERT_Store *HITLS_GetVerifyStore(const HITLS_Ctx *ctx);
 /**
  * @ingroup hitls_cert
  * @brief   Set the chain store used by the TLS configuration, which is used to construct the certificate chain.
+ * @attention This interface needs to obtain ownership of the store.
+ * Therefore, when passing in a reference, it is necessary to set isclone to true, so that an internal copy will be made
+ * When the user passes in ownership of the store through this interface, it is necessary to set isclone to false, so
+ * that no internal copy will be made.
  *
  * @param   config [OUT] TLS link configuration
  * @param   store   [IN] Certificate chain store
@@ -103,6 +115,10 @@ HITLS_CERT_Store *HITLS_CFG_GetChainStore(const HITLS_Config *config);
 /**
  * @ingroup hitls_cert
  * @brief   Set the chain store used by the TLS link to construct the certificate chain.
+ * @attention This interface needs to obtain ownership of the store.
+ * Therefore, when passing in a reference, it is necessary to set isclone to true, so that an internal copy will be made
+ * When the user passes in ownership of the store through this interface, it is necessary to set isclone to false, so
+ * that no internal copy will be made.
  *
  * @param   ctx    [OUT] TLS link object
  * @param   store   [IN] Certificate chain
@@ -126,6 +142,10 @@ HITLS_CERT_Store *HITLS_GetChainStore(const HITLS_Ctx *ctx);
  * @brief   Set the cert store used by the TLS configuration.
  * @attention If verify store is not set, use cert store to verify the certificate.
  * If chain store is not set, use cert store to construct a certificate chain.
+ * This interface needs to obtain ownership of the store.
+ * Therefore, when passing in a reference, it is necessary to set isclone to true, so that an internal copy will be made
+ * When the user passes in ownership of the store through this interface, it is necessary to set isclone to false, so
+ * that no internal copy will be made.
  * @param   config [OUT] TLS link configuration
  * @param   store   [IN] Trust certificate store
  * @param   isClone [IN] Indicates whether deep copy is required. The options are true and false.
@@ -148,6 +168,10 @@ HITLS_CERT_Store *HITLS_CFG_GetCertStore(const HITLS_Config *config);
  * @brief   Set the cert store used by the TLS link.
  * @attention If verify store is not set, use cert store to verify the certificate.
  * If chain store is not set, use cert store to construct a certificate chain.
+ * This interface needs to obtain ownership of the store.
+ * Therefore, when passing in a reference, it is necessary to set isclone to true, so that an internal copy will be made
+ * When the user passes in ownership of the store through this interface, it is necessary to set isclone to false, so
+ * that no internal copy will be made.
  * @param   ctx    [OUT] TLS link object
  * @param   store   [IN] Trust certificate store
  * @param   isClone [IN] Indicates whether deep copy is required. The options are true and false.
@@ -748,15 +772,15 @@ int32_t HITLS_CFG_RemoveCertAndKey(HITLS_Config *config);
 int32_t HITLS_RemoveCertAndKey(HITLS_Ctx *ctx);
 
 /**
- * @@ingroup hitls_cert
+ * @ingroup hitls_cert
  * @brief   Certificate verification callback
  *
- * @param   isPreverifyOk [IN] Indicates whether the relevant certificate has passed the verification
- * (isPreverifyOk=1) or failed (isPreverifyOk=0)
+ * @param   errCode [IN] Current error code. indicates that the certificate has passed the verification.
+ *                       Other values indicate verification failure.
  * @param   storeCtx [IN] Cert store context
- * @return  1 indicates success. Other values indicate failure.
+ * @return  0 indicates success. Other values indicate failure.
  */
-typedef int (*HITLS_VerifyCb)(int32_t isPreverifyOk, HITLS_CERT_StoreCtx *storeCtx);
+typedef int (*HITLS_VerifyCb)(int32_t errCode, HITLS_CERT_StoreCtx *storeCtx);
 
 /**
  * @ingroup hitls_cert
@@ -916,7 +940,6 @@ int32_t HITLS_SetCurrentCert(HITLS_Ctx *ctx, long option);
 /**
  * @ingroup hitls_cert
  * @brief   Process the certificate callback.
- * @attention This callback function is compatible with OpenSSL and has the same logic as OpenSSL.
  *
  * @param   ctx [IN] TLS link object
  * @param   arg [IN] Related parameters arg
@@ -1316,7 +1339,8 @@ int32_t HITLS_CFG_LoadVerifyFile(HITLS_Config *config, const char *file);
 
 /**
  * @ingroup hitls_cert
- * @brief   Load the verification certificates from buffer.
+ * @brief   Load the verification certificates from buffer. If the CA verification in this interface fails,
+            and there is leftover CA in the config, this config cannot be used further.
  *
  * @param   config [OUT] TLS link configuration
  * @param   buf [IN] Certificate buffer data

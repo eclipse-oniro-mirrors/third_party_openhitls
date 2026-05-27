@@ -299,6 +299,7 @@ static int32_t EncodeKeyParamAsn1BuffInner(CRYPT_EAL_PkeyCtx *pctx, int32_t opt,
 static int32_t SetDsaDhKeyPair(CRYPT_EAL_PkeyCtx *pkey, CRYPT_PKEY_AlgId algId, bool isPriv,
     uint8_t *buff, uint32_t buffLen)
 {
+    int32_t ret;
     int32_t pubKeyTag;
     int32_t prvKeyTag;
     if (algId == CRYPT_PKEY_DSA) {
@@ -312,20 +313,19 @@ static int32_t SetDsaDhKeyPair(CRYPT_EAL_PkeyCtx *pkey, CRYPT_PKEY_AlgId algId, 
         {pubKeyTag, BSL_PARAM_TYPE_OCTETS, buff, buffLen, 0},
         BSL_PARAM_END
     };
-    int32_t ret = CRYPT_EAL_PkeySetPubEx(pkey, rawKey);
-    if (ret != CRYPT_SUCCESS) {
-        BSL_ERR_PUSH_ERROR(ret);
-        return ret;
-    }
     if (isPriv != 0) {
         rawKey[0].key = prvKeyTag;
         ret = CRYPT_EAL_PkeySetPrvEx(pkey, rawKey);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
-            return ret;
         }
+        return ret;
     }
-    return CRYPT_SUCCESS;
+    ret = CRYPT_EAL_PkeySetPubEx(pkey, rawKey);
+    if (ret != CRYPT_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+    }
+    return ret;
 }
 #endif
 
@@ -913,7 +913,7 @@ static int32_t ParseMlKemPrikeyAsn1Buff(CRYPT_EAL_LibCtx *libctx, const char *at
         BSL_ERR_PUSH_ERROR(ret);
         return ret;
     }
-    ret = CRYPT_ML_KEM_PrvKeyValidCheck((CRYPT_ML_KEM_Ctx *)pctx->key);
+    ret = CRYPT_EAL_PkeyPrvCheck(pctx);
     if (ret != CRYPT_SUCCESS) {
         CRYPT_EAL_PkeyFreeCtx(pctx);
         BSL_ERR_PUSH_ERROR(ret);
@@ -1789,7 +1789,9 @@ static int32_t EncodeCurve25519PrikeyAsn1Buff(CRYPT_EAL_PkeyCtx *ealPriKey, BSL_
     BSL_ASN1_TemplateItem octStr[] = {{BSL_ASN1_TAG_OCTETSTRING, 0, 0}};
     BSL_ASN1_Template templ = {octStr, 1};
     BSL_ASN1_Buffer prvAsn1 = {BSL_ASN1_TAG_OCTETSTRING, prv.key.curve25519Prv.len, prv.key.curve25519Prv.data};
-    return BSL_ASN1_EncodeTemplate(&templ, &prvAsn1, 1, &bitStr->data, &bitStr->dataLen);
+    ret = BSL_ASN1_EncodeTemplate(&templ, &prvAsn1, 1, &bitStr->data, &bitStr->dataLen);
+    BSL_SAL_CleanseData(keyBuff, sizeof(keyBuff));
+    return ret;
 }
 #endif // HITLS_CRYPTO_ED25519 || HITLS_CRYPTO_X25519
 

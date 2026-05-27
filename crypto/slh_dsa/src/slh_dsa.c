@@ -420,31 +420,32 @@ int32_t CRYPT_SLH_DSA_Gen(CryptSlhDsaCtx *ctx)
 
 static int32_t GetAddRand(CryptSlhDsaCtx *ctx)
 {
-    if (ctx->addrand != NULL) {
-        // the additional rand is set.
-        return CRYPT_SUCCESS;
-    }
     if (!ctx->isDeterministic) {
-        ctx->addrand = (uint8_t *)BSL_SAL_Malloc(ctx->para.n);
-        if (ctx->addrand == NULL) {
-            BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
-            return CRYPT_MEM_ALLOC_FAIL;
-        }
-        int32_t ret = CRYPT_RandEx(ctx->libCtx, ctx->addrand, ctx->para.n);
-        if (ret != CRYPT_SUCCESS) {
-            return ret;
-        }
-    } else {
-        // FIPS-204, Algorithm 19, line 2.
-        // if is deterministic, use the public key seed as the random number.
         uint8_t *rand = (uint8_t *)BSL_SAL_Malloc(ctx->para.n);
         if (rand == NULL) {
             BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
             return CRYPT_MEM_ALLOC_FAIL;
         }
-        (void)memcpy_s(rand, ctx->para.n, ctx->prvKey.pub.seed, ctx->para.n);
+        int32_t ret = CRYPT_RandEx(ctx->libCtx, rand, ctx->para.n);
+        if (ret != CRYPT_SUCCESS) {
+            BSL_SAL_Free(rand);
+            return ret;
+        }
+        BSL_SAL_ClearFree(ctx->addrand, ctx->addrandLen);
         ctx->addrand = rand;
+        ctx->addrandLen = ctx->para.n;
+        return CRYPT_SUCCESS;
     }
+    if (ctx->addrand != NULL) {
+        return CRYPT_SUCCESS;
+    }
+    uint8_t *rand = (uint8_t *)BSL_SAL_Malloc(ctx->para.n);
+    if (rand == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
+        return CRYPT_MEM_ALLOC_FAIL;
+    }
+    memcpy(rand, ctx->prvKey.pub.seed, ctx->para.n);
+    ctx->addrand = rand;
     ctx->addrandLen = ctx->para.n;
     return CRYPT_SUCCESS;
 }
@@ -583,6 +584,17 @@ static uint32_t GetMdSize(const EAL_MdMethod *hashMethod, int32_t hashId)
     return hashMethod->mdSize;
 }
 
+static int32_t SafeAddU32(uint32_t base, uint32_t add, uint32_t *out)
+{
+    if (base > UINT32_MAX - add) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    *out = base + add;
+    return CRYPT_SUCCESS;
+}
+
+
 static int32_t MsgEncode(const CryptSlhDsaCtx *ctx, int32_t algId, const uint8_t *data, uint32_t dataLen,
     uint8_t **mpOut, uint32_t *mpLenOut)
 {
@@ -591,25 +603,30 @@ static int32_t MsgEncode(const CryptSlhDsaCtx *ctx, int32_t algId, const uint8_t
     uint32_t offset = 0;
     uint8_t prehash[MAX_DIGEST_SIZE] = {0};
     uint32_t prehashLen = sizeof(prehash);
-
-    uint32_t mpLen = SLH_DSA_PREFIX_LEN + ctx->contextLen;
+    uint32_t mpLen = SLH_DSA_PREFIX_LEN;
+    RETURN_RET_IF_ERR(SafeAddU32(mpLen, ctx->contextLen, &mpLen), ret);
     if (ctx->isPrehash) {
+        const EAL_MdMethod *md = EAL_MdFindDefaultMethod(algId);
+        if (md == NULL) {
+            BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_PREHASH_ID_NOT_SUPPORTED);
+            return CRYPT_SLHDSA_ERR_PREHASH_ID_NOT_SUPPORTED;
+        }
         oid = BSL_OBJ_GetOID((BslCid)algId);
         if (oid == NULL) {
             BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_PREHASH_ID_NOT_SUPPORTED);
             return CRYPT_SLHDSA_ERR_PREHASH_ID_NOT_SUPPORTED;
         }
-        mpLen += 2 + oid->octetLen; // asn1 header length is 2
-        prehashLen = GetMdSize(EAL_MdFindDefaultMethod(algId), algId);
+        RETURN_RET_IF_ERR(SafeAddU32(mpLen, 2 + oid->octetLen, &mpLen), ret);
+        prehashLen = GetMdSize(md, algId);
         const CRYPT_ConstData constData = {data, dataLen};
-        ret = CRYPT_CalcHash(NULL, EAL_MdFindDefaultMethod(algId), &constData, 1, prehash, &prehashLen);
+        ret = CRYPT_CalcHash(NULL, md, &constData, 1, prehash, &prehashLen);
         if (ret != CRYPT_SUCCESS) {
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
         }
-        mpLen += prehashLen;
+        RETURN_RET_IF_ERR(SafeAddU32(mpLen, prehashLen, &mpLen), ret);
     } else {
-        mpLen += dataLen;
+        RETURN_RET_IF_ERR(SafeAddU32(mpLen, dataLen, &mpLen), ret);
     }
 
     uint8_t *mp = (uint8_t *)BSL_SAL_Malloc(mpLen);
@@ -691,6 +708,10 @@ static int32_t SlhDsaSetAlgId(CryptSlhDsaCtx *ctx, void *val, uint32_t len)
         BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
         return CRYPT_INVALID_ARG;
     }
+    if (ctx->para.algId != 0) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NOT_SUPPORT);
+        return CRYPT_NOT_SUPPORT;
+    }
     int32_t algId = *(int32_t *)val;
     if (CheckNotSlhDsaAlgId(algId)) {
         BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_INVALID_ALGID);
@@ -723,14 +744,16 @@ static int32_t SetContextInfo(CryptSlhDsaCtx *ctx, void *val, uint32_t len)
         BSL_ERR_PUSH_ERROR(CRYPT_SLHDSA_ERR_CONTEXT_LEN_OVERFLOW);
         return CRYPT_SLHDSA_ERR_CONTEXT_LEN_OVERFLOW;
     }
-    ctx->contextLen = len;
-    BSL_SAL_Free(ctx->context);
-    ctx->context = (uint8_t *)BSL_SAL_Malloc(len);
-    if (ctx->context == NULL) {
+    uint8_t *newContext = BSL_SAL_Dump(val, len);
+    if (newContext == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return CRYPT_MEM_ALLOC_FAIL;
     }
-    (void)memcpy_s(ctx->context, len, val, len);
+    if (ctx->context != NULL) {
+        BSL_SAL_Free(ctx->context);
+    }
+    ctx->contextLen = len;
+    ctx->context = newContext;
     return CRYPT_SUCCESS;
 }
 
@@ -775,6 +798,29 @@ static int32_t GetSignLen(const CryptSlhDsaCtx *ctx, void *val, uint32_t len)
     return CRYPT_SUCCESS;
 }
 
+static int32_t SlhDsaGetSecBits(const CryptSlhDsaCtx *ctx, void *val, uint32_t len)
+{
+    if (val == NULL || len != sizeof(int32_t)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
+    }
+    // FIPS 205 Table 2: secCategory 1->128-bit, 3->192-bit, 5->256-bit
+    switch (ctx->para.secCategory) {
+        case 1:
+            *(int32_t *)val = 128;
+            break;
+        case 3:
+            *(int32_t *)val = 192;
+            break;
+        case 5:
+            *(int32_t *)val = 256;
+            break;
+        default:
+            return CRYPT_INVALID_ARG;
+    }
+    return CRYPT_SUCCESS;
+}
+
 int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t len)
 {
     if (ctx == NULL) {
@@ -802,12 +848,17 @@ int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t
             }
             *(uint32_t *)val = ctx->para.n;
             return CRYPT_SUCCESS;
+        /* Only supports switching from non-deterministic to deterministic.
+         * Switching back to non-deterministic is not supported. */
         case CRYPT_CTRL_SET_DETERMINISTIC_FLAG:
             if (val == NULL || len != sizeof(int32_t)) {
                 BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
                 return CRYPT_INVALID_ARG;
             }
             ctx->isDeterministic = (*(int32_t *)val != 0);
+            BSL_SAL_ClearFree(ctx->addrand, ctx->addrandLen);
+            ctx->addrand = NULL;
+            ctx->addrandLen = 0;
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_SET_SLH_DSA_ADDRAND:
             return SetAddrand(ctx, val, len);
@@ -817,6 +868,8 @@ int32_t CRYPT_SLH_DSA_Ctrl(CryptSlhDsaCtx *ctx, int32_t opt, void *val, uint32_t
             return CRYPT_SUCCESS;
         case CRYPT_CTRL_GET_SIGNLEN:
             return GetSignLen(ctx, val, len);
+        case CRYPT_CTRL_GET_SECBITS:
+            return SlhDsaGetSecBits(ctx, val, len);
         default:
             BSL_ERR_PUSH_ERROR(CRYPT_NOT_SUPPORT);
             return CRYPT_NOT_SUPPORT;

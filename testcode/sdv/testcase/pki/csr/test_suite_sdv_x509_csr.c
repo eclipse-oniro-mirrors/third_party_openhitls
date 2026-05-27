@@ -23,6 +23,7 @@
 #include "bsl_obj_internal.h"
 #include "hitls_pki_errno.h"
 #include "crypt_types.h"
+#include "crypt_params_key.h"
 #include "crypt_errno.h"
 #include "crypt_codecskey.h"
 #include "crypt_eal_codecs.h"
@@ -1030,6 +1031,25 @@ EXIT:
 }
 /* END_CASE */
 
+/* BEGIN_CASE */
+void SDV_X509_CSR_PARSE_FUNC_TC005(int format, char *path, int expectedRet)
+{
+#if defined(HITLS_PKI_X509_CSR_PARSE) && !defined(HITLS_PKI_X509_CSR_ATTR)
+    TestMemInit();
+    HITLS_X509_Csr *csr = NULL;
+    ASSERT_EQ(HITLS_X509_CsrParseFile(format, path, &csr), expectedRet);
+
+EXIT:
+    HITLS_X509_CsrFree(csr);
+#else
+    (void)format;
+    (void)path;
+    (void)expectedRet;
+    SKIP_TEST();
+#endif
+}
+/* END_CASE */
+
 static int32_t CertAssertSanEquals(HITLS_X509_Cert *cert, char *dns1, char *dns2, char *email1, char *uri1)
 {
     int32_t ret = HITLS_X509_ERR_ATTR_UNSUPPORT;
@@ -1563,5 +1583,40 @@ EXIT:
     (void)expectFile;
     SKIP_TEST();
 #endif
+}
+/* END_CASE */
+
+ /**
+ * @test   SDV_X509_CSR_VERIFY_RSA_PSS_KEY_MD_MISMATCH_TC001
+ * @title  Verify CSR signature algorithm checking for an RSA-PSS key digest mismatch.
+ * @brief  Parse an RSA-PSS CSR, set the CSR public key context to the specified RSA-PSS md/mgf parameters,
+ *         and compare direct signature verification with the public CSR verification entry.
+ * @expect Direct signature verification succeeds, and CSR verification returns the expected key/signatureAlgorithm
+ *         parameter mismatch error.
+ */
+/* BEGIN_CASE */
+void SDV_X509_CSR_VERIFY_RSA_PSS_KEY_MD_MISMATCH_TC001(int format, char *path, int pssMdId, int expect)
+{
+    TestMemInit();
+    HITLS_X509_Csr *csr = NULL;
+    ASSERT_EQ(HITLS_X509_CsrParseFile(format, path, &csr), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(csr->signAlgId.algId, BSL_CID_RSASSAPSS);
+    ASSERT_EQ(HITLS_X509_CsrVerify(csr), HITLS_PKI_SUCCESS);
+
+    CRYPT_MD_AlgId mdId = (CRYPT_MD_AlgId)pssMdId;
+    int32_t saltLen = csr->signAlgId.rsaPssParam.saltLen;
+    BSL_Param pssParam[4] = {
+        {CRYPT_PARAM_RSA_MD_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        {CRYPT_PARAM_RSA_MGF1_ID, BSL_PARAM_TYPE_INT32, &mdId, sizeof(mdId), 0},
+        {CRYPT_PARAM_RSA_SALTLEN, BSL_PARAM_TYPE_INT32, &saltLen, sizeof(saltLen), 0},
+        BSL_PARAM_END
+    };
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(csr->reqInfo.ealPubKey, CRYPT_CTRL_SET_RSA_EMSA_PSS, pssParam, 0), CRYPT_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CheckSignature(csr->reqInfo.ealPubKey, csr->reqInfo.reqInfoRawData,
+        csr->reqInfo.reqInfoRawDataLen, &csr->signAlgId, &csr->signature), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CsrVerify(csr), expect);
+
+EXIT:
+    HITLS_X509_CsrFree(csr);
 }
 /* END_CASE */

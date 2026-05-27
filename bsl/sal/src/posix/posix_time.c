@@ -66,14 +66,22 @@ int32_t SAL_TIME_SysTimeGet(BSL_TIME *sysTime)
 
 int32_t SAL_TIME_UtcTimeToDateConvert(int64_t utcTime, BSL_TIME *sysTime)
 {
-    struct tm tempTime;
+    struct tm tempTime = {0};
     time_t utcTimeTmp = (time_t)utcTime;
+    if ((int64_t)utcTimeTmp != utcTime) {
+        return BSL_SAL_TIME_BAD_PARAM;
+    }
     if (gmtime_r(&utcTimeTmp, &tempTime) == NULL) {
         return BSL_SAL_TIME_BAD_PARAM;
     }
 
-    sysTime->year = (uint16_t)((uint16_t)tempTime.tm_year + BSL_TIME_YEAR_START); /* 1900 is base year */
-    sysTime->month = (uint8_t)((uint8_t)tempTime.tm_mon + 1U);
+    int64_t year = (int64_t)tempTime.tm_year + (int64_t)BSL_TIME_YEAR_START; /* 1900 is base year */
+    if (year < 0 || year > UINT16_MAX) {
+        return BSL_SAL_TIME_BAD_PARAM;
+    }
+
+    sysTime->year = (uint16_t)year;
+    sysTime->month = (uint8_t)(tempTime.tm_mon + 1);
     sysTime->day = (uint8_t)tempTime.tm_mday;
     sysTime->hour = (uint8_t)tempTime.tm_hour;
     sysTime->minute = (uint8_t)tempTime.tm_min;
@@ -104,8 +112,13 @@ long SAL_TIME_TicksPerSec(void)
 uint64_t SAL_TIME_GetNSec(void)
 {
 #if defined(HITLS_BSL_SAL_DARWIN)
-    /* macOS/Darwin: Use clock_gettime_nsec_np for nanosecond precision */
-    return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+    /* macOS: wait for CLOCK_UPTIME_RAW to advance so back-to-back calls return a changed monotonic value. */
+    uint64_t ticks = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+    uint64_t nextTicks = ticks;
+    while (nextTicks == ticks) {
+        nextTicks = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+    }
+    return nextTicks;
 #elif defined(HITLS_BSL_SAL_LINUX)
     /* Linux: Use CLOCK_MONOTONIC (sufficient precision on Linux) */
     uint64_t ticks = 0;

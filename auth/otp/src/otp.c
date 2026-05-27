@@ -25,6 +25,9 @@
 #include "crypt_errno.h"
 #include "otp.h"
 
+// RFC 4226 requires the length of the shared secret MUST be at least 128 bits.
+#define OTP_MIN_KEY_SIZE 16
+
 int32_t HITLS_AUTH_OtpInit(HITLS_AUTH_OtpCtx *ctx, uint8_t *key, uint32_t keyLen)
 {
     if (ctx == NULL || keyLen == 0) {
@@ -32,8 +35,13 @@ int32_t HITLS_AUTH_OtpInit(HITLS_AUTH_OtpCtx *ctx, uint8_t *key, uint32_t keyLen
         return HITLS_AUTH_OTP_INVALID_INPUT;
     }
 
+    if (keyLen < OTP_MIN_KEY_SIZE) {
+        BSL_ERR_PUSH_ERROR(HITLS_AUTH_OTP_INVALID_INPUT);
+        return HITLS_AUTH_OTP_INVALID_INPUT;
+    }
+
     if (ctx->key.data != NULL) {
-        BSL_SAL_Free(ctx->key.data);
+        BSL_SAL_ClearFree(ctx->key.data, ctx->key.dataLen);
     }
 
     ctx->key.dataLen = keyLen;
@@ -46,8 +54,9 @@ int32_t HITLS_AUTH_OtpInit(HITLS_AUTH_OtpCtx *ctx, uint8_t *key, uint32_t keyLen
     if (key == NULL) {
         int32_t ret = ctx->method.random(ctx->key.data, ctx->key.dataLen);
         if (ret != CRYPT_SUCCESS) {
-            BSL_SAL_Free(ctx->key.data);
+            BSL_SAL_ClearFree(ctx->key.data, ctx->key.dataLen);
             ctx->key.data = NULL;
+            ctx->key.dataLen = 0;
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
         }
@@ -106,6 +115,7 @@ int32_t GenericOtpGen(HITLS_AUTH_OtpCtx *ctx, uint64_t movingFactor, char *otp, 
     }
 
     *otpLen = ctx->digits;
+    BSL_SAL_CleanseData(hmac, OTP_HMAC_SHA512SIZE);
     return HITLS_AUTH_SUCCESS;
 }
 
@@ -150,7 +160,13 @@ int32_t TotpGen(HITLS_AUTH_OtpCtx *ctx, const BSL_Param *param, const int32_t of
     }
 
     TotpCtx *totpCtx = (TotpCtx *)ctx->ctx;
-    uint64_t movingFactor = ((curTime - totpCtx->startOffset) / totpCtx->timeStepSize) + offset;
+
+    if (curTime < (uint64_t)totpCtx->startOffset) {
+        BSL_ERR_PUSH_ERROR(HITLS_AUTH_OTP_INVALID_INPUT);
+        return HITLS_AUTH_OTP_INVALID_INPUT;
+    }
+
+    uint64_t movingFactor = ((curTime - (uint64_t)totpCtx->startOffset) / totpCtx->timeStepSize) + offset;
 
     if (movingFactorOut != NULL) {
         *movingFactorOut = movingFactor;
@@ -194,7 +210,8 @@ int32_t HotpValidate(HITLS_AUTH_OtpCtx *ctx, const BSL_Param *param, const char 
         return ret;
     }
 
-    if (strncmp(otp, targetOtp, otpLen) != 0) {
+    if (ConstTimeMemcmp((const uint8_t *)otp, (const uint8_t *)targetOtp, otpLen) == 0) {
+        BSL_SAL_CleanseData(targetOtp, OTP_MAX_DIGITS + 1);
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_OTP_VALIDATE_MISMATCH);
         return HITLS_AUTH_OTP_VALIDATE_MISMATCH;
     }
@@ -202,6 +219,7 @@ int32_t HotpValidate(HITLS_AUTH_OtpCtx *ctx, const BSL_Param *param, const char 
     if (matched != NULL) {
         *matched = movingFactor;
     }
+    BSL_SAL_CleanseData(targetOtp, OTP_MAX_DIGITS + 1);
     return HITLS_AUTH_SUCCESS;
 }
 
@@ -214,21 +232,26 @@ int32_t TotpValidate(HITLS_AUTH_OtpCtx *ctx, const BSL_Param *param, const char 
     uint32_t validWindow = ((TotpCtx *)ctx->ctx)->validWindow;
     uint64_t movingFactor;
 
+    /* Traverse [T - validWindow, T + validWindow] to tolerate clock drift between prover and verifier.
+     * Total 2 * validWindow + 1 TOTP computations, each involving one HMAC operation. */
     for (int64_t offset = -(int64_t)validWindow; offset < (int64_t)validWindow + 1; offset++) {
         ret = TotpGen(ctx, param, offset, targetOtp, &targetOtpLen, &movingFactor);
         if (ret != HITLS_AUTH_SUCCESS) {
+            BSL_SAL_CleanseData(targetOtp, OTP_MAX_DIGITS + 1);
             BSL_ERR_PUSH_ERROR(ret);
             return ret;
         }
 
-        if (strncmp(otp, targetOtp, otpLen) == 0) {
+        if (ConstTimeMemcmp((const uint8_t *)otp, (const uint8_t *)targetOtp, otpLen) != 0) {
             if (matched != NULL) {
                 *matched = movingFactor;
             }
+            BSL_SAL_CleanseData(targetOtp, OTP_MAX_DIGITS + 1);
             return HITLS_AUTH_SUCCESS;
         }
     }
 
+    BSL_SAL_CleanseData(targetOtp, OTP_MAX_DIGITS + 1);
     BSL_ERR_PUSH_ERROR(HITLS_AUTH_OTP_VALIDATE_MISMATCH);
     return HITLS_AUTH_OTP_VALIDATE_MISMATCH;
 }

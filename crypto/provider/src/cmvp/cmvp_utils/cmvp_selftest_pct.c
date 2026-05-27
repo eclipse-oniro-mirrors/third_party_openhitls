@@ -14,7 +14,7 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_SM) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_SM)
 
 #include <string.h>
 #include "crypt_cmvp_selftest.h"
@@ -72,7 +72,7 @@ static bool CMVP_SignVerifyPct(void *ctx, int32_t algId)
             break;
         }
     }
-    GOTO_ERR_IF_TRUE(map == NULL, CRYPT_EAL_ERR_ALGID);
+    GOTO_ERR_IF_TRUE(map == NULL || map->id == CRYPT_PKEY_MAX, CRYPT_EAL_ERR_ALGID);
 
     GOTO_ERR_IF_TRUE(map->ctrl(ctx, CRYPT_CTRL_GET_SIGNLEN, &signLen, sizeof(signLen)) != CRYPT_SUCCESS,
         CRYPT_CMVP_ERR_ALGO_SELFTEST);
@@ -105,4 +105,4 @@ bool CRYPT_CMVP_SelftestPkeyPct(void *ctx, int32_t algId)
     return CMVP_SignVerifyPct(ctx, algId);
 }
 
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_SM || HITLS_CRYPTO_CMVP_FIPS */
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_SM */

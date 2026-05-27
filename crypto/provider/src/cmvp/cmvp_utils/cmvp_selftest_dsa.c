@@ -14,7 +14,7 @@
  */
  
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_ISO19790) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#if defined(HITLS_CRYPTO_CMVP_ISO19790)
 
 #include <string.h>
 #include "crypt_cmvp_selftest.h"
@@ -129,7 +129,7 @@ static int32_t TestVectorRandom(uint8_t *r, uint32_t rLen)
         return CRYPT_CMVP_ERR_ALGO_SELFTEST;
     }
 
-    for (uint32_t i = 0; i < randLen; i++) {
+    for (uint32_t i = 0; i < rLen; i++) {
         r[i] = rand[i];
     }
     BSL_SAL_Free(rand);
@@ -240,4 +240,4 @@ bool CRYPT_CMVP_SelftestProviderDsa(void *libCtx, const char *attrName)
     return CRYPT_CMVP_SelftestDsaInternal(libCtx, attrName);
 }
 
-#endif /* HITLS_CRYPTO_CMVP_ISO19790 || HITLS_CRYPTO_CMVP_FIPS */
+#endif /* HITLS_CRYPTO_CMVP_ISO19790 */

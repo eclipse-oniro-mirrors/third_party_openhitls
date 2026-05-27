@@ -55,7 +55,6 @@ void HITLS_AUTH_PakeFreeCtx(HITLS_AUTH_PakeCtx *ctx)
                 Spake2PlusFreeCtx(ctx->ctx);
             }
             break;
-        case HITLS_AUTH_PAKE_INVALID:
         default:
             break;
     }
@@ -69,10 +68,6 @@ HITLS_AUTH_PakeCtx *HITLS_AUTH_PakeNewCtx(CRYPT_EAL_LibCtx *libCtx, const char *
     BSL_Buffer verifier, BSL_Buffer context )
 {
     int32_t ret = HITLS_AUTH_SUCCESS;
-    if (type == HITLS_AUTH_PAKE_INVALID) {
-        BSL_ERR_PUSH_ERROR(HITLS_AUTH_PAKE_INVALID_PARAM);
-        return NULL;
-    }
     if (role != HITLS_AUTH_PAKE_REQ && role != HITLS_AUTH_PAKE_RESP) {
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PAKE_INVALID_PARAM);
         return NULL;
@@ -93,14 +88,18 @@ HITLS_AUTH_PakeCtx *HITLS_AUTH_PakeNewCtx(CRYPT_EAL_LibCtx *libCtx, const char *
     switch (cipherSuite.type) {
         case HITLS_AUTH_PAKE_SPAKE2PLUS:
             ctx->ctx = Spake2PlusNewCtx(cipherSuite.params.spake2plus.curve);
+            if (ctx->ctx == NULL) {
+                BSL_ERR_PUSH_ERROR(HITLS_AUTH_PAKE_MEMORY_ALLOC_FAIL);
+                HITLS_AUTH_PakeFreeCtx(ctx);
+                return NULL;
+            }
             ret = Spake2PlusInitCipherSuite(ctx->ctx, &cipherSuite);
-            if (ctx->ctx == NULL|| ret != HITLS_AUTH_SUCCESS) {
+            if (ret != HITLS_AUTH_SUCCESS) {
                 BSL_ERR_PUSH_ERROR(HITLS_AUTH_PAKE_MEMORY_ALLOC_FAIL);
                 HITLS_AUTH_PakeFreeCtx(ctx);
                 return NULL;
             }
             break;
-        case HITLS_AUTH_PAKE_INVALID:
         default:
             BSL_ERR_PUSH_ERROR(HITLS_AUTH_PAKE_INVALID_ALG_TYPE);
             HITLS_AUTH_PakeFreeCtx(ctx);
@@ -111,7 +110,8 @@ HITLS_AUTH_PakeCtx *HITLS_AUTH_PakeNewCtx(CRYPT_EAL_LibCtx *libCtx, const char *
     ctx->prover = (BSL_Buffer){.data = BSL_SAL_Malloc(prover.dataLen), .dataLen = prover.dataLen};
     ctx->verifier = (BSL_Buffer){.data = BSL_SAL_Malloc(verifier.dataLen), .dataLen = verifier.dataLen};
     ctx->context = (BSL_Buffer){.data = BSL_SAL_Malloc(context.dataLen), .dataLen = context.dataLen};
-    if (ctx->prover.data == NULL || ctx->verifier.data == NULL || ctx->context.data == NULL) {
+    if (ctx->password.data == NULL || ctx->prover.data == NULL ||
+        ctx->verifier.data == NULL || ctx->context.data == NULL) {
         BSL_ERR_PUSH_ERROR(HITLS_AUTH_PAKE_MEMORY_ALLOC_FAIL);
         HITLS_AUTH_PakeFreeCtx(ctx);
         return NULL;
@@ -248,7 +248,6 @@ int32_t HITLS_AUTH_PakeRespSetup(HITLS_AUTH_PakeCtx *ctx, BSL_Buffer in0, BSL_Bu
         case HITLS_AUTH_PAKE_SPAKE2PLUS:
             ret = HITLS_AUTH_Spake2plusRespSetup(ctx, in0, in1, out0, out1);
             break;
-        case HITLS_AUTH_PAKE_INVALID:
         default:
             ret=HITLS_AUTH_INVALID_ARG;
             break;
@@ -274,7 +273,6 @@ int32_t HITLS_AUTH_PakeReqDerive(HITLS_AUTH_PakeCtx *ctx, BSL_Buffer in0, BSL_Bu
         case HITLS_AUTH_PAKE_SPAKE2PLUS:
             ret=HITLS_AUTH_Spake2plusReqDerive(ctx, in0, in1, out0, out1);
             break;
-        case HITLS_AUTH_PAKE_INVALID:
         default:
             ret = HITLS_AUTH_INVALID_ARG;
             break;
@@ -299,7 +297,6 @@ int32_t HITLS_AUTH_PakeRespDerive(HITLS_AUTH_PakeCtx *ctx, BSL_Buffer in0, BSL_B
         case HITLS_AUTH_PAKE_SPAKE2PLUS:
             ret = HITLS_AUTH_Spake2plusRespDerive(ctx, in0, out0);
             break;
-        case HITLS_AUTH_PAKE_INVALID:
         default:
             ret = HITLS_AUTH_INVALID_ARG;
             break;
@@ -316,13 +313,18 @@ CRYPT_EAL_KdfCtx* HITLS_AUTH_PakeGetKdfCtx(HITLS_AUTH_PakeCtx* ctx, HITLS_AUTH_P
 
     switch (kdf.algId) {
         case CRYPT_KDF_PBKDF2: {
-            uint32_t totalLen = ctx->password.dataLen + ctx->prover.dataLen + ctx->verifier.dataLen;
+            uint64_t totalLen64 = (uint64_t)ctx->password.dataLen + ctx->prover.dataLen + ctx->verifier.dataLen;
+            if (totalLen64 > UINT32_MAX) {
+                BSL_ERR_PUSH_ERROR(HITLS_AUTH_INVALID_ARG);
+                return NULL;
+            }
+            uint32_t totalLen = (uint32_t)totalLen64;
             uint8_t *buffer = BSL_SAL_Malloc(totalLen);
             if (buffer == NULL) {
                 BSL_ERR_PUSH_ERROR(HITLS_AUTH_PAKE_MEMORY_ALLOC_FAIL);
                 return NULL;
             }
-            
+
             CRYPT_MAC_AlgId algId = kdf.param.pbkdf2.mac;
             uint32_t it = kdf.param.pbkdf2.iteration;
             uint32_t saltLen = kdf.param.pbkdf2.salt.dataLen;
@@ -335,7 +337,7 @@ CRYPT_EAL_KdfCtx* HITLS_AUTH_PakeGetKdfCtx(HITLS_AUTH_PakeCtx* ctx, HITLS_AUTH_P
                 ctx->verifier.data, ctx->verifier.dataLen);
             CRYPT_EAL_KdfCtx *kdfCtx = CRYPT_EAL_KdfNewCtx(kdf.algId);
             if (kdfCtx == NULL) {
-                BSL_SAL_Free(buffer);
+                BSL_SAL_ClearFree(buffer, totalLen);
                 BSL_ERR_PUSH_ERROR(HITLS_AUTH_PAKE_MEMORY_ALLOC_FAIL);
                 return NULL;
             }
@@ -360,10 +362,10 @@ CRYPT_EAL_KdfCtx* HITLS_AUTH_PakeGetKdfCtx(HITLS_AUTH_PakeCtx* ctx, HITLS_AUTH_P
             if (ret != HITLS_AUTH_SUCCESS) {
                 goto ERR;
             }
-            BSL_SAL_Free(buffer);
+            BSL_SAL_ClearFree(buffer, totalLen);
             return kdfCtx;
-            ERR:
-            BSL_SAL_Free(buffer);
+ERR:
+            BSL_SAL_ClearFree(buffer, totalLen);
             CRYPT_EAL_KdfFreeCtx(kdfCtx);
             return NULL;
         }

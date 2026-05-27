@@ -66,6 +66,29 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void SDV_BSL_BSL_PARAM_MAKER_Push_Value_Overflow_TC001()
+{
+    uint8_t value = 0;
+    int32_t key = 1;
+    BSL_ParamMaker *maker = BSL_PARAM_MAKER_New();
+    ASSERT_TRUE(maker != NULL);
+
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, key++, BSL_PARAM_TYPE_UTF8_STR, &value, UINT32_MAX),
+        BSL_PARAMS_OUT_LIMIT);
+    ASSERT_EQ(BSL_PARAM_MAKER_DeepPushValue(maker, key++, BSL_PARAM_TYPE_UTF8_STR, &value, UINT32_MAX),
+        BSL_PARAMS_OUT_LIMIT);
+    TestErrClear();
+
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, key++, BSL_PARAM_TYPE_OCTETS, &value, UINT32_MAX), BSL_SUCCESS);
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, key++, BSL_PARAM_TYPE_OCTETS, &value, 1), BSL_PARAMS_OUT_LIMIT);
+
+EXIT:
+    BSL_PARAM_MAKER_Free(maker);
+    return;
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void SDV_BSL_BSL_PARAM_MAKER_ToParam_API_TC001()
 {
     int32_t val = 1;
@@ -295,6 +318,7 @@ void SDV_HITLS_PARAM_002()
     int32_t int32 = 65535;
     int32_t val_32 = -1;
     uint8_t val_8 = 255;
+    uint8_t val_long[sizeof(uint64_t) + 1] = {0};
     bool valBool = true;
     int32_t key = 1;
     int32_t index = 1;
@@ -308,6 +332,8 @@ void SDV_HITLS_PARAM_002()
     ASSERT_TRUE(TestIsErrStackEmpty());
     ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, key++, BSL_PARAM_TYPE_UINT32, &val_8, sizeof(val_8)), BSL_INVALID_ARG);
     ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, key++, BSL_PARAM_TYPE_UINT32, &val_8, sizeof(uint16_t)), BSL_INVALID_ARG);
+    ASSERT_EQ(BSL_PARAM_MAKER_PushValue(maker, key++, BSL_PARAM_TYPE_UINT32, val_long, sizeof(val_long)),
+        BSL_INVALID_ARG);
 
     BSL_Param *params = BSL_PARAM_MAKER_ToParam(maker);
     ASSERT_TRUE(params != NULL);

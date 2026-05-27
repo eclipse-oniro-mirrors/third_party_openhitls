@@ -486,6 +486,9 @@ int32_t CRYPT_EAL_PkeyHEMul(const CRYPT_EAL_PkeyCtx *pkey, const BSL_Param *inpu
  * @brief   Check whether the public and private keys match.
  * @note    pubKey and prvKey must has identical key management.
  *
+ * Users must ensure that the two input keys are of the same type—for instance,
+ * both utilizing the same algorithm, or both being non-provider keys.
+ * 
  * @param   pubKey      [IN] Public key
  * @param   prvKey      [IN] private key
  *
@@ -598,7 +601,7 @@ int32_t CRYPT_EAL_PkeyBlind(CRYPT_EAL_PkeyCtx *pkey, CRYPT_MD_AlgId id, const ui
 
 /**
  * @ingroup crypt_eal_pkey
- * @brief   Perform unblind operation on blinded data.
+ * @brief   Perform unblind operation on blinded data. A ctx holds only one blinding factor.
  *
  * @param   pkey [IN] Key session
  * @param   input [IN] Blinded data to be unblinded

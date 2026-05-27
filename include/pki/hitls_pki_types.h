@@ -97,7 +97,7 @@ typedef enum {
                                                     Note: Kid is a shallow copy. */
     HITLS_X509_EXT_GET_CRLNUMBER,               /** get the crlnumber form the crl. */
     HITLS_X509_EXT_GET_AKI,                     /** get the Authority Key Identifier form the crl/cert/csr. */
-    HITLS_X509_EXT_GET_KUSAGE,                  /** get the key usage form the crl/cert/csr.
+    HITLS_X509_EXT_GET_KUSAGE,                  /** get the key usage form the cert/csr.
                                                     Note: If key usage is not set, return 0xffff. */
     HITLS_X509_EXT_GET_BCONS,                   /** Get the basic constraints extension. */
     HITLS_X509_EXT_GET_SAN,                     /** Get Subject Alternative Name from extensions.
@@ -296,10 +296,14 @@ typedef enum {
 } HITLS_X509_ExtType;
 
 typedef enum {
-    HITLS_X509_VFY_FLAG_CRL_ALL = 1,
-    HITLS_X509_VFY_FLAG_CRL_DEV = 2,
-    // not support certificate chains with a single trusted and non-self-signed certificate.
-    HITLS_X509_VFY_FLAG_PARTIAL_CHAIN = 4,
+    HITLS_X509_VFY_FLAG_CRL_ALL =            1 << 0,
+    HITLS_X509_VFY_FLAG_CRL_DEV =            1 << 1,
+
+    HITLS_X509_VFY_FLAG_PARTIAL_CHAIN =      1 << 2,    /** not support certificate chains with a single trusted
+                                                            and non-self-signed certificate. */
+
+    HITLS_X509_VFY_FLAG_DISABLE_TIME_CHECK = 1 << 3,    /** Disable the check on whether the cert and crl validity
+                                                            periods are within the current time. */
 } HITLS_X509_VFY_FLAGS;
 
 typedef enum {
@@ -331,7 +335,9 @@ typedef enum {
     /* clear flag */
     HITLS_X509_STORECTX_CLR_PARAM_FLAGS,
     HITLS_X509_STORECTX_DEEP_COPY_SET_CA,
-    HITLS_X509_STORECTX_SHALLOW_COPY_SET_CA,
+    HITLS_X509_STORECTX_SHALLOW_COPY_SET_CA,/**< After a successful shallow copy, the ownership of the certificate
+                                                pointer is transferred, and it is no longer held. The same certificate
+                                                pointer cannot be set twice. Otherwise, an error is reported. */
     HITLS_X509_STORECTX_SET_CRL,
     HITLS_X509_STORECTX_SET_VFY_SM2_USERID,
     HITLS_X509_STORECTX_SET_VERIFY_CB,

@@ -25,10 +25,17 @@
 #include "hitls_error.h"
 #include "crypt.h"
 #include "cert_method.h"
+#include "hitls_cert_type.h"
 #include "session.h"
+#ifdef HITLS_TLS_FEATURE_SECURITY
+#include "security.h"
+#endif
 #include "hs_ctx.h"
 #include "transcript_hash.h"
 #include "hs_common.h"
+#include "alert.h"
+#include "config_check.h"
+#include "config_type.h"
 #include "hs_kx.h"
 
 KeyExchCtx *HS_KeyExchCtxNew(void)
@@ -51,15 +58,13 @@ void HS_KeyExchCtxFree(KeyExchCtx *keyExchCtx)
     }
 #ifdef HITLS_TLS_FEATURE_PSK
     if (keyExchCtx->pskInfo != NULL) {
-        BSL_SAL_CleanseData(keyExchCtx->pskInfo->psk, keyExchCtx->pskInfo->pskLen);
-        BSL_SAL_FREE(keyExchCtx->pskInfo->identity);
-        BSL_SAL_FREE(keyExchCtx->pskInfo->psk);
-        BSL_SAL_FREE(keyExchCtx->pskInfo);
+        BSL_SAL_Free(keyExchCtx->pskInfo->identity);
+        BSL_SAL_ClearFree(keyExchCtx->pskInfo->psk, keyExchCtx->pskInfo->pskLen);
+        BSL_SAL_Free(keyExchCtx->pskInfo);
     }
 #endif /* HITLS_TLS_FEATURE_PSK */
 #ifdef HITLS_TLS_PROTO_TLS13
-    BSL_SAL_CleanseData(keyExchCtx->pskInfo13.psk, keyExchCtx->pskInfo13.pskLen);
-    BSL_SAL_FREE(keyExchCtx->pskInfo13.psk);
+    BSL_SAL_ClearFree(keyExchCtx->pskInfo13.psk, keyExchCtx->pskInfo13.pskLen);
     HITLS_SESS_Free(keyExchCtx->pskInfo13.resumeSession);
     keyExchCtx->pskInfo13.resumeSession = NULL;
     if (keyExchCtx->pskInfo13.userPskSess != NULL) {
@@ -83,7 +88,7 @@ void HS_KeyExchCtxFree(KeyExchCtx *keyExchCtx)
         default:
             break;
     }
-    BSL_SAL_FREE(keyExchCtx);
+    BSL_SAL_ClearFree(keyExchCtx, sizeof(KeyExchCtx));
 }
 #ifdef HITLS_TLS_HOST_CLIENT
 #ifdef HITLS_TLS_SUITE_KX_ECDHE
@@ -109,6 +114,24 @@ static int32_t ProcessServerKxMsgNamedCurve(TLS_Ctx *ctx, const ServerKeyExchang
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_ILLEGAL_PARAMETER);
         return HITLS_MSG_HANDLE_UNSUPPORT_NAMED_CURVE;
     }
+
+    uint32_t versionBits = MapVersion2VersionBit(IS_SUPPORT_DATAGRAM(ctx->config.tlsConfig.originVersionMask),
+                                                 ctx->negotiatedInfo.version);
+    const TLS_GroupInfo *groupInfo = ConfigGetGroupInfo(&ctx->config.tlsConfig, namedGroup);
+    if (groupInfo == NULL || ((groupInfo->versionBits & versionBits) != versionBits)) {
+        return RETURN_ALERT_PROCESS(ctx, HITLS_MSG_HANDLE_UNSUPPORT_NAMED_CURVE, BINLOG_ID17088,
+            "named curve not supported.", ALERT_ILLEGAL_PARAMETER);
+    }
+#ifdef HITLS_TLS_FEATURE_SECURITY
+    int32_t ret = SECURITY_SslCheck(ctx, HITLS_SECURITY_SECOP_CURVE_CHECK, 0, (int32_t)namedGroup, NULL);
+    if (ret != SECURITY_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSUPPORT_NAMED_CURVE);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17088, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "SslCheck fail, ret %d", ret, 0, 0, 0);
+        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_ILLEGAL_PARAMETER);
+        return HITLS_MSG_HANDLE_UNSUPPORT_NAMED_CURVE;
+    }
+#endif /* HITLS_TLS_FEATURE_SECURITY */
 
     uint32_t peerPubkeyLen = serverKxMsg->keyEx.ecdh.pubKeySize;
 
@@ -180,6 +203,29 @@ int32_t HS_ProcessServerKxMsgDhe(TLS_Ctx *ctx, const ServerKeyExchangeMsg *serve
         return HITLS_MEMALLOC_FAIL;
     }
 
+#ifdef HITLS_TLS_FEATURE_SECURITY
+    int32_t secBits = 0;
+    int32_t ret = SAL_CERT_KeyCtrl(&(ctx->config.tlsConfig), key, CERT_KEY_CTRL_GET_SECBITS, NULL, (void *)&secBits);
+    if (ret != HITLS_SUCCESS) {
+        BSL_SAL_FREE(pubkey);
+        SAL_CRYPT_FreeDhKey(key);
+        BSL_ERR_PUSH_ERROR(HITLS_CERT_KEY_CTRL_ERR_GET_SECBITS);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15519, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "get dh secbits fail when process server dhe kx msg.", 0, 0, 0, 0);
+        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
+        return HITLS_CERT_KEY_CTRL_ERR_GET_SECBITS;
+    }
+    ret = SECURITY_SslCheck((HITLS_Ctx *)ctx, HITLS_SECURITY_SECOP_TMP_DH, secBits, 0, key);
+    if (ret != SECURITY_SUCCESS) {
+        BSL_SAL_FREE(pubkey);
+        SAL_CRYPT_FreeDhKey(key);
+        BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15519, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
+            "server dhe key security check fail, secBits %d.", secBits, 0, 0, 0);
+        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_HANDSHAKE_FAILURE);
+        BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSECURE_CIPHER_SUITE);
+        return HITLS_MSG_HANDLE_UNSECURE_CIPHER_SUITE;
+    }
+#endif /* HITLS_TLS_FEATURE_SECURITY */
     ctx->hsCtx->kxCtx->keyExchParam.dh.plen = dh->plen;
     ctx->hsCtx->kxCtx->key = key;
     ctx->hsCtx->kxCtx->peerPubkey = pubkey;
@@ -264,8 +310,8 @@ int32_t HS_ProcessClientKxMsgRsa(TLS_Ctx *ctx, const ClientKeyExchangeMsg *clien
 
     CERT_MgrCtx *certMgrCtx = ctx->config.tlsConfig.certMgrCtx;
     HITLS_CERT_Key *privateKey = SAL_CERT_GetCurrentPrivateKey(certMgrCtx, false);
-    uint32_t valid = ~(uint32_t)SAL_CERT_KeyDecrypt(ctx, privateKey, clientKxMsg->data,
-        clientKxMsg->dataSize, premasterSecret, &secretLen);
+    uint32_t valid = Uint32ConstTimeIsZero((uint32_t)SAL_CERT_KeyDecrypt(ctx, privateKey, clientKxMsg->data,
+        clientKxMsg->dataSize, premasterSecret, &secretLen));
     valid &= Uint32ConstTimeEqual(secretLen, MASTER_SECRET_LEN);
     // Check the version in the premaster secret
     uint16_t version = ctx->negotiatedInfo.clientVersion;
@@ -306,10 +352,10 @@ int32_t HS_ProcessClientKxMsgSm2(TLS_Ctx *ctx, const ClientKeyExchangeMsg *clien
     if ((ret != HITLS_SUCCESS) || (secretLen != MASTER_SECRET_LEN)) {
         /* If the server fails to process the message, it is prohibited to send the alert message. The randomly
          * generated premaster secret must be used to continue the handshake */
-        SAL_CRYPT_Rand(LIBCTX_FROM_CTX(ctx), keyExchCtx->keyExchParam.ecc.preMasterSecret, MASTER_SECRET_LEN);
+        ret = SAL_CRYPT_Rand(LIBCTX_FROM_CTX(ctx), keyExchCtx->keyExchParam.ecc.preMasterSecret, MASTER_SECRET_LEN);
         BSL_SAL_CleanseData(preMasterSecret, secretLen);
         BSL_SAL_FREE(preMasterSecret);
-        return HITLS_SUCCESS;
+        return ret;
     }
     uint16_t clientVersion = BSL_ByteToUint16(preMasterSecret);
     // In any case, a TLS server MUST NOT generate an alert if processing an RSA-encrypted
@@ -321,14 +367,14 @@ int32_t HS_ProcessClientKxMsgSm2(TLS_Ctx *ctx, const ClientKeyExchangeMsg *clien
         // 8: right shift a byte
         keyExchCtx->keyExchParam.ecc.preMasterSecret[offset++] = (uint8_t)(version >> 8);
         keyExchCtx->keyExchParam.ecc.preMasterSecret[offset++] = (uint8_t)(version);
-        SAL_CRYPT_Rand(LIBCTX_FROM_CTX(ctx),
+        ret = SAL_CRYPT_Rand(LIBCTX_FROM_CTX(ctx),
             keyExchCtx->keyExchParam.ecc.preMasterSecret + offset, MASTER_SECRET_LEN - offset);
         BSL_SAL_CleanseData(preMasterSecret, secretLen);
         BSL_SAL_FREE(preMasterSecret);
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID15348, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "Parse RSA-Encrypted Premaster Secret client version mismatch: msg clientVersion = %u, \
             ctx->negotiatedInfo.clientVersion = %u.", clientVersion, ctx->negotiatedInfo.clientVersion, 0, 0);
-        return HITLS_SUCCESS;
+        return ret;
     }
 
     (void)memcpy_s(keyExchCtx->keyExchParam.ecc.preMasterSecret, MASTER_SECRET_LEN, preMasterSecret, secretLen);
@@ -441,7 +487,7 @@ int32_t DeriveMasterSecret(TLS_Ctx *ctx, const uint8_t *preMasterSecret, uint32_
     deriveInfo.hashAlgo = ctx->negotiatedInfo.cipherSuiteInfo.hashAlg;
     deriveInfo.secret = preMasterSecret;
     deriveInfo.secretLen = len;
-    
+
 #ifdef HITLS_TLS_FEATURE_EXTENDED_MASTER_SECRET
     const uint8_t exMasterSecretLabel[] = "extended master secret";
     bool isExtendedMasterSecret = ctx->negotiatedInfo.isExtendedMasterSecret;
@@ -750,7 +796,7 @@ int32_t HS_ProcessServerKxMsgIdentityHint(TLS_Ctx *ctx, const ServerKeyExchangeM
         ctx->hsCtx->kxCtx->pskInfo->identity = tmpIdentity;
         ctx->hsCtx->kxCtx->pskInfo->identityLen = identityUsedLen;
 
-        BSL_SAL_FREE(ctx->hsCtx->kxCtx->pskInfo->psk);
+        BSL_SAL_ClearFree(ctx->hsCtx->kxCtx->pskInfo->psk, ctx->hsCtx->kxCtx->pskInfo->pskLen);
         ctx->hsCtx->kxCtx->pskInfo->psk = tmpPsk;
         ctx->hsCtx->kxCtx->pskInfo->pskLen = pskUsedLen;
     } while (false);

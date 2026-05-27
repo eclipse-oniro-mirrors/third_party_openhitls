@@ -504,7 +504,7 @@ int32_t HITLS_GetLocalSignScheme(const HITLS_Ctx *ctx, HITLS_SignHashAlgo *local
  * @param   ctx [IN] TLS connection handle
  * @param   idx [IN] Index of algorithm to query (starting from 0)
  *               - idx >= 0: return information for the specified index
- *               - idx = -1: only return total count, do not fill output parameters
+ *               - idx < 0: only return total count, do not fill output parameters
  * @param   signatureScheme [OUT] IANA-defined signature scheme value (uint16_t), can be NULL
  * @param   keyType [OUT] Certificate key type (HITLS_CERT_KeyType), can be NULL
  * @param   paraId [OUT] Key parameter ID (CRYPT_PKEY_ParaId), can be NULL
@@ -1686,7 +1686,7 @@ int32_t HITLS_ClientHelloGetCiphers(HITLS_Ctx *ctx, uint16_t **out, uint16_t *ou
 * @retval  HITLS_SUCCESS, if successful.
 *          For details about other error codes, see hitls_error.h.
     */
-int32_t HITLS_ClientHelloGetExtensionsPresent(HITLS_Ctx *ctx, uint16_t **out, uint8_t *outlen);
+int32_t HITLS_ClientHelloGetExtensionsPresent(HITLS_Ctx *ctx, uint16_t **out, uint32_t *outlen);
 
 /**
  * @ingroup tls

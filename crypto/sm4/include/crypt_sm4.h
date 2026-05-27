@@ -82,26 +82,26 @@ void CRYPT_SM4_Clean(CRYPT_SM4_Ctx *ctx);
 
 #ifdef HITLS_CRYPTO_XTS
 /**
- * @brief SM4 Set the encryption key.
+ * @brief SM4 XTS set the encryption key. Internal use only, input validation is performed
+ *        by the upper-level modes wrapper (SM4_XTS_InitCtx).
  *
  * @param ctx [IN] sm4 Context
  * @param key [IN] Key. The first 16 bytes are data_key, and the last 16 bytes are tweak_key.
  * @param keyLen [IN] Key length
  *
  * @retval #CRYPT_SUCCESS           succeeded.
- * @retval #CRYPT_NULL_INPUT        ctx or key is NULL.
- * @retval #CRYPT_SM4_ERR_KEY_LEN  The key length is not equal to 32.
  */
 int32_t CRYPT_SM4_XTS_SetEncryptKey(CRYPT_SM4_Ctx *ctx, const uint8_t *key, uint32_t len);
 
 /**
- * @brief SM4 Set the decryption key.
+ * @brief SM4 XTS set the decryption key. Internal use only, input validation is performed
+ *        by the upper-level modes wrapper (SM4_XTS_InitCtx).
  *
  * @param ctx [IN] sm4 Context
- * @param key [IN] Key
+ * @param key [IN] Key. The first 16 bytes are data_key, and the last 16 bytes are tweak_key.
  * @param keyLen [IN] Key length
- * @return Success: CRYPT_SUCCESS
- *         Other error codes are returned if the operation fails.
+ *
+ * @retval #CRYPT_SUCCESS           succeeded.
  */
 int32_t CRYPT_SM4_XTS_SetDecryptKey(CRYPT_SM4_Ctx *ctx, const uint8_t *key, uint32_t len);
  
@@ -223,8 +223,8 @@ int32_t CRYPT_SM4_CBC_Decrypt(CRYPT_SM4_Ctx *ctx, const uint8_t *in, uint8_t *ou
  * @param ctx [IN] sm4 Context
  * @param in [IN] Data to be encrypted
  * @param out [OUT] Encrypted data
- * @param len [IN] Length of the encrypted data
- * @param iv [IN] Set IV
+ * @param len [IN] Number of blocks to be encrypted
+ * @param iv [IN/OUT] IV (counter), updated after encryption
  *
  * @return Success: CRYPT_SUCCESS
  *         Other error codes are returned if the operation fails.
@@ -235,9 +235,9 @@ int32_t CRYPT_SM4_CTR_Encrypt(CRYPT_SM4_Ctx *ctx, const uint8_t *in, uint8_t *ou
  * @brief SM4 CTR mode decryption (optimized).
  * @param ctx [IN] sm4 Context
  * @param in [IN] Data to be decrypted
- * @param out [OUT] decrypted data
- * @param len [IN] Length of the decrypted data
- * @param iv [IN] Set IV
+ * @param out [OUT] Decrypted data
+ * @param len [IN] Number of blocks to be decrypted
+ * @param iv [IN/OUT] IV (counter), updated after decryption
  *
  * @return Success: CRYPT_SUCCESS
  *         Other error codes are returned if the operation fails.

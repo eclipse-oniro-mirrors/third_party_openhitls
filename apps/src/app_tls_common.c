@@ -89,6 +89,14 @@ HITLS_Config *CreateProtocolConfig(APP_ProtocolType protocol, AppProvider *provi
     if (config == NULL) {
         AppPrintError("Failed to create protocol configuration\n");
     }
+    if (protocol == APP_PROTOCOL_TLS) {
+        int32_t ret = HITLS_CFG_SetVersionForbid(config, TLCP_VERSION_BITS);
+        if (ret != HITLS_SUCCESS) {
+            HITLS_CFG_FreeConfig(config);
+            AppPrintError("Failed to disable TLCP for TLS protocol, errCode: 0x%x.\n", ret);
+            return NULL;
+        }
+    }
 #ifdef HITLS_APP_SM_MODE
     int32_t ret = HITLS_CFG_SetSessionTicketSupport(config, false);
     if (ret != HITLS_SUCCESS) {
@@ -410,16 +418,19 @@ int ConfCertVerification(HITLS_Config *config, APP_CertConfig *certConfig,
     /* Load CA certificates */
     if (certConfig && certConfig->caFile) {
         HITLS_X509_Cert *ca_cert = LoadCertFromFile(certConfig->caFile, certConfig->certFormat, certConfig->provider);
-        if (ca_cert != NULL) {
-            ret = HITLS_CFG_AddCertToStore(config, ca_cert, TLS_CERT_STORE_TYPE_DEFAULT, true);
-            if (ret != HITLS_SUCCESS) {
-                AppPrintError("Failed to add CA certificate to store: 0x%x\n", ret);
-                HITLS_X509_CertFree(ca_cert);
-                return HITLS_APP_ERR_LOAD_CA;
-            }
-            HITLS_X509_CertFree(ca_cert);
-            hasLoadedCA = true;
+        if (ca_cert == NULL) {
+            AppPrintError("Failed to load CA certificate from %s\n", certConfig->caFile);
+            return HITLS_APP_ERR_LOAD_CA;
         }
+
+        ret = HITLS_CFG_AddCertToStore(config, ca_cert, TLS_CERT_STORE_TYPE_DEFAULT, true);
+        if (ret != HITLS_SUCCESS) {
+            AppPrintError("Failed to add CA certificate to store: 0x%x\n", ret);
+            HITLS_X509_CertFree(ca_cert);
+            return HITLS_APP_ERR_LOAD_CA;
+        }
+        HITLS_X509_CertFree(ca_cert);
+        hasLoadedCA = true;
     }
 
     if (certConfig && certConfig->caChain) {
@@ -441,6 +452,9 @@ int ConfCertVerification(HITLS_Config *config, APP_CertConfig *certConfig,
         }
 
         BSL_LIST_FREE(certlist, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+        if (ret != HITLS_SUCCESS) {
+            return ret;
+        }
         hasLoadedCA = true;
     }
 
@@ -462,6 +476,13 @@ int ConfCertVerification(HITLS_Config *config, APP_CertConfig *certConfig,
     if (ret != HITLS_SUCCESS) {
         AppPrintError("Failed to set client verification: 0x%x\n", ret);
         return HITLS_APP_ERR_SET_VERIFY;
+    }
+    if (verifyPeer) {
+        ret = HITLS_CFG_SetNoClientCertSupport(config, false);
+        if (ret != HITLS_SUCCESS) {
+            AppPrintError("Failed to require client certificate: 0x%x\n", ret);
+            return HITLS_APP_ERR_SET_VERIFY;
+        }
     }
 
     /* Set verification depth */
@@ -763,7 +784,7 @@ void PrintConnectionInfo(HITLS_Ctx *ctx, bool showState)
     /* Print cipher suite */
     const HITLS_Cipher *cipher = HITLS_GetCurrentCipher(ctx);
     if (cipher != NULL) {
-        AppPrintError("Cipher: %p\n", (const void*)cipher);
+        AppPrintInfo("Cipher suite negotiated\n");
     }
     
     if (showState) {
@@ -809,9 +830,13 @@ int ParseConnectString(const char *connectStr, APP_NetworkAddr *addr)
     *colon_pos = '\0';
     size_t host_len = strlen(strCopy) + 1;
     addr->host = BSL_SAL_Malloc(host_len);
-    if (addr->host != NULL) {
-        strcpy_s(addr->host, host_len, strCopy);
+    if (addr->host == NULL) {
+        BSL_SAL_Free(strCopy);
+        AppPrintError("Failed to alloc memory.");
+        return HITLS_APP_MEM_ALLOC_FAIL;
     }
+    strcpy_s(addr->host, host_len, strCopy);
+
     addr->port = atoi(colon_pos + 1);
     
     BSL_SAL_Free(strCopy);
@@ -819,9 +844,9 @@ int ParseConnectString(const char *connectStr, APP_NetworkAddr *addr)
     if (addr->port <= 0 || addr->port > 65535) {
         BSL_SAL_Free(addr->host);
         addr->host = NULL;
+        AppPrintError("Invalid port number in connect string\n");
         return HITLS_APP_INVALID_ARG;
     }
-    
     return HITLS_APP_SUCCESS;
 }
 

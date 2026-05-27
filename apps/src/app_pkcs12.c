@@ -201,6 +201,7 @@ static int32_t ParseKeyPbe(Pkcs12OptCtx *opt)
         HITLS_APP_PrintStdoutUioUnInit();
         return HITLS_APP_OPT_VALUE_INVALID;
     }
+    opt->keyPbe = ret;
     return HITLS_APP_SUCCESS;
 }
 
@@ -215,6 +216,7 @@ static int32_t ParseCertPbe(Pkcs12OptCtx *opt)
         HITLS_APP_PrintStdoutUioUnInit();
         return HITLS_APP_OPT_VALUE_INVALID;
     }
+    opt->certPbe = ret;
     return HITLS_APP_SUCCESS;
 }
 
@@ -229,6 +231,7 @@ static int32_t ParseMacAlg(Pkcs12OptCtx *opt)
         HITLS_APP_PrintStdoutUioUnInit();
         return HITLS_APP_OPT_VALUE_INVALID;
     }
+    opt->macAlg = ret;
     return HITLS_APP_SUCCESS;
 }
 
@@ -784,7 +787,7 @@ static int32_t ParsePkcs12File(Pkcs12OptCtx *opt)
         .macPwd = &encPwd,
     };
     int32_t ret = HITLS_PKCS12_ParseFile(BSL_FORMAT_ASN1, opt->genOpt.inFile, &param, &opt->p12, true);
-    (void)memset_s(encPwd.data, encPwd.dataLen, 0, encPwd.dataLen);
+    BSL_SAL_CleanseData(encPwd.data, encPwd.dataLen);
     if (ret != HITLS_PKI_SUCCESS) {
         AppPrintError("pkcs12: Failed to parse the %s pkcs12 file, errCode = 0x%x.\n", opt->genOpt.inFile, ret);
         return HITLS_APP_X509_FAIL;

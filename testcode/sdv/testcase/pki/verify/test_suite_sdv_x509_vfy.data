@@ -19,6 +19,12 @@ SDV_X509_STORE_VFY_CRL_FUNC_TC001:1:HITLS_X509_ERR_VFY_CERT_REVOKED:"../testdata
 SDV_X509_STORE_CTRL_FUNC_TC001
 SDV_X509_STORE_CTRL_FUNC_TC001:
 
+SDV_X509_STORE_CTRL_PARAM_FLAG_TC001
+SDV_X509_STORE_CTRL_PARAM_FLAG_TC001:
+
+SDV_X509_STORE_CTRL_LONG_IPV6_HOST_TC001
+SDV_X509_STORE_CTRL_LONG_IPV6_HOST_TC001:
+
 SDV_X509_STORE_CTRL_CERT_FUNC_TC002
 SDV_X509_STORE_CTRL_CERT_FUNC_TC002:
 
@@ -184,8 +190,26 @@ SDV_X509_VFY_ANYEKU_EKU_ALLOW_KU_MATCH_PASS_TC05:
 SDV_X509_VFY_ANYEKU_KU_MISSING_FAIL_TC06
 SDV_X509_VFY_ANYEKU_KU_MISSING_FAIL_TC06:
 
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001 KU=digitalSignature no EKU TLS_SERVER pass
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001:"../testdata/cert/chain/ku_noeku_suite/ku_good_noeku.der":HITLS_X509_VFY_PURPOSE_TLS_SERVER:HITLS_PKI_SUCCESS
+
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001 KU=keyCertSign no EKU TLS_SERVER fail
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001:"../testdata/cert/chain/ku_noeku_suite/ku_bad_noeku.der":HITLS_X509_VFY_PURPOSE_TLS_SERVER:HITLS_X509_ERR_VFY_PURPOSE_UNMATCH
+
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001 KU=digitalSignature no EKU TLS_CLIENT pass
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001:"../testdata/cert/chain/ku_noeku_suite/ku_good_noeku.der":HITLS_X509_VFY_PURPOSE_TLS_CLIENT:HITLS_PKI_SUCCESS
+
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001 KU=keyCertSign no EKU TLS_CLIENT fail
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001:"../testdata/cert/chain/ku_noeku_suite/ku_bad_noeku.der":HITLS_X509_VFY_PURPOSE_TLS_CLIENT:HITLS_X509_ERR_VFY_PURPOSE_UNMATCH
+
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001 no KU no EKU TLS_SERVER pass
+SDV_X509_VFY_KU_NOEKU_PURPOSE_TC001:"../testdata/cert/chain/ku_noeku_suite/ku_none_noeku.der":HITLS_X509_VFY_PURPOSE_TLS_SERVER:HITLS_PKI_SUCCESS
+
 SDV_X509_VFY_CERT_TIME_CURRENT_PASS_TC001
 SDV_X509_VFY_CERT_TIME_CURRENT_PASS_TC001:
+
+SDV_X509_VFY_CERT_TIME_SYS_TIME_ZERO_FAIL_TC001 system time returns zero fail
+SDV_X509_VFY_CERT_TIME_SYS_TIME_ZERO_FAIL_TC001:
 
 SDV_X509_VFY_CERT_TIME_HISTORY_PASS_TC001
 SDV_X509_VFY_CERT_TIME_HISTORY_PASS_TC001:
@@ -289,6 +313,9 @@ SDV_X509_VFY_CHAIN_LOOP_DEPTH_FAIL_TC001:
 SDV_X509_PARTIAL_CERT_VFY_FUNC_TC001
 SDV_X509_PARTIAL_CERT_VFY_FUNC_TC001:"../testdata/cert/chain/rsa-pss-v3/ca.der":"../testdata/cert/chain/rsa-pss-v3/inter.der":"../testdata/cert/chain/rsa-pss-v3/end.der"
 
+SDV_X509_PARTIAL_CERT_VFY_FUNC_TC006
+SDV_X509_PARTIAL_CERT_VFY_FUNC_TC006:"../testdata/cert/chain/partial_time/inter_future.pem":"../testdata/cert/chain/partial_time/leaf.pem"
+
 SDV_X509_PARTIAL_CERT_VFY_FUNC_TC002
 SDV_X509_PARTIAL_CERT_VFY_FUNC_TC002:"../testdata/cert/chain/rsa-pss-v3/ca.der":"../testdata/cert/chain/rsa-pss-v3/inter.der":"../testdata/cert/chain/rsa-pss-v3/end.der"
 
@@ -327,6 +354,9 @@ SDV_X509_CA_PATH_WITH_VARIOUS_CHARSET_FUNC_TC001:"../testdata/cert/chain/charset
 
 SDV_X509_CA_PATH_WITH_VARIOUS_CHARSET_FUNC_TC001 mix charset user cert with error aki
 SDV_X509_CA_PATH_WITH_VARIOUS_CHARSET_FUNC_TC001:"../testdata/cert/chain/charset/convert_to_utf8":"../testdata/cert/chain/charset/convert_to_utf8/user_err_aki.der":HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND
+
+SDV_X509_CA_PATH_WITH_VARIOUS_CHARSET_FUNC_TC001 empty issuer DN
+SDV_X509_CA_PATH_WITH_VARIOUS_CHARSET_FUNC_TC001:"../testdata/cert/chain/charset/convert_to_utf8":"../testdata/cert/asn1/certcheck/certnodnname.der":HITLS_X509_ERR_ISSUE_CERT_NOT_FOUND
 
 SDV_X509_CA_PATH_WITH_VARIOUS_CHARSET_FUNC_TC001 Standardization of content:CA paths
 SDV_X509_CA_PATH_WITH_VARIOUS_CHARSET_FUNC_TC001:"../testdata/cert/chain/charset/string_canon":"../testdata/cert/chain/charset/string_canon/user_string_canon.crt":HITLS_PKI_SUCCESS
@@ -399,3 +429,124 @@ SDV_X509_STORE_CTX_DUP_MULTI_THREAD_TC001:"../testdata/tls/certificate/der/rsa_w
 
 SDV_X509_CERT_VERIFY_MULTI_THREAD_WITH_VARIOUS_CHARSET_FUNC_TC001
 SDV_X509_CERT_VERIFY_MULTI_THREAD_WITH_VARIOUS_CHARSET_FUNC_TC001:"../testdata/cert/chain/charset/convert_to_utf8/ca_mix.crt":"../testdata/cert/chain/charset/convert_to_utf8/user_utf8.crt"
+
+
+SDV_X509_SECBITS_COMBINED_TC001: A_112: secbits=112, Root:112>=112 PASS, Inter:128>=112 PASS, Leaf:128>=112 PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/a_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/a_rsa3072_sha384_inter.der":"../testdata/cert/chain/secbits/a_rsa2048_sha256_root.der":112:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: A_128: secbits=128, Root:112<128 FAIL (key insufficient), Inter:128>=128 PASS, Leaf:128>=128 PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/a_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/a_rsa3072_sha384_inter.der":"../testdata/cert/chain/secbits/a_rsa2048_sha256_root.der":128:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_SECBITS_COMBINED_TC001: A_192: secbits=192, Root:112<192 FAIL, Inter:128<192 FAIL, Leaf:128<192 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/a_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/a_rsa3072_sha384_inter.der":"../testdata/cert/chain/secbits/a_rsa2048_sha256_root.der":192:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+
+SDV_X509_SECBITS_COMBINED_TC001: B_128: secbits=128, Root:192>=128 PASS, Inter:192>=128 PASS, Leaf:128>=128 PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/b_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/b_ecp384_sha256_inter.der":"../testdata/cert/chain/secbits/b_ecp384_sha384_root.der":128:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: B_192: secbits=192, Root:192>=192 PASS, Inter:192>=192 PASS, Leaf:128<192 FAIL (key too weak)
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/b_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/b_ecp384_sha256_inter.der":"../testdata/cert/chain/secbits/b_ecp384_sha384_root.der":192:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_SECBITS_COMBINED_TC001: B_256: secbits=256, Root:192<256 FAIL, Inter:192<256 FAIL, Leaf:128<256 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/b_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/b_ecp384_sha256_inter.der":"../testdata/cert/chain/secbits/b_ecp384_sha384_root.der":256:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+
+SDV_X509_SECBITS_COMBINED_TC001: C_63: secbits=63, Root:112>=63 PASS, Inter:128>=63 PASS, 63>=63 PASS, Leaf:128>=63 PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/c_rsa3072_sha256_leaf.der":"../testdata/cert/chain/secbits/c_rsa3072_sha1_inter.der":"../testdata/cert/chain/secbits/a_rsa2048_sha256_root.der":63:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: C_112: secbits=112, Root:112>=112 PASS, Inter:128>=112 PASS, 63<112 FAIL (hash too weak)
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/c_rsa3072_sha256_leaf.der":"../testdata/cert/chain/secbits/c_rsa3072_sha1_inter.der":"../testdata/cert/chain/secbits/a_rsa2048_sha256_root.der":112:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_SECBITS_COMBINED_TC001: C_128: secbits=128, Root:112<128 FAIL (key too weak), Inter:128>=128 PASS, 63<128 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/c_rsa3072_sha256_leaf.der":"../testdata/cert/chain/secbits/c_rsa3072_sha1_inter.der":"../testdata/cert/chain/secbits/a_rsa2048_sha256_root.der":128:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+
+SDV_X509_SECBITS_COMBINED_TC001: D_112: secbits=112, Root:192>=112 PASS, Inter:128>=112 PASS, Leaf:128>=112 PASS, 112>=112 PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/d_rsa3072_sha224_leaf.der":"../testdata/cert/chain/secbits/d_rsa3072_sha256_inter.der":"../testdata/cert/chain/secbits/b_ecp384_sha384_root.der":112:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: D_128: secbits=128, Root:192>=128 PASS, Inter:128>=128 PASS, Leaf:128>=128 PASS, 112<128 FAIL (hash too weak)
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/d_rsa3072_sha224_leaf.der":"../testdata/cert/chain/secbits/d_rsa3072_sha256_inter.der":"../testdata/cert/chain/secbits/b_ecp384_sha384_root.der":128:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_SECBITS_COMBINED_TC001: D_192: secbits=192, Root:192>=192 PASS, Inter:128<192 FAIL, Leaf:128<192 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/d_rsa3072_sha224_leaf.der":"../testdata/cert/chain/secbits/d_rsa3072_sha256_inter.der":"../testdata/cert/chain/secbits/b_ecp384_sha384_root.der":192:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+
+SDV_X509_SECBITS_COMBINED_TC001: E_63: secbits=63, Root:128>=63 PASS, Inter:all PASS, Leaf:all PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/e_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/e_rsa3072_sha256_inter.der":"../testdata/cert/chain/secbits/e_rsa3072_sha1_root.der":63:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: E_128: secbits=128, Root:128>=128 PASS (hash SKIPPED for root), Inter:all PASS, Leaf:all PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/e_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/e_rsa3072_sha256_inter.der":"../testdata/cert/chain/secbits/e_rsa3072_sha1_root.der":128:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: E_192: secbits=192, Root:128<192 FAIL, Inter:128<192 FAIL, Leaf:128<192 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/e_ecp256_sha256_leaf.der":"../testdata/cert/chain/secbits/e_rsa3072_sha256_inter.der":"../testdata/cert/chain/secbits/e_rsa3072_sha1_root.der":192:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+
+SDV_X509_SECBITS_COMBINED_TC001: F_128: secbits=128, Root:128>=128 PASS, Inter:128>=128 PASS, Leaf:128>=128 PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/f_rsapss_sha256_leaf.der":"../testdata/cert/chain/secbits/f_rsa3072_sha384_inter.der":"../testdata/cert/chain/secbits/f_rsa3072_sha256_root.der":128:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: F_192: secbits=192, Root:128<192 FAIL, Inter:128<192 FAIL, Leaf:128<192 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/f_rsapss_sha256_leaf.der":"../testdata/cert/chain/secbits/f_rsa3072_sha384_inter.der":"../testdata/cert/chain/secbits/f_rsa3072_sha256_root.der":192:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_SECBITS_COMBINED_TC001: F_256: secbits=256, Root:128<256 FAIL, Inter:128<256 FAIL, Leaf:128<256 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/f_rsapss_sha256_leaf.der":"../testdata/cert/chain/secbits/f_rsa3072_sha384_inter.der":"../testdata/cert/chain/secbits/f_rsa3072_sha256_root.der":256:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_SECBITS_COMBINED_TC001: G_128: secbits=128, Root:256>=128 PASS, Inter:192>=128 PASS, Leaf:128>=128 PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/g_slhdsa128s_leaf.der":"../testdata/cert/chain/secbits/g_slhdsa192s_inter.der":"../testdata/cert/chain/secbits/g_slhdsa256s_root.der":128:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: G_192: secbits=192, Root:256>=192 PASS, Inter:192>=192 PASS, Leaf:128<192 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/g_slhdsa128s_leaf.der":"../testdata/cert/chain/secbits/g_slhdsa192s_inter.der":"../testdata/cert/chain/secbits/g_slhdsa256s_root.der":192:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_SECBITS_COMBINED_TC001: G_256: secbits=256, Root:256>=256 PASS, Inter:192<256 FAIL, Leaf:128<256 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/g_slhdsa128s_leaf.der":"../testdata/cert/chain/secbits/g_slhdsa192s_inter.der":"../testdata/cert/chain/secbits/g_slhdsa256s_root.der":256:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+
+SDV_X509_SECBITS_COMBINED_TC001: H_128: secbits=128, Root:256>=128 PASS, Inter:192>=128 PASS, Leaf:128>=128 PASS
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/h_mldsa44_leaf.der":"../testdata/cert/chain/secbits/h_mldsa65_inter.der":"../testdata/cert/chain/secbits/h_mldsa87_root.der":128:HITLS_PKI_SUCCESS
+
+SDV_X509_SECBITS_COMBINED_TC001: H_192: secbits=192, Root:256>=192 PASS, Inter:192>=192 PASS, Leaf:128<192 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/h_mldsa44_leaf.der":"../testdata/cert/chain/secbits/h_mldsa65_inter.der":"../testdata/cert/chain/secbits/h_mldsa87_root.der":192:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_SECBITS_COMBINED_TC001: H_256: secbits=256, Root:256>=256 PASS, Inter:192<256 FAIL, Leaf:128<256 FAIL
+SDV_X509_SECBITS_COMBINED_TC001:"../testdata/cert/chain/secbits/h_mldsa44_leaf.der":"../testdata/cert/chain/secbits/h_mldsa65_inter.der":"../testdata/cert/chain/secbits/h_mldsa87_root.der":256:HITLS_X509_ERR_VFY_CHECK_SECBITS
+
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001: TC1 v1 leaf with extensions
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001:"../testdata/cert/chain/v3_exts/a_v1_ext_leaf.der":"":"../testdata/cert/chain/v3_exts/a_v3_root.der":HITLS_X509_ERR_VFY_EXTENSIONS_REQUIRE_V3
+
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001: TC2 v2 leaf with extensions
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001:"../testdata/cert/chain/v3_exts/a_v2_ext_leaf.der":"":"../testdata/cert/chain/v3_exts/a_v3_root.der":HITLS_X509_ERR_VFY_EXTENSIONS_REQUIRE_V3
+
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001: TC3 v1 intermediate with extensions
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001:"../testdata/cert/chain/v3_exts/a_v3_leaf.der":"../testdata/cert/chain/v3_exts/a_v1_ext_inter.der":"../testdata/cert/chain/v3_exts/a_v3_root.der":HITLS_X509_ERR_VFY_EXTENSIONS_REQUIRE_V3
+
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001: TC4 v2 intermediate with extensions
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001:"../testdata/cert/chain/v3_exts/a_v3_leaf.der":"../testdata/cert/chain/v3_exts/a_v2_ext_inter.der":"../testdata/cert/chain/v3_exts/a_v3_root.der":HITLS_X509_ERR_VFY_EXTENSIONS_REQUIRE_V3
+
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001: TC5 v1 root with extensions as trust anchor
+SDV_X509_VFY_EXTENSIONS_REQUIRE_V3_TC001:"../testdata/cert/chain/v3_exts/b_v3_leaf.der":"":"../testdata/cert/chain/v3_exts/b_v1_ext_root.der":HITLS_X509_ERR_VFY_EXTENSIONS_REQUIRE_V3
+
+SDV_X509_VFY_V1_INTER_CA_TC001: TC1 v1 intermediate without extensions rejected
+SDV_X509_VFY_V1_INTER_CA_TC001:"../testdata/cert/chain/v1_inter/v3_leaf.der":"../testdata/cert/chain/v1_inter/v1_inter.der":"../testdata/cert/chain/v1_inter/v3_root.der":HITLS_X509_ERR_VFY_INTERCA_INVALID_VERSION
+
+SDV_X509_VFY_V1_INTER_CA_TC001: TC2 v2 intermediate without extensions rejected
+SDV_X509_VFY_V1_INTER_CA_TC001:"../testdata/cert/chain/v1_inter/v3_leaf.der":"../testdata/cert/chain/v1_inter/v2_inter.der":"../testdata/cert/chain/v1_inter/v3_root.der":HITLS_X509_ERR_VFY_INTERCA_INVALID_VERSION
+
+SDV_X509_VFY_V1_INTER_CA_TC001: TC3 v1 trust anchor without extensions accepted
+SDV_X509_VFY_V1_INTER_CA_TC001:"../testdata/cert/chain/v1_inter/v3_leaf_b.der":"":"../testdata/cert/chain/v1_inter/v1_root.der":HITLS_PKI_SUCCESS
+
+SDV_X509_VFY_V1_INTER_CA_TC001: TC4 v3 intermediate missing BasicConstraints
+SDV_X509_VFY_V1_INTER_CA_TC001:"../testdata/cert/chain/bcExt/bc_leaf_missing_bc.pem":"../testdata/cert/chain/bcExt/bc_inter_missing_bc.pem":"../testdata/cert/chain/bcExt/bc_root_general.pem":HITLS_X509_ERR_VFY_INTERCA_INVALID_BCONS
+
+SDV_X509_VFY_V1_INTER_CA_TC001: TC5 v3 intermediate BasicConstraints CA=false
+SDV_X509_VFY_V1_INTER_CA_TC001:"../testdata/cert/chain/bcExt/bc_leaf_ca_false.pem":"../testdata/cert/chain/bcExt/bc_inter_ca_false.pem":"../testdata/cert/chain/bcExt/bc_root_general.pem":HITLS_X509_ERR_VFY_INTERCA_INVALID_BCONS
+
+SDV_X509_VFY_RSA_PSS_INNER_OUTER_PARAM_MISMATCH_FAIL_TC001 RSA-PSS inner saltLen=20 outer saltLen=32 is rejected
+SDV_X509_VFY_RSA_PSS_INNER_OUTER_PARAM_MISMATCH_FAIL_TC001:"../testdata/cert/chain/sigParam/rsa_pss_param_mismatch_root.pem":"../testdata/cert/chain/sigParam/rsa_pss_param_mismatch_leaf.pem"
+
+SDV_X509_CERT_VERIFY_BY_PUBKEY_RSA_PSS_KEY_MD_MISMATCH_TC001 #direct verify ignores rsa-pss key md constraint
+SDV_X509_CERT_VERIFY_BY_PUBKEY_RSA_PSS_KEY_MD_MISMATCH_TC001:BSL_FORMAT_ASN1:"../testdata/cert/chain/rsa-pss-v3/end.der":"../testdata/cert/chain/rsa-pss-v3/inter.der":CRYPT_MD_SHA1:HITLS_PKI_SUCCESS
+
+SDV_X509_VFY_CRL_RSA_PSS_INNER_OUTER_PARAM_MISMATCH_FAIL_TC001 RSA-PSS CRL inner saltLen=20 outer saltLen=32 is rejected
+SDV_X509_VFY_CRL_RSA_PSS_INNER_OUTER_PARAM_MISMATCH_FAIL_TC001:"../testdata/cert/chain/sigParam/rsa_crl_inner_outer_mismatch_root.pem":"../testdata/cert/chain/sigParam/rsa_crl_inner_outer_mismatch_leaf.pem":"../testdata/cert/chain/sigParam/rsa_crl_inner_outer_mismatch.crl"
+
+SDV_X509_VFY_CRL_RSA_PSS_ISSUER_PARAM_MISMATCH_FAIL_TC001 RSA-PSS constrained issuer rejects CRL signed with SHA384/MGF1-SHA384
+SDV_X509_VFY_CRL_RSA_PSS_ISSUER_PARAM_MISMATCH_FAIL_TC001:"../testdata/cert/chain/sigParam/rsa_pss_crl_key_param_root.pem":"../testdata/cert/chain/sigParam/rsa_pss_crl_key_param_leaf.pem":"../testdata/cert/chain/sigParam/rsa_pss_crl_key_param_mismatch.crl"

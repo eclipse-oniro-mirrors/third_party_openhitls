@@ -90,6 +90,8 @@
 #include "stub_crypt.h"
 #include "hitls_crypt.h"
 #include "security.h"
+#include "stub_utils.h"
+#include "bsl_list.h"
 /* END_HEADER */
 
 #define DEFAULT_DESCRIPTION_LEN 128
@@ -474,10 +476,85 @@ EXIT:
 /* END_CASE */
 
 /** @
-* @test UT_TLS_CFG_SET_CLIENTHELLOCB_API_TC001
-* @title Test the HITLS_CFG_SetClientHelloCb interface.
-* @precon nan
-* @brief HITLS_CFG_SetClientHelloCb
+* @test  UT_TLS_CFG_SET_TMPDHCB_CLIENT_CHECK_API_TC001
+* @title  Client verifies server DH key security during DHE handshake.
+* @precon  nan
+* @brief
+*  1. Set the RSA certificate and DHE cipher suite.
+*  2. On server: disable DH auto, generate DH key with specified secbits via HITLS_CFG_SetTmpDh.
+*  3. On server: set security level to 0 (do not check its own key).
+*  4. On client: set security level to specified level.
+*  5. When client security level requires higher DH strength than server provides, connection fails.
+*  6. When client security level is satisfied by server DH strength, connection succeeds.
+* @expect
+*  1. The setting is successful.
+*  2. The setting is successful.
+*  3. The setting is successful.
+*  4. The setting is successful.
+*  5. Connection fails.
+*  6. Connection succeeds.
+@ */
+/* BEGIN_CASE */
+void UT_TLS_CFG_SET_TMPDHCB_CLIENT_CHECK_API_TC001(int securityBits, int securityLevel)
+{
+    FRAME_Init();
+    FRAME_LinkObj *client = NULL;
+    FRAME_LinkObj *server = NULL;
+    HITLS_CRYPT_Key *key = NULL;
+    uint16_t pfsCipherSuites[] = {HITLS_DHE_RSA_WITH_AES_128_GCM_SHA256};
+
+    HITLS_Config *clientConfig = HITLS_CFG_NewTLS12Config();
+    HITLS_Config *serverConfig = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(clientConfig != NULL);
+    ASSERT_TRUE(serverConfig != NULL);
+
+    ASSERT_TRUE(HiTLS_X509_LoadCertAndKey(clientConfig, RSA_SHA_CA_PATH, RSA_SHA_CHAIN_PATH, RSA_SHA256_EE_PATH3, NULL,
+                                          RSA_SHA256_PRIV_PATH3, NULL) == HITLS_SUCCESS);
+    ASSERT_TRUE(HiTLS_X509_LoadCertAndKey(serverConfig, RSA_SHA_CA_PATH, RSA_SHA_CHAIN_PATH, RSA_SHA256_EE_PATH3, NULL,
+                                          RSA_SHA256_PRIV_PATH3, NULL) == HITLS_SUCCESS);
+
+    ASSERT_TRUE(HITLS_CFG_SetCipherSuites(clientConfig, pfsCipherSuites, sizeof(pfsCipherSuites) / sizeof(uint16_t)) ==
+                HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_SetCipherSuites(serverConfig, pfsCipherSuites, sizeof(pfsCipherSuites) / sizeof(uint16_t)) ==
+                HITLS_SUCCESS);
+
+    HITLS_CFG_SetDhAutoSupport(serverConfig, false);
+    ASSERT_TRUE(HITLS_CFG_SetSecurityLevel(serverConfig, HITLS_SECURITY_LEVEL_ZERO) == HITLS_SUCCESS);
+    key = HITLS_CRYPT_GenerateDhKeyBySecbits(LIBCTX_FROM_CONFIG(serverConfig), ATTRIBUTE_FROM_CONFIG(serverConfig),
+        serverConfig, securityBits);
+    ASSERT_TRUE(key != NULL);
+    ASSERT_TRUE(HITLS_CFG_SetTmpDh(serverConfig, key) == HITLS_SUCCESS);
+    key = NULL;
+
+    FRAME_CertInfo certInfo = {0, 0, 0, 0, 0, 0};
+    client = FRAME_CreateLinkWithCert(clientConfig, BSL_UIO_TCP, &certInfo);
+    server = FRAME_CreateLinkWithCert(serverConfig, BSL_UIO_TCP, &certInfo);
+    ASSERT_TRUE(client != NULL);
+    ASSERT_TRUE(server != NULL);
+
+    ASSERT_TRUE(HITLS_SetSecurityLevel(server->ssl, 0) == HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_SetSecurityLevel(client->ssl, securityLevel) == HITLS_SUCCESS);
+
+    if (SECURITY_GetSecbits(securityLevel) > securityBits) {
+        ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_MSG_HANDLE_UNSECURE_CIPHER_SUITE);
+    } else {
+        ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+    }
+
+EXIT:
+    SAL_CRYPT_FreeDhKey(key);
+    HITLS_CFG_FreeConfig(serverConfig);
+    HITLS_CFG_FreeConfig(clientConfig);
+    FRAME_FreeLink(client);
+    FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+/**
+ * @test UT_TLS_CFG_SET_CLIENTHELLOCB_API_TC001
+ * @title Test the HITLS_CFG_SetClientHelloCb interface.
+ * @precon nan
+ * @brief HITLS_CFG_SetClientHelloCb
 * 1. Import empty configuration information. Expected result 1 is obtained.
 * 2. Transfer non-empty configuration information and leave callback empty. Expected result 1 is obtained.
 * 3. Transfer non-empty configuration information and set callback to a non-empty value. Expected result 2 is obtained.
@@ -1621,5 +1698,50 @@ EXIT:
     HITLS_CFG_FreeConfig(serverConfig);
     FRAME_FreeLink(client);
     FRAME_FreeLink(server);
+}
+/* END_CASE */
+
+STUB_DEFINE_RET3(int32_t, BSL_LIST_AddElement, BslList *, void *, BslListPosition);
+int32_t STUB_BSL_LIST_AddElement(BslList *pList, void *pData, BslListPosition enPosition)
+{
+    (void)pList;
+    (void)pData;
+    (void)enPosition;
+    return BSL_INVALID_ARG;
+}
+
+/* BEGIN_CASE */
+void SDV_HiTLS_LIST_ADD_CERT_FAIL_TC001(void)
+{
+    FRAME_Init();
+    HITLS_Ctx *ctx = NULL;
+    char certChainFile[] = "../testdata/tls/certificate/der/rsa_sha/inter-3072.der";
+    char certeeFile[] = "../testdata/tls/certificate/der/rsa_sha/end-sha256.der";
+    HITLS_Config *config = HITLS_CFG_NewTLS12Config();
+    ASSERT_TRUE(config != NULL);
+    HITLS_CERT_X509 *certChain = HITLS_CFG_ParseCert(config, (const uint8_t *)certChainFile,
+        strlen(certChainFile) + 1, TLS_PARSE_TYPE_FILE, TLS_PARSE_FORMAT_ASN1);
+    HITLS_CERT_X509 *certee = HITLS_CFG_ParseCert(config, (const uint8_t *)certeeFile,
+        strlen(certeeFile) + 1, TLS_PARSE_TYPE_FILE, TLS_PARSE_FORMAT_ASN1);
+    ASSERT_TRUE(certChain != NULL);
+    ASSERT_TRUE(certee != NULL);
+    
+    ASSERT_TRUE(HITLS_CFG_SetCertificate(config, certee, false) == HITLS_SUCCESS);
+    ASSERT_TRUE(HITLS_CFG_AddChainCert(config, certChain, false) == HITLS_SUCCESS);
+
+    ctx = HITLS_New(config);
+    ASSERT_TRUE(ctx != NULL);
+
+    CERT_Pair *certPair = NULL;
+    CERT_MgrCtx *mgrCtx = ctx->config.tlsConfig.certMgrCtx;
+    int32_t ret = BSL_HASH_At(mgrCtx->certPairs, (uintptr_t)mgrCtx->currentCertKeyType, (uintptr_t *)&certPair);
+    ASSERT_NE(certPair, NULL);
+    STUB_REPLACE(BSL_LIST_AddElement, STUB_BSL_LIST_AddElement);
+    ret = SAL_CERT_VerifyCertChain(ctx, certPair, false);
+    ASSERT_TRUE(ret == HITLS_CERT_ERR_VERIFY_CERT_CHAIN);
+
+EXIT:
+    HITLS_CFG_FreeConfig(config);
+    HITLS_Free(ctx);
 }
 /* END_CASE */

@@ -17,11 +17,13 @@
 #ifdef HITLS_CRYPTO_CFB
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "securec.h"
 #include "bsl_err_internal.h"
 #include "bsl_sal.h"
 #include "crypt_modes_cfb.h"
 #include "modes_local.h"
+#include "crypt_utils.h"
 #include "crypt_errno.h"
 #include "crypt_local_types.h"
 #include "crypt_modes.h"
@@ -112,7 +114,7 @@ static int32_t MODES_CFB128_BytesEncrypt(MODES_CipherCFBCtx *ctx, const uint8_t 
 #ifdef FORCE_ADDR_ALIGN
         for (uint32_t i = 0; i < blockSize; i++) {
             iv[i] ^= inp[i];
-            out[i] = iv[i];
+            outp[i] = iv[i];
         }
 #else
         *((uint64_t *)((uintptr_t)iv)) ^= *((const uint64_t *)((uintptr_t)inp));
@@ -326,6 +328,10 @@ int32_t MODES_CFB_Encrypt(MODES_CipherCFBCtx *ctx, const uint8_t *in, uint8_t *o
 
     switch (ctx->feedbackBits) {
         case 1:
+            if (len > UINT32_MAX / 8) {
+                BSL_ERR_PUSH_ERROR(CRYPT_MODE_ERR_INPUT_LEN);
+                return CRYPT_MODE_ERR_INPUT_LEN;
+            }
             return MODES_CFB_BitCrypt(ctx, in, out, len * 8, true); // Each byte occupies 8 bits.
         case 8:
         case 64:
@@ -346,6 +352,10 @@ int32_t MODES_CFB_Decrypt(MODES_CipherCFBCtx *ctx, const uint8_t *in, uint8_t *o
     }
     switch (ctx->feedbackBits) {
         case 1:     // 1-bit cfb. Convert the length of bytes to the length of bits.
+            if (len > UINT32_MAX / 8) {
+                BSL_ERR_PUSH_ERROR(CRYPT_MODE_ERR_INPUT_LEN);
+                return CRYPT_MODE_ERR_INPUT_LEN;
+            }
             return MODES_CFB_BitCrypt(ctx, in, out, len * 8, false); // Each byte occupies 8 bits.
         case 8:     // 8-bit cfb
         case 64:    // 64-bit cfb

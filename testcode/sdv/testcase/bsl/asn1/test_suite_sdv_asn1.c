@@ -1371,6 +1371,7 @@ void SDV_BSL_ASN1_ENCODE_BMPSTRING_TC001(Hex *enc, char *dec)
     BSL_ASN1_Buffer encode = {0};
     uint8_t tmp[10] = {0xff}; // select len 10.
     BSL_ASN1_Buffer wrong = {BSL_ASN1_TAG_BMPSTRING, 10, tmp};
+    BSL_ASN1_Buffer nullBuff = {BSL_ASN1_TAG_BMPSTRING, 1, NULL};
 
     TestMemInit();
     ret = BSL_ASN1_DecodePrimitiveItem(&asn, &decode);
@@ -1389,6 +1390,8 @@ void SDV_BSL_ASN1_ENCODE_BMPSTRING_TC001(Hex *enc, char *dec)
 
     BSL_SAL_FREE(encode.buff);
     ret = BSL_ASN1_EncodeTemplate(&templ, &wrong, 1, &encode.buff, &encode.len);
+    ASSERT_EQ(ret, BSL_INVALID_ARG);
+    ret = BSL_ASN1_EncodeTemplate(&templ, &nullBuff, 1, &encode.buff, &encode.len);
     ASSERT_EQ(ret, BSL_INVALID_ARG);
 EXIT:
     BSL_SAL_FREE(decode.buff);
@@ -1557,6 +1560,35 @@ void SDV_BSL_ASN1_TO_UTF8_STRING_ERR_API_TC001(int tag, Hex *data, int expect)
     in.buff = data->x;
 
     ASSERT_EQ(BSL_ASN1_ToUtf8String(&in, &out), expect);
+EXIT:
+    return;
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_BSL_ASN1_PARSE_INT_OVER_INTMAX_FUNC_TC001
+ * @title  Reject a positive ASN.1 INTEGER that exceeds INT_MAX.
+ * @brief  The DER INTEGER value 02 05 00 80 00 00 00 is a positive 2147483648.
+ *         Template decoding accepts the DER sign-protection byte and passes the
+ *         remaining 4-byte magnitude to primitive integer decoding.
+ * @expect Primitive integer decoding fails with BSL_ASN1_ERR_DECODE_INT.
+ */
+/* BEGIN_CASE */
+void SDV_BSL_ASN1_PARSE_INT_OVER_INTMAX_FUNC_TC001(void)
+{
+    uint8_t encode[] = {0x02, 0x05, 0x00, 0x80, 0x00, 0x00, 0x00};
+    uint8_t *tmp = encode;
+    uint32_t tmpLen = sizeof(encode);
+    BSL_ASN1_Buffer asn = {0};
+    BSL_ASN1_TemplateItem item = {BSL_ASN1_TAG_INTEGER, 0, 0};
+    BSL_ASN1_Template templ = {&item, 1};
+    int32_t decoded = 0;
+
+    ASSERT_EQ(BSL_ASN1_DecodeTemplate(&templ, NULL, &tmp, &tmpLen, &asn, 1), BSL_SUCCESS);
+    ASSERT_EQ(tmpLen, 0);
+    ASSERT_EQ(asn.len, sizeof(int));
+    ASSERT_EQ(asn.buff[0], 0x80);
+    ASSERT_EQ(BSL_ASN1_DecodePrimitiveItem(&asn, &decoded), BSL_ASN1_ERR_DECODE_INT);
 EXIT:
     return;
 }

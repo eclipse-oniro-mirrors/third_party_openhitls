@@ -1592,6 +1592,42 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void SDV_X509_CERT_WITH_SAN_PARSE_TEST_TC002(int isCritical, char *certPath, char *nameValue, int nameType)
+{
+    HITLS_X509_Cert *parsedCert = NULL;
+    HITLS_X509_ExtSan parsedSan = {0};
+    HITLS_X509_GeneralName *gn = NULL;
+    BslList *dnList = GenDNList();
+    uint32_t nameValueLen = (uint32_t)strlen(nameValue);
+
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, certPath, &parsedCert), HITLS_PKI_SUCCESS);
+
+    ASSERT_EQ(HITLS_X509_CertCtrl(parsedCert, HITLS_X509_EXT_GET_SAN, &parsedSan, sizeof(HITLS_X509_ExtSan)), 0);
+    ASSERT_EQ(parsedSan.critical, isCritical);
+    if (nameType == -1) {
+        ASSERT_EQ(BSL_LIST_COUNT(parsedSan.names), 0);
+        ASSERT_EQ(BSL_LIST_GET_FIRST(parsedSan.names), NULL);
+    } else {
+        ASSERT_TRUE(BSL_LIST_COUNT(parsedSan.names) >= 1);
+        gn = BSL_LIST_GET_FIRST(parsedSan.names);
+        ASSERT_EQ(gn->type, nameType);
+        ASSERT_EQ(gn->value.dataLen, nameValueLen);
+        if (nameValueLen > 0) {
+            ASSERT_COMPARE("subject Alternative Name", gn->value.data, gn->value.dataLen,
+                nameValue, nameValueLen);
+        }
+    }
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    TestRandDeInit();
+    HITLS_X509_CertFree(parsedCert);
+    HITLS_X509_DnListFree(dnList);
+    HITLS_X509_ClearSubjectAltName(&parsedSan);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void SDV_X509_CERT_WITH_SAN_ALL_PARSE_TC001(int isCritical, char *certPath, int isEdited)
 {
     HITLS_X509_Cert *parsedCert = NULL;
@@ -1659,6 +1695,21 @@ EXIT:
     TestRandDeInit();
     HITLS_X509_CertFree(parsedCert);
     HITLS_X509_DnListFree(dnList);
+    HITLS_X509_ClearSubjectAltName(&parsedSan);
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_X509_CERT_WITH_ILLEGAL_SAN_DIRNAME_0_LEN_PARSE_TEST_TC001(char *certPath)
+{
+    HITLS_X509_Cert *parsedCert = NULL;
+    HITLS_X509_ExtSan parsedSan = {0};
+    ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_ASN1, certPath, &parsedCert), HITLS_PKI_SUCCESS);
+    ASSERT_NE(HITLS_X509_CertCtrl(parsedCert, HITLS_X509_EXT_GET_SAN,
+        &parsedSan, sizeof(HITLS_X509_ExtSan)), HITLS_PKI_SUCCESS);
+
+EXIT:
+    HITLS_X509_CertFree(parsedCert);
     HITLS_X509_ClearSubjectAltName(&parsedSan);
 }
 /* END_CASE */
@@ -2414,5 +2465,46 @@ EXIT:
     BSL_SAL_FREE(customOidData);
     BSL_SAL_FREE(customExt.value.data);
     BSL_SAL_FREE(keyUsageExt.value.data);
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_X509_CERT_CHECKKEY_DIFF_ALGID_FAIL_TC001
+ * @title  Reject a private key whose algorithm differs from the certificate public key algorithm.
+ * @brief  The certificate carries an RSA public key, but HITLS_X509_CheckKey is called with an
+ *         ECDSA private key. The EAL pair check should reject the algorithm mismatch before
+ *         invoking the RSA private method with an ECDSA key object.
+ * @expect HITLS_X509_CheckKey returns HITLS_X509_ERR_CERT_NOT_MATCH_KEY without entering an
+ *         algorithm-private pair check with mismatched key contexts.
+ */
+/* BEGIN_CASE */
+void SDV_X509_CERT_CHECKKEY_DIFF_ALGID_FAIL_TC001(void)
+{
+    HITLS_X509_Cert *cert = NULL;
+    CRYPT_EAL_PkeyCtx *rsaKey = NULL;
+    CRYPT_EAL_PkeyCtx *ecdsaKey = NULL;
+    BslList *dnList = GenDNList();
+
+    TestMemInit();
+    ASSERT_EQ(TestRandInit(), CRYPT_SUCCESS);
+
+    rsaKey = GenKey(CRYPT_PKEY_RSA, 0);
+    ASSERT_NE(rsaKey, NULL);
+    ecdsaKey = GenKey(CRYPT_PKEY_ECDSA, CRYPT_ECC_NISTP256);
+    ASSERT_NE(ecdsaKey, NULL);
+
+    cert = HITLS_X509_CertNew();
+    ASSERT_NE(cert, NULL);
+    ASSERT_EQ(SetCertBasic(cert, g_version, g_serialNum, sizeof(g_serialNum),
+        &g_beforeTime, &g_afterTime, dnList, dnList, rsaKey), 0);
+
+    ASSERT_EQ(HITLS_X509_CheckKey(cert, ecdsaKey), HITLS_X509_ERR_CERT_NOT_MATCH_KEY);
+
+EXIT:
+    TestRandDeInit();
+    HITLS_X509_CertFree(cert);
+    CRYPT_EAL_PkeyFreeCtx(rsaKey);
+    CRYPT_EAL_PkeyFreeCtx(ecdsaKey);
+    HITLS_X509_DnListFree(dnList);
 }
 /* END_CASE */

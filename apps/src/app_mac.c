@@ -50,7 +50,7 @@ typedef enum OptionChoice {
     HITLS_SM_OPTIONS_ENUM,
 #endif
 } HITLSOptType;
-
+// Curently, MAC CLI doesn't support pass IV;
 static const HITLS_CmdOption g_macOpts[] = {
     {"help", HITLS_APP_OPT_MAC_HELP, HITLS_APP_OPT_VALUETYPE_NO_VALUE, "Show usage information for MAC command."},
     {"name", HITLS_APP_OPT_MAC_ALG, HITLS_APP_OPT_VALUETYPE_STRING, "Specify MAC algorithm (e.g., hmac-sha256)."},
@@ -146,6 +146,11 @@ static int32_t MacOptAlg(MacOpt *macOpt)
     }
     macOpt->algId = HITLS_APP_GetCidByName(algName, HITLS_APP_LIST_OPT_MAC_ALG);
     if (macOpt->algId == BSL_CID_UNKNOWN) {
+        return HITLS_APP_OPT_VALUE_INVALID;
+    }
+    if (macOpt->algId == CRYPT_MAC_GMAC_AES128 || macOpt->algId == CRYPT_MAC_GMAC_AES192 ||
+        macOpt->algId == CRYPT_MAC_GMAC_AES256) {
+        AppPrintError("mac: GMAC is not supported by this command.\n");
         return HITLS_APP_OPT_VALUE_INVALID;
     }
     return HITLS_APP_SUCCESS;

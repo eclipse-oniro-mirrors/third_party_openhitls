@@ -838,7 +838,7 @@ int32_t HITLS_X509_ParseAsn1Crl(uint8_t *encode, uint32_t encodeLen, HITLS_X509_
     return HITLS_PKI_SUCCESS;
 ERR:
     BSL_LIST_DeleteAll(crl->tbs.issuerName, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeParsedNameNode);
-    BSL_LIST_DeleteAll(crl->tbs.revokedCerts, NULL);
+    BSL_LIST_DeleteAll(crl->tbs.revokedCerts, FreeEntryList);
     BSL_LIST_DeleteAll(crl->tbs.crlExt.extList, NULL);
     return ret;
 }
@@ -1241,7 +1241,7 @@ int32_t HITLS_X509_CrlCtrl(HITLS_X509_Crl *crl, int32_t cmd, void *val, uint32_t
 #endif
     } else if (cmd <= HITLS_X509_EXT_CHECK_SKI) {
         static int32_t cmdSet[] = {HITLS_X509_EXT_SET_CRLNUMBER, HITLS_X509_EXT_SET_AKI, HITLS_X509_EXT_GET_CRLNUMBER,
-            HITLS_X509_EXT_GET_AKI, HITLS_X509_EXT_GET_KUSAGE};
+            HITLS_X509_EXT_GET_AKI};
         if (!X509_CheckCmdValid(cmdSet, sizeof(cmdSet) / sizeof(int32_t), cmd)) {
             BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_EXT_UNSUPPORT);
             return HITLS_X509_ERR_EXT_UNSUPPORT;
@@ -1264,7 +1264,12 @@ int32_t HITLS_X509_CrlVerify(void *pubkey, const HITLS_X509_Crl *crl)
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_CRL_NOT_SIGNED);
         return HITLS_X509_ERR_CRL_NOT_SIGNED;
     }
-    int32_t ret = HITLS_X509_CheckAlg(pubkey, &(crl->signAlgId));
+    int32_t ret = HITLS_X509_CheckSignAlgConsistency(&crl->tbs.signAlgId, &crl->signAlgId);
+    if (ret != HITLS_PKI_SUCCESS) {
+        BSL_ERR_PUSH_ERROR(ret);
+        return ret;
+    }
+    ret = HITLS_X509_CheckAlg(pubkey, &(crl->tbs.signAlgId));
     if (ret != HITLS_PKI_SUCCESS) {
         return ret;
     }

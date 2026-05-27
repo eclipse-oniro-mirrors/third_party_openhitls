@@ -88,6 +88,9 @@ SDV_CMS_PARSE_SIGNEDDATA_VERIFY_TEST_TC001:"../testdata/cert/asn1/cms/signeddata
 SDV_CMS_PARSE_SIGNEDDATA_VERIFY_TEST_TC001 version3 detached signerinfo
 SDV_CMS_PARSE_SIGNEDDATA_VERIFY_TEST_TC001:"../testdata/cert/asn1/cms/signeddata/v3detached.cms":"../testdata/cert/asn1/cms/signeddata/msg.txt":1:"../testdata/cert/asn1/cms/signeddata/noattr/ca_cert.pem":1
 
+SDV_CMS_PARSE_SIGNEDDATA_SIGNEDATTRS_INVALID_TC001 duplicate contentType and missing messageDigest
+SDV_CMS_PARSE_SIGNEDDATA_SIGNEDATTRS_INVALID_TC001:"../testdata/cert/asn1/cms/signeddata/p256_signedattrs_dup_contenttype.cms"
+
 SDV_CMS_PARSE_SIGNEDDATA_ENC_DEC_FILE_TC001 p256 with atttach
 SDV_CMS_PARSE_SIGNEDDATA_ENC_DEC_FILE_TC001:"../testdata/cert/asn1/cms/signeddata/p256_attached.cms":"../testdata/cert/asn1/cms/signeddata/msg.txt":0:"../testdata/cert/asn1/cms/signeddata/ca_cert.pem"
 
@@ -241,6 +244,9 @@ SDV_CMS_STREAM_SIGN_DETACHED_TC001:"../testdata/cert/asn1/cms/signeddata/mldsa/m
 SDV_CMS_STREAM_SIGN_DETACHED_TC001 Stream signing detached SignedData with mult signer
 SDV_CMS_STREAM_SIGN_DETACHED_TC001:"../testdata/cert/asn1/cms/signeddata/ca_cert.pem":"../testdata/cert/asn1/cms/signeddata/rsa-pkcsv5/cert.pem":"../testdata/cert/asn1/cms/signeddata/rsa-pkcsv5/key.pem":"../testdata/cert/asn1/cms/signeddata/ca_cert.pem":"../testdata/cert/asn1/cms/signeddata/ecc-p256/cert.pem":"../testdata/cert/asn1/cms/signeddata/ecc-p256/key.pem":"This is a long long test message for streaming signature. It will be split into multiple chunks and processed incrementally"
 
+SDV_CMS_STREAM_VERIFY_NO_SIGNED_ATTRS_TC001 Support streaming verify for detached SignedData without signedAttrs
+SDV_CMS_STREAM_VERIFY_NO_SIGNED_ATTRS_TC001:"../testdata/cert/asn1/cms/signeddata/ca_cert.pem":"../testdata/cert/asn1/cms/signeddata/rsa-pkcsv5/cert.pem":"../testdata/cert/asn1/cms/signeddata/rsa-pkcsv5/key.pem":"../testdata/cert/asn1/cms/signeddata/msg.txt"
+
 SDV_CMS_STREAM_NODETACHED_TEST_TC001 Stream sign/verify with non-detached SignedData
 SDV_CMS_STREAM_NODETACHED_TEST_TC001:
 
@@ -288,6 +294,9 @@ SDV_CMS_MLDSA_INVALID_HASH_VERIFY_TC001:"../testdata/cert/asn1/cms/signeddata/ml
 
 SDV_CMS_MLDSA_INVALID_HASH_VERIFY_TC001 Test MLDSA87 with SHA-256 (invalid - should use SHA-512)
 SDV_CMS_MLDSA_INVALID_HASH_VERIFY_TC001:"../testdata/cert/asn1/cms/signeddata/mldsa/invalid_hash/mldsa87/mldsa87_sha256_attached.cms":"../testdata/cert/asn1/cms/signeddata/msg.txt":"../testdata/cert/asn1/cms/signeddata/mldsa/invalid_hash/mldsa87/ca_cert.pem"
+
+SDV_CMS_MLDSA_SIGNALG_MISMATCH_VERIFY_TC001 Test MLDSA65 with non-PQC signatureAlgorithm
+SDV_CMS_MLDSA_SIGNALG_MISMATCH_VERIFY_TC001:"../testdata/cert/asn1/cms/signeddata/mldsa/mldsa65/mldsa65_attached.cms":"../testdata/cert/asn1/cms/signeddata/msg.txt":"../testdata/cert/asn1/cms/signeddata/mldsa/mldsa65/ca_cert.pem"
 
 SDV_CMS_GEN_SIGNEDDATA_INVALID_HASH_TC001 mldsa44 - sha1 has signedAttrs
 SDV_CMS_GEN_SIGNEDDATA_INVALID_HASH_TC001:"../testdata/cert/asn1/cms/signeddata/mldsa/mldsa44/ca_cert.pem":"../testdata/cert/asn1/cms/signeddata/mldsa/mldsa44/entity_cert.pem":"../testdata/cert/asn1/cms/signeddata/mldsa/mldsa44/entity_key.pem":"../testdata/cert/asn1/cms/signeddata/msg.txt":1:1:BSL_CID_SHA1:HITLS_CMS_ERR_MLDSA_INVALID_DIGEST

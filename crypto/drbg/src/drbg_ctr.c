@@ -117,6 +117,7 @@ int32_t DRBG_CtrUpdate(DRBG_Ctx *drbg, const CRYPT_Data *in1, const CRYPT_Data *
     // The lower bits of temp.data are used for ctx->K, and the upper bits are used for ctx->V.
     (void)memcpy_s(ctx->v, AES_BLOCK_LEN, temp.data + ctx->keyLen, AES_BLOCK_LEN);
 EXIT:
+    BSL_SAL_CleanseData(tempData, sizeof(tempData));
     (void)ciphMeth->cipherDeInitCtx(ctx->ctrCtx);
     return ret;
 }
@@ -338,6 +339,7 @@ static int32_t BlockCipherDf(DRBG_Ctx *drbg, const CRYPT_Data *in1, const CRYPT_
         BSL_ERR_PUSH_ERROR(ret);
     }
 
+    BSL_SAL_CleanseData(temp, sizeof(temp));
     return ret;
 }
 
@@ -479,6 +481,7 @@ static int32_t DRBG_CtrGenerateBlocks(DRBG_Ctx *drbg, uint8_t *out, uint32_t out
         // tmpOutLen indicates the length of the out remaining. In the last part of DRBG generation,
         // truncate the length of tmpOutLen and assign it to the out remaining.
         (void)memcpy_s(out + offset, tmpOutLen, temp, tmpOutLen);
+        BSL_SAL_CleanseData(temp, sizeof(temp));
     }
 
     return ret;

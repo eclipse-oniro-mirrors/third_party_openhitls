@@ -53,6 +53,7 @@ static void MLKEM_KeyReset(CRYPT_ML_KEM_Ctx *ctx)
     BSL_SAL_FREE(ctx->dk);
     BSL_SAL_FREE(ctx->ek);
     BSL_SAL_FREE(ctx->keyData.bufAddr);
+    BSL_SAL_CleanseData(ctx->seed, sizeof(ctx->seed));
 }
 
 CRYPT_ML_KEM_Ctx *CRYPT_ML_KEM_NewCtx(void)
@@ -89,11 +90,7 @@ void CRYPT_ML_KEM_FreeCtx(CRYPT_ML_KEM_Ctx *ctx)
     if (ret > 0) {
         return;
     }
-    BSL_SAL_CleanseData(ctx->seed, sizeof(ctx->seed));
-    BSL_SAL_CleanseData(ctx->dk, ctx->dkLen);
-    BSL_SAL_FREE(ctx->dk);
-    BSL_SAL_FREE(ctx->ek);
-    BSL_SAL_FREE(ctx->keyData.bufAddr);
+    MLKEM_KeyReset(ctx);
     BSL_SAL_ReferencesFree(&(ctx->references));
     BSL_SAL_FREE(ctx);
 }
@@ -394,7 +391,7 @@ int32_t CRYPT_ML_KEM_SetDecapsKey(CRYPT_ML_KEM_Ctx *ctx, const CRYPT_KemDecapsKe
     uint8_t *ekData = BSL_SAL_Dump(dk->data + MLKEM_CIPHER_LEN * ctx->info->k, ctx->info->encapsKeyLen);
     if (dkData == NULL || ekData == NULL) {
         MLKEM_KeyReset(ctx);
-        BSL_SAL_FREE(dkData);
+        BSL_SAL_ClearFree(dkData, dk->len);
         BSL_SAL_FREE(ekData);
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);
         return CRYPT_MEM_ALLOC_FAIL;
@@ -452,7 +449,7 @@ static int32_t MlKemCreateKeyBuf(CRYPT_ML_KEM_Ctx *ctx)
 static int32_t MLKEM_RecomputeKeyFromSeed(CRYPT_ML_KEM_Ctx *ctx, const uint8_t *seed, uint32_t len)
 {
     // 64: mlkem seed length: 32 bytes (d) + 32 bytes (z)
-    if (len < MLKEM_SEED_LEN * 2) {
+    if (len != MLKEM_SEED_LEN * 2) {
         BSL_ERR_PUSH_ERROR(CRYPT_MLKEM_KEYLEN_ERROR);
         return CRYPT_MLKEM_KEYLEN_ERROR;
     }
@@ -616,11 +613,15 @@ int32_t CRYPT_ML_KEM_Cmp(const CRYPT_ML_KEM_Ctx *a, const CRYPT_ML_KEM_Ctx *b)
 }
 #endif
 
-static int32_t MlkemGetSecBits(const CRYPT_ML_KEM_Ctx *ctx, int32_t *val)
+static int32_t MlkemGetSecBits(const CRYPT_ML_KEM_Ctx *ctx, int32_t *val, uint32_t len)
 {
     if (ctx->info == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MLKEM_KEYINFO_NOT_SET);
         return CRYPT_MLKEM_KEYINFO_NOT_SET;
+    }
+    if (len != sizeof(int32_t)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_INVALID_ARG);
+        return CRYPT_INVALID_ARG;
     }
     *val = (int32_t)ctx->info->secBits;
     return CRYPT_SUCCESS;
@@ -669,7 +670,7 @@ int32_t CRYPT_ML_KEM_Ctrl(CRYPT_ML_KEM_Ctx *ctx, int32_t opt, void *val, uint32_
         case CRYPT_CTRL_GET_MLKEM_DK_FORMAT:
             return MlKemGetDkFormat(ctx, val, len);
         case CRYPT_CTRL_GET_SECBITS:
-            return MlkemGetSecBits(ctx, val);
+            return MlkemGetSecBits(ctx, val, len);
         default:
             BSL_ERR_PUSH_ERROR(CRYPT_MLKEM_CTRL_NOT_SUPPORT);
             return CRYPT_MLKEM_CTRL_NOT_SUPPORT;
@@ -692,14 +693,15 @@ int32_t CRYPT_ML_KEM_GenKey(CRYPT_ML_KEM_Ctx *ctx)
     uint8_t d[MLKEM_SEED_LEN];
     uint8_t z[MLKEM_SEED_LEN];
     int32_t ret = CRYPT_RandEx(ctx->libCtx, d, MLKEM_SEED_LEN);
-    RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
     ret = CRYPT_RandEx(ctx->libCtx, z, MLKEM_SEED_LEN);
-    RETURN_RET_IF(ret != CRYPT_SUCCESS, ret);
+    GOTO_ERR_IF_TRUE(ret != CRYPT_SUCCESS, ret);
 
     ret = MLKEM_KeyGenInternal(ctx, d, z);
     if (ret != CRYPT_SUCCESS) {
         MLKEM_KeyReset(ctx);
     }
+ERR:
     BSL_SAL_CleanseData(d, MLKEM_SEED_LEN);
     BSL_SAL_CleanseData(z, MLKEM_SEED_LEN);
     return ret;

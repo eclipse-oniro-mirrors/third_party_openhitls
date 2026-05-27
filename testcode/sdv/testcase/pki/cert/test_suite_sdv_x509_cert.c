@@ -17,6 +17,8 @@
 
 #include "bsl_sal.h"
 #include "securec.h"
+#include <string.h>
+#include <stdlib.h>
 #include "stub_utils.h"
 #include "hitls_pki_cert.h"
 #include "hitls_pki_csr.h"
@@ -47,6 +49,47 @@ STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 #endif
 STUB_DEFINE_RET2(int32_t, HITLS_X509_ParseCertTbs, BSL_ASN1_Buffer *, HITLS_X509_Cert *);
 
+static uint32_t g_certSerialMemAllocCount = 0;
+static uint32_t g_certSerialMemFreeCount = 0;
+
+static void *CertSerialMemMalloc(uint32_t size)
+{
+    void *ptr = malloc((size_t)size);
+    if (ptr != NULL) {
+        g_certSerialMemAllocCount++;
+    }
+    return ptr;
+}
+
+static void CertSerialMemFree(void *ptr)
+{
+    if (ptr != NULL) {
+        g_certSerialMemFreeCount++;
+    }
+    free(ptr);
+}
+
+static int32_t CertSerialMemTrackStart(void)
+{
+    g_certSerialMemAllocCount = 0;
+    g_certSerialMemFreeCount = 0;
+    int32_t ret = BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC, CertSerialMemMalloc);
+    if (ret != BSL_SUCCESS) {
+        return ret;
+    }
+    return BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE, CertSerialMemFree);
+}
+
+static void CertSerialMemTrackStop(void)
+{
+#ifdef HITLS_BSL_SAL_MEM
+    (void)BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_MALLOC, NULL);
+    (void)BSL_SAL_CallBack_Ctrl(BSL_SAL_MEM_FREE, NULL);
+#else
+    TestMemInit();
+#endif
+}
+
 /* BEGIN_CASE */
 void SDV_X509_CERT_PARSE_FUNC_TC001(int format, char *path)
 {
@@ -58,6 +101,108 @@ void SDV_X509_CERT_PARSE_FUNC_TC001(int format, char *path)
     ASSERT_TRUE(TestIsErrStackEmpty());
 EXIT:
     HITLS_X509_CertFree(cert);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_X509_CERT_PARSE_NO_NUL_TERMINATOR_TC001
+ * title 1. Test parsing a PEM certificate buffer whose byte after encode.dataLen is nonzero.
+ *       2. Verify CertParseBuff uses encode.dataLen as the boundary and does not require a trailing '\0'.
+ *
+ */
+/* BEGIN_CASE */
+void SDV_X509_CERT_PARSE_NO_NUL_TERMINATOR_TC001(char *path)
+{
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    uint8_t *fileData = NULL;
+    uint32_t fileLen = 0;
+    uint8_t *noNulData = NULL;
+    BSL_Buffer encode = {0};
+    HITLS_X509_Cert *cert = NULL;
+
+    ASSERT_EQ(BSL_SAL_ReadFile(path, &fileData, &fileLen), BSL_SUCCESS);
+    ASSERT_TRUE(fileData != NULL && fileLen > 0);
+
+    /*
+     * Test point: build a PEM buffer whose byte after encode.dataLen is nonzero.
+     * CertParseBuff must parse strictly within encode.dataLen and must not depend on a trailing '\0'.
+     */
+    noNulData = BSL_SAL_Malloc(strlen((const char *)fileData));
+    ASSERT_TRUE(noNulData != NULL);
+    memcpy(noNulData, fileData, strlen((const char *)fileData));
+
+    encode.data = noNulData;
+    encode.dataLen = strlen((const char *)fileData);
+    /* Verify the PEM certificate buffer can still be parsed when the out-of-range sentinel is not '\0'. */
+    ASSERT_EQ(HITLS_X509_CertParseBuff(BSL_FORMAT_PEM, &encode, &cert), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE(cert != NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HITLS_X509_CertFree(cert);
+    BSL_SAL_Free(fileData);
+    BSL_SAL_Free(noNulData);
+    BSL_GLOBAL_DeInit();
+}
+/* END_CASE */
+
+/**
+ * @test SDV_X509_CERT_PARSE_UNKNOWN_NO_NUL_TERMINATOR_TC001
+ * title 1. Test parsing PEM and DER certificate buffers with UNKNOWN format and no trailing '\0'.
+ *       2. Test both CertParseBuff and ProviderCertParseBuff use encode.dataLen as the parsing boundary.
+ *
+ */
+/* BEGIN_CASE */
+void SDV_X509_CERT_PARSE_UNKNOWN_NO_NUL_TERMINATOR_TC001(int isProvider, char *path)
+{
+#ifndef HITLS_CRYPTO_PROVIDER
+    if (isProvider != 0) {
+        (void)path;
+        SKIP_TEST();
+    }
+#endif
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    uint8_t *fileData = NULL;
+    uint32_t fileLen = 0;
+    uint8_t *noNulData = NULL;
+    BSL_Buffer encode = {0};
+    HITLS_X509_Cert *cert = NULL;
+
+    ASSERT_EQ(BSL_SAL_ReadFile(path, &fileData, &fileLen), BSL_SUCCESS);
+    ASSERT_TRUE(fileData != NULL && fileLen > 0);
+
+    /*
+     * Test point: append a nonzero sentinel after dataLen. UNKNOWN format must identify PEM or DER from
+     * encode.dataLen bytes only and must not read the sentinel as a string terminator or input byte.
+     */
+    noNulData = BSL_SAL_Malloc(fileLen + 1);
+    ASSERT_TRUE(noNulData != NULL);
+    memcpy(noNulData, fileData, fileLen);
+    noNulData[fileLen] = 0xA5;
+    ASSERT_TRUE(noNulData[fileLen] != 0);
+    encode.data = noNulData;
+    encode.dataLen = fileLen;
+
+#ifdef HITLS_CRYPTO_PROVIDER
+    if (isProvider != 0) {
+        /* Test point: provider format NULL maps to BSL_FORMAT_UNKNOWN. */
+        ASSERT_EQ(HITLS_X509_ProviderCertParseBuff(NULL, NULL, NULL, &encode, &cert), HITLS_PKI_SUCCESS);
+    } else
+#endif
+    {
+        /* Test point: non-provider BSL_FORMAT_UNKNOWN auto-detects PEM or DER content. */
+        ASSERT_EQ(HITLS_X509_CertParseBuff(BSL_FORMAT_UNKNOWN, &encode, &cert), HITLS_PKI_SUCCESS);
+    }
+    ASSERT_TRUE(cert != NULL);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HITLS_X509_CertFree(cert);
+    BSL_SAL_Free(fileData);
+    BSL_SAL_Free(noNulData);
     BSL_GLOBAL_DeInit();
 }
 /* END_CASE */
@@ -1362,5 +1507,42 @@ EXIT:
     HITLS_X509_CertFree(cert);
     STUB_RESTORE(BSL_SAL_Malloc);
 #endif
+}
+/* END_CASE */
+
+/**
+ * @test   SDV_X509_CERT_SET_SERIAL_REPLACE_MEM_TC001
+ * @title  Replace a generated certificate serial number without leaking the old buffer.
+ * @brief  Set serial number twice on the same generated certificate and release the certificate,
+ *         verifying that the second serial is effective and all SAL allocations are freed.
+ * @expect The second serial number is returned and allocation/free counts are balanced.
+ */
+/* BEGIN_CASE */
+void SDV_X509_CERT_SET_SERIAL_REPLACE_MEM_TC001(void)
+{
+    HITLS_X509_Cert *cert = NULL;
+    uint8_t serial1[] = {0x01, 0x02, 0x03, 0x04};
+    uint8_t serial2[] = {0x11, 0x22, 0x33, 0x44, 0x55};
+    BSL_Buffer getSerial = {0};
+
+    TestMemInit();
+    ASSERT_EQ(CertSerialMemTrackStart(), BSL_SUCCESS);
+
+    cert = HITLS_X509_CertNew();
+    ASSERT_NE(cert, NULL);
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_SERIALNUM, serial1, sizeof(serial1)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_SERIALNUM, serial2, sizeof(serial2)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_GET_SERIALNUM, &getSerial, sizeof(BSL_Buffer)), HITLS_PKI_SUCCESS);
+    ASSERT_COMPARE("cert serial", getSerial.data, getSerial.dataLen, serial2, sizeof(serial2));
+
+    HITLS_X509_CertFree(cert);
+    cert = NULL;
+    ASSERT_EQ(g_certSerialMemAllocCount, g_certSerialMemFreeCount);
+    CertSerialMemTrackStop();
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    HITLS_X509_CertFree(cert);
+    CertSerialMemTrackStop();
 }
 /* END_CASE */

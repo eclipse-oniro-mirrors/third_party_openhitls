@@ -89,7 +89,7 @@ enum CRYPT_ERROR {
     CRYPT_RSA_ERR_KEY_BITS,             /**< Incorrect key length. */
     CRYPT_RSA_ERR_E_VALUE,              /**< The value of parameter e is incorrect. */
     CRYPT_RSA_NOR_KEYGEN_FAIL,          /**< Key generation failure, it's normal error. */
-    CRYPT_RSA_NOR_VERIFY_FAIL,          /**< Failed to verify the signature. it's normal error. */
+    CRYPT_RSA_NOR_VERIFY_FAIL,          /**< Failed to verify. it's normal error. */
     CRYPT_RSA_ERR_ENC_BITS,             /**< Incorrect length of the encrypted plaintext of the public key. */
     CRYPT_RSA_ERR_DEC_BITS,             /**< Incorrect length of the decrypted ciphertext of the private key. */
     CRYPT_RSA_ERR_PSS_SALT_LEN,         /**< Incorrect salt length of the PSS operation. */
@@ -409,7 +409,7 @@ enum CRYPT_ERROR {
     CRYPT_SM4_ERR_KEY_LEN,                            /**< Wrong key length is set. */
     CRYPT_SM4_UNSAFE_KEY,                             /**< DataKey is the same as tweakKey. */
 
-    CRYPT_SM9_BUFF_LEN_NOT_ENOUGH = 0x01210000,       /**< SM9 buffer length not enough. */
+    CRYPT_SM9_BUFF_LEN_NOT_ENOUGH = 0x011C0001,       /**< SM9 buffer length not enough. */
     CRYPT_SM9_ERR_KEY_ERR,                            /**< SM9 key error. */
     CRYPT_SM9_ERR_NOT_SUPPORT,                        /**< SM9 operation not supported. */
     CRYPT_SM9_ERR_SIGN_FAILED,                        /**< SM9 signature failed. */
@@ -422,7 +422,6 @@ enum CRYPT_ERROR {
     CRYPT_SM9_ERR_BAD_INPUT,                          /**< SM9 bad input parameter. */
     CRYPT_SM9_ERR_NO_USER_KEY,                        /**< SM9 user key not set. */
     CRYPT_SM9_ERR_NO_MASTER_KEY,                      /**< SM9 master key not set. */
-    CRYPT_SM9_ERR_KEY_EXCHANGE_FAILED,                /**< SM9 key exchange failed. */
     CRYPT_SM9_PAIRWISE_CHECK_FAIL,                    /**< The public and private keys are inconsistent. */
     CRYPT_SM9_INVALID_PRVKEY,                         /**< Invalid private key. */
 

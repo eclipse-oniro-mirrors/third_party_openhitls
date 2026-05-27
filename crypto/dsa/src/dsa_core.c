@@ -1048,6 +1048,20 @@ EXIT:
     return ret;
 }
 
+static int32_t VerifyCheckSign(const BN_BigNum *q, BN_BigNum *r, BN_BigNum *s)
+{
+    if ((BN_Cmp(r, q) >= 0) || (BN_Cmp(s, q) >= 0)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        return CRYPT_DSA_VERIFY_FAIL;
+    }
+    if (BN_IsZero(r) || BN_IsZero(s)) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_VERIFY_FAIL);
+        return CRYPT_DSA_VERIFY_FAIL;
+    }
+
+    return CRYPT_SUCCESS;
+}
+
 int32_t CRYPT_DSA_VerifyData(const CRYPT_DSA_Ctx *ctx, const uint8_t *data, uint32_t dataLen,
     const uint8_t *sign, uint32_t signLen)
 {
@@ -1069,6 +1083,10 @@ int32_t CRYPT_DSA_VerifyData(const CRYPT_DSA_Ctx *ctx, const uint8_t *data, uint
     }
 
     ret = CRYPT_EAL_DecodeSign(sign, signLen, r, s);
+    if (ret != CRYPT_SUCCESS) {
+        goto EXIT;
+    }
+    ret = VerifyCheckSign(ctx->para->q, r, s);
     if (ret != CRYPT_SUCCESS) {
         goto EXIT;
     }
@@ -1581,6 +1599,10 @@ int32_t CryptDsaFips1864GenParams(CRYPT_DSA_Ctx *ctx, void *val)
 // Set flag == 1, enable generate private key SP800-56Ar3 5_6_1_1_4.
 static int32_t CRYPT_SetFipsFlag(CRYPT_DSA_Ctx *ctx, void *val, uint32_t len)
 {
+    if (val == NULL) {
+        BSL_ERR_PUSH_ERROR(CRYPT_NULL_INPUT);
+        return CRYPT_NULL_INPUT;
+    }
     if (len != sizeof(uint32_t)) {
         BSL_ERR_PUSH_ERROR(CRYPT_DSA_PARA_ERROR);
         return CRYPT_DSA_PARA_ERROR;

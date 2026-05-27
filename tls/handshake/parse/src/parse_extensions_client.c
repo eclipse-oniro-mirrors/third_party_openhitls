@@ -175,7 +175,7 @@ int32_t ParseServerSelectedAlpnProtocol(
 
     /* If the length of the packet does not match the extended length, or the length is 0, the handshake message error
      * is returned */
-    if (((selectedAlpnListLen * sizeof(uint8_t)) != (pkt->bufLen - sizeof(uint16_t))) || (selectedAlpnListLen == 0)) {
+    if (((selectedAlpnListLen * sizeof(uint8_t)) != (pkt->bufLen - sizeof(uint16_t))) || (selectedAlpnLen == 0)) {
         return ParseErrorExtLengthProcess(pkt->ctx, BINLOG_ID15199, BINGLOG_STR("alpn"));
     }
     /* According to the protocol rfc7301, The alpn extension returned by s end is allowed to contain only one protocol
@@ -348,10 +348,8 @@ static int32_t ParseServerExBody(TLS_Ctx *ctx, uint16_t extMsgType, const uint8_
         case HS_EX_TYPE_ENCRYPT_THEN_MAC:
             return ParseServerEncryptThenMac(&pkt, msg);
 #endif /* HITLS_TLS_FEATURE_ETM */
-#ifdef HITLS_TLS_PROTO_TLS13
         case HS_EX_TYPE_SUPPORTED_GROUPS:
             return HITLS_SUCCESS;
-#endif /* HITLS_TLS_PROTO_TLS13 */
 #ifdef HITLS_TLS_FEATURE_RECORD_SIZE_LIMIT
         case HS_EX_TYPE_RECORD_SIZE_LIMIT:
             return ParseRecordSizeLimit(pkt.ctx, pkt.buf, extMsgLen, &msg->haveRecordSizeLimit, &msg->recordSizeLimit);
@@ -377,6 +375,9 @@ int32_t ParseServerExtension(TLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, 
 {
     /* Initialize the message parsing length */
     uint32_t bufOffset = 0u;
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+    uint32_t customExtSeenMask = 0;
+#endif
     ParsePacket pkt = {.ctx = ctx, .buf = buf, .bufLen = bufLen, .bufOffset = &bufOffset};
 
     /* Parse the extended message from server */
@@ -388,6 +389,16 @@ int32_t ParseServerExtension(TLS_Ctx *ctx, const uint8_t *buf, uint32_t bufLen, 
         if (ret != HITLS_SUCCESS) {
             return ret;
         }
+#ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
+        if (extensionId == HS_EX_TYPE_ID_UNRECOGNIZED) {
+            ret = CheckForDuplicateCustomExtension(ctx, extMsgType,
+                HITLS_EX_TYPE_TLS1_2_SERVER_HELLO | HITLS_EX_TYPE_TLS1_3_SERVER_HELLO |
+                HITLS_EX_TYPE_HELLO_RETRY_REQUEST, &customExtSeenMask, NULL);
+            if (ret != HITLS_SUCCESS) {
+                return ret;
+            }
+        }
+#endif /* HITLS_TLS_FEATURE_CUSTOM_EXTENSION */
         if (extensionId != HS_EX_TYPE_ID_UNRECOGNIZED
 #ifdef HITLS_TLS_FEATURE_CUSTOM_EXTENSION
             || !IsParseNeedCustomExtensions(CUSTOM_EXT_FROM_CTX(ctx), extMsgType,

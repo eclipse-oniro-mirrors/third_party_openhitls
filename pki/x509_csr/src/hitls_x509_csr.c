@@ -125,13 +125,13 @@ void HITLS_X509_CsrFree(HITLS_X509_Csr *csr)
         return;
     }
     BSL_SAL_ReferencesFree(&(csr->references));
+    BSL_LIST_PFUNC_FREE func = (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeParsedNameNode;
     if (csr->flag == HITLS_X509_CSR_GEN_FLAG) {
-        BSL_LIST_FREE(csr->reqInfo.subjectName, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeNameNode);
+        func = (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeNameNode;
         BSL_SAL_FREE(csr->reqInfo.reqInfoRawData);
         BSL_SAL_FREE(csr->signature.buff);
-    } else {
-        BSL_LIST_FREE(csr->reqInfo.subjectName, (BSL_LIST_PFUNC_FREE)HITLS_X509_FreeParsedNameNode);
     }
+    BSL_LIST_FREE(csr->reqInfo.subjectName, func);
 #ifdef HITLS_CRYPTO_SM2
     if (csr->signAlgId.algId == BSL_CID_SM2DSAWITHSM3) {
         BSL_SAL_FREE(csr->signAlgId.sm2UserId.data);
@@ -193,11 +193,19 @@ static int32_t ParseCertRequestInfo(BSL_ASN1_Buffer *asnArr, HITLS_X509_Csr *csr
         goto ERR;
     }
     /* attributes */
+#ifdef HITLS_PKI_X509_CSR_ATTR
     ret = HITLS_X509_ParseAttrList(&asnArr[HITLS_X509_CSR_REQINFO_ATTRS_IDX], csr->reqInfo.attributes, NULL, NULL);
     if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
         goto ERR;
     }
+#else
+    if (asnArr[HITLS_X509_CSR_REQINFO_ATTRS_IDX].len > 0) {
+        ret = HITLS_X509_ERR_ATTR_UNSUPPORT;
+        BSL_ERR_PUSH_ERROR(ret);
+        goto ERR;
+    }
+#endif
     return ret;
 
 ERR:
@@ -706,8 +714,12 @@ int32_t HITLS_X509_CsrVerify(HITLS_X509_Csr *csr)
         BSL_ERR_PUSH_ERROR(HITLS_X509_ERR_INVALID_PARAM);
         return HITLS_X509_ERR_INVALID_PARAM;
     }
+    int32_t ret = HITLS_X509_CheckAlg((CRYPT_EAL_PkeyCtx *)csr->reqInfo.ealPubKey, &csr->signAlgId);
+    if (ret != HITLS_PKI_SUCCESS) {
+        return ret;
+    }
 
-    int32_t ret = HITLS_X509_CheckSignature((const CRYPT_EAL_PkeyCtx *)csr->reqInfo.ealPubKey,
+    ret = HITLS_X509_CheckSignature((const CRYPT_EAL_PkeyCtx *)csr->reqInfo.ealPubKey,
         csr->reqInfo.reqInfoRawData, csr->reqInfo.reqInfoRawDataLen, &csr->signAlgId, &csr->signature);
     if (ret != HITLS_PKI_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);

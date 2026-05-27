@@ -15,6 +15,7 @@
 
 #include <stdbool.h>
 #include "securec.h"
+#include <limits.h>
 #include "bsl_err.h"
 #include "bsl_log_internal.h"
 #include "bsl_binlog_id.h"
@@ -51,6 +52,10 @@ int32_t BSL_ASN1_DecodeLen(uint8_t **encode, uint32_t *encLen, bool completeLen,
         tempLen--;
         parseLen += ((completeLen) ? 1 : 0);
     } else {
+        /* Indefinite length (0x80) is unsupported because this decoder only handles definite lengths. */
+        if (*temp == BSL_ASN1_INDEFINITE_LENGTH) {
+            return BSL_ASN1_ERR_DECODE_LEN;
+        }
         uint32_t index = *temp - BSL_ASN1_INDEFINITE_LENGTH;
         if (index > sizeof(int32_t)) {
             return BSL_ASN1_ERR_MAX_LEN_NUM;
@@ -171,16 +176,18 @@ static int32_t ParseBool(uint8_t *val, uint32_t len, bool *decodeData)
 
 static int32_t ParseInt(uint8_t *val, uint32_t len, int *decodeData)
 {
-    uint8_t *temp = val;
+    uint64_t acc = 0;
     if (len < 1 || len > sizeof(int)) {
         return BSL_ASN1_ERR_DECODE_INT;
     }
 
-    *decodeData = 0;
     for (uint32_t i = 0; i < len; i++) {
-        *decodeData = (*decodeData << 8) | *temp;
-        temp++;
+        acc = (acc << 8) | val[i];
+        if (acc > INT_MAX) {
+            return BSL_ASN1_ERR_DECODE_INT;
+        }
     }
+    *decodeData = (int)acc;
     return BSL_SUCCESS;
 }
 
@@ -1175,6 +1182,9 @@ static int32_t CheckAsnArr(BSL_ASN1_Buffer *asnArr, uint32_t arrNum)
 {
     int32_t ret;
     for (uint32_t i = 0; i < arrNum; i++) {
+        if (asnArr[i].len != 0 && asnArr[i].buff == NULL) {
+            return BSL_INVALID_ARG;
+        }
         if (asnArr[i].buff != NULL) {
             ret = CheckAsn(asnArr + i);
             if (ret != BSL_SUCCESS) {
@@ -1459,6 +1469,9 @@ static int32_t EncodeCodePointToUtf8(const uint8_t *data, uint32_t dataLen, uint
         ret = CodePointToUtf8(codePoint, out, &needLen);
         if (ret != BSL_SUCCESS) {
             return ret;
+        }
+        if (*outLen > UINT32_MAX - needLen) {
+            return BSL_ASN1_ERR_LEN_OVERFLOW;
         }
         if (out != NULL) {
             out += needLen;

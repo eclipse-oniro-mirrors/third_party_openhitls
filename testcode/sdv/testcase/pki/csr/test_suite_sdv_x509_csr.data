@@ -214,6 +214,12 @@ SDV_X509_CSR_AddSubjectName_FUNC_TC001:BSL_FORMAT_ASN1:CRYPT_PRIKEY_PKCS8_UNENCR
 SDV_X509_CSR_PARSE_FUNC_TC004 #error csr
 SDV_X509_CSR_PARSE_FUNC_TC004:BSL_FORMAT_ASN1:"../testdata/cert/asn1/ecdsa_sha_csr/error_csr.der":HITLS_X509_ERR_PARSE_STR
 
+SDV_X509_CSR_PARSE_FUNC_TC005 #csr with attributes should be rejected when CSR attr support is disabled
+SDV_X509_CSR_PARSE_FUNC_TC005:BSL_FORMAT_PEM:"../testdata/cert/pem/csr/rsa1024_withattr.csr":HITLS_X509_ERR_ATTR_UNSUPPORT
+
+SDV_X509_CSR_PARSE_FUNC_TC005 #csr without attributes should still parse when CSR attr support is disabled
+SDV_X509_CSR_PARSE_FUNC_TC005:BSL_FORMAT_PEM:"../testdata/cert/pem/csr/csr.pem":HITLS_PKI_SUCCESS
+
 SDV_X509_CSR_PARSE_ATTR_EXTS_TC001
 SDV_X509_CSR_PARSE_ATTR_EXTS_TC001:BSL_FORMAT_PEM:"../testdata/cert/pem/csr/rsa1024_withattr.csr":1:0:HITLS_X509_EXT_KU_DIGITAL_SIGN | HITLS_X509_EXT_KU_KEY_CERT_SIGN:"www.example.com":"example.org":"admin@example.com":"ldap://somehost.com/CN=foo":"507DBCF3A58A7593495FE638A91464A09C602631":1:1
 
@@ -249,3 +255,6 @@ SDV_X509_CSR_WITH_CUSTOM_EXT_PARSE_TEST_TC001:"../testdata/cert/asn1/csrcheck/cu
 
 SDV_X509_CSR_PRINT_UNKNOWN_ATTR_TC001: print CSR with unknown attribute OID
 SDV_X509_CSR_PRINT_UNKNOWN_ATTR_TC001:"../testdata/cert/asn1/csrcheck/unknown_attr_csr.der":"../testdata/cert/asn1/csrcheck/check/unknown_attr_csr"
+
+SDV_X509_CSR_VERIFY_RSA_PSS_KEY_MD_MISMATCH_TC001 #rsa-pss csr with mismatched key and signatureAlgorithm md
+SDV_X509_CSR_VERIFY_RSA_PSS_KEY_MD_MISMATCH_TC001:BSL_FORMAT_PEM:"../testdata/cert/pem/csr/rsa_pss_sha/rsa2048_pss_withattr.csr":CRYPT_MD_SHA1:HITLS_X509_ERR_MD_NOT_MATCH

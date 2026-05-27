@@ -14,7 +14,7 @@
  */
 
 #include "hitls_build.h"
-#if defined(HITLS_CRYPTO_CMVP_SM) || defined(HITLS_CRYPTO_CMVP_FIPS)
+#if defined(HITLS_CRYPTO_CMVP_SM)
 
 #include <math.h>
 #include <float.h>
@@ -161,7 +161,7 @@ static int32_t CMVP_PokerTest(const uint8_t *data, uint32_t len)
     // blocklen can be 2, 4 or 8 in GM/T 0005-2016, blocklen can't be greater than 8.
     for (int blocklen = 8; blocklen >= 2; blocklen -= 2) {
         // [n/m] >= 5 * 2^m in GM/T 0005-2016 chart B.1
-        if ((uint32_t)(len / blocklen) >= 5 * pow(2, blocklen)) {
+        if (blocklen != 6 && (uint32_t)(len / blocklen) >= 5 * pow(2, blocklen)) {
             return PokerTest(data, len, blocklen);
         }
     }
@@ -197,4 +197,4 @@ int32_t CRYPT_CMVP_RandomnessTest(const uint8_t *data, const uint32_t len)
     return ret;
 }
 
-#endif /* HITLS_CRYPTO_CMVP_SM || HITLS_CRYPTO_CMVP_FIPS */
+#endif /* HITLS_CRYPTO_CMVP_SM */

@@ -12,6 +12,7 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
+#include <string.h>
 #include "hitls_build.h"
 #ifdef HITLS_TLS_HOST_CLIENT
 #if defined(HITLS_TLS_PROTO_TLS_BASIC) || defined(HITLS_TLS_PROTO_DTLS12)
@@ -141,7 +142,7 @@ int32_t VerifySignature(TLS_Ctx *ctx, const uint8_t *kxData, uint32_t kxDataLen,
     }
 
     if (ctx->hsCtx->peerCert == NULL) {
-        BSL_SAL_FREE(data);
+        BSL_SAL_ClearFree(data, signParam.dataLen);
         return ParseErrorProcess(ctx, HITLS_PARSE_VERIFY_SIGN_FAIL, BINLOG_ID17013,
             BINGLOG_STR("peerCert null"), ALERT_CERTIFICATE_REQUIRED);
     }
@@ -152,7 +153,7 @@ int32_t VerifySignature(TLS_Ctx *ctx, const uint8_t *kxData, uint32_t kxDataLen,
     if (ret != HITLS_SUCCESS) {
         BSL_LOG_BINLOG_FIXLEN(BINLOG_ID17014, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
             "GET_PUB_KEY fail", 0, 0, 0, 0);
-        BSL_SAL_FREE(data);
+        BSL_SAL_ClearFree(data, signParam.dataLen);
         ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_INTERNAL_ERROR);
         return ret;
     }
@@ -160,7 +161,7 @@ int32_t VerifySignature(TLS_Ctx *ctx, const uint8_t *kxData, uint32_t kxDataLen,
     signParam.data = data;
     ret = SAL_CERT_VerifySign(ctx, pubkey, &signParam);
     SAL_CERT_KeyFree(ctx->config.tlsConfig.certMgrCtx, pubkey);
-    BSL_SAL_FREE(data);
+    BSL_SAL_ClearFree(data, signParam.dataLen);
     if (ret != HITLS_SUCCESS) {
         return ParseErrorProcess(ctx, HITLS_PARSE_VERIFY_SIGN_FAIL, BINLOG_ID15314,
             BINGLOG_STR("verify signature fail."), ALERT_DECRYPT_ERROR);
@@ -410,6 +411,7 @@ static int32_t ParseServerIdentityHint(ParsePacket *pkt, ServerKeyExchangeMsg *m
 {
     uint16_t identityHintLen = 0;
     uint8_t *identityHint = NULL;
+    uint8_t *tempIdentityHint = NULL;
 
     int32_t ret = ParseTwoByteLengthField(pkt, &identityHintLen, &identityHint);
     if (ret == HITLS_PARSE_INVALID_MSG_LEN) {
@@ -425,11 +427,20 @@ static int32_t ParseServerIdentityHint(ParsePacket *pkt, ServerKeyExchangeMsg *m
     }
 
     if (identityHintLen != 0) {
+        tempIdentityHint = (uint8_t *)BSL_SAL_Calloc(identityHintLen + 1, sizeof(uint8_t));
+        if (tempIdentityHint == NULL) {
+            BSL_SAL_FREE(identityHint);
+            BSL_LOG_BINLOG_FIXLEN(
+                BINLOG_ID15085, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN, "Malloc fail", 0, 0, 0, 0);
+            return HITLS_MEMALLOC_FAIL;
+        }
+        memcpy(tempIdentityHint, identityHint, identityHintLen);
+        BSL_SAL_FREE(identityHint);
         BSL_LOG_BINLOG_VARLEN(BINLOG_ID15324, BSL_LOG_LEVEL_INFO, BSL_LOG_BINLOG_TYPE_RUN,
-            "receive server identity hint: %s.", identityHint);
+            "receive server identity hint: %s.", tempIdentityHint);
     }
 
-    msg->pskIdentityHint = identityHint;
+    msg->pskIdentityHint = tempIdentityHint;
     msg->hintSize = identityHintLen;
 
     return HITLS_SUCCESS;
@@ -535,12 +546,12 @@ int32_t ParseServerKeyExchange(TLS_Ctx *ctx, const uint8_t *data, uint32_t len, 
             ret = ParseServerDhe(&pkt, msg);
             break;
 #endif /* HITLS_TLS_SUITE_KX_DHE */
-#ifdef HITLS_TLS_SUITE_KX_RSA
         /* PSK & RSA_PSK nego may pack identity hint inside ServerKeyExchange msg */
         case HITLS_KEY_EXCH_PSK:
+#ifdef HITLS_TLS_SUITE_KX_RSA
         case HITLS_KEY_EXCH_RSA_PSK:
-            break;
 #endif /* HITLS_TLS_SUITE_KX_RSA */
+            break;
 #ifdef HITLS_TLS_PROTO_TLCP11
         case HITLS_KEY_EXCH_ECC:
             ret = ParseServerKxMsgEcc(&pkt);

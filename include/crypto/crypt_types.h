@@ -639,7 +639,9 @@ typedef enum {
     CRYPT_CTRL_GET_PUBKEY_LEN,           /**< Get the encapsulation key length */
     CRYPT_CTRL_GET_PRVKEY_LEN,           /**< Get the decapsulation key length */
     CRYPT_CTRL_GET_CIPHERTEXT_LEN,       /**< Get the ciphertext length */
-    CRYPT_CTRL_SET_DETERMINISTIC_FLAG,   /**< Whether to use deterministic signatures */
+    CRYPT_CTRL_SET_DETERMINISTIC_FLAG,   /**< Whether to use deterministic signatures.
+                                              Only supports switching from non-deterministic to deterministic.
+                                              Switching back to non-deterministic is not supported. */
     CRYPT_CTRL_SET_CTX_INFO,             /**< Set the context string. */
     CRYPT_CTRL_SET_PREHASH_MODE,         /**< Change the SLH-DSA or ML-DSA mode to prehash version or pure version. */
     CRYPT_CTRL_GEN_PARA,                 /**< Asymmetric cipher generate para. */
@@ -683,7 +685,9 @@ typedef enum {
     CRYPT_CTRL_SET_SM2_R,               /* SM2 set the R value. */
     CRYPT_CTRL_SET_SM2_RANDOM,          /* SM2 set the r value. */
     CRYPT_CTRL_SET_SM2_PKG,             /* SM2 uses the PKG process. */
-    CRYPT_CTRL_SET_SM2_K,               /* SM2 set the K value. */
+    CRYPT_CTRL_SET_SM2_K,               /**< SM2 encryption: set the ephemeral scalar k. Only available when
+                                         *   HITLS_CRYPTO_ACVP_TESTS is enabled. For test vector verification
+                                         *   only, must not be used in production. */
 
     CRYPT_CTRL_SET_ECC_POINT_FORMAT,      /**< ECC PKEY set the point format. For the point format,
                                              see CRYPT_PKEY_PointFormat. */
@@ -701,10 +705,13 @@ typedef enum {
     CRYPT_CTRL_GET_ECC_ORDER_BITS,      /**< Get the number of bits in the group order. */
     CRYPT_CTRL_GET_ECC_NAME,            /**< Obtain the name of the ECC curve. */
     CRYPT_CTRL_GEN_X25519_PUBLICKEY,    /**< Use prikey genarate x25519 pubkey. */
-    CRYPT_CTRL_GET_SM2_RANDOM,          /**< SM2 get the r value. */
+    CRYPT_CTRL_GET_SM2_RANDOM,          /**< SM2 key exchange: get the ephemeral scalar r for special users
+                                         *   (e.g. ACVP test vector verification). Caller must ensure r is kept
+                                         *   confidential and securely erased after use. */
     CRYPT_CTRL_GET_FLAG,                /**< Get ECC pkey flags. */
     CRYPT_CTRL_SET_FLAG,                /**< Set ECC pkey flags (OR with existing). */
     CRYPT_CTRL_CLR_FLAG,                /**< Clear ECC pkey flags (AND NOT). */
+    CRYPT_CTRL_GET_SM2_R,               /**< SM2 get the R value. */
 
     // slh-dsa
     CRYPT_CTRL_GET_SLH_DSA_KEY_LEN = 600,     /**< Get the SLH-DSA key length. */
@@ -723,6 +730,9 @@ typedef enum {
     // xmss
     CRYPT_CTRL_GET_XMSS_XDR_ALG_TYPE = 800,     /**< Get the XMSS xdr algId. */
     CRYPT_CTRL_SET_XMSS_XDR_ALG_TYPE = 801,     /**< Set the XMSS xdr algId. */
+
+    // sm9
+    CRYPT_CTRL_SET_SM9_USER_ID = 900,   /**< SM9 set the user ID. */
 } CRYPT_PkeyCtrl;
 
 
