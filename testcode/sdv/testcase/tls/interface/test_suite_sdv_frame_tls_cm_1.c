@@ -4129,7 +4129,7 @@ void SDV_TLS_PSK_LEAK_TC01(void)
 
 EXIT:
     FRAME_FreeLink(client);
-HITLS_CFG_FreeConfig(config);
+    HITLS_CFG_FreeConfig(config);
 }
 /* END_CASE */
 
@@ -4166,7 +4166,6 @@ void SDV_HiTLS_HsCtx_Get_PeerCertificate_TC001(void)
     ASSERT_TRUE(client != NULL);
     server = FRAME_CreateLink(s_config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
-
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, TRY_RECV_SERVER_KEY_EXCHANGE), HITLS_SUCCESS);
 
     ASSERT_TRUE(client->ssl->hsCtx->peerCert != NULL);
@@ -4260,57 +4259,6 @@ void UT_TLS_PROCESS_SERVER_KX_NAMED_CURVE_TC001(void)
 EXIT:
     ClearWrapper();
     STUB_RESTORE(MapVersion2VersionBit);
-    HITLS_CFG_FreeConfig(c_config);
-    HITLS_CFG_FreeConfig(s_config);
-    FRAME_FreeLink(client);
-    FRAME_FreeLink(server);
-}
-/* END_CASE */
-
-/* @
-* @test SDV_HiTLS_HsCtx_Get_PeerCertificate_TC001
-* @spec -
-* @title The test obtains the peer certificate chain during the handshake process, and it is expected to succeed.
-* @precon nan
-* @brief
-* 1. Initialize the TLS12 client and server.
-* 2. Establish a link. Stop the handshake state at the TRY_RECV_SERVER_KEY_EXCHANGE state, the HITLS_GetPeerCertificate
-*    and HITLS_GetPeerCertChain interfaces are invoked to check the peer certificate cached at both ends.
-* @expect
-* 1. Initialization succeeded.
-* 2. The link is successfully established. The certificate cached on the client is the same as the certificate sent by the
-*  server.The peer certificate cached on the server is NULL.
-* @prior Level 1
-* @auto TRUE
-@ */
-/* BEGIN_CASE */
-void SDV_HiTLS_HsCtx_Get_PeerCertificate_TC001(void)
-{
-    FRAME_Init();
-    FRAME_LinkObj *client = NULL;
-    FRAME_LinkObj *server = NULL;
-    HITLS_CERT_X509 *client_PeerCert = NULL;
-
-    HITLS_Config *c_config = HITLS_CFG_NewTLS12Config();
-    ASSERT_TRUE(c_config != NULL);
-    HITLS_Config *s_config = HITLS_CFG_NewTLS12Config();
-    ASSERT_TRUE(s_config != NULL);
-
-    client = FRAME_CreateLink(c_config, BSL_UIO_TCP);
-    ASSERT_TRUE(client != NULL);
-    server = FRAME_CreateLink(s_config, BSL_UIO_TCP);
-    ASSERT_TRUE(server != NULL);
-    ASSERT_EQ(FRAME_CreateConnection(client, server, true, TRY_RECV_SERVER_KEY_EXCHANGE), HITLS_SUCCESS);
-
-    ASSERT_TRUE(client->ssl->hsCtx->peerCert != NULL);
-    client_PeerCert = HITLS_GetPeerCertificate(client->ssl);
-    ASSERT_TRUE(client->ssl->hsCtx->peerCert->cert == client_PeerCert);
-    ASSERT_TRUE(client->ssl->hsCtx->peerCert->chain == HITLS_GetPeerCertChain(client->ssl));
-
-    ASSERT_TRUE(TestIsErrStackEmpty());
-
-EXIT:
-    HITLS_CFG_FreeCert(c_config, client_PeerCert);
     HITLS_CFG_FreeConfig(c_config);
     HITLS_CFG_FreeConfig(s_config);
     FRAME_FreeLink(client);
