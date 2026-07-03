@@ -936,6 +936,33 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void SDV_CRYPTO_DSA_VERIFY_PQ_FUNC_TC002(int algId, Hex *seed, char *pHex, char *qHex, int result)
+{
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)algId;
+    (void)seed;
+    (void)pHex;
+    (void)qHex;
+    (void)result;
+    SKIP_TEST();
+#else
+    BSL_Buffer seedTmp = {seed->x, seed->len};
+    BN_BigNum *p = NULL;
+    BN_BigNum *q = NULL;
+    ASSERT_EQ(BN_Hex2Bn(&p, pHex), CRYPT_SUCCESS);
+    ASSERT_EQ(BN_Hex2Bn(&q, qHex), CRYPT_SUCCESS);
+    CRYPT_DSA_Para dsaPara = {p, q, NULL};
+    uint32_t counter = 5;
+    ASSERT_EQ(CryptDsaFips1864ValidatePq(algId, NULL, NULL, CRYPT_DSA_FFC_PARAM, &seedTmp, &dsaPara, counter),
+        result);
+EXIT:
+    BN_Destroy(p);
+    BN_Destroy(q);
+#endif
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void SDV_CRYPTO_DSA_GEN_PQ_FUNC_TC001(int algId, int L, int N, Hex *seed, char *pHex, char *qHex)
 {
 #ifndef HITLS_CRYPTO_DSA_GEN_PARA
@@ -1321,6 +1348,40 @@ void SDV_CRYPTO_DSA_CHECK_PRV_TC001(Hex *p, Hex *g, Hex *q, int isProvider)
 EXIT:
     BN_Destroy(maxValue);
     TestRandDeInit();
+    CRYPT_EAL_PkeyFreeCtx(pkey);
+#endif
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
+void SDV_CRYPTO_DSA_KEYGEN_SEEDLEN_INVALID_TC001(int isProvider)
+{
+#ifndef HITLS_CRYPTO_DSA_GEN_PARA
+    (void)isProvider;
+    SKIP_TEST();
+#else
+    int32_t algId = CRYPT_MD_SHA256;
+    uint32_t L = 2048;
+    uint32_t N = 256;
+    uint32_t seedLen = 257;
+    int32_t index = 0;
+    BSL_Param params[6] = {
+        {CRYPT_PARAM_DSA_ALGID, BSL_PARAM_TYPE_INT32, &algId, sizeof(int32_t), 0},
+        {CRYPT_PARAM_DSA_PBITS, BSL_PARAM_TYPE_UINT32, &L, sizeof(uint32_t), 0},
+        {CRYPT_PARAM_DSA_QBITS, BSL_PARAM_TYPE_UINT32, &N, sizeof(uint32_t), 0},
+        {CRYPT_PARAM_DSA_SEEDLEN, BSL_PARAM_TYPE_UINT32, &seedLen, sizeof(uint32_t), 0},
+        {CRYPT_PARAM_DSA_GINDEX, BSL_PARAM_TYPE_INT32, &index, sizeof(int32_t), 0},
+        BSL_PARAM_END
+    };
+    CRYPT_EAL_PkeyCtx *pkey = NULL;
+    TestMemInit();
+    pkey = TestPkeyNewCtx(NULL, CRYPT_PKEY_DSA, CRYPT_EAL_PKEY_UNKNOWN_OPERATE, "provider=default", isProvider);
+    ASSERT_TRUE(pkey != NULL);
+
+    /* seedLen 257 > DSA_SEEDLEN_MAX(256), should fail */
+    ASSERT_EQ(CRYPT_EAL_PkeyCtrl(pkey, CRYPT_CTRL_GEN_PARA, params, 0), CRYPT_DSA_ERR_KEY_PARA);
+    TestErrClear();
+EXIT:
     CRYPT_EAL_PkeyFreeCtx(pkey);
 #endif
 }

@@ -36,9 +36,11 @@
 #include "sal_file.h"
 #include "crypt_codecskey.h"
 #include "crypt_eal_codecs.h"
+#include "crypt_eal_provider.h"
+#include "crypt_eal_rand.h"
 #include "hitls_x509_local.h"
 #include "stub_utils.h"
-
+#include "test.h"
 /* END_HEADER */
 
 /* ============================================================================
@@ -48,6 +50,32 @@
 STUB_DEFINE_RET1(void *, BSL_SAL_Malloc, uint32_t);
 #endif
 STUB_DEFINE_RET2(int32_t, HITLS_X509_ParseCertTbs, BSL_ASN1_Buffer *, HITLS_X509_Cert *);
+
+#if defined(HITLS_PKI_X509_CRT_PARSE) && defined(HITLS_CRYPTO_PROVIDER)
+#define HITLS_X509_SHA256_LIB_NAME "provider_sha256." BSL_SAL_DL_EXT
+#define HITLS_X509_SHA256_PROVIDER_PATH "provider_test_data/path2"
+
+static CRYPT_EAL_LibCtx *X509_LoadSha256ProviderWithDefault(void)
+{
+    CRYPT_EAL_LibCtx *libCtx = NULL;
+    int32_t ret = CRYPT_EAL_RandInit(CRYPT_RAND_SHA256, NULL, NULL, NULL, 0);
+    if (ret != CRYPT_SUCCESS && ret != CRYPT_EAL_ERR_DRBG_REPEAT_INIT) {
+        ASSERT_EQ(ret, CRYPT_SUCCESS);
+    }
+
+    libCtx = CRYPT_EAL_LibCtxNew();
+    ASSERT_TRUE(libCtx != NULL);
+
+    ASSERT_EQ(CRYPT_EAL_ProviderSetLoadPath(libCtx, HITLS_X509_SHA256_PROVIDER_PATH), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_ProviderLoad(libCtx, 0, HITLS_X509_SHA256_LIB_NAME, NULL, NULL), CRYPT_SUCCESS);
+    ASSERT_EQ(CRYPT_EAL_ProviderLoad(libCtx, 0, "default", NULL, NULL), CRYPT_SUCCESS);
+    return libCtx;
+
+EXIT:
+    CRYPT_EAL_LibCtxFree(libCtx);
+    return NULL;
+}
+#endif
 
 static uint32_t g_certSerialMemAllocCount = 0;
 static uint32_t g_certSerialMemFreeCount = 0;
@@ -208,7 +236,7 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
-void SDV_X509_CERT_PARSE_PUBKEY_FUNC_TC002(int format, char *path, Hex *key)
+void SDV_X509_CERT_PARSE_PUBKEY_FUNC_TC002(int pkeyId, int format, char *path, Hex *key)
 {
     TestMemInit();
     BSL_GLOBAL_Init();
@@ -216,7 +244,7 @@ void SDV_X509_CERT_PARSE_PUBKEY_FUNC_TC002(int format, char *path, Hex *key)
     ASSERT_EQ(HITLS_X509_CertParseFile(format, path, &cert), HITLS_PKI_SUCCESS);
     void *pkey = cert->tbs.ealPubKey;
     uint8_t buf[68] = {0};
-    CRYPT_EAL_PkeyPub pubKey = {.id = CRYPT_PKEY_XMSS, .key.xmssPub = {.seed = buf + 4 + 32,
+    CRYPT_EAL_PkeyPub pubKey = {.id = pkeyId, .key.xmssPub = {.seed = buf + 4 + 32,
         .root = buf + 4, .len = 32}};
     ASSERT_EQ(CRYPT_EAL_PkeyGetPub(pkey, &pubKey), HITLS_PKI_SUCCESS);
     ASSERT_COMPARE("root", pubKey.key.xmssPub.root, 32, key->x + 4, (key->len - 4) / 2);
@@ -927,6 +955,36 @@ EXIT:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void SDV_X509_PROVIDER_CERT_PARSE_WITH_UNSUPPORTED_PROVIDER_TC001(char *attrName, char *format, char *path, int certNum)
+{
+#if !defined(HITLS_PKI_X509_CRT_PARSE) || !defined(HITLS_CRYPTO_PROVIDER)
+    (void)attrName;
+    (void)format;
+    (void)path;
+    (void)certNum;
+    SKIP_TEST();
+#else
+    TestMemInit();
+    BSL_GLOBAL_Init();
+    CRYPT_EAL_LibCtx *libCtx = X509_LoadSha256ProviderWithDefault();
+    HITLS_X509_List *list = NULL;
+    ASSERT_TRUE(libCtx != NULL);
+
+    ASSERT_EQ(HITLS_X509_ProviderCertParseBundleFile((HITLS_PKI_LibCtx *)libCtx, attrName, format, path, &list),
+        HITLS_PKI_SUCCESS);
+    ASSERT_EQ(BSL_LIST_COUNT(list), certNum);
+    ASSERT_TRUE(TestIsErrStackEmpty());
+
+EXIT:
+    BSL_LIST_FREE(list, (BSL_LIST_PFUNC_FREE)HITLS_X509_CertFree);
+    CRYPT_EAL_RandDeinitEx(libCtx);
+    CRYPT_EAL_LibCtxFree(libCtx);
+    BSL_GLOBAL_DeInit();
+#endif
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void SDV_X509_CERT_SET_VERIOSN_FUNC_TC001(void)
 {
     TestMemInit();
@@ -983,6 +1041,10 @@ void SDV_X509_CERT_SET_TIME_FUNC_TC001(void)
 {
     TestMemInit();
     BSL_TIME time = {2024, 8, 22, 1, 1, 0, 1, 0};
+    BSL_TIME errorTime = {2025, 2, 30, 0, 0, 0, 0, 0};
+    BSL_TIME utcTime = {2049, 12, 31, 23, 59, 0, 59, 0};
+    BSL_TIME generalizedTime = {2050, 1, 1, 0, 0, 0, 0, 0};
+    BSL_TIME maxGeneralizedTime = {9999, 12, 31, 23, 59, 0, 59, 0};
 
     HITLS_X509_Cert *cert = HITLS_X509_CertNew();
     ASSERT_NE(cert, NULL);
@@ -990,14 +1052,34 @@ void SDV_X509_CERT_SET_TIME_FUNC_TC001(void)
 
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_BEFORE_TIME, &time, 0), HITLS_X509_ERR_INVALID_PARAM);
     TestErrClear();
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_BEFORE_TIME, &errorTime, sizeof(BSL_TIME)),
+        HITLS_X509_ERR_INVALID_PARAM);
+    TestErrClear();
 
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_BEFORE_TIME, &time, sizeof(BSL_TIME)), HITLS_PKI_SUCCESS);
     ASSERT_TRUE((cert->tbs.validTime.flag & BSL_TIME_BEFORE_SET) != 0);
+    ASSERT_TRUE((cert->tbs.validTime.flag & BSL_TIME_BEFORE_IS_UTC) != 0);
     ASSERT_EQ(BSL_SAL_DateTimeCompare(&cert->tbs.validTime.start, &time, NULL), BSL_TIME_CMP_EQUAL);
+
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_BEFORE_TIME, &generalizedTime, sizeof(BSL_TIME)),
+        HITLS_PKI_SUCCESS);
+    ASSERT_TRUE((cert->tbs.validTime.flag & BSL_TIME_BEFORE_IS_UTC) == 0);
 
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_AFTER_TIME, &time, sizeof(BSL_TIME)), HITLS_PKI_SUCCESS);
     ASSERT_TRUE((cert->tbs.validTime.flag & BSL_TIME_AFTER_SET) != 0);
     ASSERT_EQ(BSL_SAL_DateTimeCompare(&cert->tbs.validTime.end, &time, NULL), BSL_TIME_CMP_EQUAL);
+
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_AFTER_TIME, &utcTime, sizeof(BSL_TIME)), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE((cert->tbs.validTime.flag & BSL_TIME_AFTER_IS_UTC) != 0);
+
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_AFTER_TIME, &generalizedTime, sizeof(BSL_TIME)),
+        HITLS_PKI_SUCCESS);
+    ASSERT_TRUE((cert->tbs.validTime.flag & BSL_TIME_AFTER_IS_UTC) == 0);
+
+    ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_SET_AFTER_TIME, &maxGeneralizedTime, sizeof(BSL_TIME)),
+        HITLS_PKI_SUCCESS);
+    ASSERT_TRUE((cert->tbs.validTime.flag & BSL_TIME_AFTER_IS_UTC) == 0);
+    ASSERT_EQ(BSL_SAL_DateTimeCompare(&cert->tbs.validTime.end, &maxGeneralizedTime, NULL), BSL_TIME_CMP_EQUAL);
     ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:

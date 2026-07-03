@@ -438,59 +438,31 @@ EXIT:
 /* END_CASE */
 
 /** @
- * @test     UT_TLS13_CREATE_LINK_WITH_CERTMGR_DISABLED_PSK_TC001
- * @title Create TLS1.3 client and server frame links with cert manager disabled in PSK modes
+ * @test     UT_TLS13_CREATE_LINK_WITH_CERTMGR_DISABLED_TC001
+ * @title Create TLS1.3 client and server frame links with cert manager disabled
  * @precon nan
  * @brief
  * 1. Disable SAL_CERT_MgrIsEnable by setting certStoreNew in the manager method to NULL.
- * 2. Create TLS1.3 client and server configs, and set the input key exchange mode.
- * 3. Configure PSK callbacks and call FRAME_CreateLinkEx to create both client and server links.
- * 4. Complete a TLS1.3 handshake.
+ * 2. Create TLS1.3 config.
  * @expect
- * 1. Config creation and PSK configuration succeed.
- * 2. Client and server link creation succeed when cert manager is disabled.
- * 3. The PSK-only handshake succeeds without certificates.
- * 4. The PSK-with-DHE handshake succeeds without certificates.
+ * 1. Config creation failed.
   @ */
 /* BEGIN_CASE */
-void UT_TLS13_CREATE_LINK_WITH_CERTMGR_DISABLED_PSK_TC001(int keyExchMode)
+void UT_TLS13_CREATE_LINK_WITH_CERTMGR_DISABLED_TC001()
 {
     FRAME_Init();
-    HITLS_Config *c_config = NULL;
-    HITLS_Config *s_config = NULL;
-    FRAME_LinkObj *client = NULL;
-    FRAME_LinkObj *server = NULL;
-    char psk[] = "aaaaaaaaaaaaaaaa";
+    HITLS_Config *config = NULL;
 
     STUB_REPLACE(SAL_CERT_MgrIsEnable, STUB_SAL_CERT_MgrIsEnable_FALSE);
     ASSERT_TRUE(SAL_CERT_MgrIsEnable() == false);
 
-    c_config = HITLS_CFG_NewTLS13Config();
-    s_config = HITLS_CFG_NewTLS13Config();
-    ASSERT_TRUE(c_config != NULL);
-    ASSERT_TRUE(s_config != NULL);
-    ASSERT_TRUE(c_config->certMgrCtx == NULL);
-    ASSERT_TRUE(s_config->certMgrCtx == NULL);
-    ASSERT_EQ(ExampleSetPsk(psk), HITLS_SUCCESS);
-    ASSERT_TRUE(keyExchMode == TLS13_KE_MODE_PSK_ONLY || keyExchMode == TLS13_KE_MODE_PSK_WITH_DHE);
-    ASSERT_EQ(HITLS_CFG_SetKeyExchMode(c_config, (uint32_t)keyExchMode), HITLS_SUCCESS);
-    ASSERT_EQ(HITLS_CFG_SetKeyExchMode(s_config, (uint32_t)keyExchMode), HITLS_SUCCESS);
-    ASSERT_EQ(HITLS_CFG_SetPskClientCallback(c_config, ExampleClientCb), HITLS_SUCCESS);
-    ASSERT_EQ(HITLS_CFG_SetPskServerCallback(s_config, ExampleServerCb), HITLS_SUCCESS);
-
-    client = FRAME_CreateLinkEx(c_config, BSL_UIO_TCP);
-    ASSERT_TRUE(client != NULL);
-    server = FRAME_CreateLinkEx(s_config, BSL_UIO_TCP);
-    ASSERT_TRUE(server != NULL);
-    ASSERT_EQ(FRAME_CreateConnection(client, server, true, HS_STATE_BUTT), HITLS_SUCCESS);
+    config = HITLS_CFG_NewTLS13Config();
+    ASSERT_TRUE(config == NULL);
     ASSERT_TRUE(TestIsErrStackEmpty());
 
 EXIT:
     STUB_RESTORE(SAL_CERT_MgrIsEnable);
-    FRAME_FreeLink(client);
-    FRAME_FreeLink(server);
-    HITLS_CFG_FreeConfig(c_config);
-    HITLS_CFG_FreeConfig(s_config);
+    HITLS_CFG_FreeConfig(config);
 }
 /* END_CASE */
 
@@ -4157,7 +4129,7 @@ void SDV_TLS_PSK_LEAK_TC01(void)
 
 EXIT:
     FRAME_FreeLink(client);
-HITLS_CFG_FreeConfig(config);
+    HITLS_CFG_FreeConfig(config);
 }
 /* END_CASE */
 
@@ -4194,7 +4166,6 @@ void SDV_HiTLS_HsCtx_Get_PeerCertificate_TC001(void)
     ASSERT_TRUE(client != NULL);
     server = FRAME_CreateLink(s_config, BSL_UIO_TCP);
     ASSERT_TRUE(server != NULL);
-
     ASSERT_EQ(FRAME_CreateConnection(client, server, true, TRY_RECV_SERVER_KEY_EXCHANGE), HITLS_SUCCESS);
 
     ASSERT_TRUE(client->ssl->hsCtx->peerCert != NULL);
@@ -4288,57 +4259,6 @@ void UT_TLS_PROCESS_SERVER_KX_NAMED_CURVE_TC001(void)
 EXIT:
     ClearWrapper();
     STUB_RESTORE(MapVersion2VersionBit);
-    HITLS_CFG_FreeConfig(c_config);
-    HITLS_CFG_FreeConfig(s_config);
-    FRAME_FreeLink(client);
-    FRAME_FreeLink(server);
-}
-/* END_CASE */
-
-/* @
-* @test SDV_HiTLS_HsCtx_Get_PeerCertificate_TC001
-* @spec -
-* @title The test obtains the peer certificate chain during the handshake process, and it is expected to succeed.
-* @precon nan
-* @brief
-* 1. Initialize the TLS12 client and server.
-* 2. Establish a link. Stop the handshake state at the TRY_RECV_SERVER_KEY_EXCHANGE state, the HITLS_GetPeerCertificate
-*    and HITLS_GetPeerCertChain interfaces are invoked to check the peer certificate cached at both ends.
-* @expect
-* 1. Initialization succeeded.
-* 2. The link is successfully established. The certificate cached on the client is the same as the certificate sent by the
-*  server.The peer certificate cached on the server is NULL.
-* @prior Level 1
-* @auto TRUE
-@ */
-/* BEGIN_CASE */
-void SDV_HiTLS_HsCtx_Get_PeerCertificate_TC001(void)
-{
-    FRAME_Init();
-    FRAME_LinkObj *client = NULL;
-    FRAME_LinkObj *server = NULL;
-    HITLS_CERT_X509 *client_PeerCert = NULL;
-
-    HITLS_Config *c_config = HITLS_CFG_NewTLS12Config();
-    ASSERT_TRUE(c_config != NULL);
-    HITLS_Config *s_config = HITLS_CFG_NewTLS12Config();
-    ASSERT_TRUE(s_config != NULL);
-
-    client = FRAME_CreateLink(c_config, BSL_UIO_TCP);
-    ASSERT_TRUE(client != NULL);
-    server = FRAME_CreateLink(s_config, BSL_UIO_TCP);
-    ASSERT_TRUE(server != NULL);
-    ASSERT_EQ(FRAME_CreateConnection(client, server, true, TRY_RECV_SERVER_KEY_EXCHANGE), HITLS_SUCCESS);
-
-    ASSERT_TRUE(client->ssl->hsCtx->peerCert != NULL);
-    client_PeerCert = HITLS_GetPeerCertificate(client->ssl);
-    ASSERT_TRUE(client->ssl->hsCtx->peerCert->cert == client_PeerCert);
-    ASSERT_TRUE(client->ssl->hsCtx->peerCert->chain == HITLS_GetPeerCertChain(client->ssl));
-
-    ASSERT_TRUE(TestIsErrStackEmpty());
-
-EXIT:
-    HITLS_CFG_FreeCert(c_config, client_PeerCert);
     HITLS_CFG_FreeConfig(c_config);
     HITLS_CFG_FreeConfig(s_config);
     FRAME_FreeLink(client);

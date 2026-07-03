@@ -549,6 +549,8 @@ void SDV_X509_CRL_CTRL_RevokedParamCheck_TC001(void)
 {
     HITLS_X509_CrlEntry *entry = NULL;
     BSL_TIME time = {0};
+    BSL_TIME utcTime = {2049, 12, 31, 23, 59, 0, 59, 0};
+    BSL_TIME generalizedTime = {2050, 1, 1, 0, 0, 0, 0, 0};
 
     // Test HITLS_X509_CrlEntryNew
     entry = HITLS_X509_CrlEntryNew();
@@ -578,6 +580,13 @@ void SDV_X509_CRL_CTRL_RevokedParamCheck_TC001(void)
     ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_GET_REVOKED_REVOKE_TIME, &getTime, sizeof(getTime)),
         HITLS_PKI_SUCCESS);
     ASSERT_EQ(memcmp(&time, &getTime, sizeof(BSL_TIME)), 0);
+
+    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_REVOKE_TIME, &generalizedTime,
+        sizeof(generalizedTime)), HITLS_PKI_SUCCESS);
+    ASSERT_TRUE((entry->flag & BSL_TIME_REVOKE_TIME_IS_GMT) != 0);
+    ASSERT_EQ(HITLS_X509_CrlEntryCtrl(entry, HITLS_X509_CRL_SET_REVOKED_REVOKE_TIME, &utcTime, sizeof(utcTime)),
+        HITLS_PKI_SUCCESS);
+    ASSERT_TRUE((entry->flag & BSL_TIME_REVOKE_TIME_IS_GMT) == 0);
 
     // Test setting/getting reason
     HITLS_X509_RevokeExtReason reasonExt = {false, 1};
@@ -741,6 +750,8 @@ void SDV_X509_CRL_CTRL_SetFunc_TC001(char *capath)
     uint8_t serialNum[4] = {0x11, 0x22, 0x33, 0x44};
     BSL_TIME beforeTime = {0};
     BSL_TIME afterTime = {0};
+    BSL_TIME utcTime = {2049, 12, 31, 23, 59, 0, 59, 0};
+    BSL_TIME generalizedTime = {2050, 1, 1, 0, 0, 0, 0, 0};
     HITLS_X509_Cert *cert = NULL;
     HITLS_X509_Crl *crl = HITLS_X509_CrlNew();
     ASSERT_EQ(HITLS_X509_CertParseFile(BSL_FORMAT_UNKNOWN, capath, &cert), HITLS_PKI_SUCCESS);
@@ -758,6 +769,16 @@ void SDV_X509_CRL_CTRL_SetFunc_TC001(char *capath)
     afterTime = beforeTime;
     afterTime.year += 1;
     ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_AFTER_TIME, &afterTime, sizeof(BSL_TIME)), HITLS_PKI_SUCCESS);
+
+    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_BEFORE_TIME, &utcTime, sizeof(utcTime)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_BEFORE_TIME, &generalizedTime, sizeof(generalizedTime)),
+        HITLS_PKI_SUCCESS);
+    ASSERT_TRUE((crl->tbs.validTime.flag & BSL_TIME_BEFORE_IS_UTC) == 0);
+
+    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_AFTER_TIME, &utcTime, sizeof(utcTime)), HITLS_PKI_SUCCESS);
+    ASSERT_EQ(HITLS_X509_CrlCtrl(crl, HITLS_X509_SET_AFTER_TIME, &generalizedTime, sizeof(generalizedTime)),
+        HITLS_PKI_SUCCESS);
+    ASSERT_TRUE((crl->tbs.validTime.flag & BSL_TIME_AFTER_IS_UTC) == 0);
 
     HITLS_X509_ExtSki ski = {0};
     ASSERT_EQ(HITLS_X509_CertCtrl(cert, HITLS_X509_EXT_GET_SKI, &ski, sizeof(HITLS_X509_ExtSki)), HITLS_PKI_SUCCESS);

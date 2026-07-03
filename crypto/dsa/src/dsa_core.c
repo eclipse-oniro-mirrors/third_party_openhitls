@@ -1322,7 +1322,9 @@ int32_t CryptDsaFips1864ValidatePq(int32_t algId, void *libCtx, const char *mdAt
     uint32_t pBits = BN_Bits(dsaPara->p);
     uint32_t qBits = BN_Bits(dsaPara->q);
     RETURN_RET_IF(DSAFips1864ValidateSecurityLength(pBits, qBits, type) == 0, CRYPT_DSA_PARA_ERROR);
-    RETURN_RET_IF(seed->dataLen * 8 < qBits || counter > 4 * pBits - 1, CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
+    uint32_t outLen = CRYPT_GetMdSizeById(algId);
+    RETURN_RET_IF(seed->dataLen * 8 < qBits || outLen * 8 < qBits || counter > 4 * pBits - 1,
+        CRYPT_DSA_PARA_ERROR); // from FIPS.186-4
     BN_Optimizer *opt = BN_OptimizerCreate();
     RETURN_RET_IF(opt == NULL, CRYPT_MEM_ALLOC_FAIL);
     (void)BN_OptimizerSetLibCtx(libCtx, opt);
@@ -1542,6 +1544,10 @@ static int32_t DSA_GetFipsPara(BSL_Param *params, DSA_FIPS186_4_Para *fipsPara, 
     fipsPara->n = *(const uint32_t *)qBits;
     fipsPara->index = *(const int32_t *)index;
     seed->dataLen = *(const uint32_t *)seedLen;
+    if (seed->dataLen > DSA_SEEDLEN_MAX) {
+        BSL_ERR_PUSH_ERROR(CRYPT_DSA_ERR_KEY_PARA);
+        return CRYPT_DSA_ERR_KEY_PARA;
+    }
     seed->data = (uint8_t *)BSL_SAL_Calloc(seed->dataLen, 1);
     if (seed->data == NULL) {
         BSL_ERR_PUSH_ERROR(CRYPT_MEM_ALLOC_FAIL);

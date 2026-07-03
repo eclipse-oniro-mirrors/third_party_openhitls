@@ -14,7 +14,7 @@
  */
 
 #include "hitls_build.h"
-#ifdef HITLS_CRYPTO_XMSS
+#if defined(HITLS_CRYPTO_XMSS) || defined(HITLS_CRYPTO_XMSSMT)
 
 #include "securec.h"
 #include "crypt_utils.h"
@@ -69,12 +69,6 @@ static void XmssAdrs_SetTreeIndex(void *adrs, uint32_t index)
     PUT_UINT32_BE(index, ((XmssAdrs *)adrs)->fields.hashAddr, 0);
 }
 
-static uint32_t XmssAdrs_GetTreeHeight(const void *adrs)
-{
-    /* For tree hash address (type=2), tree height is in bytes 20-23 (chainAddr field) */
-    return GET_UINT32_BE(((const XmssAdrs *)adrs)->fields.chainAddr, 0);
-}
-
 static uint32_t XmssAdrs_GetTreeIndex(const void *adrs)
 {
     /* For tree hash address (type=2), tree index is in bytes 24-27 (hashAddr field) */
@@ -110,11 +104,10 @@ int32_t XmssAdrsOps_Init(CryptAdrsOps *ops)
     ops->setTreeHeight = XmssAdrs_SetTreeHeight;
     ops->setHashAddr = XmssAdrs_SetHashAddr;
     ops->setTreeIndex = XmssAdrs_SetTreeIndex;
-    ops->getTreeHeight = XmssAdrs_GetTreeHeight;
     ops->getTreeIndex = XmssAdrs_GetTreeIndex;
     ops->copyKeyPairAddr = XmssAdrs_CopyKeyPairAddr;
     ops->getAdrsLen = XmssAdrs_GetAdrsLen;
     return CRYPT_SUCCESS;
 }
 
-#endif // HITLS_CRYPTO_XMSS
+#endif // HITLS_CRYPTO_XMSS || HITLS_CRYPTO_XMSSMT

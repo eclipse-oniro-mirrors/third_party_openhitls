@@ -1326,7 +1326,7 @@ int32_t HITLS_X509_CheckCertCrl(HITLS_X509_StoreCtx *storeCtx, HITLS_X509_Cert *
         if (HITLS_X509_CmpNameNode(crl->tbs.issuerName, parent->tbs.subjectName) != 0) {
             continue;
         }
-        if (cert->tbs.version == HITLS_X509_VERSION_3 && crl->tbs.version == 1) {
+        if (parent->tbs.version == HITLS_X509_VERSION_3 && crl->tbs.version == 1) {
             if (HITLS_X509_CheckAki(&parent->tbs.ext, &crl->tbs.crlExt, parent->tbs.issuerName,
                 &parent->tbs.serialNum) != HITLS_PKI_SUCCESS) {
 #ifdef HITLS_PKI_X509_VFY_CB
@@ -1800,7 +1800,7 @@ static int32_t X509_CopyStringList(BslList *dst, const BslList *src)
     }
     return HITLS_PKI_SUCCESS;
 }
-
+#ifdef HITLS_CRYPTO_SM2
 static int32_t X509_CopyBufferData(uint8_t **dst, const uint8_t *src, uint32_t srcLen)
 {
     if (src == NULL || srcLen == 0) {
@@ -1814,7 +1814,7 @@ static int32_t X509_CopyBufferData(uint8_t **dst, const uint8_t *src, uint32_t s
     }
     return HITLS_PKI_SUCCESS;
 }
-
+#endif
 static int32_t X509_CopyStoreLists(HITLS_X509_StoreCtx *dst, const HITLS_X509_StoreCtx *src)
 {
     int32_t ret;

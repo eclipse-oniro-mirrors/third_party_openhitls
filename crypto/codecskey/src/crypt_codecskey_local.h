@@ -44,7 +44,7 @@
 #ifdef HITLS_CRYPTO_SLH_DSA
 #include "crypt_slh_dsa.h"
 #endif
-#ifdef HITLS_CRYPTO_XMSS
+#if defined(HITLS_CRYPTO_XMSS) || defined(HITLS_CRYPTO_XMSSMT)
 #include "crypt_xmss.h"
 #endif
 
@@ -115,6 +115,47 @@ typedef enum {
     CRYPT_RSA_PRV_QINV_IDX = 8,
     CRYPT_RSA_PRV_OTHER_PRIME_IDX = 9
 } CRYPT_RSA_PRV_TEMPL_IDX;
+
+#ifdef HITLS_CRYPTO_RSA
+static inline bool CRYPT_CODECSKEY_Asn1IntegerIsZero(const BSL_ASN1_Buffer *asn1)
+{
+    for (uint32_t i = 0; i < asn1->len; i++) { // asn1 can not be null.
+        if (asn1->buff[i] != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static inline bool CRYPT_CODECSKEY_RsaPrvCrtParamsAreZero(const BSL_ASN1_Buffer *asn1)
+{
+    return CRYPT_CODECSKEY_Asn1IntegerIsZero(&asn1[CRYPT_RSA_PRV_P_IDX]) &&
+        CRYPT_CODECSKEY_Asn1IntegerIsZero(&asn1[CRYPT_RSA_PRV_Q_IDX]) &&
+        CRYPT_CODECSKEY_Asn1IntegerIsZero(&asn1[CRYPT_RSA_PRV_DP_IDX]) &&
+        CRYPT_CODECSKEY_Asn1IntegerIsZero(&asn1[CRYPT_RSA_PRV_DQ_IDX]) &&
+        CRYPT_CODECSKEY_Asn1IntegerIsZero(&asn1[CRYPT_RSA_PRV_QINV_IDX]);
+}
+
+static inline void CRYPT_CODECSKEY_NormalizeRsaPrvCrtParams(BSL_ASN1_Buffer *asn1)
+{
+    static const uint32_t crtIdx[] = {
+        CRYPT_RSA_PRV_P_IDX,
+        CRYPT_RSA_PRV_Q_IDX,
+        CRYPT_RSA_PRV_DP_IDX,
+        CRYPT_RSA_PRV_DQ_IDX,
+        CRYPT_RSA_PRV_QINV_IDX,
+    };
+
+    if (!CRYPT_CODECSKEY_RsaPrvCrtParamsAreZero(asn1)) {
+        return;
+    }
+
+    for (uint32_t i = 0; i < sizeof(crtIdx) / sizeof(crtIdx[0]); i++) {
+        asn1[crtIdx[i]].buff = NULL;
+        asn1[crtIdx[i]].len = 0;
+    }
+}
+#endif
 
 typedef enum {
     CRYPT_DSA_PRV_P_IDX = 0,
@@ -224,6 +265,10 @@ int32_t CRYPT_X25519_ParseSubPubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_
 
 #ifdef HITLS_CRYPTO_XMSS
 int32_t CRYPT_XMSS_ParseSubPubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, CryptXmssCtx **pubKey,
+    bool isComplete);
+#endif
+#ifdef HITLS_CRYPTO_XMSSMT
+int32_t CRYPT_XMSSMT_ParseSubPubkeyAsn1Buff(void *libCtx, uint8_t *buff, uint32_t buffLen, CryptXmssCtx **pubKey,
     bool isComplete);
 #endif
 
