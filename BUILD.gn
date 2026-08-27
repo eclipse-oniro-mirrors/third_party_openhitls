@@ -287,6 +287,7 @@ ohos_shared_library("openhitls_bsl") {
         "chipsetsdk",
     ]
     public_configs = [ ":bsl_public_config" ]
+    version_script = "config/map/openhitls_bsl.map"
     
     install_images = [
       "system",
@@ -797,6 +798,7 @@ ohos_shared_library("openhitls_crypto") {
         "chipsetsdk",
     ]
     public_configs = [ ":crypto_public_config" ]
+    version_script = "config/map/openhitls_crypto.map"
 
     install_images = [
       "system",
@@ -888,6 +890,7 @@ ohos_shared_library("openhitls_pki") {
         "chipsetsdk",
     ]
     public_configs = [ ":pki_public_config" ]
+    version_script = "config/map/openhitls_pki.map"
 
     install_images = [
       "system",
@@ -1122,6 +1125,7 @@ ohos_shared_library("openhitls_tls") {
         "chipsetsdk",
     ]
     public_configs = [ ":tls_public_config" ]
+    version_script = "config/map/openhitls_tls.map"
 
     install_images = [
       "system",
@@ -1181,6 +1185,7 @@ ohos_shared_library("openhitls_auth") {
     innerapi_tags = [
         "chipsetsdk",
     ]
+    version_script = "config/map/openhitls_auth.map"
     install_images = [
       "system",
       "updater",
