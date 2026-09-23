@@ -187,6 +187,14 @@ public_liteos_defines -= [
     "HITLS_BSL_SAL_NET",
     "HITLS_BSL_SAL_THREAD",
     "HITLS_SIXTY_FOUR_BITS",
+    "HITLS_CRYPTO_ENTROPY_DEVRANDOM",
+]
+
+public_liteos_defines += [
+    "HITLS_TLS_PROTO_TLS13",
+    "HITLS_TLS_SUITE_CIPHER_AEAD",
+    "HITLS_TLS_SUITE_KX_ECDHE",
+    "HITLS_TLS_SUITE_AUTH_ECDSA",
 ]
 
 if (openhitls_selected_platform == "linux-armv8") {
@@ -1175,18 +1183,16 @@ config("auth_config") {
     ]
 }
 
-openhitls_auth_sources = [
-    "auth/privpass_token/src/privpass_token.c",
-    "auth/privpass_token/src/privpass_token_util.c",
-    "auth/privpass_token/src/privpass_token_wrapper.c"
-]
-
 if (!defined(ohos_lite)) {
     ohos_source_set("auth_source") {
         subsystem_name = "thirdparty"
         part_name = "openhitls"
         # auth 源码目录
-        sources = openhitls_auth_sources
+        sources = [
+            "auth/privpass_token/src/privpass_token.c",
+            "auth/privpass_token/src/privpass_token_util.c",
+            "auth/privpass_token/src/privpass_token_wrapper.c"
+        ]
         configs = [
             ":bsl_config",
             ":crypto_config",
@@ -1298,21 +1304,11 @@ if (defined(ohos_lite)) {
             cflags = [ "-Wno-int-conversion" ]
         }
 
-        lite_library("openhitls_auth") {
-            target_type = "static_library"
-            sources = openhitls_auth_sources
-            configs = [
-                ":bsl_config",
-                ":crypto_config",
-                ":auth_config",
-                ":openhitls_lite_config",
-            ]
-            deps = [
-                ":openhitls_bsl",
-                ":openhitls_crypto",
-            ]
-            defines = public_liteos_defines
-            cflags = [ "-Wno-int-conversion" ]
+        # openhitls_auth is not built on liteos_m. Keep an empty target with the
+        # same label so bundle.json / lite component configs that still reference
+        # //third_party/openhitls:openhitls_auth keep resolving, without
+        # compiling the auth library.
+        group("openhitls_auth") {
         }
     }
 }
