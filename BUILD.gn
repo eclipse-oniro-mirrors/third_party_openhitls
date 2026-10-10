@@ -86,6 +86,7 @@ public_all_defines = [
     "HITLS_BSL_UIO_MEM",
     "HITLS_BSL_UIO_PLT",
     "HITLS_BSL_UIO_TCP",
+    "HITLS_BSL_UIO_BASE64",
     "HITLS_AUTH",
     "HITLS_AUTH_PRIVPASS_TOKEN",
     "HITLS_BSL",
@@ -100,6 +101,7 @@ public_all_defines = [
     "HITLS_BSL_OBJ",
     "HITLS_BSL_PARAMS",
     "HITLS_BSL_PEM",
+    "HITLS_BSL_PEM_ENCRYPTED",
     "HITLS_BSL_SAL",
     "HITLS_BSL_SAL_FILE",
     "HITLS_BSL_SAL_LINUX",
@@ -139,6 +141,9 @@ public_all_defines = [
     "HITLS_CRYPTO_CBC",
     "HITLS_CRYPTO_CCM",
     "HITLS_CRYPTO_GCM",
+    "HITLS_CRYPTO_DES",
+    "HITLS_CRYPTO_TDES",
+    "HITLS_CRYPTO_RETAIL_MAC",
     "HITLS_CRYPTO_NIST_ECC_ACCELERATE",
     "HITLS_CRYPTO_ECC",
     "HITLS_CRYPTO_ECDSA",
@@ -188,6 +193,11 @@ public_liteos_defines -= [
     "HITLS_BSL_SAL_THREAD",
     "HITLS_SIXTY_FOUR_BITS",
     "HITLS_CRYPTO_ENTROPY_DEVRANDOM",
+    "HITLS_BSL_UIO_BASE64",
+    "HITLS_BSL_PEM_ENCRYPTED",
+    "HITLS_CRYPTO_DES",
+    "HITLS_CRYPTO_TDES",
+    "HITLS_CRYPTO_RETAIL_MAC",
 ]
 
 public_liteos_defines += [
@@ -277,6 +287,7 @@ openhitls_bsl_sources = [
     "bsl/sal/src/sal_time.c",
     "bsl/tlv/src/tlv.c",
     "bsl/uio/src/uio_abstraction.c",
+    "bsl/uio/src/uio_base64.c",
     "bsl/uio/src/uio_buffer.c",
     "bsl/uio/src/uio_mem.c",
     "bsl/uio/src/uio_tcp.c",
@@ -377,6 +388,7 @@ config("crypto_config") {
         "crypto/sm2/include",
         "crypto/sm3/include",
         "crypto/sm4/include",
+        "crypto/tdes/include",
         "crypto/codecsdata/include",
         "crypto/xmss/include",
         "crypto/xmss/src",
@@ -569,6 +581,8 @@ openhitls_libcrypto_build_all_generated_linux_c_public_sources = [
 
     "crypto/aes/src/crypt_aes_setkey.c",
 
+    "crypto/tdes/src/crypt_tdes.c",
+
     "crypto/sm4/src/crypt_sm4.c",
     "crypto/sm4/src/crypt_sm4_public.c",
     "crypto/sm4/src/sm4_key.c",
@@ -585,6 +599,7 @@ openhitls_libcrypto_build_all_generated_linux_c_public_sources = [
     "crypto/codecskey/src/crypt_decoder_epki2pki.c",
     "crypto/codecskey/src/crypt_decoder_lowkey2pkey.c",
     "crypto/codecskey/src/crypt_decoder_pem2der.c",
+    "crypto/codecskey/src/crypt_codecskey_pemenc.c",
     "crypto/codecskey/src/crypt_decoder_pqc.c",
     "crypto/codecskey/src/crypt_decoder_rsa.c",
 
@@ -650,6 +665,7 @@ openhitls_libcrypto_build_all_generated_linux_c_public_sources = [
     "crypto/cmac/src/cbc_mac.c",
     "crypto/cmac/src/cipher_mac_common.c",
     "crypto/cmac/src/cmac.c",
+    "crypto/cmac/src/retail_mac.c",
 
     "crypto/siphash/src/siphash.c",
 
