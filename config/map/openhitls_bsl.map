@@ -188,6 +188,7 @@
         BSL_PARAM_GetValue;
         BSL_PARAM_InitValue;
         BSL_PARAM_SetValue;
+        BSL_PEM_DecodeEncryptedPemToAsn1;
         BSL_PEM_DecodePemToAsn1;
         BSL_PEM_EncodeAsn1ToPem;
         BSL_PEM_GetAsn1Encode;
@@ -277,6 +278,7 @@
         BSL_UIO_GetMethodWithoutConst;
         BSL_UIO_GetTransportType;
         BSL_UIO_GetUioChainTransportType;
+        BSL_UIO_Base64Method;
         BSL_UIO_GetUserData;
         BSL_UIO_Gets;
         BSL_UIO_MemMethod;
@@ -290,6 +292,7 @@
         BSL_UIO_SetCtxLen;
         BSL_UIO_SetFD;
         BSL_UIO_SetFlags;
+        BSL_UIO_SetFlagsFromNext;
         BSL_UIO_SetInit;
         BSL_UIO_SetIsUnderlyingClosedByUio;
         BSL_UIO_SetMethod;

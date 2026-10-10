@@ -179,6 +179,7 @@
         CRYPT_DECODE_RsaPubkeyAsn1Buff;
         CRYPT_DECODE_SlhDsaPrikeyAsn1Buff;
         CRYPT_DECODE_SubPubkey;
+        CRYPT_EAL_BytesToKey;
         CRYPT_EAL_CipherCopyCtx;
         CRYPT_EAL_CipherCtrl;
         CRYPT_EAL_CipherDeinit;
@@ -217,6 +218,7 @@
         CRYPT_EAL_EncodeRsaPssAlgParam;
         CRYPT_EAL_EncodeSign;
         CRYPT_EAL_EncodeSm2EncryptData;
+        CRYPT_EAL_ParseEncryptedPem;
         CRYPT_EAL_GetEncodeFormat;
         CRYPT_EAL_GetEncodeType;
         CRYPT_EAL_GetMacLen;
