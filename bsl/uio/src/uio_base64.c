@@ -27,9 +27,6 @@
 #include "bsl_base64_internal.h"
 #include "bsl_base64.h"
 
-#define UIO_BASE64_CTX_BUF_SIZE (HITLS_BASE64_ENCODE_LENGTH(BASE64_BLOCK_SIZE) + 10)
-#define UIO_BASE64_ENC_ENOUGH_LEN(len) ((((len) + 2) / 3 * 4) + 1)
-
 typedef struct {
     /* Fast pointer to the part that is encoded/decoded but not read/written in the context in the buf. */
     uint32_t bufLen;
@@ -42,7 +39,7 @@ typedef struct {
     int isContinue;
     bool inPemBlock;
     /* buf stores the encoded/decoded part. The length is calculated based on the encoding length. (sufficient space) */
-    uint8_t buf[UIO_BASE64_CTX_BUF_SIZE];
+    uint8_t buf[BASE64_CTX_BUF_SIZE];
     /* tmp saves the part that is read and written but not encoded or decoded */
     uint8_t tmp[BASE64_BLOCK_SIZE];
     BSL_Base64Ctx *base64Ctx;
@@ -216,7 +213,7 @@ static int32_t Base64ReadRefreshBuf(Base64Ctx *ctx, uint8_t **buf, uint32_t *len
         return BSL_INVALID_ARG;
     }
     uint32_t dif = ((ctx->bufLen - ctx->bufUsed > (*len)) ? (*len) : (ctx->bufLen - ctx->bufUsed));
-    if (ctx->bufUsed + dif > UIO_BASE64_CTX_BUF_SIZE) {
+    if (ctx->bufUsed + dif > BASE64_CTX_BUF_SIZE) {
         BSL_ERR_PUSH_ERROR(BSL_BASE64_BUF_NOT_ENOUGH);
         return BSL_BASE64_BUF_NOT_ENOUGH;
     }
@@ -494,7 +491,7 @@ static int32_t Base64Flush(BSL_UIO *uio, BSL_UIO *next, int32_t cmd, int32_t lar
             }
         }
         if (ctx->encode == BASE64_ENCODE && ctx->base64Ctx->num != 0) {
-            ctx->bufLen = UIO_BASE64_ENC_ENOUGH_LEN(HITLS_BASE64_CTX_LENGTH);
+            ctx->bufLen = BSL_BASE64_ENC_ENOUGH_LEN(HITLS_BASE64_CTX_LENGTH);
             ret = (int32_t)BSL_BASE64_EncodeFinal(ctx->base64Ctx, (char *)ctx->buf, &ctx->bufLen);
             if (ret != BSL_SUCCESS) {
                 return ret;

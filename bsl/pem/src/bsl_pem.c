@@ -210,13 +210,24 @@ int32_t BSL_PEM_DecodePemToAsn1(char **encode, uint32_t *encodeLen, BSL_PEM_Symb
 }
 
 #ifdef HITLS_BSL_PEM_ENCRYPTED
-uint32_t BSL_PEM_SkipMatching(const char *s, uint32_t strLen, const char *accept)
+// Skip consecutive characters that belong to the accept set, return the number skipped.
+uint32_t BSL_PEM_SkipMatching(const char *s, uint32_t max_len, const char *accept)
 {
     uint32_t i = 0;
-    while (i < strLen && strchr(accept, s[i]) != NULL) {
+    while (i < max_len && strchr(accept, s[i]) != NULL) {
         i++;
     }
     return i;
+}
+
+char *BSL_PEM_SkipUntil(const char *s, uint32_t max_len, const char *reject)
+{
+    for (size_t i = 0; i < max_len; i++) {
+        if (strchr(reject, s[i]) != NULL) {
+            return (char *)(uintptr_t)(s + i);
+        }
+    }
+    return NULL;
 }
 
 int32_t BSL_PEM_DecodeEncryptedPemToAsn1(char **encode, uint32_t *encodeLen, BSL_PEM_Symbol *symbol,
@@ -242,7 +253,7 @@ int32_t BSL_PEM_DecodeEncryptedPemToAsn1(char **encode, uint32_t *encodeLen, BSL
         uint32_t tmpLen = BSL_PEM_SkipMatching(realEncode, realLen, " \t\r\n");
         realEncode += tmpLen;
         realLen -= tmpLen;
-        ret = cb(realEncode, pwd, pwdLen, &asn1Buff);
+        ret = cb(realEncode, realLen, pwd, pwdLen, &asn1Buff);
     }
     if (ret != BSL_SUCCESS) {
         BSL_ERR_PUSH_ERROR(ret);
