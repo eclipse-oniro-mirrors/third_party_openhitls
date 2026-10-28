@@ -195,6 +195,8 @@
         BSL_PEM_GetPemRealEncode;
         BSL_PEM_GetSymbolAndType;
         BSL_PEM_IsPemFormat;
+        BSL_PEM_SkipMatching;
+        BSL_PEM_SkipUntil;
         BSL_PRINT_Buff;
         BSL_PRINT_Fmt;
         BSL_PRINT_Hex;

@@ -189,36 +189,44 @@ ERR:
     return ret;
 }
 
-static int32_t Str2Hex(const char *str, const uint32_t strLen, uint8_t *hex, uint32_t hexLen)
+static int32_t PemHex2Bin(const char *s, uint32_t len, unsigned char*out, uint32_t out_len)
 {
-    if (strLen % 2 == 1) { // strLen must be a multiple of 2.
-        return -1;
-    }
-    if (hexLen * 2 < strLen) { // hexLen at least strLen / 2.
-        return -1;
-    }
-    for (uint32_t i = 0; i < strLen; i++) {
-        if (sscanf_s(str + i * 2, "%2hhx", hex + i) == -1) { // 2 char for 1 hex number.
-            return -1;
+    uint32_t n = 0;
+    for (uint32_t i = 0; i + 1 < len && n < out_len; i += 2) {
+        int32_t hi = (s[i] > '9') ? (s[i] & 0x0F) + 9 : s[i] - '0';
+        int32_t lo = (s[i + 1] > '9') ? (s[i + 1] & 0x0F) + 9 : s[i + 1] - '0';
+        if ((unsigned)hi > 15 || (unsigned)lo > 15) {
+            break;
         }
+        out[n++] = (hi << 4) | lo;
     }
-    return 0;
+    return n < (len / 2) ? -1 : 0;
 }
 
-static int32_t PEM_GetInfo(char **header, CRYPT_CIPHER_AlgId *cidOut,
+// parse DEK-Info: algId,iv
+static int32_t PEM_GetInfo(char **data, uint32_t *dataLen, CRYPT_CIPHER_AlgId *cidOut,
     uint8_t *ivOut, uint32_t *ivlenOut, uint32_t *keylenOut)
 {
-    char *tmp = *header;
-    char *dekinfo = tmp;
-    tmp += strcspn(tmp, " \t,");
-    char c = *tmp;
-    *tmp = '\0';
-    CRYPT_CIPHER_AlgId cid = GetCIDFromName(dekinfo);
+    char *tmp = *data;
+    uint32_t tmpLen = *dataLen;
+    char algId[20] = { 0 };
+    uint32_t len = BSL_PEM_SkipMatching(tmp, tmpLen, " ");
+    tmp += len; // Point to the beginning of the algorithm
+    tmpLen -= len;
+
+    char *comma = BSL_PEM_SkipUntil(tmp, tmpLen, ",");
+    if (comma == NULL) {
+        return BSL_PEM_INVALID;
+    }
+    size_t algIdLen = comma - tmp;
+    if (algIdLen > sizeof(algId) - 1) {
+        return BSL_PEM_INVALID;
+    }
+    (void)memcpy_s(algId, sizeof(algId), tmp, (uint32_t)algIdLen);
+    CRYPT_CIPHER_AlgId cid = GetCIDFromName(algId);
     if (cid == CRYPT_CIPHER_MAX) {
         return BSL_PEM_INVALID;
     }
-    *tmp = c;
-    tmp += strspn(tmp, " \t");
     uint32_t ivlen;
     int32_t ret = CRYPT_EAL_CipherGetInfo(cid, CRYPT_INFO_IV_LEN, &ivlen);
     if (ret != BSL_SUCCESS) {
@@ -229,34 +237,36 @@ static int32_t PEM_GetInfo(char **header, CRYPT_CIPHER_AlgId *cidOut,
     if (ret != BSL_SUCCESS) {
         return BSL_PEM_INVALID;
     }
-    if (ivlen > 0 && *tmp++ != ',') {
-        return BSL_PEM_INVALID;
-    } else if (ivlen == 0 && *tmp == ',') {
-        return BSL_PEM_INVALID;
-    }
-    if (strcspn(tmp, " \t\r\n,") != ivlen * 2) { // 2 char for 1 hex number.
+    tmp = comma + 1; // skip
+    tmpLen = *dataLen - (uint32_t)(tmp - *data);
+    char *ivEnd = BSL_PEM_SkipUntil(tmp, tmpLen, " \t\r\n");
+    if (ivEnd == NULL) {
         return BSL_PEM_INVALID;
     }
-    if (Str2Hex(tmp, ivlen, ivOut, *ivlenOut) != 0) {
+    uint32_t hexIvLen = ivEnd - tmp;
+    if (hexIvLen != ivlen * 2) { // 2 char for 1 hex number.
         return BSL_PEM_INVALID;
     }
-    tmp += strcspn(tmp, " \t\r\n,");
-    tmp += strspn(tmp, " \t\r\n,");
-    *header = tmp;
+    if (PemHex2Bin(tmp, hexIvLen, ivOut, *ivlenOut) != 0) {
+        return BSL_PEM_INVALID;
+    }
+    tmp = ivEnd;
+    tmpLen = *dataLen - (tmp - *data);
+    len = BSL_PEM_SkipMatching(tmp, tmpLen, " \t\r\n");
+    *data = tmp + len;
+    *dataLen = tmpLen - len;
     *cidOut = cid;
     *ivlenOut = ivlen;
     *keylenOut = keylen;
     return BSL_SUCCESS;
 }
 
-static int32_t PEM_DecAsn1(char **header, CRYPT_CIPHER_AlgId cid, BSL_Buffer *iv, BSL_Buffer *key,
+static int32_t PEM_DecAsn1(char *data, uint32_t dataLen, CRYPT_CIPHER_AlgId cid, BSL_Buffer *iv, BSL_Buffer *key,
     BSL_Buffer *asn1Encode)
 {
-    char *tmpPtr = *header;
-    uint32_t inLen = (uint32_t)strcspn(tmpPtr, "-"); // until "-----END"
     uint8_t *tmp = NULL;
     uint32_t tmpLen;
-    int32_t ret = BSL_PEM_GetAsn1Encode(tmpPtr, inLen, &tmp, &tmpLen);
+    int32_t ret = BSL_PEM_GetAsn1Encode(data, dataLen, &tmp, &tmpLen);
     if (ret != BSL_SUCCESS) {
         return ret;
     }
@@ -305,41 +315,61 @@ static int32_t PEM_DecAsn1(char **header, CRYPT_CIPHER_AlgId cid, BSL_Buffer *iv
     return ret;
 }
 
-int32_t CRYPT_EAL_ParseEncryptedPem(char *header, const uint8_t *pwd, uint32_t pwdLen, BSL_Buffer *asn1Encode)
+static int32_t ParseEncryptedPemCpm(const char *src, uint32_t srcLen, char **data, uint32_t *dataLen)
+{
+    char *tmp = *data;
+    uint32_t tmpLen = *dataLen;
+    uint32_t len = BSL_PEM_SkipMatching(tmp, tmpLen, " \t");
+    tmp += len;
+    tmpLen -= len;
+    if (tmpLen < srcLen || memcmp(tmp, src, srcLen) != 0) {
+        return BSL_PEM_INVALID;
+    }
+    tmp += srcLen;
+    tmpLen -= srcLen;
+    *data = tmp;
+    *dataLen = tmpLen;
+    return BSL_SUCCESS;
+}
+
+int32_t CRYPT_EAL_ParseEncryptedPem(char *data, uint32_t dataLen,
+    const uint8_t *pwd, uint32_t pwdLen, BSL_Buffer *asn1Encode)
 {
     static const char procStr[] = "Proc-Type:";
     static const char encStr[] = "ENCRYPTED";
     static const char dekStr[] = "DEK-Info:";
+    uint32_t procStrLen = sizeof(procStr) - 1;
+    uint32_t encStrLen = sizeof(encStr) - 1;
+    uint32_t dekStrLen = sizeof(dekStr) - 1;
     if (pwd == NULL || pwdLen == 0) {
         return BSL_PEM_NO_PWD;
     }
-    header += sizeof(procStr) - 1;
-    header += strspn(header, " \t");
-    if (*header++ != '4' || *header++ != ',') {
-        return BSL_PEM_INVALID;
+    char *temp = data;
+    uint32_t tempLen = dataLen;
+    int32_t ret = ParseEncryptedPemCpm(procStr, procStrLen, &temp, &tempLen);
+    if (ret != BSL_SUCCESS) {
+        return ret;
     }
-    header += strspn(header, " \t");
-    if (strncmp(header, encStr, sizeof(encStr) - 1) != 0 ||
-        strspn(header + sizeof(encStr) - 1, " \t\r\n") == 0) {
-        return BSL_PEM_INVALID;
+    ret = ParseEncryptedPemCpm("4,", 2, &temp, &tempLen);
+    if (ret != BSL_SUCCESS) {
+        return ret;
     }
-    header += sizeof(encStr) - 1;
-    header += strspn(header, " \t\r");
-    if (*header++ != '\n') {
-        return BSL_PEM_INVALID;
+    ret = ParseEncryptedPemCpm(encStr, encStrLen, &temp, &tempLen);
+    if (ret != BSL_SUCCESS) {
+        return ret;
     }
-
-    if (strncmp(header, dekStr, sizeof(dekStr) - 1) != 0) {
-        return BSL_PEM_INVALID;
+    int32_t len = BSL_PEM_SkipMatching(temp, tempLen, " \t\r\n");
+    temp += len;
+    tempLen -= len;
+    ret = ParseEncryptedPemCpm(dekStr, dekStrLen, &temp, &tempLen);
+    if (ret != BSL_SUCCESS) {
+        return ret;
     }
-    header += sizeof(dekStr) - 1;
-    header += strspn(header, " \t");
-    // get info
     CRYPT_CIPHER_AlgId cid;
     uint8_t iv[64] = {0};
     BSL_Buffer ivBuff = {iv, sizeof(iv)};
     uint32_t keylen;
-    int32_t ret = PEM_GetInfo(&header, &cid, ivBuff.data, &ivBuff.dataLen, &keylen);
+    ret = PEM_GetInfo(&temp, &tempLen, &cid, ivBuff.data, &ivBuff.dataLen, &keylen);
     if (ret != BSL_SUCCESS) {
         return ret;
     }
@@ -358,7 +388,7 @@ int32_t CRYPT_EAL_ParseEncryptedPem(char *header, const uint8_t *pwd, uint32_t p
     }
     // decrypt
     BSL_Buffer keyBuff = {key, keylen};
-    return PEM_DecAsn1(&header, cid, &ivBuff, &keyBuff, asn1Encode);
+    return PEM_DecAsn1(temp, tempLen, cid, &ivBuff, &keyBuff, asn1Encode);
 }
 
 int32_t CRYPT_EAL_BytesToKey(int32_t cipherId, int32_t mdId, int32_t count,
