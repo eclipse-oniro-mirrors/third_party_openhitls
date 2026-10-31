@@ -209,6 +209,9 @@ public_liteos_defines += [
     "HITLS_TLS_SUITE_CIPHER_AEAD",
     "HITLS_TLS_SUITE_KX_ECDHE",
     "HITLS_TLS_SUITE_AUTH_ECDSA",
+    "HITLS_TLS_FEATURE_SESSION_TICKET",
+    "HITLS_TLS_FEATURE_SESSION_ID",
+    "HITLS_TLS_CONNECTION"
 ]
 
 if (openhitls_selected_platform == "linux-armv8") {
