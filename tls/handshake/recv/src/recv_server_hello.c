@@ -1008,6 +1008,7 @@ static int32_t GetNegotiatedVersion(TLS_Ctx *ctx, const ServerHelloMsg *serverHe
     /* As a client that supports TLS1.3, if the received server hello message does not contain the supported version
      * extension, the peer end wants to negotiate a version earlier than TLS1.3 */
     if (!serverHello->haveSupportedVersion) {
+#ifdef HITLS_TLS_PROTO_TLS_BASIC
         if (serverHello->version < HITLS_VERSION_TLS12) {
             BSL_LOG_BINLOG_FIXLEN(BINLOG_ID16169, BSL_LOG_LEVEL_ERR, BSL_LOG_BINLOG_TYPE_RUN,
                 "client cannot negotiate a version.", 0, 0, 0, 0);
@@ -1016,6 +1017,11 @@ static int32_t GetNegotiatedVersion(TLS_Ctx *ctx, const ServerHelloMsg *serverHe
             return HITLS_MSG_HANDLE_UNSUPPORT_VERSION;
         }
         return CheckDowngradeRandom(ctx, serverHello, negotiatedVersion);
+#else
+        ctx->method.sendAlert(ctx, ALERT_LEVEL_FATAL, ALERT_PROTOCOL_VERSION);
+        BSL_ERR_PUSH_ERROR(HITLS_MSG_HANDLE_UNSUPPORT_VERSION);
+        return HITLS_MSG_HANDLE_UNSUPPORT_VERSION;
+#endif
     }
 
     /* If the serverHello of TLS1.3 is used, the version selected by the server must be earlier than TLS1.3, and the
